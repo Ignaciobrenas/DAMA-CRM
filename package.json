@@ -1,0 +1,36 @@
+{
+  "name": "dama-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CRM Modular Open-Source y Self-Hosted para PYMES",
+  "workspaces": [
+    "core",
+    "client"
+  ],
+  "scripts": {
+    "dev:core": "npm --prefix core run dev",
+    "dev:client": "npm --prefix client run dev",
+    "dev": "concurrently \"npm run dev:core\" \"npm run dev:client\"",
+    "build:core": "npm --prefix core run build",
+    "build:client": "npm --prefix client run build",
+    "build": "npm run build:core && npm run build:client",
+    "db:migrate": "npm --prefix core run db:migrate",
+    "db:seed": "npm --prefix core run db:seed",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down"
+  },
+  "keywords": [
+    "crm",
+    "open-source",
+    "self-hosted",
+    "typescript",
+    "react",
+    "express",
+    "prisma",
+    "postgresql",
+    "kanban",
+    "unopim"
+  ],
+  "author": "Ignacio",
+  "license": "MIT"
+}
