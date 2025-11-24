@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # Traefik: Reverse Proxy & Zero-Cost SSL Gateway
+  # ----------------------------------------------------------------------------
+  crm-proxy:
+    image: traefik:v3.1
+    container_name: dama-crm-proxy
+    restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certificates:/letsencrypt
+    networks:
+      - dama-network
+
+  # ----------------------------------------------------------------------------
+  # PostgreSQL 15: Primary Relational Storage
+  # ----------------------------------------------------------------------------
+  crm-db:
+    image: postgres:15-alpine
+    container_name: dama-crm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm_password}
+      POSTGRES_DB: ${POSTGRES_DB:-dama_crm}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crm_user} -d ${POSTGRES_DB:-dama_crm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dama-network
+
+  # ----------------------------------------------------------------------------
+  # Redis: In-Memory Broker for BullMQ Workflows
+  # ----------------------------------------------------------------------------
+  crm-redis:
+    image: redis:7-alpine
+    container_name: dama-crm-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dama-network
+
+  # ----------------------------------------------------------------------------
+  # Core API: Node.js + TypeScript + Prisma Backend
+  # ----------------------------------------------------------------------------
+  crm-core:
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    container_name: dama-crm-core
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-crm_user}:${POSTGRES_PASSWORD:-crm_password}@crm-db:5432/${POSTGRES_DB:-dama_crm}?schema=public
+      REDIS_HOST: crm-redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_crm_dama_change_me_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-notificaciones@tudominio.com}
+      SMTP_PASS: ${SMTP_PASS:-secret}
+      SMTP_FROM: ${SMTP_FROM:-"DAMA-CRM <no-reply@tudominio.com>"}
+    depends_on:
+      crm-db:
+        condition: service_healthy
+      crm-redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.core.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.core.entrypoints=web"
+      - "traefik.http.services.core.loadbalancer.server.port=4000"
+    ports:
+      - "4000:4000"
+    networks:
+      - dama-network
+
+  # ----------------------------------------------------------------------------
+  # Web Frontend: React SPA + Nginx Alpine
+  # ----------------------------------------------------------------------------
+  crm-client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: dama-crm-client
+    restart: unless-stopped
+    depends_on:
+      - crm-core
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.client.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.client.entrypoints=web"
+      - "traefik.http.services.client.loadbalancer.server.port=80"
+    ports:
+      - "3000:80"
+    networks:
+      - dama-network
+
+networks:
+  dama-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  traefik-certificates:

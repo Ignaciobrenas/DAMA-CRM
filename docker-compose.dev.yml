@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  crm-db:
+    image: postgres:15-alpine
+    container_name: dama-crm-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: crm_user
+      POSTGRES_PASSWORD: crm_password
+      POSTGRES_DB: dama_crm
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  crm-redis:
+    image: redis:7-alpine
+    container_name: dama-crm-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres-data-dev:
