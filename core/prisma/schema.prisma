@@ -1,0 +1,380 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Core: Users, Roles, Dynamic RBAC & Authentication
+// -----------------------------------------------------------------------------
+
+model User {
+  id               String           @id @default(uuid())
+  email            String           @unique
+  passwordHash     String
+  name             String
+  avatar           String?
+  roleId           String
+  role             Role             @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean          @default(false)
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  assignedTasks    Task[]           @relation("TaskAssignee")
+  auditLogs        AuditLog[]
+  twoFactorTokens  TwoFactorToken[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  isSystem    Boolean      @default(false)
+  permissions Permission[]
+  users       User[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  resource  String   // e.g. "companies", "contacts", "deals", "invoices", "projects", "inventory", "workflows"
+  action    String   // e.g. "create", "read", "update", "delete", "manage"
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, resource, action])
+  @@map("permissions")
+}
+
+model TwoFactorToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("two_factor_tokens")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g. "CREATE", "UPDATE", "DELETE", "LOGIN", "2FA_VERIFY"
+  entity    String   // e.g. "Contact", "Deal", "Invoice"
+  entityId  String?
+  details   String?  // JSON string
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// -----------------------------------------------------------------------------
+// Core: Company & Contact Directory
+// -----------------------------------------------------------------------------
+
+model Company {
+  id             String    @id @default(uuid())
+  name           String
+  industry       String?
+  website        String?
+  phone          String?
+  email          String?
+  address        String?
+  city           String?
+  country        String?
+  taxId          String?
+  annualRevenue  Float?
+  employeesCount Int?
+  notes          String?
+  contacts       Contact[]
+  deals          Deal[]
+  quotes         Quote[]
+  invoices       Invoice[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("companies")
+}
+
+model Contact {
+  id           String        @id @default(uuid())
+  companyId    String?
+  company      Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  firstName    String
+  lastName     String
+  email        String        @unique
+  phone        String?
+  mobile       String?
+  position     String?
+  department   String?
+  isLead       Boolean       @default(false)
+  notes        String?
+  deals        Deal[]
+  quotes       Quote[]
+  invoices     Invoice[]
+  omniMessages OmniMessage[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("contacts")
+}
+
+// -----------------------------------------------------------------------------
+// Sales Module: Pipeline & Deals
+// -----------------------------------------------------------------------------
+
+model DealStage {
+  id          String   @id @default(uuid())
+  name        String
+  order       Int      @default(0)
+  color       String   @default("#2563EB")
+  probability Int      @default(50) // Percentage 0 - 100
+  deals       Deal[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("deal_stages")
+}
+
+model Deal {
+  id                String    @id @default(uuid())
+  title             String
+  value             Float     @default(0.0)
+  currency          String    @default("EUR")
+  stageId           String
+  stage             DealStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  contactId         String?
+  contact           Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId         String?
+  company           Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  expectedCloseDate DateTime?
+  status            String    @default("OPEN") // OPEN, WON, LOST
+  notes             String?
+  projects          Project[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("deals")
+}
+
+// -----------------------------------------------------------------------------
+// Agile Planner Module: Projects, Sprints & Tasks
+// -----------------------------------------------------------------------------
+
+model Project {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  status      String    @default("ACTIVE") // PLANNING, ACTIVE, COMPLETED, ON_HOLD
+  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  dealId      String?
+  deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  startDate   DateTime?
+  endDate     DateTime?
+  budget      Float?
+  sprints     Sprint[]
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("projects")
+}
+
+model Sprint {
+  id        String    @id @default(uuid())
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  goal      String?
+  startDate DateTime?
+  endDate   DateTime?
+  status    String    @default("PLANNED") // PLANNED, ACTIVE, COMPLETED
+  tasks     Task[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("sprints")
+}
+
+model Task {
+  id             String    @id @default(uuid())
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sprintId       String?
+  sprint         Sprint?   @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  title          String
+  description    String?
+  status         String    @default("TODO") // TODO, IN_PROGRESS, REVIEW, DONE
+  priority       String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  storyPoints    Int?      @default(1)
+  estimatedHours Float?    @default(0)
+  loggedHours    Float?    @default(0)
+  assigneeId     String?
+  assignee       User?     @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  dueDate        DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("tasks")
+}
+
+// -----------------------------------------------------------------------------
+// Billing Module: Quotes & Invoices
+// -----------------------------------------------------------------------------
+
+model Quote {
+  id          String        @id @default(uuid())
+  quoteNumber String        @unique
+  contactId   String?
+  contact     Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId   String?
+  company     Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  issueDate   DateTime      @default(now())
+  expiryDate  DateTime?
+  status      String        @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED
+  subtotal    Float         @default(0.0)
+  taxRate     Float         @default(21.0)
+  taxAmount   Float         @default(0.0)
+  total       Float         @default(0.0)
+  currency    String        @default("EUR")
+  notes       String?
+  items       InvoiceItem[]
+  invoices    Invoice[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("quotes")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique
+  quoteId       String?
+  quote         Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  contactId     String?
+  contact       Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId     String?
+  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime?
+  status        String        @default("DRAFT") // DRAFT, SENT, PAID, OVERDUE, CANCELLED
+  subtotal      Float         @default(0.0)
+  taxRate       Float         @default(21.0)
+  taxAmount     Float         @default(0.0)
+  total         Float         @default(0.0)
+  currency      String        @default("EUR")
+  notes         String?
+  paidAt        DateTime?
+  items         InvoiceItem[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  quoteId     String?
+  quote       Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float    @default(1.0)
+  unitPrice   Float    @default(0.0)
+  amount      Float    @default(0.0)
+
+  @@map("invoice_items")
+}
+
+// -----------------------------------------------------------------------------
+// Inventory Module: Products & UnoPIM Catalog Integration
+// -----------------------------------------------------------------------------
+
+model Product {
+  id           String    @id @default(uuid())
+  externalId   String?   @unique // UnoPIM ID for bidirectional sync
+  sku          String    @unique
+  name         String
+  description  String?
+  price        Float     @default(0.0)
+  costPrice    Float?    @default(0.0)
+  stock        Int       @default(0)
+  category     String?
+  barcode      String?
+  isSync       Boolean   @default(false)
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("products")
+}
+
+// -----------------------------------------------------------------------------
+// Automations Module: Workflows & Trigger Engine
+// -----------------------------------------------------------------------------
+
+model Workflow {
+  id             String        @id @default(uuid())
+  name           String
+  description    String?
+  trigger        String        // e.g. "deal.stage_changed", "contact.created", "invoice.paid"
+  triggerConfig  String?       // JSON config
+  action         String        // e.g. "send_email", "create_task", "notify_webhook"
+  actionConfig   String?       // JSON config
+  isActive       Boolean       @default(true)
+  executionCount Int           @default(0)
+  lastExecutedAt DateTime?
+  logs           WorkflowLog[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("workflows")
+}
+
+model WorkflowLog {
+  id           String   @id @default(uuid())
+  workflowId   String
+  workflow     Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  status       String   // SUCCESS, FAILED
+  triggerData  String?  // JSON string
+  resultData   String?  // JSON string
+  errorMessage String?
+  executedAt   DateTime @default(now())
+
+  @@map("workflow_logs")
+}
+
+// -----------------------------------------------------------------------------
+// Omnichannel Module: WhatsApp / Email Inbox & Customer Timeline
+// -----------------------------------------------------------------------------
+
+model OmniMessage {
+  id         String   @id @default(uuid())
+  contactId  String
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  channel    String   // WHATSAPP, EMAIL, SMS, WEB_CHAT
+  direction  String   // INBOUND, OUTBOUND
+  sender     String
+  recipient  String
+  subject    String?
+  content    String
+  rawPayload String?  // JSON string
+  timestamp  DateTime @default(now())
+  isRead     Boolean  @default(false)
+
+  @@map("omni_messages")
+}
