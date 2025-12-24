@@ -1,0 +1,332 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Mail, Phone, Building2, User, MessageSquare, X } from 'lucide-react';
+import { apiRequest } from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
+
+export const Contacts: React.FC = () => {
+  const { t } = useLanguage();
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [selectedContact, setSelectedContact] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Form state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [position, setPosition] = useState('');
+  const [companyId, setCompanyId] = useState('');
+  const [isLead, setIsLead] = useState(false);
+
+  const loadContacts = async () => {
+    setIsLoading(true);
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    const res = await apiRequest(`/contacts${query}`);
+    if (res.success && res.data) {
+      setContacts(res.data);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadContacts();
+    apiRequest('/companies?limit=100').then((res) => {
+      if (res.success) setCompanies(res.data || []);
+    });
+  }, [search]);
+
+  const handleCreateContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await apiRequest('/contacts', {
+      method: 'POST',
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        email,
+        phone,
+        position,
+        companyId: companyId || null,
+        isLead,
+      }),
+    });
+
+    if (res.success) {
+      setIsModalOpen(false);
+      setFirstName('');
+      setLastName('');
+      setEmail('');
+      setPhone('');
+      setPosition('');
+      setCompanyId('');
+      loadContacts();
+    }
+  };
+
+  const openTimeline = async (id: string) => {
+    const res = await apiRequest(`/contacts/${id}`);
+    if (res.success) {
+      setSelectedContact(res.data);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+            {t('contacts')}
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            Directorio unificado de personas de contacto y leads
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar contacto..."
+              className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            />
+          </div>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{t('newContact')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* High Density Table */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+            <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
+              <tr>
+                <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Empresa</th>
+                <th className="px-4 py-3">Puesto</th>
+                <th className="px-4 py-3">Email & Teléfono</th>
+                <th className="px-4 py-3">Tipo</th>
+                <th className="px-4 py-3 text-right">Línea de Tiempo</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+              {contacts.map((contact) => (
+                <tr key={contact.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                  <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
+                    {contact.firstName} {contact.lastName}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {contact.company ? (
+                      <span className="flex items-center space-x-1 font-medium text-gray-800 dark:text-slate-200">
+                        <Building2 className="w-3 h-3 text-gray-400" />
+                        <span>{contact.company.name}</span>
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">{contact.position || '—'}</td>
+                  <td className="px-4 py-2.5 space-y-0.5">
+                    <div className="flex items-center space-x-1 text-gray-700 dark:text-slate-300">
+                      <Mail className="w-3 h-3 text-gray-400" />
+                      <span>{contact.email}</span>
+                    </div>
+                    {contact.phone && (
+                      <div className="flex items-center space-x-1 text-[11px] text-gray-500">
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        <span>{contact.phone}</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {contact.isLead ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+                        Lead
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
+                        Cliente
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <button
+                      onClick={() => openTimeline(contact.id)}
+                      className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <MessageSquare className="w-3 h-3" />
+                      <span>Timeline</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Omnichannel Timeline Drawer / Modal */}
+      {selectedContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md h-full bg-white dark:bg-slate-900 shadow-2xl border-l border-gray-200 dark:border-slate-800 p-6 flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+                  {selectedContact.firstName} {selectedContact.lastName}
+                </h2>
+                <p className="text-xs text-gray-500">{selectedContact.company?.name} • {selectedContact.email}</p>
+              </div>
+              <button onClick={() => setSelectedContact(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 space-y-3">
+              <div className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
+                Historial de Mensajes & Interacciones
+              </div>
+
+              {selectedContact.omniMessages?.length > 0 ? (
+                selectedContact.omniMessages.map((msg: any) => (
+                  <div
+                    key={msg.id}
+                    className={`p-3 rounded-xl text-xs space-y-1 ${
+                      msg.direction === 'INBOUND'
+                        ? 'bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white mr-6'
+                        : 'bg-blue-600 text-white ml-6'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[10px] opacity-80">
+                      <span>{msg.channel} ({msg.direction})</span>
+                      <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p>{msg.content}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="py-12 text-center text-xs text-gray-400">
+                  Sin interacciones registradas para este contacto.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Contact Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('newContact')}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateContact} className="mt-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre</label>
+                  <input
+                    type="text"
+                    required
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Apellidos</label>
+                  <input
+                    type="text"
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Cargo</label>
+                  <input
+                    type="text"
+                    value={position}
+                    onChange={(e) => setPosition(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Empresa</label>
+                <select
+                  value={companyId}
+                  onChange={(e) => setCompanyId(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="">-- Sin Empresa --</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
+                >
+                  {t('save')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

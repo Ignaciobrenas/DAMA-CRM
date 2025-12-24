@@ -5,7 +5,7 @@ let transporter: nodemailer.Transporter | null = null;
 
 export function getMailer(): nodemailer.Transporter {
   if (!transporter) {
-    transporter = nodemailer.createTransporter({
+    transporter = nodemailer.createTransport({
       host: config.smtp.host,
       port: config.smtp.port,
       secure: config.smtp.secure,
@@ -18,7 +18,7 @@ export function getMailer(): nodemailer.Transporter {
       },
     });
   }
-  return transporter;
+  return transporter!;
 }
 
 export async function sendOtpEmail(toEmail: string, userName: string, otpCode: string): Promise<boolean> {
