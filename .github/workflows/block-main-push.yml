@@ -1,0 +1,33 @@
+name: Block Direct Push to Main / Master
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  enforce-branch-policy:
+    name: Enforce Branch & PR Policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Pull Request Origin
+        run: |
+          echo "=========================================================================="
+          echo "🚨 ERROR DE POLÍTICA DE RAMAS (BRANCH PROTECTION POLICY)"
+          echo "=========================================================================="
+          echo "Los empujes directos ('git push') a las ramas 'main' o 'master' están estrictamente bloqueados."
+          echo ""
+          echo "👉 Flujo de trabajo obligatorio para DAMA-CRM:"
+          echo "   1. Crea una rama de desarrollo:   git checkout -b feature/tu-modulo"
+          echo "   2. Realiza tus commits locales:   git commit -m 'feat: descripcion'"
+          echo "   3. Sube tu rama a GitHub:         git push origin feature/tu-modulo"
+          echo "   4. Abre un Pull Request para revisión de CI, auditoría y merge asistido."
+          echo "=========================================================================="
+          
+          # Allow merge commits from PRs (has 2+ parents), but reject direct single-parent pushes
+          PARENTS=$(git rev-parse HEAD^@ 2>/dev/null | wc -l || echo "0")
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF_NAME" = "main" -o "$GITHUB_REF_NAME" = "master" ]; then
+            echo "❌ Bloqueo activado: Empuje directo detectado sin Pull Request validado."
+            exit 1
+          fi
