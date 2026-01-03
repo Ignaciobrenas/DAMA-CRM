@@ -1,0 +1,50 @@
+name: Security Audit & Dependency Verification
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  schedule:
+    # Run every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+
+jobs:
+  security-audit:
+    name: NPM Audit & Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Core Security Audit
+        run: |
+          echo "🔍 Auditing Core Backend dependencies..."
+          cd core
+          npm audit --audit-level=critical || true
+
+      - name: Client Security Audit
+        run: |
+          echo "🔍 Auditing Client Frontend dependencies..."
+          cd client
+          npm audit --audit-level=critical || true
+
+      - name: Check for Uncommitted Sensitive Files
+        run: |
+          echo "🔒 Verifying no .env or private key files are tracked in git..."
+          if git ls-files | grep -E '(\.env$|\.key$|\.pem$|id_rsa)'; then
+            echo "❌ Error: Se detectaron archivos confidenciales en el repositorio de Git!"
+            exit 1
+          else
+            echo "✅ Repositorio limpio de credenciales o secretos."
+          fi
