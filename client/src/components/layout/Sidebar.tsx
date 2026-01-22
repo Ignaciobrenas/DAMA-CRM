@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   ExternalLink,
   ChevronLeft,
+  BarChart3,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -42,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'inventory', label: t('inventory'), icon: Package, route: '/inventory', resource: 'inventory' },
     { id: 'workflows', label: t('workflows'), icon: Cpu, route: '/workflows', resource: 'workflows' },
     { id: 'omnichannel', label: t('omnichannel'), icon: MessageSquare, route: '/omnichannel', resource: 'omnichannel' },
+    { id: 'reports', label: 'Informes & BI', icon: BarChart3, route: '/reports', resource: 'reports' },
     { id: 'settings', label: t('settings'), icon: ShieldCheck, route: '/settings', resource: 'users' },
     { id: 'portal', label: t('clientPortal'), icon: ExternalLink, route: '/portal', resource: 'invoices' },
   ];

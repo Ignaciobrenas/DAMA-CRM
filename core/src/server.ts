@@ -17,6 +17,7 @@ import inventoryRoutes from './modules/inventory/inventory.routes';
 import workflowsRoutes from './modules/workflows/workflows.routes';
 import omnichannelRoutes from './modules/omnichannel/omnichannel.routes';
 import searchRoutes from './modules/search/search.routes';
+import reportsRoutes from './modules/reports/reports.routes';
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/workflows', workflowsRoutes);
 app.use('/api/omnichannel', omnichannelRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // Centralized error handler
 app.use(errorHandler);

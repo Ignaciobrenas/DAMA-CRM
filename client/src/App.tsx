@@ -19,6 +19,7 @@ import { Workflows } from './pages/Workflows';
 import { Omnichannel } from './pages/Omnichannel';
 import { Settings } from './pages/Settings';
 import { ClientPortal } from './pages/ClientPortal';
+import { Reports } from './pages/Reports';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -53,6 +54,7 @@ const AppContent: React.FC = () => {
       case '/inventory': return <Inventory />;
       case '/workflows': return <Workflows />;
       case '/omnichannel': return <Omnichannel />;
+      case '/reports': return <Reports />;
       case '/settings': return <Settings />;
       case '/portal': return <ClientPortal />;
       default: return <Dashboard onNavigate={setCurrentRoute} />;
