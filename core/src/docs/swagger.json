@@ -1,0 +1,149 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DAMA-CRM RESTful API",
+    "description": "API completa del CRM Modular Open-Source para PYMES. Diseñado para self-hosting a coste cero.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Ignacio",
+      "email": "ignaciobrenas@gmail.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Servidor de Producción / Local Gateway"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Iniciar Sesión",
+        "description": "Valida email y contraseña. Si el usuario tiene 2FA activado, emite tempToken y envía OTP.",
+        "security": [],
+        "responses": {
+          "200": { "description": "Autenticación exitosa o requerimiento de 2FA" }
+        }
+      }
+    },
+    "/auth/verify-2fa": {
+      "post": {
+        "summary": "Validar Código OTP 2FA",
+        "description": "Verifica el código de 6 dígitos enviado por email.",
+        "security": [],
+        "responses": {
+          "200": { "description": "Token JWT principal emitido" }
+        }
+      }
+    },
+    "/companies": {
+      "get": {
+        "summary": "Listar Empresas",
+        "responses": { "200": { "description": "Lista paginada de empresas" } }
+      },
+      "post": {
+        "summary": "Crear Empresa",
+        "responses": { "201": { "description": "Empresa creada exitosamente" } }
+      }
+    },
+    "/contacts": {
+      "get": {
+        "summary": "Listar Contactos y Leads",
+        "responses": { "200": { "description": "Lista de contactos" } }
+      },
+      "post": {
+        "summary": "Crear Contacto",
+        "responses": { "201": { "description": "Contacto creado" } }
+      }
+    },
+    "/deals/pipeline": {
+      "get": {
+        "summary": "Embudo de Ventas Kanban",
+        "description": "Devuelve las etapas con oportunidades agrupadas y métricas económicas.",
+        "responses": { "200": { "description": "Pipeline completo" } }
+      }
+    },
+    "/deals/{id}": {
+      "patch": {
+        "summary": "Actualización Rápida de Trato (Kanban Drag & Drop)",
+        "description": "Actualiza etapa y estado minimizando el tráfico de red.",
+        "responses": { "200": { "description": "Trato actualizado" } }
+      }
+    },
+    "/projects": {
+      "get": {
+        "summary": "Listar Proyectos Ágiles",
+        "responses": { "200": { "description": "Proyectos con métricas de avance" } }
+      }
+    },
+    "/projects/my-tasks": {
+      "get": {
+        "summary": "Mis Tareas Pendientes (Móvil Capacitor)",
+        "responses": { "200": { "description": "Tareas asignadas al usuario activo" } }
+      }
+    },
+    "/invoices": {
+      "get": {
+        "summary": "Listar Facturas",
+        "responses": { "200": { "description": "Listado de facturas" } }
+      }
+    },
+    "/invoices/{id}/pdf": {
+      "get": {
+        "summary": "Descargar Factura en PDF Nativo",
+        "responses": { "200": { "description": "Streaming de archivo application/pdf" } }
+      }
+    },
+    "/inventory/webhooks/unopim": {
+      "post": {
+        "summary": "Webhook Entrante UnoPIM",
+        "description": "Sincronización instantánea de stock y catálogo de productos.",
+        "security": [],
+        "responses": { "200": { "description": "Producto sincronizado" } }
+      }
+    },
+    "/omnichannel/messages": {
+      "get": {
+        "summary": "Línea de Tiempo de Mensajes",
+        "responses": { "200": { "description": "Mensajes de WhatsApp y Email" } }
+      }
+    },
+    "/reports/sales": {
+      "get": {
+        "summary": "Métricas BI de Rendimiento de Ventas",
+        "responses": { "200": { "description": "KPIs de conversión y facturación" } }
+      }
+    },
+    "/reports/export": {
+      "get": {
+        "summary": "Exportar Datos en Formato CSV",
+        "responses": { "200": { "description": "Archivo CSV para Excel" } }
+      }
+    },
+    "/search": {
+      "get": {
+        "summary": "Buscador Global (Cmd+K)",
+        "description": "Indexación rápida en empresas, contactos, ventas y facturas.",
+        "responses": { "200": { "description": "Resultados categorizados" } }
+      }
+    }
+  }
+}
