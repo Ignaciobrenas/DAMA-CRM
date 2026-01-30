@@ -45,6 +45,43 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Interactive Swagger OpenAPI Documentation (Zero extra dependencies)
+app.get('/api/docs/json', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'docs', 'swagger.json'));
+});
+
+app.get('/api/docs', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>DAMA-CRM API Docs (Swagger UI)</title>
+      <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+      <style>
+        body { margin: 0; padding: 0; background: #fafafa; }
+        .topbar { display: none !important; }
+      </style>
+    </head>
+    <body>
+      <div id="swagger-ui"></div>
+      <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+      <script>
+        window.onload = () => {
+          window.ui = SwaggerUIBundle({
+            url: '/api/docs/json',
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [SwaggerUIBundle.presets.apis],
+            layout: "BaseLayout"
+          });
+        };
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // Register API Modules
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
