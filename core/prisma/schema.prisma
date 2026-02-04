@@ -378,3 +378,59 @@ model OmniMessage {
 
   @@map("omni_messages")
 }
+
+// -----------------------------------------------------------------------------
+// Activities Module: Calls, Meetings, Notes & Interactions
+// -----------------------------------------------------------------------------
+
+model Activity {
+  id              String    @id @default(uuid())
+  type            String    // CALL, MEETING, NOTE, EMAIL, TASK
+  subject         String
+  description     String?
+  durationMinutes Int?      @default(15)
+  outcome         String?
+  scheduledAt     DateTime?
+  completedAt     DateTime?
+  contactId       String?
+  dealId          String?
+  userId          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("activities")
+}
+
+// -----------------------------------------------------------------------------
+// Custom Fields Engine: Dynamic Metadata for Companies, Contacts & Deals
+// -----------------------------------------------------------------------------
+
+model CustomField {
+  id           String             @id @default(uuid())
+  entityType   String             // COMPANY, CONTACT, DEAL
+  name         String             // Unique key, e.g. "renewal_date"
+  label        String             // Display label, e.g. "Fecha de Renovación"
+  fieldType    String             // TEXT, NUMBER, DATE, SELECT, BOOLEAN
+  optionsJson  String?            // JSON options for SELECT
+  isRequired   Boolean            @default(false)
+  defaultValue String?
+  values       CustomFieldValue[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([entityType, name])
+  @@map("custom_fields")
+}
+
+model CustomFieldValue {
+  id            String      @id @default(uuid())
+  customFieldId String
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  entityId      String      // Target Company, Contact or Deal ID
+  value         String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([customFieldId, entityId])
+  @@map("custom_field_values")
+}
