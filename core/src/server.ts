@@ -18,6 +18,8 @@ import workflowsRoutes from './modules/workflows/workflows.routes';
 import omnichannelRoutes from './modules/omnichannel/omnichannel.routes';
 import searchRoutes from './modules/search/search.routes';
 import reportsRoutes from './modules/reports/reports.routes';
+import activitiesRoutes from './modules/activities/activities.routes';
+import customFieldsRoutes from './modules/custom-fields/custom-fields.routes';
 
 const app = express();
 
@@ -95,6 +97,8 @@ app.use('/api/workflows', workflowsRoutes);
 app.use('/api/omnichannel', omnichannelRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/activities', activitiesRoutes);
+app.use('/api/custom-fields', customFieldsRoutes);
 
 // Centralized error handler
 app.use(errorHandler);
