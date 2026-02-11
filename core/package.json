@@ -8,6 +8,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "test": "ts-node tests/unit.test.ts && ts-node tests/integration.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

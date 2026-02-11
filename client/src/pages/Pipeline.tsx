@@ -3,6 +3,7 @@ import { Plus, DollarSign, Building2, User, Calendar, X, AlertCircle } from 'luc
 import confetti from 'canvas-confetti';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { RecordDrawer } from '../components/crm/RecordDrawer';
 
 export const Pipeline: React.FC = () => {
   const { t } = useLanguage();
@@ -11,6 +12,7 @@ export const Pipeline: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
+  const [selectedDeal, setSelectedDeal] = useState<any | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -178,7 +180,8 @@ export const Pipeline: React.FC = () => {
                   key={deal.id}
                   draggable
                   onDragStart={() => handleDragStart(deal.id)}
-                  className={`p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200/80 dark:border-slate-700 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing ${
+                  onClick={() => setSelectedDeal(deal)}
+                  className={`p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200/80 dark:border-slate-700 shadow-xs hover:shadow-md transition-all cursor-pointer ${
                     draggedDealId === deal.id ? 'opacity-40 scale-95' : 'opacity-100'
                   }`}
                 >
@@ -330,6 +333,19 @@ export const Pipeline: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Deal Activity & Custom Fields Drawer */}
+      {selectedDeal && (
+        <RecordDrawer
+          isOpen={!!selectedDeal}
+          onClose={() => setSelectedDeal(null)}
+          entityType="DEAL"
+          entityId={selectedDeal.id}
+          title={selectedDeal.title}
+          subtitle={`${selectedDeal.company?.name ? selectedDeal.company.name + ' • ' : ''}${selectedDeal.value?.toLocaleString('es-ES', { style: 'currency', currency: selectedDeal.currency || 'EUR' })}`}
+          extraBadge={selectedDeal.stage?.name || 'Deal'}
+        />
       )}
     </div>
   );
