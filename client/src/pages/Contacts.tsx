@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Mail, Phone, Building2, User, MessageSquare, X } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { RecordDrawer } from '../components/crm/RecordDrawer';
 
 export const Contacts: React.FC = () => {
   const { t } = useLanguage();
@@ -177,52 +178,18 @@ export const Contacts: React.FC = () => {
         </div>
       </div>
 
-      {/* Omnichannel Timeline Drawer / Modal */}
+      {/* Activity, Custom Fields & Omnichannel Timeline Drawer */}
       {selectedContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md h-full bg-white dark:bg-slate-900 shadow-2xl border-l border-gray-200 dark:border-slate-800 p-6 flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <div>
-                <h2 className="text-sm font-bold text-gray-900 dark:text-white">
-                  {selectedContact.firstName} {selectedContact.lastName}
-                </h2>
-                <p className="text-xs text-gray-500">{selectedContact.company?.name} • {selectedContact.email}</p>
-              </div>
-              <button onClick={() => setSelectedContact(null)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto py-4 space-y-3">
-              <div className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
-                Historial de Mensajes & Interacciones
-              </div>
-
-              {selectedContact.omniMessages?.length > 0 ? (
-                selectedContact.omniMessages.map((msg: any) => (
-                  <div
-                    key={msg.id}
-                    className={`p-3 rounded-xl text-xs space-y-1 ${
-                      msg.direction === 'INBOUND'
-                        ? 'bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white mr-6'
-                        : 'bg-blue-600 text-white ml-6'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[10px] opacity-80">
-                      <span>{msg.channel} ({msg.direction})</span>
-                      <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <p>{msg.content}</p>
-                  </div>
-                ))
-              ) : (
-                <div className="py-12 text-center text-xs text-gray-400">
-                  Sin interacciones registradas para este contacto.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <RecordDrawer
+          isOpen={!!selectedContact}
+          onClose={() => setSelectedContact(null)}
+          entityType="CONTACT"
+          entityId={selectedContact.id}
+          title={`${selectedContact.firstName} ${selectedContact.lastName}`}
+          subtitle={`${selectedContact.company?.name ? selectedContact.company.name + ' • ' : ''}${selectedContact.email}`}
+          extraBadge={selectedContact.isLead ? 'Lead' : 'Cliente'}
+          omniMessages={selectedContact.omniMessages || []}
+        />
       )}
 
       {/* Create Contact Modal */}

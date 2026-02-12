@@ -38,6 +38,10 @@ jobs:
         working-directory: core
         run: npx tsc --noEmit
 
+      - name: Run Backend Unit & Integration Tests
+        working-directory: core
+        run: npm test
+
   frontend-quality:
     name: Client Frontend (TypeScript & Vite Build)
     runs-on: ubuntu-latest
