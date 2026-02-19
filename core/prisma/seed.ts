@@ -6,7 +6,9 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting DAMA-CRM database seed...');
 
-  // Clean existing data
+  await prisma.customFieldValue.deleteMany();
+  await prisma.customField.deleteMany();
+  await prisma.activity.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.twoFactorToken.deleteMany();
   await prisma.omniMessage.deleteMany();
@@ -556,6 +558,133 @@ async function main() {
       content: 'Hola Dra. Herrera, sí, ya está confirmada como PAGADA y puede descargarla directamente en PDF en su portal de cliente.',
       timestamp: new Date(Date.now() - 3600 * 1000 * 3),
       isRead: true,
+    },
+  });
+
+  // 13. Create Custom Fields Definitions & Values
+  const cfContactTier = await prisma.customField.create({
+    data: {
+      entity: 'CONTACT',
+      name: 'Nivel de Prioridad (Tier)',
+      key: 'tier',
+      type: 'SELECT',
+      options: ['TIER_1_ENTERPRISE', 'TIER_2_MIDMARKET', 'STARTUP_PYME'],
+    },
+  });
+
+  const cfLinkedin = await prisma.customField.create({
+    data: {
+      entity: 'CONTACT',
+      name: 'Perfil LinkedIn',
+      key: 'linkedin_url',
+      type: 'TEXT',
+    },
+  });
+
+  const cfCompetitor = await prisma.customField.create({
+    data: {
+      entity: 'DEAL',
+      name: 'Competidor Principal',
+      key: 'competitor',
+      type: 'TEXT',
+    },
+  });
+
+  const cfBudgetApproved = await prisma.customField.create({
+    data: {
+      entity: 'DEAL',
+      name: 'Presupuesto Aprobado por CFO',
+      key: 'budget_approved',
+      type: 'BOOLEAN',
+    },
+  });
+
+  // Assign values
+  await prisma.customFieldValue.create({
+    data: {
+      customFieldId: cfContactTier.id,
+      entityId: contact1.id,
+      value: 'TIER_1_ENTERPRISE',
+    },
+  });
+
+  await prisma.customFieldValue.create({
+    data: {
+      customFieldId: cfLinkedin.id,
+      entityId: contact1.id,
+      value: 'https://linkedin.com/in/elena-martinez-innovatech',
+    },
+  });
+
+  await prisma.customFieldValue.create({
+    data: {
+      customFieldId: cfCompetitor.id,
+      entityId: deal1.id,
+      value: 'Salesforce / HubSpot',
+    },
+  });
+
+  await prisma.customFieldValue.create({
+    data: {
+      customFieldId: cfBudgetApproved.id,
+      entityId: deal1.id,
+      value: 'true',
+    },
+  });
+
+  // 14. Create Activities (Calls, Meetings, Notes, Tasks)
+  await prisma.activity.create({
+    data: {
+      type: 'CALL',
+      title: 'Llamada de cualificación técnica con COO',
+      description: 'Se revisaron requerimientos de hosting on-premise y compatibilidad con PostgreSQL 15.',
+      scheduledAt: new Date(Date.now() - 24 * 3600 * 1000),
+      durationMinutes: 30,
+      isCompleted: true,
+      contactId: contact1.id,
+      dealId: deal1.id,
+      userId: salesUser.id,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      type: 'MEETING',
+      title: 'Demo en vivo de DAMA-CRM y despliegue Docker Traefik',
+      description: 'Presentación ejecutiva al equipo directivo de Innovatech Solutions SL.',
+      scheduledAt: new Date(Date.now() + 48 * 3600 * 1000),
+      durationMinutes: 45,
+      isCompleted: false,
+      contactId: contact1.id,
+      dealId: deal1.id,
+      userId: adminUser.id,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      type: 'NOTE',
+      title: 'Acuerdo de pagos y sincronización UnoPIM',
+      description: 'Cliente solicita sweep nocturno a las 03:00 AM para no saturar su servidor de repuestos.',
+      scheduledAt: new Date(),
+      isCompleted: true,
+      contactId: contact2.id,
+      dealId: deal2.id,
+      userId: salesUser.id,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      type: 'TASK',
+      title: 'Preparar anexo técnico de SLA 99.9%',
+      description: 'Redactar especificación de alta disponibilidad con failover local.',
+      scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
+      durationMinutes: 60,
+      isCompleted: false,
+      contactId: contact3.id,
+      dealId: deal3.id,
+      userId: pmUser.id,
     },
   });
 

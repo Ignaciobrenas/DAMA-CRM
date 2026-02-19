@@ -1,0 +1,19 @@
+{
+  "short_name": "DAMA-CRM",
+  "name": "DAMA-CRM Enterprise Modular CRM",
+  "description": "100% Self-Hosted, Zero-Cost SME CRM with Sales, Projects, Invoicing, UnoPIM & WhatsApp Omnichannel",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0F172A",
+  "theme_color": "#2563EB",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/"
+}
