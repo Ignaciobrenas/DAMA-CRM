@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { RecordDrawer } from '../components/crm/RecordDrawer';
+import { wsClient } from '../services/websocket';
 
 export const Pipeline: React.FC = () => {
   const { t } = useLanguage();
@@ -45,6 +46,18 @@ export const Pipeline: React.FC = () => {
     apiRequest('/contacts?limit=100').then((res) => {
       if (res.success) setContacts(res.data || []);
     });
+
+    const unsubUpdated = wsClient.on('deal:updated', () => {
+      loadPipeline();
+    });
+    const unsubCreated = wsClient.on('deal:created', () => {
+      loadPipeline();
+    });
+
+    return () => {
+      unsubUpdated();
+      unsubCreated();
+    };
   }, []);
 
   const handleDragStart = (dealId: string) => {

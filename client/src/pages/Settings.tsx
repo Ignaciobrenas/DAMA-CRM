@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldCheck, Users, Lock, Key, Check, Save } from 'lucide-react';
+import { Shield, ShieldCheck, Users, Lock, Key, Check, Save, Paintbrush, Image, RotateCcw, Sparkles } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useBranding } from '../context/BrandingContext';
 
 export const Settings: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { branding, updateBranding, resetBranding } = useBranding();
+  const [brandForm, setBrandForm] = useState(branding);
+  const [brandSaved, setBrandSaved] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [users, setUsers] = useState<any[]>([]);
@@ -125,6 +129,219 @@ export const Settings: React.FC = () => {
           {statusMessage}
         </div>
       )}
+
+      {/* White-label Branding & Customization Card */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-slate-800">
+          <div className="flex items-center space-x-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-xs shrink-0"
+              style={{ backgroundColor: brandForm.primaryColor }}
+            >
+              <Paintbrush className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Identidad de Marca & Logo Corporativo</h2>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                Personaliza los colores, logo y curvatura de bordes para adaptar DAMA-CRM a la imagen de tu empresa
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={resetBranding}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Restablecer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                updateBranding(brandForm);
+                setBrandSaved(true);
+                setTimeout(() => setBrandSaved(false), 3000);
+              }}
+              className="inline-flex items-center space-x-1.5 px-4 py-1.5 text-xs font-semibold text-white rounded-xl shadow-xs transition-opacity hover:opacity-90"
+              style={{ backgroundColor: brandForm.primaryColor }}
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{brandSaved ? '¡Guardado!' : 'Guardar Marca'}</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Col 1: Nombre & Logo */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                Nombre de la Empresa
+              </label>
+              <input
+                type="text"
+                value={brandForm.companyName}
+                onChange={(e) => setBrandForm({ ...brandForm, companyName: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                URL o Archivo del Logo
+              </label>
+              <input
+                type="text"
+                placeholder="https://ejemplo.com/logo.png"
+                value={brandForm.logoUrl}
+                onChange={(e) => setBrandForm({ ...brandForm, logoUrl: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none mb-2"
+              />
+              <label className="inline-flex items-center space-x-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                <Image className="w-3.5 h-3.5" />
+                <span>Subir archivo de imagen local</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        setBrandForm({ ...brandForm, logoUrl: reader.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Col 2: Color Corporativo & Redondeo */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                Color Primario Corporativo
+              </label>
+              <div className="flex items-center space-x-2 mb-2">
+                <input
+                  type="color"
+                  value={brandForm.primaryColor}
+                  onChange={(e) => setBrandForm({ ...brandForm, primaryColor: e.target.value })}
+                  className="w-9 h-9 rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer p-0.5 bg-white"
+                />
+                <span className="font-mono text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase">
+                  {brandForm.primaryColor}
+                </span>
+              </div>
+
+              {/* Quick Palettes */}
+              <div className="flex items-center space-x-2">
+                {[
+                  { name: 'Azul Real', hex: '#2563EB' },
+                  { name: 'Verde Esmeralda', hex: '#059669' },
+                  { name: 'Púrpura Tech', hex: '#7C3AED' },
+                  { name: 'Naranja Pro', hex: '#EA580C' },
+                  { name: 'Rojo Carmín', hex: '#DC2626' },
+                  { name: 'Cian Océano', hex: '#0891B2' },
+                ].map((color) => (
+                  <button
+                    key={color.hex}
+                    type="button"
+                    title={color.name}
+                    onClick={() => setBrandForm({ ...brandForm, primaryColor: color.hex })}
+                    className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
+                      brandForm.primaryColor === color.hex ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: color.hex }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                Curvatura de Bordes (Bordes redondeados en todo)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'sm', label: 'Suave (8px)' },
+                  { id: 'md', label: 'Moderno (14px)' },
+                  { id: 'lg', label: 'Extra (20px)' },
+                  { id: 'full', label: 'Curvado (28px)' },
+                ].map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setBrandForm({ ...brandForm, borderRadius: r.id as any })}
+                    className={`py-1.5 px-2.5 text-xs font-semibold rounded-xl border transition-all text-center ${
+                      brandForm.borderRadius === r.id
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+                        : 'border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Col 3: Vista Previa en Vivo */}
+          <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700/60 space-y-3 flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider flex items-center space-x-1 mb-2">
+                <Sparkles className="w-3 h-3 text-amber-500" />
+                <span>Vista Previa en Vivo</span>
+              </span>
+
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 space-y-2.5 shadow-xs">
+                <div className="flex items-center space-x-2">
+                  {brandForm.logoUrl ? (
+                    <img src={brandForm.logoUrl} alt="Logo" className="w-6 h-6 rounded object-contain" />
+                  ) : (
+                    <div
+                      className="w-6 h-6 rounded flex items-center justify-center text-white"
+                      style={{ backgroundColor: brandForm.primaryColor }}
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                  <span className="font-bold text-xs text-gray-900 dark:text-white truncate">
+                    {brandForm.companyName}
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span
+                    className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                    style={{ backgroundColor: `${brandForm.primaryColor}20`, color: brandForm.primaryColor }}
+                  >
+                    Etiqueta Activa
+                  </span>
+                  <span className="text-[11px] text-gray-500">12 Oportunidades</span>
+                </div>
+
+                <button
+                  type="button"
+                  style={{ backgroundColor: brandForm.primaryColor }}
+                  className="w-full py-1.5 text-xs font-semibold text-white rounded-lg shadow-xs"
+                >
+                  Botón de Acción
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-gray-400 text-center">
+              Los cambios se aplican al instante en el Navbar, Menú y Pantalla de Inicio.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Security: 2FA Toggle Card */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex items-center justify-between">

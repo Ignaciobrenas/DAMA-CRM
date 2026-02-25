@@ -1,9 +1,11 @@
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config';
 import { errorHandler } from './middlewares/error.middleware';
+import { wsService } from './services/websocket.service';
 
 // Module Routes
 import authRoutes from './modules/auth/auth.routes';
@@ -103,12 +105,16 @@ app.use('/api/custom-fields', customFieldsRoutes);
 // Centralized error handler
 app.use(errorHandler);
 
-// Start HTTP listener
+const server = http.createServer(app);
+wsService.init(server);
+
+// Start HTTP & WebSocket listener
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(config.port, () => {
+  server.listen(config.port, () => {
     console.log(`
   🚀 DAMA-CRM Core API running on port ${config.port} [${config.env}]
   📡 Healthcheck: http://localhost:${config.port}/api/health
+  ⚡ WebSockets: ws://localhost:${config.port}/ws
   🔒 Security: JWT + Dynamic RBAC + 2FA Enabled
   📦 Inventory UnoPIM Webhook: http://localhost:${config.port}/api/inventory/webhooks/unopim
   💬 WhatsApp Meta Webhook: http://localhost:${config.port}/api/omnichannel/webhooks/whatsapp
@@ -116,4 +122,5 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
+export { server };
 export default app;

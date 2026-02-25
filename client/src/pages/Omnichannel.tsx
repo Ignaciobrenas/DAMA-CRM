@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, Phone, Mail, User, Check, CheckCheck } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { wsClient } from '../services/websocket';
 
 export const Omnichannel: React.FC = () => {
   const { t } = useLanguage();
@@ -39,6 +40,17 @@ export const Omnichannel: React.FC = () => {
     if (selectedContact) {
       loadMessages(selectedContact.id);
     }
+
+    const unsub = wsClient.on('omnichannel:message', (msg: any) => {
+      if (selectedContact && msg.contactId === selectedContact.id) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+    });
+
+    return unsub;
   }, [selectedContact]);
 
   const handleSendMessage = async (e: React.FormEvent) => {

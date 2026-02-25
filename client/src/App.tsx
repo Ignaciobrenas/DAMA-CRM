@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { BrandingProvider } from './context/BrandingContext';
+import { wsClient } from './services/websocket';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { CommandMenu } from './components/layout/CommandMenu';
@@ -26,6 +28,10 @@ const AppContent: React.FC = () => {
   const [currentRoute, setCurrentRoute] = useState<string>('/');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    wsClient.connect();
+  }, []);
 
   if (isLoading) {
     return (
@@ -97,9 +103,11 @@ export const App: React.FC = () => {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
+        <BrandingProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </BrandingProvider>
       </LanguageProvider>
     </ThemeProvider>
   );
