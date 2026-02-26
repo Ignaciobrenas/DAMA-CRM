@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { config } from '../../config';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { wsService } from '../../services/websocket.service';
 
 /**
  * Meta WhatsApp Cloud API Webhook Verification (GET)
@@ -78,6 +79,14 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response): Promi
             });
 
             console.log(`💬 [WhatsApp Inbound] Mensaje de ${contact.firstName} (${senderPhone}): "${textBody}"`);
+
+            // Broadcast real-time WebSocket events
+            wsService.broadcast('omnichannel:message', savedMsg);
+            wsService.broadcast('notification:new', {
+              title: 'Nuevo WhatsApp recibido',
+              desc: `${contact.firstName}: "${textBody.slice(0, 45)}..."`,
+              type: 'chat',
+            });
           }
         }
       }
@@ -144,6 +153,9 @@ export async function sendOutboundMessage(req: Request, res: Response): Promise<
     });
 
     console.log(`📤 [Outbound ${msg.channel}] Enviado a ${contact.firstName} (${msg.recipient}): "${msg.content}"`);
+
+    // Broadcast real-time WebSocket events
+    wsService.broadcast('omnichannel:message', msg);
 
     res.status(201).json({ success: true, data: msg });
   } catch (error: any) {

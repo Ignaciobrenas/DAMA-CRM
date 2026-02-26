@@ -2,12 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --brand-color: #2563EB;
+  --custom-radius: 0.85rem;
+  --brand-tint: rgba(37, 99, 235, 0.1);
+}
+
 @layer base {
   * {
     border-color: #E2E8F0;
   }
   .dark * {
     border-color: #1E293B;
+  }
+
+  /* Bordes redondeados en todo el CRM */
+  button,
+  input,
+  select,
+  textarea,
+  .rounded,
+  .rounded-sm,
+  .rounded-md,
+  .rounded-lg,
+  .rounded-xl {
+    border-radius: var(--custom-radius, 0.85rem);
   }
 }
 
@@ -28,13 +47,27 @@
 }
 ::-webkit-scrollbar-thumb {
   background: #CBD5E1;
-  border-radius: 3px;
+  border-radius: 9999px;
 }
 .dark ::-webkit-scrollbar-thumb {
   background: #334155;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
+}
+
+/* Dynamic Brand Utilities */
+.bg-brand-primary {
+  background-color: var(--brand-color, #2563EB) !important;
+}
+.text-brand-primary {
+  color: var(--brand-color, #2563EB) !important;
+}
+.border-brand-primary {
+  border-color: var(--brand-color, #2563EB) !important;
+}
+.bg-brand-tint {
+  background-color: var(--brand-tint, rgba(37, 99, 235, 0.1)) !important;
 }
 
 /* RTL layout support for Arabic */

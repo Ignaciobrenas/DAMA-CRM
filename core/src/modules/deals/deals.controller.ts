@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { wsService } from '../../services/websocket.service';
 
 export async function getPipeline(req: Request, res: Response): Promise<void> {
   try {
@@ -158,6 +159,14 @@ export async function createDeal(req: Request, res: Response): Promise<void> {
 
     await logAudit(req.user?.id || null, 'CREATE', 'Deal', deal.id, { title: deal.title, value: deal.value }, req.ip);
 
+    // Broadcast real-time WebSocket events
+    wsService.broadcast('deal:created', deal);
+    wsService.broadcast('notification:new', {
+      title: 'Nueva oportunidad',
+      desc: `${deal.title} (€${deal.value}) creada`,
+      type: 'deal',
+    });
+
     res.status(201).json({ success: true, data: deal });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -217,6 +226,16 @@ export async function patchDeal(req: Request, res: Response): Promise<void> {
       { oldStageId: currentDeal.stageId, newStageId: updated.stageId, status: updated.status },
       req.ip
     );
+
+    // Broadcast real-time WebSocket events
+    wsService.broadcast('deal:updated', updated);
+    if (currentDeal.stageId !== updated.stageId) {
+      wsService.broadcast('notification:new', {
+        title: 'Fase de Negocio actualizada',
+        desc: `${updated.title} avanza a "${updated.stage.name}" (€${updated.value})`,
+        type: 'deal',
+      });
+    }
 
     res.json({ success: true, data: updated });
   } catch (error: any) {

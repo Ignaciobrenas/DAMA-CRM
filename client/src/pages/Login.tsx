@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Shield, Lock, Mail, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useBranding } from '../context/BrandingContext';
 
 export const Login: React.FC = () => {
   const { login, verify2FA } = useAuth();
   const { t } = useLanguage();
+  const { branding } = useBranding();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,12 +58,25 @@ export const Login: React.FC = () => {
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 p-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white mb-4 shadow-md">
-            <Shield className="w-6 h-6" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">DAMA-CRM</h1>
+          {branding.logoUrl ? (
+            <img
+              src={branding.logoUrl}
+              alt={branding.companyName}
+              className="w-16 h-16 rounded-2xl object-contain mx-auto mb-4 p-1 bg-white dark:bg-slate-800 shadow-md border border-gray-100 dark:border-slate-800"
+            />
+          ) : (
+            <div
+              className="inline-flex items-center justify-center w-14 h-14 rounded-2xl text-white mb-4 shadow-md"
+              style={{ backgroundColor: branding.primaryColor }}
+            >
+              <Shield className="w-7 h-7" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+            {branding.companyName}
+          </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-            Plataforma Modular Open-Source para PYMES
+            Plataforma Modular Self-Hosted para PYMES
           </p>
         </div>
 
@@ -112,7 +127,8 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 flex items-center justify-center space-x-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
+              style={{ backgroundColor: branding.primaryColor }}
+              className="w-full mt-2 flex items-center justify-center space-x-2 py-2.5 px-4 text-white text-xs font-semibold rounded-lg shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <span>{isLoading ? 'Verificando...' : 'Iniciar Sesión'}</span>
               <ArrowRight className="w-4 h-4" />

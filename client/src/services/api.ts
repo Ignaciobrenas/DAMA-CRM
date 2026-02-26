@@ -45,12 +45,35 @@ export async function apiRequest<T = any>(
       return { success: true, data: blob as any };
     }
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      let friendlyMsg = data?.message;
+      if (!friendlyMsg || friendlyMsg.length > 120 || friendlyMsg.includes('Prisma') || friendlyMsg.includes('SQL')) {
+        if (res.status === 403) {
+          friendlyMsg = 'No tienes permisos suficientes para realizar esta acción.';
+        } else if (res.status === 404) {
+          friendlyMsg = 'El elemento solicitado no se encuentra disponible.';
+        } else if (res.status === 409) {
+          friendlyMsg = 'Ya existe un elemento idéntico registrado en el sistema.';
+        } else if (res.status >= 500) {
+          friendlyMsg = 'Ha ocurrido una incidencia en el servidor. Por favor, reinténtalo.';
+        } else {
+          friendlyMsg = 'No se pudo completar la solicitud.';
+        }
+      }
+
+      return {
+        success: false,
+        message: friendlyMsg,
+      };
+    }
+
     return data;
-  } catch (error: any) {
+  } catch {
     return {
       success: false,
-      message: error.message || 'Error de conexión con el servidor',
+      message: 'No se pudo conectar con el servidor. Comprueba tu conexión de red.',
     };
   }
 }

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Sun, Moon, Globe, LogOut, Menu, Shield, Bell, Check, MessageSquare, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { wsClient } from '../../services/websocket';
 import { SUPPORTED_LANGUAGES, Language } from '../../i18n';
 
 interface NavbarProps {
@@ -41,6 +42,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
       unread: false,
     },
   ]);
+
+  useEffect(() => {
+    const unsub = wsClient.on('notification:new', (notif: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: notif.title || 'Nueva notificación',
+          desc: notif.desc || '',
+          time: 'Ahora mismo',
+          type: notif.type || 'deal',
+          unread: true,
+        },
+        ...prev,
+      ]);
+    });
+    return unsub;
+  }, []);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 

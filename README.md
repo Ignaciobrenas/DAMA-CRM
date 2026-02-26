@@ -1,4 +1,4 @@
-# DAMA-CRM: CRM Modular Open-Source para PYMES 🚀
+# DAMA-CRM: CRM Modular Open-Source y Self-Hosted para PYMES 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
@@ -6,94 +6,124 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![WebSockets](https://img.shields.io/badge/WebSockets-Real--Time-success)](core/src/services/websocket.service.ts)
+[![PWA](https://img.shields.io/badge/PWA-Installable-purple)](client/public/manifest.json)
 
-> Un sistema de gestión de relaciones con clientes (CRM) de arquitectura modular, 100% autoalojado (*self-hosted*) y diseñado para tener coste cero en infraestructura ejecutándose en Oracle Cloud Free Tier o en servidores locales conectados vía Cloudflare Tunnels.
-
----
-
-## 🌟 Características Principales
-
-* **Self-Hosted y Zero-Cost:** Elimina tarifas y suscripciones SaaS recurrentes.
-* **Arquitectura de Micro-módulos:**
-  * 🏢 **Core:** Gestión de empresas, contactos, control de acceso basado en roles dinámicos (RBAC) y buscador global (`Cmd+K`).
-  * 🔐 **Seguridad Corporativa:** Autenticación JWT y doble factor (2FA) nativo enviando códigos OTP de 6 dígitos vía SMTP corporativo sin costes de SMS.
-  * 📊 **Ventas (Pipeline):** Embudo comercial visual con tableros Kanban interactivos (*Drag & Drop*) y mutaciones optimizadas vía `PATCH`.
-  * ⚡ **Planificador Ágil (Agile Planner):** Proyectos, Sprints y Tareas con estimaciones en horas y puntos de historia, con vista adaptada para móviles.
-  * 🧾 **Facturación Integrada:** Creación de presupuestos y facturas con motor dinámico de renderizado y exportación a PDF.
-  * 📦 **Integración UnoPIM (Inventario):** Sincronización instantánea por Webhooks y consistencia con tareas cron nocturnas.
-  * 🤖 **Motor de Automatizaciones:** Disparadores y acciones en segundo plano para agilizar flujos de trabajo.
-  * 💬 **Omnicanal y Portal del Cliente:** Integración de mensajería (WhatsApp/Email) en la línea de tiempo del contacto y portal B2B autoservicio para clientes.
-* **Diseño UI/UX de Alta Densidad:** SPA moderna en React + Vite + Tailwind CSS, modo claro/oscuro, soporte i18n para 10 idiomas (incluyendo árabe con RTL) y navegación ultrarrápida.
-* **Preparado para Móvil:** Empaquetable como APK nativo para Android mediante Capacitor reutilizando el 100% del código web.
+> **DAMA-CRM** es una plataforma completa de gestión de clientes (CRM), proyectos ágiles, facturación, automatizaciones e inventario, diseñada para ser **100% self-hosted**, sin costes de licencias recurrentes y desplegable a coste cero en infraestructuras propias o en la capa Always-Free de Oracle Cloud / Cloudflare.
 
 ---
 
-## 🏗️ Stack Tecnológico
+## ⚡ Arranque Inmediato con un Solo Comando
 
-| Capa | Tecnologías |
-| :--- | :--- |
-| **Backend** | Node.js, Express, TypeScript, Prisma ORM, BullMQ |
-| **Base de Datos** | PostgreSQL 15+, Redis |
-| **Frontend** | React, Vite, TypeScript, Tailwind CSS, Lucide Icons, Recharts |
-| **Móvil** | Capacitor |
-| **Documentación** | Docusaurus |
-| **DevOps** | Docker, Docker Compose, Traefik Reverse Proxy, Alpine Linux |
-
----
-
-## 🚀 Despliegue Rápido con Docker
+Puedes arrancar simultáneamente el Backend Core (Node/Express/Prisma) y el Frontend SPA (React/Vite/Tailwind) desde la raíz del proyecto:
 
 ```bash
-# 1. Clonar el repositorio
-git clone <url-del-repositorio> dama-crm
-cd dama-crm
+# 1. Instalar dependencias (si no lo has hecho aún)
+npm install
+npm --prefix core install
+npm --prefix client install
 
-# 2. Configurar variables de entorno
-cp .env.example .env
+# 2. Generar cliente Prisma
+npm --prefix core run prisma:generate
 
-# 3. Arrancar todos los servicios con Docker Compose
-docker compose up -d --build
+# 3. ¡Arrancar todo el sistema!
+npm run dev
 ```
 
-El sistema iniciará automáticamente:
-* **Frontend Web:** `http://localhost:3000`
-* **API Backend Core:** `http://localhost:4000`
-* **Proxy Traefik Dashboard:** `http://localhost:8080`
-* **Base de Datos PostgreSQL:** Puerto interno `5432`
-* **Cache Redis:** Puerto interno `6379`
+Esto levantará concurrentemente:
+* 🟢 **Frontend Web (Vite SPA + PWA):** [http://localhost:5173](http://localhost:5173)
+* 🔵 **API Backend Core (Express + WebSockets):** [http://localhost:3000](http://localhost:3000)
+* ⚡ **Canal WebSocket en tiempo real:** `ws://localhost:3000/ws`
+* 📖 **Documentación Swagger OpenAPI 3.0 interactiva:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
 
 ---
 
-## 🛠️ Instalación para Desarrollo Local
+## 🌟 Módulos y Funcionalidades Implementadas
 
-```bash
-# Instalar dependencias en el Core y en el Cliente
-cd core && npm install
-cd ../client && npm install
+### 🏢 1. Marca Blanca y Personalización de Empresa (Branding)
+* **Logo Corporativo:** Sube tu propio logo o introduce una URL pública, reflejado al instante en el menú, login y barra superior.
+* **Nombre de la Empresa:** Renombra la plataforma con la identidad de tu negocio.
+* **Paleta de Colores Dinámica:** Selector de color HEX o paletas rápidas (Azul Real, Verde Esmeralda, Púrpura Tech, Naranja Pro, Carmín, Cian) inyectadas dinámicamente en tiempo de ejecución.
+* **Bordes Redondeados Universales:** Ajusta la curvatura de toda la interfaz (8px, 14px, 20px o 28px Soft UI).
 
-# Configurar Base de Datos con Prisma
-cd ../core
-npx prisma db push
-npx ts-node prisma/seed.ts
+### ⚡ 2. Tiempo Real con WebSockets (`/ws`)
+* **Pipeline en Vivo:** Sincronización instantánea de los cambios de fase en el tablero Kanban entre todos los agentes conectados.
+* **Mensajería Omnicanal:** Recepción de mensajes de WhatsApp y correos en tiempo real en la pantalla de chat sin recargar.
+* **Centro de Notificaciones:** Notificaciones emergentes automáticas con contador de no leídas en el Navbar para ventas ganadas, stock crítico y mensajes entrantes.
 
-# Arrancar Backend
-npm run dev
+### 🛡️ 3. Mensajes de Error Amigables y Seguros
+* Errores normalizados en cliente y servidor: sin volcados técnicos de base de datos ni trazas de pila que comprometan la seguridad.
+* Mensajes comprensibles para el usuario con sugerencias claras de acción.
 
-# En otra terminal, arrancar Frontend
-cd ../client
-npm run dev
-```
+### 📊 4. Embudo Comercial y Pipeline Kanban
+* Tablero visual arrastrar y soltar (*Drag & Drop*) con mutaciones ultraeficientes vía `PATCH`.
+* Efecto de celebración con confeti interactivo al mover una venta a la fase **Ganada**.
+* Drawer de registro para abrir actividades y campos personalizados al hacer clic en cualquier oportunidad.
+
+### ⏱️ 5. Timeline de Actividades y Campos Personalizados Dinámicos
+* Registro de **Llamadas, Reuniones, Notas y Tareas** con fechas, duración y marcas de completado.
+* Motor de **Metadatos y Campos Personalizados** configurables (`TEXT`, `NUMBER`, `DATE`, `SELECT`, `BOOLEAN`) para contactos y oportunidades.
+
+### 📱 6. PWA (Progressive Web App) y Preparación Móvil
+* Aplicación instalable en escritorio, Android e iOS con [manifest.json](client/public/manifest.json) y [sw.js](client/public/sw.js) para soporte offline.
+* Compatible con empaquetado nativo APK Android mediante **Capacitor**.
+
+### 🧾 7. Presupuestos y Facturación con PDF Nativo
+* Generación instantánea de presupuestos y facturas legales con desglose de IVA (21%).
+* Motor vectorial con PDFKit descargable al vuelo sin dependencias externas pesadas.
+
+### 📦 8. Sincronización de Inventario UnoPIM
+* Receptor de webhooks de productos y stock (`product.updated`, `product.created`).
+* Sweep nocturno automático para reconciliación de catálogos y stock bajo.
+
+### 🤖 9. Motor de Automatizaciones en Segundo Plano
+* Reglas configurables con disparadores (`deal.won`, `contact.created`, `invoice.paid`) y acciones automáticas (notificaciones, creación de proyectos, envío de mensajes).
+
+### 📈 10. Business Intelligence & Informes
+* Métricas en tiempo real: MRR, ARR, Win Rate, velocidad de sprints y exportación a CSV.
 
 ---
 
 ## 👥 Credenciales de Acceso Demo
 
-* **Admin:** `admin@dama-crm.local` / `Admin1234!` (Acceso total y configuración RBAC)
-* **Ventas:** `ventas@dama-crm.local` / `Ventas1234!` (Pipeline de Deals y Contactos)
-* **Project Manager:** `pm@dama-crm.local` / `Pm1234!` (Proyectos, Sprints y Tareas)
+| Rol | Correo | Contraseña | Permisos |
+| :--- | :--- | :--- | :--- |
+| **Administrador** | `admin@dama-crm.local` | `Admin1234!` | Acceso universal (`*`), RBAC, Configuración y Marca |
+| **Comercial / Ventas** | `ventas@dama-crm.local` | `Ventas1234!` | Contactos, Pipeline Kanban, Facturas, Chat Omnicanal |
+| **Project Manager** | `pm@dama-crm.local` | `Pm1234!` | Proyectos Ágiles, Sprints, Tareas y SLAs |
+
+---
+
+## 🧪 Ejecución de Tests Automatizados
+
+La suite de tests unitarios e integración valida la lógica crítica del backend:
+
+```bash
+# Ejecutar tests de Core
+npm test
+# o desde la raíz
+npm --prefix core test
+```
+
+Valida:
+- Hasheo de contraseñas con bcrypt y generación de tokens JWT.
+- Matriz dinámica de RBAC con permisos comodín.
+- Cálculos matemáticos y redondeo de facturas e IVA.
+- Validador de tipos de campos personalizados.
+- Parser de webhooks de UnoPIM y Meta WhatsApp Cloud.
+- Motor de disparadores de workflows.
+
+---
+
+## 🐳 Despliegue con Docker Compose (Producción)
+
+```bash
+# Levantar stack completo con Traefik, PostgreSQL, Redis, Core API y Nginx SPA
+docker compose up -d --build
+```
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto está licenciado bajo los términos de la Licencia MIT.
+Desarrollado bajo licencia **MIT** por [Ignacio](https://github.com/).
