@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" fill="none">
+  <!-- Modern Geometric Hexagon Symbol -->
+  <polygon points="30,8 50,19 50,41 30,52 10,41 10,19" fill="#059669" />
+  <circle cx="30" cy="30" r="8" fill="#FFFFFF" />
+  <!-- Company Name -->
+  <text x="62" y="36" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="700" fill="#0F172A">MI EMPRESA<tspan fill="#059669">.SL</tspan></text>
+  <text x="63" y="48" font-family="Inter, system-ui, sans-serif" font-size="8" font-weight="600" fill="#64748B" letter-spacing="1">GESTIÓN COMERCIAL INTEGRADA</text>
+</svg>
