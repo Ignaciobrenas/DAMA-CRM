@@ -194,3 +194,28 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
   - `core/tests/unit.test.ts`: Hashes bcrypt, firma y verificación JWT, matriz de roles RBAC, redondeos fiscales de facturas e IVA, validación de tipos de campos dinámicos.
   - `core/tests/integration.test.ts`: Parser de webhooks de inventario UnoPIM, handshake y normalización de Meta WhatsApp Cloud, evaluador de disparadores de workflows.
   - Ejecutables con: `npm test` o `npm run test` desde la raíz.
+
+---
+
+## 🗄️ 8. Migraciones Prisma y Repositorio de Assets
+
+* **Migraciones SQL Prisma (`core/prisma/migrations/`):**
+  - Migración inicial completa `20260226160000_init_dama_crm/migration.sql` con la totalidad de tablas relacionales, índices, claves foráneas y tipos enum.
+* **Directorio de Assets y Logos Corporativos:**
+  - `assets/logos/`: Repositorio de recursos maestros (logos SVG/PNG, iconos monocromáticos y variantes de fondo claro/oscuro).
+  - `client/public/assets/logos/`: Servidos estáticamente para la SPA y selección de marca blanca.
+  - `client/public/assets/branding/`: Guías de estilo, paletas de color y placeholders.
+
+---
+
+## ⚙️ 9. Configuración de Variables de Entorno (`.env`)
+
+* **Archivos `.env` Operativos:**
+  - [`.env`](.env) en la raíz para Docker Compose, Vite dev server y scripts globales.
+  - [`core/.env`](core/.env) para backend Express, Prisma CLI y tests directos.
+  - [`.env.example`](.env.example) como plantilla de referencia exhaustiva.
+* **Resolución Multi-Directorio:**
+  - `core/src/config/index.ts` con carga jerárquica que soporta ejecución desde raíz o subcarpeta `core`.
+* **Soporte Proxy WebSocket en Vite:**
+  - `client/vite.config.ts` proxifica tanto `/api` como `/ws` hacia el backend en el puerto 4000.
+

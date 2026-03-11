@@ -31,10 +31,42 @@ npm run dev
 ```
 
 Esto levantará concurrentemente:
-* 🟢 **Frontend Web (Vite SPA + PWA):** [http://localhost:5173](http://localhost:5173)
-* 🔵 **API Backend Core (Express + WebSockets):** [http://localhost:3000](http://localhost:3000)
-* ⚡ **Canal WebSocket en tiempo real:** `ws://localhost:3000/ws`
-* 📖 **Documentación Swagger OpenAPI 3.0 interactiva:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+* 🟢 **Frontend Web (Vite SPA + PWA):** [http://localhost:3000](http://localhost:3000)
+* 🔵 **API Backend Core (Express + WebSockets):** [http://localhost:4000](http://localhost:4000)
+* ⚡ **Canal WebSocket en tiempo real:** `ws://localhost:4000/ws` (o a través del proxy en `ws://localhost:3000/ws`)
+* 📖 **Documentación Swagger OpenAPI 3.0 interactiva:** [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
+
+---
+
+## ⚙️ Configuración de Variables de Entorno (`.env`)
+
+El proyecto incluye archivos `.env` preconfigurados para desarrollo local inmediato:
+* **Raíz (`.env`):** Utilizado por Docker Compose, scripts raíz y el proxy de Vite.
+* **Core (`core/.env`):** Utilizado por el backend de Express, Prisma CLI y tests de base de datos.
+
+| Variable | Descripción | Valor por Defecto (Dev) |
+| :--- | :--- | :--- |
+| `NODE_ENV` | Entorno de ejecución (`development` o `production`) | `development` |
+| `PORT` | Puerto HTTP del servidor Express | `4000` |
+| `CLIENT_PORT` | Puerto del servidor de desarrollo Vite | `3000` |
+| `DATABASE_URL` | Cadena de conexión PostgreSQL | `postgresql://crm_user:crm_password@localhost:5432/dama_crm?schema=public` |
+| `POSTGRES_USER` | Usuario de PostgreSQL para Docker Compose | `crm_user` |
+| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL para Docker Compose | `crm_password` |
+| `POSTGRES_DB` | Nombre de la base de datos | `dama_crm` |
+| `REDIS_HOST` | Host del broker Redis (localhost o crm-redis) | `localhost` |
+| `REDIS_PORT` | Puerto de conexión Redis | `6379` |
+| `JWT_SECRET` | Clave secreta para firma y verificación de tokens | `super_secret_jwt_key_crm_dama_change_me_in_production` |
+| `JWT_EXPIRES_IN` | Caducidad de sesiones JWT | `7d` |
+| `SMTP_HOST` | Servidor SMTP para envío de correos y 2FA OTP | `smtp.gmail.com` |
+| `SMTP_PORT` | Puerto del servidor SMTP | `587` |
+| `SMTP_SECURE` | Habilitar TLS directo (`true`/`false`) | `false` |
+| `SMTP_USER` | Usuario o email de autenticación SMTP | `notificaciones@tudominio.com` |
+| `SMTP_PASS` | Contraseña o token de aplicación SMTP | `tu_contrasena_de_aplicacion` |
+| `SMTP_FROM` | Remitente de los correos emitidos | `"DAMA-CRM <no-reply@tudominio.com>"` |
+| `UNOPIM_WEBHOOK_SECRET` | Token secreto para validar webhooks de UnoPIM | `unopim_secret_token_123` |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN`| Token de verificación handshake Meta WhatsApp | `meta_verify_token_crm_456` |
+| `DOMAIN_NAME` | Dominio de producción para Traefik / SSL | `crm.local` |
+| `ACME_EMAIL` | Email de registro para Let's Encrypt SSL | `admin@dama-crm.local` |
 
 ---
 
