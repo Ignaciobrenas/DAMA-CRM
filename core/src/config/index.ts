@@ -1,5 +1,11 @@
 import dotenv from 'dotenv';
+import path from 'path';
+
+// Load from current working directory, then check parent directory (project root)
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 
 export const config = {
   env: process.env.NODE_ENV || 'development',

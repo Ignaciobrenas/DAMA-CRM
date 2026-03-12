@@ -3,11 +3,11 @@ node_modules/
 .pnp
 .pnp.js
 
-# Environment variables
-.env
+# Environment variables (default development .env is tracked; override with .env.local)
 .env.local
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
 
 # Logs
