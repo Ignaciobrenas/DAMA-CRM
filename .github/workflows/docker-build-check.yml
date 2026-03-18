@@ -1,8 +1,12 @@
 name: Docker Multi-stage Build Verification
 
 on:
+  push:
+    branches:
+      - staging
   pull_request:
     branches:
+      - staging
       - main
       - master
 

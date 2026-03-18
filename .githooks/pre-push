@@ -1,0 +1,31 @@
+#!/bin/sh
+# ==============================================================================
+# DAMA-CRM Local Pre-Push Hook
+# Bloquea empujes directos a 'main' o 'master' localmente.
+# ==============================================================================
+
+remote="$1"
+url="$2"
+
+z40=0000000000000000000000000000000000000000
+
+while read local_ref local_sha remote_ref remote_sha
+do
+    if [ "$remote_ref" = "refs/heads/main" ] || [ "$remote_ref" = "refs/heads/master" ]; then
+        echo ""
+        echo "=========================================================================="
+        echo "🚨 ERROR DE SEGURIDAD GIT: Empuje directo bloqueado localmente."
+        echo "=========================================================================="
+        echo "Las ramas 'main' y 'master' están protegidas y NUNCA deben recibir empujes directos."
+        echo ""
+        echo "👉 Debes subir tus cambios a la rama 'staging':"
+        echo "   git push origin staging"
+        echo ""
+        echo "Para crear releases a producción, hazlo mediante un Pull Request desde 'staging'."
+        echo "=========================================================================="
+        echo ""
+        exit 1
+    fi
+done
+
+exit 0
