@@ -159,10 +159,11 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
 
 ## 🛡️ 5. Seguridad y Gobernanza
 
-* **Protección de Ramas en Git:**
-  - Flujo de trabajo basado estrictamente en ramas (`feature/*`).
-  - Merge a `master` con `--no-ff`.
-  - Workflow [.github/workflows/block-main-push.yml](.github/workflows/block-main-push.yml) para impedir pushes directos.
+* **Protección de Ramas en Git & Entorno Staging:**
+  - Rama `staging` como destino principal de integración y despliegue continuo.
+  - Flujo de trabajo basado estrictamente en ramas de funcionalidad (`feature/*`, `fix/*`, `chore/*`) que se fusionan en `staging` con `--no-ff`.
+  - Empujes directos a `main` y `master` **bloqueados localmente** mediante hook [`.githooks/pre-push`](.githooks/pre-push) y **remotamente** mediante workflow [.github/workflows/block-main-push.yml](.github/workflows/block-main-push.yml).
+  - Workflows de CI ([`lint-and-typecheck.yml`](.github/workflows/lint-and-typecheck.yml), [`audit-security.yml`](.github/workflows/audit-security.yml), [`docker-build-check.yml`](.github/workflows/docker-build-check.yml)) integrados para validar cada commit y pull request hacia `staging`.
 * **Auditoría de Seguridad y Calidad:**
   - [.github/workflows/audit-security.yml](.github/workflows/audit-security.yml) (`npm audit`, escaneo de secretos).
   - [.github/workflows/lint-and-typecheck.yml](.github/workflows/lint-and-typecheck.yml) (Verificación de TypeScript, build y tests).

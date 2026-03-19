@@ -18,7 +18,8 @@
     "db:migrate": "npm --prefix core run db:migrate",
     "db:seed": "npm --prefix core run db:seed",
     "docker:up": "docker compose up -d --build",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "keywords": [
     "crm",

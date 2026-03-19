@@ -156,6 +156,27 @@ docker compose up -d --build
 
 ---
 
+## 🌿 Política de Ramas y Despliegue (`staging`)
+
+DAMA-CRM utiliza una estricta política de protección de ramas para asegurar la estabilidad:
+* **Rama `staging` (Integración Principal):** Es la rama activa donde se centraliza y valida todo el desarrollo antes de pasar a producción.
+* **Ramas de trabajo (`feature/*`, `fix/*`, `chore/*`):** Ramas aisladas para cada funcionalidad o corrección, que se fusionan en `staging`.
+* **Ramas de producción (`main` / `master`):**
+  - Los empujes directos (`git push`) están **estrictamente bloqueados** a través de hooks locales ([`.githooks/pre-push`](.githooks/pre-push)) y GitHub Actions ([`.github/workflows/block-main-push.yml`](.github/workflows/block-main-push.yml)).
+  - Todo cambio destinado a producción debe provenir de un Pull Request o merge controlado desde `staging`.
+
+```bash
+# Flujo estándar de desarrollo:
+git checkout staging
+git checkout -b feature/mi-modulo
+# ... realizar cambios y commits ...
+git checkout staging
+git merge feature/mi-modulo --no-ff
+git push origin staging
+```
+
+---
+
 ## 📄 Licencia
 
 Desarrollado bajo licencia **MIT** por [Ignacio](https://github.com/).
