@@ -12,6 +12,8 @@ import {
 } from './invoices.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
+import { validate } from '../../middlewares/validate.middleware';
+import { createInvoiceSchema } from '../../utils/validators';
 
 const router = Router();
 
@@ -24,7 +26,7 @@ router.use(authMiddleware);
 // Invoices
 router.get('/', requirePermission('invoices', 'read'), listInvoices);
 router.get('/:id', requirePermission('invoices', 'read'), getInvoice);
-router.post('/', requirePermission('invoices', 'create'), createInvoice);
+router.post('/', requirePermission('invoices', 'create'), validate(createInvoiceSchema), createInvoice);
 router.patch('/:id/status', requirePermission('invoices', 'update'), updateInvoiceStatus);
 router.get('/:id/pdf', requirePermission('invoices', 'read'), downloadInvoicePdf);
 

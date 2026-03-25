@@ -22,7 +22,11 @@ export const Login: React.FC = () => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    setIsLoading(true);
+
+    if (!email || !password) {
+      setErrorMessage('Por favor, introduce tu correo electrónico y contraseña.');
+      return;
+    }
 
     const res = await login(email, password);
     setIsLoading(false);
@@ -187,13 +191,20 @@ export const Login: React.FC = () => {
           <div className="text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2.5 text-center">
             Acceso Rápido Demo (1-Click)
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDemoCredentials('ignaciobrenas@gmail.com', '1')}
+              className="px-2 py-1.5 text-[11px] font-medium bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/60 rounded-md text-blue-700 dark:text-blue-300 transition-colors text-center border border-blue-200 dark:border-blue-800/60"
+            >
+              👑 Ignacio (Admin)
+            </button>
             <button
               type="button"
               onClick={() => setDemoCredentials('admin@dama-crm.local', 'Admin1234!')}
               className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 rounded-md text-gray-700 dark:text-slate-300 transition-colors"
             >
-              Admin
+              Admin Demo
             </button>
             <button
               type="button"

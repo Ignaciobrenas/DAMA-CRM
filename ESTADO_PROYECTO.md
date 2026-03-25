@@ -191,9 +191,9 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
 
 ## 🧪 7. Suite de Tests Automatizados (`core/tests/`)
 
-* **16 tests implementados con el test runner nativo de Node.js:**
-  - `core/tests/unit.test.ts`: Hashes bcrypt, firma y verificación JWT, matriz de roles RBAC, redondeos fiscales de facturas e IVA, validación de tipos de campos dinámicos.
-  - `core/tests/integration.test.ts`: Parser de webhooks de inventario UnoPIM, handshake y normalización de Meta WhatsApp Cloud, evaluador de disparadores de workflows.
+* **28 tests implementados con el test runner nativo de Node.js:**
+  - `core/tests/unit.test.ts` (23 tests): Hashes bcrypt, firma y verificación JWT, matriz de roles RBAC, redondeos fiscales de facturas e IVA, validación de tipos de campos dinámicos, validación estricta de contraseñas (8+ caracteres, mayúscula, minúscula, número, símbolo), validador RFC de emails, validador de teléfonos y esquemas de entidades con campos obligatorios.
+  - `core/tests/integration.test.ts` (5 tests): Parser de webhooks de inventario UnoPIM, handshake y normalización de Meta WhatsApp Cloud, evaluador de disparadores de workflows.
   - Ejecutables con: `npm test` o `npm run test` desde la raíz.
 
 ---
@@ -219,4 +219,28 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
   - `core/src/config/index.ts` con carga jerárquica que soporta ejecución desde raíz o subcarpeta `core`.
 * **Soporte Proxy WebSocket en Vite:**
   - `client/vite.config.ts` proxifica tanto `/api` como `/ws` hacia el backend en el puerto 4000.
+
+---
+
+## 👑 10. Cuenta Super Administrador
+
+* **Usuario Principal del Sistema:**
+  - **Correo:** `ignaciobrenas@gmail.com`
+  - **Contraseña:** `1` (hasheada con bcrypt factor 10)
+  - **Rol:** `ADMIN` con permisos universales comodín (`*`) en todos los recursos del CRM.
+  - **Acceso Rápido:** Botón demo directo de 1-click integrado en [`client/src/pages/Login.tsx`](client/src/pages/Login.tsx).
+
+---
+
+## 🛡️ 11. Motor Universal de Validación y Seguridad de Campos
+
+* **Validaciones Declarativas con Zod ([`core/src/utils/validators.ts`](core/src/utils/validators.ts)):**
+  - **Contraseña Fuerte:** Mínimo 8 caracteres, al menos 1 mayúscula (A-Z), 1 minúscula (a-z), 1 dígito numérico (0-9) y 1 símbolo especial (!@#$%...).
+  - **Formato de Email:** Validación RFC 5322 con saneamiento a minúsculas y eliminación de espacios en blanco.
+  - **Formato Telefónico:** Regex flexible para telefonía nacional e internacional (+34, prefijos, extensiones).
+  - **Campos Obligatorios:** Verificación estricta en rutas de usuarios, contactos, empresas, ventas y facturas mediante middleware Express ([`core/src/middlewares/validate.middleware.ts`](core/src/middlewares/validate.middleware.ts)).
+* **Experiencia de Usuario en Frontend ([`client/src/utils/validators.ts`](client/src/utils/validators.ts)):**
+  - Modal interactivo de "Nuevo Usuario" en Ajustes con medidor reactivo de fuerza de contraseña y checklist de requisitos en tiempo real.
+  - Indicadores visuales de campos obligatorios (`*`) y validaciones preventivas en formularios de creación de contactos y empresas.
+
 
