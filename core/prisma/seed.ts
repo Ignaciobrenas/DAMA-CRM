@@ -128,9 +128,21 @@ async function main() {
   await prisma.permission.create({ data: { roleId: clientRole.id, resource: 'invoices', action: 'read' } });
 
   // 3. Create Users with encrypted passwords
+  const passwordHashIgnacio = await bcrypt.hash('1', 10);
   const passwordHashAdmin = await bcrypt.hash('Admin1234!', 10);
   const passwordHashSales = await bcrypt.hash('Ventas1234!', 10);
   const passwordHashPm = await bcrypt.hash('Pm1234!', 10);
+
+  const ignacioUser = await prisma.user.create({
+    data: {
+      email: 'ignaciobrenas@gmail.com',
+      passwordHash: passwordHashIgnacio,
+      name: 'Ignacio Breñas',
+      roleId: adminRole.id,
+      twoFactorEnabled: false,
+      isActive: true,
+    },
+  });
 
   const adminUser = await prisma.user.create({
     data: {

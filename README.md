@@ -120,9 +120,19 @@ El proyecto incluye archivos `.env` preconfigurados para desarrollo local inmedi
 
 | Rol | Correo | Contraseña | Permisos |
 | :--- | :--- | :--- | :--- |
-| **Administrador** | `admin@dama-crm.local` | `Admin1234!` | Acceso universal (`*`), RBAC, Configuración y Marca |
+| **Super Administrador (Ignacio)** | `ignaciobrenas@gmail.com` | `1` | Acceso total (`*`), RBAC universal, Gobernanza y Marca |
+| **Administrador Demo** | `admin@dama-crm.local` | `Admin1234!` | Acceso universal (`*`), RBAC, Configuración y Marca |
 | **Comercial / Ventas** | `ventas@dama-crm.local` | `Ventas1234!` | Contactos, Pipeline Kanban, Facturas, Chat Omnicanal |
 | **Project Manager** | `pm@dama-crm.local` | `Pm1234!` | Proyectos Ágiles, Sprints, Tareas y SLAs |
+
+---
+
+### 🔒 Motor de Validación Estricta de Campos y Contraseñas
+* **Contraseñas Robustas:** Mínimo 8 caracteres, al menos 1 letra mayúscula (A-Z), 1 letra minúscula (a-z), 1 número (0-9) y 1 carácter especial o símbolo (!@#$%...).
+* **Verificación de Correo Electrónico:** Formato RFC 5322 estandarizado y saneamiento automático a minúsculas y sin espacios.
+* **Validación de Teléfonos:** Formato numérico nacional e internacional (E.164: +34 600 000 000 o 912345678).
+* **Campos Obligatorios:** Middleware de validación con Zod en Express que rechaza datos incompletos con respuestas 400 y mensajes comprensibles.
+* **Medidor Reactivo de Fuerza de Contraseña:** Componente visual interactivo con checklist y porcentaje de seguridad en el alta de usuarios.
 
 ---
 

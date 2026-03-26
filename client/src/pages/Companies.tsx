@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Building2, Globe, Phone, Mail, MapPin, X } from 'lucide-react';
+import { Plus, Search, Building2, Globe, Phone, Mail, MapPin, X, AlertCircle } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { isValidEmail, isValidPhone } from '../utils/validators';
 
 export const Companies: React.FC = () => {
   const { t } = useLanguage();
@@ -18,6 +19,7 @@ export const Companies: React.FC = () => {
   const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
   const [annualRevenue, setAnnualRevenue] = useState('');
+  const [formError, setFormError] = useState('');
 
   const loadCompanies = async () => {
     setIsLoading(true);
@@ -35,21 +37,39 @@ export const Companies: React.FC = () => {
 
   const handleCreateCompany = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
+
+    if (!name.trim()) {
+      setFormError('La razón social o nombre de la empresa es obligatorio (*).');
+      return;
+    }
+
+    if (email && !isValidEmail(email)) {
+      setFormError('El correo electrónico no tiene un formato válido (ej. info@empresa.com).');
+      return;
+    }
+
+    if (phone && !isValidPhone(phone)) {
+      setFormError('El número de teléfono no tiene un formato válido (ej. +34 912 345 678).');
+      return;
+    }
+
     const res = await apiRequest('/companies', {
       method: 'POST',
       body: JSON.stringify({
-        name,
-        industry,
-        website,
-        phone,
-        email,
-        city,
+        name: name.trim(),
+        industry: industry ? industry.trim() : null,
+        website: website ? website.trim() : null,
+        phone: phone ? phone.trim() : null,
+        email: email ? email.trim().toLowerCase() : null,
+        city: city ? city.trim() : null,
         annualRevenue: annualRevenue ? parseFloat(annualRevenue) : null,
       }),
     });
 
     if (res.success) {
       setIsModalOpen(false);
+      setFormError('');
       setName('');
       setIndustry('');
       setWebsite('');
@@ -58,6 +78,8 @@ export const Companies: React.FC = () => {
       setCity('');
       setAnnualRevenue('');
       loadCompanies();
+    } else {
+      setFormError(res.message || 'Error al registrar la empresa');
     }
   };
 
@@ -171,14 +193,24 @@ export const Companies: React.FC = () => {
               </button>
             </div>
 
+            {formError && (
+              <div className="mt-3 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleCreateCompany} className="mt-4 space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre Comercial</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Nombre Comercial <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  placeholder="Ej. Acme Corp SL"
                   className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
                 />
               </div>

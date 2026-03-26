@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Mail, Phone, Building2, User, MessageSquare, X } from 'lucide-react';
+import { Plus, Search, Mail, Phone, Building2, User, MessageSquare, X, AlertCircle } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { RecordDrawer } from '../components/crm/RecordDrawer';
+import { isValidEmail, isValidPhone } from '../utils/validators';
 
 export const Contacts: React.FC = () => {
   const { t } = useLanguage();
@@ -21,6 +22,7 @@ export const Contacts: React.FC = () => {
   const [position, setPosition] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [isLead, setIsLead] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const loadContacts = async () => {
     setIsLoading(true);
@@ -41,14 +43,31 @@ export const Contacts: React.FC = () => {
 
   const handleCreateContact = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
+
+    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
+      setFormError('Nombre, apellidos y correo electrónico son campos obligatorios (*).');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setFormError('El correo electrónico no tiene un formato válido (ej. usuario@dominio.com).');
+      return;
+    }
+
+    if (phone && !isValidPhone(phone)) {
+      setFormError('El número de teléfono no tiene un formato válido (ej. +34 600 123 456 o 912345678).');
+      return;
+    }
+
     const res = await apiRequest('/contacts', {
       method: 'POST',
       body: JSON.stringify({
-        firstName,
-        lastName,
-        email,
-        phone,
-        position,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone ? phone.trim() : null,
+        position: position ? position.trim() : null,
         companyId: companyId || null,
         isLead,
       }),
@@ -56,6 +75,7 @@ export const Contacts: React.FC = () => {
 
     if (res.success) {
       setIsModalOpen(false);
+      setFormError('');
       setFirstName('');
       setLastName('');
       setEmail('');
@@ -63,6 +83,8 @@ export const Contacts: React.FC = () => {
       setPosition('');
       setCompanyId('');
       loadContacts();
+    } else {
+      setFormError(res.message || 'Error al crear el contacto');
     }
   };
 
@@ -203,48 +225,67 @@ export const Contacts: React.FC = () => {
               </button>
             </div>
 
+            {formError && (
+              <div className="mt-3 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleCreateContact} className="mt-4 space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Nombre <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Ej. Laura"
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Apellidos</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Apellidos <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Ej. Gómez"
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Email <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ejemplo@empresa.com"
                   className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Teléfono
+                  </label>
                   <input
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+34 600 000 000"
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
                   />
                 </div>

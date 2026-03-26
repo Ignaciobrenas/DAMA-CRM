@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldCheck, Users, Lock, Key, Check, Save, Paintbrush, Image, RotateCcw, Sparkles } from 'lucide-react';
+import { Shield, ShieldCheck, Users, Lock, Key, Check, Save, Paintbrush, Image, RotateCcw, Sparkles, UserPlus, X, AlertCircle } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useBranding } from '../context/BrandingContext';
+import { checkPasswordStrength, isValidEmail } from '../utils/validators';
 
 export const Settings: React.FC = () => {
   const { t } = useLanguage();
@@ -17,6 +18,12 @@ export const Settings: React.FC = () => {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(user?.twoFactorEnabled || false);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [rolePermissions, setRolePermissions] = useState<Array<{ resource: string; action: string }>>([]);
+
+  // User creation modal state
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({ name: '', email: '', password: '', roleId: '' });
+  const [userModalError, setUserModalError] = useState('');
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
   const resources = [
     { id: 'companies', label: 'Empresas' },
@@ -107,6 +114,45 @@ export const Settings: React.FC = () => {
       setTwoFactorEnabled(nextState);
       setStatusMessage(res.message || 'Estado 2FA actualizado');
       setTimeout(() => setStatusMessage(''), 3000);
+    }
+  };
+
+  const pwdCheck = checkPasswordStrength(newUserForm.password);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUserModalError('');
+
+    if (!newUserForm.name || !newUserForm.email || !newUserForm.password || !newUserForm.roleId) {
+      setUserModalError('Todos los campos con asterisco (*) son obligatorios.');
+      return;
+    }
+
+    if (!isValidEmail(newUserForm.email)) {
+      setUserModalError('Por favor, introduce una dirección de correo electrónico válida.');
+      return;
+    }
+
+    if (!pwdCheck.isValid) {
+      setUserModalError('La contraseña no cumple con todos los requisitos de seguridad requeridos.');
+      return;
+    }
+
+    setIsSubmittingUser(true);
+    const res = await apiRequest('/users', {
+      method: 'POST',
+      body: JSON.stringify(newUserForm),
+    });
+    setIsSubmittingUser(false);
+
+    if (res.success) {
+      setIsUserModalOpen(false);
+      setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
+      setStatusMessage('¡Usuario corporativo creado con éxito!');
+      await loadData();
+      setTimeout(() => setStatusMessage(''), 4000);
+    } else {
+      setUserModalError(res.message || 'Error al registrar el usuario');
     }
   };
 
@@ -454,6 +500,17 @@ export const Settings: React.FC = () => {
             <Users className="w-4 h-4 text-gray-500" />
             <h2 className="text-xs font-bold text-gray-900 dark:text-white">Cuentas de Usuarios Corporativos</h2>
           </div>
+          <button
+            onClick={() => {
+              setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
+              setUserModalError('');
+              setIsUserModalOpen(true);
+            }}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Nuevo Usuario</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -495,6 +552,150 @@ export const Settings: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal: Alta de Nuevo Usuario con Validación Estricta */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Alta de Nuevo Usuario Corporativo</h3>
+                  <p className="text-[11px] text-gray-500">Valida formato de email y contraseña segura</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUserModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {userModalError && (
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{userModalError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Nombre Completo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newUserForm.name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                  placeholder="Ej. Ana Belén García"
+                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Correo Electrónico <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={newUserForm.email}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                  placeholder="usuario@tuempresa.com"
+                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                />
+                {newUserForm.email && !isValidEmail(newUserForm.email) && (
+                  <p className="mt-1 text-[11px] text-red-500">
+                    Introduce un formato de correo válido (ej. usuario@dominio.com)
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Rol de Acceso <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={newUserForm.roleId}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, roleId: e.target.value })}
+                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600 font-semibold"
+                >
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} - {r.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300">
+                    Contraseña de Acceso <span className="text-red-500">*</span>
+                  </label>
+                  {newUserForm.password && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pwdCheck.colorClass}`}>
+                      {pwdCheck.label} ({pwdCheck.score}/5)
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  required
+                  value={newUserForm.password}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                  placeholder="Mínimo 8 caracteres, mayúscula, minúscula, número y símbolo"
+                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                />
+
+                {/* Checklist Dinámico de Requisitos de Contraseña */}
+                <div className="mt-2.5 p-3 rounded-lg bg-gray-50 dark:bg-slate-800/40 border border-gray-200/80 dark:border-slate-700/80 space-y-1.5">
+                  <div className="text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Requisitos de Seguridad de Contraseña:
+                  </div>
+                  {pwdCheck.rules.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className={`flex items-center space-x-1.5 text-[11px] transition-colors ${
+                        rule.passed
+                          ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                          : 'text-gray-400 dark:text-slate-500'
+                      }`}
+                    >
+                      <Check className={`w-3.5 h-3.5 shrink-0 ${rule.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-slate-600'}`} />
+                      <span>{rule.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsUserModalOpen(false)}
+                  className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingUser || !pwdCheck.isValid || !isValidEmail(newUserForm.email) || !newUserForm.name}
+                  className="inline-flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-opacity disabled:opacity-50"
+                >
+                  <span>{isSubmittingUser ? 'Registrando...' : 'Crear Usuario'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
