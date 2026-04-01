@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, Variants } from 'framer-motion';
 import {
   TrendingUp,
   DollarSign,
@@ -11,6 +12,8 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { AnimatedCounter } from '../components/ui/AnimatedCounter';
+import { AnimatedIcon } from '../components/ui/AnimatedIcon';
 
 export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ onNavigate }) => {
   const { t } = useLanguage();
@@ -42,6 +45,25 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
   const activeDeals = pipelineData?.summary?.totalDeals || 0;
   const pendingTasks = tasks.filter((t) => t.status !== 'DONE').length;
 
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08,
+      },
+    },
+  };
+
+  const cardVariants: Variants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { type: 'spring' as const, stiffness: 350, damping: 25 },
+    },
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with Quick Actions */}
@@ -56,90 +78,129 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         </div>
 
         <div className="flex items-center space-x-2">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => onNavigate('/pipeline')}
             className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{t('newDeal')}</span>
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => onNavigate('/invoicing')}
             className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{t('newInvoice')}</span>
-          </button>
+          </motion.button>
         </div>
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
         {/* Total Revenue / Pipeline */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -4, transition: { duration: 0.18 } }}
+          className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Total en Pipeline</span>
             <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
-              <DollarSign className="w-4 h-4" />
+              <AnimatedIcon animation="hover-scale">
+                <DollarSign className="w-4 h-4" />
+              </AnimatedIcon>
             </div>
           </div>
           <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-            {totalValue.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            <AnimatedCounter
+              to={totalValue}
+              formatter={(val) => val.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            />
           </div>
           <div className="mt-1 flex items-center text-[11px] text-emerald-600 dark:text-emerald-400">
             <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
             <span>Valor ponderado: {(pipelineData?.summary?.weightedValue || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Closed Won Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -4, transition: { duration: 0.18 } }}
+          className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Ventas Ganadas</span>
             <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-              <TrendingUp className="w-4 h-4" />
+              <AnimatedIcon animation="hover-scale">
+                <TrendingUp className="w-4 h-4" />
+              </AnimatedIcon>
             </div>
           </div>
           <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {wonValue.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            <AnimatedCounter
+              to={wonValue}
+              formatter={(val) => val.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            />
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
             Facturadas y en ejecución
           </div>
-        </div>
+        </motion.div>
 
         {/* Active Deals */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -4, transition: { duration: 0.18 } }}
+          className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('activeDeals')}</span>
             <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
-              <Briefcase className="w-4 h-4" />
+              <AnimatedIcon animation="hover-scale">
+                <Briefcase className="w-4 h-4" />
+              </AnimatedIcon>
             </div>
           </div>
           <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-            {activeDeals}
+            <AnimatedCounter to={activeDeals} />
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
             Oportunidades en embudo
           </div>
-        </div>
+        </motion.div>
 
         {/* Open Tasks */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -4, transition: { duration: 0.18 } }}
+          className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('openTasks')}</span>
             <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
-              <CheckSquare className="w-4 h-4" />
+              <AnimatedIcon animation="hover-scale">
+                <CheckSquare className="w-4 h-4" />
+              </AnimatedIcon>
             </div>
           </div>
           <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-            {pendingTasks}
+            <AnimatedCounter to={pendingTasks} />
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
             En sprints de desarrollo activo
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Pipeline Funnel Distribution & Recent Tasks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

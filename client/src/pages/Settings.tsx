@@ -1,20 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldCheck, Users, Lock, Key, Check, Save, Paintbrush, Image, RotateCcw, Sparkles, UserPlus, X, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Shield,
+  ShieldCheck,
+  Users,
+  Lock,
+  Key,
+  Check,
+  Save,
+  Paintbrush,
+  Image,
+  RotateCcw,
+  Sparkles,
+  UserPlus,
+  X,
+  AlertCircle,
+  History,
+  Activity,
+  FileText,
+} from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useBranding } from '../context/BrandingContext';
+import { useToast } from '../context/ToastContext';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
 
 export const Settings: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const toast = useToast();
   const { branding, updateBranding, resetBranding } = useBranding();
   const [brandForm, setBrandForm] = useState(branding);
   const [brandSaved, setBrandSaved] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [users, setUsers] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(user?.twoFactorEnabled || false);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [rolePermissions, setRolePermissions] = useState<Array<{ resource: string; action: string }>>([]);
@@ -48,9 +70,10 @@ export const Settings: React.FC = () => {
   ];
 
   const loadData = async () => {
-    const [resRoles, resUsers] = await Promise.all([
+    const [resRoles, resUsers, resAudit] = await Promise.all([
       apiRequest('/users/roles'),
       apiRequest('/users'),
+      apiRequest('/users/audit-logs'),
     ]);
 
     if (resRoles.success && resRoles.data) {
@@ -63,6 +86,10 @@ export const Settings: React.FC = () => {
 
     if (resUsers.success && resUsers.data) {
       setUsers(resUsers.data);
+    }
+
+    if (resAudit.success && resAudit.data) {
+      setAuditLogs(resAudit.data);
     }
   };
 
@@ -98,8 +125,11 @@ export const Settings: React.FC = () => {
 
     if (res.success) {
       setStatusMessage('✅ Matriz RBAC actualizada con éxito en la base de datos');
+      toast.success('Permisos RBAC Guardados', 'La matriz de seguridad se sincronizó correctamente.');
       loadData();
       setTimeout(() => setStatusMessage(''), 3000);
+    } else {
+      toast.error('Error al guardar matriz', res.message || 'No se pudieron actualizar los permisos');
     }
   };
 
@@ -113,7 +143,15 @@ export const Settings: React.FC = () => {
     if (res.success) {
       setTwoFactorEnabled(nextState);
       setStatusMessage(res.message || 'Estado 2FA actualizado');
+      if (nextState) {
+        toast.success('Seguridad 2FA Activada', 'Tu cuenta ahora requiere verificación en dos pasos.');
+      } else {
+        toast.info('Seguridad 2FA Desactivada', 'Se ha deshabilitado el doble factor de autenticación.');
+      }
+      loadData();
       setTimeout(() => setStatusMessage(''), 3000);
+    } else {
+      toast.error('Error al actualizar 2FA', res.message || 'Operación no permitida');
     }
   };
 
@@ -147,12 +185,15 @@ export const Settings: React.FC = () => {
 
     if (res.success) {
       setIsUserModalOpen(false);
+      const createdEmail = newUserForm.email;
       setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
       setStatusMessage('¡Usuario corporativo creado con éxito!');
+      toast.success('Usuario Registrado', `Se ha creado la cuenta corporativa para ${createdEmail}.`);
       await loadData();
       setTimeout(() => setStatusMessage(''), 4000);
     } else {
       setUserModalError(res.message || 'Error al registrar el usuario');
+      toast.error('Error al crear usuario', res.message);
     }
   };
 
@@ -195,19 +236,27 @@ export const Settings: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               type="button"
-              onClick={resetBranding}
+              onClick={() => {
+                resetBranding();
+                toast.info('Identidad Restablecida', 'Se han restaurado los estilos por defecto.');
+              }}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Restablecer</span>
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               type="button"
               onClick={() => {
                 updateBranding(brandForm);
                 setBrandSaved(true);
+                toast.success('Identidad Corporativa Guardada', 'Los colores, logo y bordes se han aplicado al CRM.');
                 setTimeout(() => setBrandSaved(false), 3000);
               }}
               className="inline-flex items-center space-x-1.5 px-4 py-1.5 text-xs font-semibold text-white rounded-xl shadow-xs transition-opacity hover:opacity-90"
@@ -215,7 +264,7 @@ export const Settings: React.FC = () => {
             >
               <Save className="w-3.5 h-3.5" />
               <span>{brandSaved ? '¡Guardado!' : 'Guardar Marca'}</span>
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -553,149 +602,226 @@ export const Settings: React.FC = () => {
         </div>
       </div>
 
+      {/* Registro de Auditoría y Trazabilidad de Seguridad */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <History className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-xs font-bold text-gray-900 dark:text-white">Registro de Auditoría & Trazabilidad de Seguridad</h2>
+          </div>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
+            {auditLogs.length} eventos registrados
+          </span>
+        </div>
+
+        <div className="overflow-x-auto max-h-80 overflow-y-auto">
+          <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+            <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800 sticky top-0">
+              <tr>
+                <th className="px-4 py-2.5">Acción</th>
+                <th className="px-4 py-2.5">Recurso / Entidad</th>
+                <th className="px-4 py-2.5">Usuario Responsable</th>
+                <th className="px-4 py-2.5">Dirección IP</th>
+                <th className="px-4 py-2.5 text-right">Fecha y Hora</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+              {auditLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400 dark:text-slate-500">
+                    No hay registros de auditoría aún.
+                  </td>
+                </tr>
+              ) : (
+                auditLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-2.5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        log.action === 'LOGIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
+                        log.action === '2FA_VERIFIED' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300' :
+                        log.action === 'CREATE' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' :
+                        log.action === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
+                        'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                      }`}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">
+                      {log.resource || 'SYSTEM'} {log.resourceId ? `(#${log.resourceId.slice(0, 8)})` : ''}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {log.user ? `${log.user.name} (${log.user.email})` : 'Sistema Automático'}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[10px] text-gray-500 dark:text-slate-400">
+                      {log.ipAddress || '127.0.0.1'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-[11px] text-gray-400 dark:text-slate-500">
+                      {new Date(log.createdAt).toLocaleString('es-ES')}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Modal: Alta de Nuevo Usuario con Validación Estricta */}
-      {isUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                  <UserPlus className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Alta de Nuevo Usuario Corporativo</h3>
-                  <p className="text-[11px] text-gray-500">Valida formato de email y contraseña segura</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsUserModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {userModalError && (
-              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{userModalError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateUser} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Nombre Completo <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newUserForm.name}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                  placeholder="Ej. Ana Belén García"
-                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Correo Electrónico <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={newUserForm.email}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                  placeholder="usuario@tuempresa.com"
-                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                />
-                {newUserForm.email && !isValidEmail(newUserForm.email) && (
-                  <p className="mt-1 text-[11px] text-red-500">
-                    Introduce un formato de correo válido (ej. usuario@dominio.com)
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Rol de Acceso <span className="text-red-500">*</span>
-                </label>
-                <select
-                  required
-                  value={newUserForm.roleId}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, roleId: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600 font-semibold"
-                >
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} - {r.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300">
-                    Contraseña de Acceso <span className="text-red-500">*</span>
-                  </label>
-                  {newUserForm.password && (
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pwdCheck.colorClass}`}>
-                      {pwdCheck.label} ({pwdCheck.score}/5)
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="password"
-                  required
-                  value={newUserForm.password}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                  placeholder="Mínimo 8 caracteres, mayúscula, minúscula, número y símbolo"
-                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                />
-
-                {/* Checklist Dinámico de Requisitos de Contraseña */}
-                <div className="mt-2.5 p-3 rounded-lg bg-gray-50 dark:bg-slate-800/40 border border-gray-200/80 dark:border-slate-700/80 space-y-1.5">
-                  <div className="text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Requisitos de Seguridad de Contraseña:
+      <AnimatePresence>
+        {isUserModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <UserPlus className="w-4 h-4" />
                   </div>
-                  {pwdCheck.rules.map((rule) => (
-                    <div
-                      key={rule.id}
-                      className={`flex items-center space-x-1.5 text-[11px] transition-colors ${
-                        rule.passed
-                          ? 'text-emerald-600 dark:text-emerald-400 font-medium'
-                          : 'text-gray-400 dark:text-slate-500'
-                      }`}
-                    >
-                      <Check className={`w-3.5 h-3.5 shrink-0 ${rule.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-slate-600'}`} />
-                      <span>{rule.label}</span>
-                    </div>
-                  ))}
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Alta de Nuevo Usuario Corporativo</h3>
+                    <p className="text-[11px] text-gray-500">Valida formato de email y contraseña segura</p>
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsUserModalOpen(false)}
-                  className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingUser || !pwdCheck.isValid || !isValidEmail(newUserForm.email) || !newUserForm.name}
-                  className="inline-flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-opacity disabled:opacity-50"
-                >
-                  <span>{isSubmittingUser ? 'Registrando...' : 'Crear Usuario'}</span>
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              {userModalError && (
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{userModalError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Nombre Completo <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUserForm.name}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                    placeholder="Ej. Ana Belén García"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Correo Electrónico <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={newUserForm.email}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                    placeholder="usuario@tuempresa.com"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                  />
+                  {newUserForm.email && !isValidEmail(newUserForm.email) && (
+                    <p className="mt-1 text-[11px] text-red-500">
+                      Introduce un formato de correo válido (ej. usuario@dominio.com)
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Rol de Acceso <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={newUserForm.roleId}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, roleId: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600 font-semibold"
+                  >
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} - {r.description}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300">
+                      Contraseña de Acceso <span className="text-red-500">*</span>
+                    </label>
+                    {newUserForm.password && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pwdCheck.colorClass}`}>
+                        {pwdCheck.label} ({pwdCheck.score}/5)
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    value={newUserForm.password}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                    placeholder="Mínimo 8 caracteres, mayúscula, minúscula, número y símbolo"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                  />
+
+                  {/* Checklist Dinámico de Requisitos de Contraseña */}
+                  <div className="mt-2.5 p-3 rounded-lg bg-gray-50 dark:bg-slate-800/40 border border-gray-200/80 dark:border-slate-700/80 space-y-1.5">
+                    <div className="text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      Requisitos de Seguridad de Contraseña:
+                    </div>
+                    {pwdCheck.rules.map((rule) => (
+                      <div
+                        key={rule.id}
+                        className={`flex items-center space-x-1.5 text-[11px] transition-colors ${
+                          rule.passed
+                            ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                            : 'text-gray-400 dark:text-slate-500'
+                        }`}
+                      >
+                        <Check className={`w-3.5 h-3.5 shrink-0 ${rule.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-slate-600'}`} />
+                        <span>{rule.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsUserModalOpen(false)}
+                    className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingUser || !pwdCheck.isValid || !isValidEmail(newUserForm.email) || !newUserForm.name}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-opacity disabled:opacity-50"
+                  >
+                    <span>{isSubmittingUser ? 'Registrando...' : 'Crear Usuario'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

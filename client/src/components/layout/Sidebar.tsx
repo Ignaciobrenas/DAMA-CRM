@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   TrendingUp,
@@ -117,22 +118,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const Icon = item.icon;
 
             return (
-              <button
+              <motion.button
                 key={item.id}
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   onNavigate(item.route);
                   onClose();
                 }}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                className={`relative w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                   isActive
-                    ? 'text-white shadow-xs font-semibold'
-                    : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800/70 hover:text-gray-900 dark:hover:text-white'
+                    ? 'text-white font-semibold'
+                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/60 dark:hover:bg-slate-800/40'
                 }`}
-                style={isActive ? { backgroundColor: branding.primaryColor } : {}}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-gray-400 dark:text-slate-400'}`} />
-                <span className="truncate">{item.label}</span>
-              </button>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeSidebarIndicator"
+                    className="absolute inset-0 rounded-lg shadow-xs"
+                    style={{ backgroundColor: branding.primaryColor }}
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center space-x-3">
+                  <Icon className={`w-4 h-4 shrink-0 transition-transform ${isActive ? 'text-white scale-105' : 'text-gray-400 dark:text-slate-400'}`} />
+                  <span className="truncate">{item.label}</span>
+                </span>
+              </motion.button>
             );
           })}
         </nav>
