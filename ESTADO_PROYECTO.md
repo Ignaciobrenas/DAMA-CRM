@@ -123,6 +123,11 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
   - `GET /api/reports/export/deals` (Exportación directa a CSV estructurado)
 * **Buscador Global:**
   - `GET /api/search?q=texto` (Búsqueda unificada en contactos, empresas, ventas, proyectos y facturas)
+* **Gestión de Usuarios, Roles & Auditoría:**
+  - `GET /api/users` / `POST /api/users` (Alta de usuario corporativo con validación Zod)
+  - `GET /api/users/roles` (Listado de roles y matriz de permisos RBAC)
+  - `PUT /api/users/roles/:roleId/permissions` (Actualización de matriz de permisos)
+  - `GET /api/users/audit-logs` (Trazabilidad forense inmutable de eventos de seguridad y actividad del sistema)
 * **Documentación & Salud:**
   - `GET /api/health` (Healthcheck para Traefik y Docker)
   - `GET /api/docs` (Swagger UI interactivo OpenAPI 3.0)
@@ -242,5 +247,23 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
 * **Experiencia de Usuario en Frontend ([`client/src/utils/validators.ts`](client/src/utils/validators.ts)):**
   - Modal interactivo de "Nuevo Usuario" en Ajustes con medidor reactivo de fuerza de contraseña y checklist de requisitos en tiempo real.
   - Indicadores visuales de campos obligatorios (`*`) y validaciones preventivas en formularios de creación de contactos y empresas.
+
+---
+
+## 💫 12. Motor de Animaciones Fluidas, Notificaciones Toast y Micro-interacciones
+
+* **Librería de Animación Declarativa (`framer-motion`):**
+  - **Transición de Páginas Suave:** Transiciones de montaje/desmontaje con `<AnimatePresence mode="wait">` y curvatura spring en [`client/src/App.tsx`](client/src/App.tsx).
+  - **Indicador Deslizante de Menú Lateral:** `layoutId="activeSidebarIndicator"` en [`client/src/components/layout/Sidebar.tsx`](client/src/components/layout/Sidebar.tsx) para un efecto *pill sliding* continuo al cambiar de ruta.
+  - **Componente Reutilizable `AnimatedIcon` ([`client/src/components/ui/AnimatedIcon.tsx`](client/src/components/ui/AnimatedIcon.tsx)):** Micro-animaciones parametrizables (`hover-scale`, `pulse`, `shake`, `bounce`, `spin`, `float`).
+  - **Contadores Numéricos Fluidos `AnimatedCounter` ([`client/src/components/ui/AnimatedCounter.tsx`](client/src/components/ui/AnimatedCounter.tsx)):** Animación de interpolación cubic-bezier para cifras clave (KPIs de ingresos, ventas ganadas, tareas abiertas).
+  - **Tarjetas Kanban del Pipeline con Elevación y Arrastre Suave ([`client/src/pages/Pipeline.tsx`](client/src/pages/Pipeline.tsx)):** Animaciones `layout`, escalado al arrastrar y feedback háptico/visual.
+  - **Modales con Entrada/Salida Elástica:** Entrada mediante spring (`scale: 0.95` a `1`, `y: 12` a `0`) y salida desvanecida con backdrop blur.
+  - **Indicador de Sincronización en Vivo:** Radar animado (`animate-ping`) en [`client/src/components/layout/Navbar.tsx`](client/src/components/layout/Navbar.tsx) con campanilla reactiva (`shake` cuando existen alertas no leídas).
+* **Sistema Global de Notificaciones Flotantes `ToastContext` ([`client/src/context/ToastContext.tsx`](client/src/context/ToastContext.tsx)):**
+  - Hook universal `useToast()` con métodos de alta ergonomía (`toast.success()`, `toast.error()`, `toast.warning()`, `toast.info()`).
+  - Toasts apilables con barra de progreso temporizada, iconos temáticos y descarte suave interactivo.
+* **Trazabilidad y Registro de Auditoría Visual ([`client/src/pages/Settings.tsx`](client/src/pages/Settings.tsx)):**
+  - Panel interactivo con histórico inmutable de eventos de seguridad (inicios de sesión, 2FA, creaciones y modificaciones) sincronizado con `/api/users/audit-logs`.
 
 

@@ -114,6 +114,14 @@ El proyecto incluye archivos `.env` preconfigurados para desarrollo local inmedi
 ### 📈 10. Business Intelligence & Informes
 * Métricas en tiempo real: MRR, ARR, Win Rate, velocidad de sprints y exportación a CSV.
 
+### 💫 11. Animaciones Fluidas, Notificaciones Toast y Micro-interacciones
+* **Transiciones Reactivas con `framer-motion`:** Transición suave al cambiar de vista, modales elásticos con efecto spring y backdrop blur.
+* **Menú Lateral con Píldora Deslizante:** Indicador activo que acompaña el movimiento del usuario suavemente (`layoutId="activeSidebarIndicator"`).
+* **Contadores Numéricos Dinámicos:** Componente `AnimatedCounter` para transiciones numéricas fluidas en tarjetas KPI.
+* **Sistema Global de Notificaciones Flotantes `useToast()`:** Toasts con barra de progreso, iconos animados por categoría (éxito, error, advertencia e información) y auto-dismiss.
+* **Iconos Animados Interactivos (`AnimatedIcon`):** Micro-interacciones de hover-scale, pulse, bounce y campanilla reactiva (`shake`).
+* **Auditoría Forense Visual:** Panel inmutable de trazabilidad de seguridad en Ajustes sincronizado en tiempo real.
+
 ---
 
 ## 👥 Credenciales de Acceso Demo

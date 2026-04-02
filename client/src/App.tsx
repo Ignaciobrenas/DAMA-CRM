@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { BrandingProvider } from './context/BrandingContext';
+import { ToastProvider } from './context/ToastContext';
 import { wsClient } from './services/websocket';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
@@ -84,8 +86,19 @@ const AppContent: React.FC = () => {
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto animate-in fade-in duration-150">
-          {renderActiveView()}
+        <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentRoute}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              className="w-full"
+            >
+              {renderActiveView()}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 
@@ -105,7 +118,9 @@ export const App: React.FC = () => {
       <LanguageProvider>
         <BrandingProvider>
           <AuthProvider>
-            <AppContent />
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
           </AuthProvider>
         </BrandingProvider>
       </LanguageProvider>

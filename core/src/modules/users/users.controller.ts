@@ -130,3 +130,22 @@ export async function updateRolePermissions(req: Request, res: Response): Promis
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function listAuditLogs(req: Request, res: Response): Promise<void> {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    res.json({ success: true, data: logs });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
