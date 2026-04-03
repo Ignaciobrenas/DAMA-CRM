@@ -16,9 +16,9 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       prisma.company.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { industry: { contains: query, mode: 'insensitive' } },
-            { city: { contains: query, mode: 'insensitive' } },
+            { name: { contains: query } },
+            { industry: { contains: query } },
+            { city: { contains: query } },
           ],
         },
         take: 5,
@@ -26,10 +26,10 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       prisma.contact.findMany({
         where: {
           OR: [
-            { firstName: { contains: query, mode: 'insensitive' } },
-            { lastName: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
-            { position: { contains: query, mode: 'insensitive' } },
+            { firstName: { contains: query } },
+            { lastName: { contains: query } },
+            { email: { contains: query } },
+            { position: { contains: query } },
           ],
         },
         include: { company: true },
@@ -38,7 +38,7 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       prisma.deal.findMany({
         where: {
           OR: [
-            { title: { contains: query, mode: 'insensitive' } },
+            { title: { contains: query } },
           ],
         },
         include: { stage: true, company: true },
@@ -47,8 +47,8 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       prisma.task.findMany({
         where: {
           OR: [
-            { title: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
+            { title: { contains: query } },
+            { description: { contains: query } },
           ],
         },
         include: { project: true },
@@ -57,7 +57,7 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       prisma.invoice.findMany({
         where: {
           OR: [
-            { invoiceNumber: { contains: query, mode: 'insensitive' } },
+            { invoiceNumber: { contains: query } },
           ],
         },
         include: { company: true },
@@ -66,8 +66,8 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       prisma.product.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { sku: { contains: query, mode: 'insensitive' } },
+            { name: { contains: query } },
+            { sku: { contains: query } },
           ],
         },
         take: 5,
