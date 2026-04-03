@@ -23,8 +23,8 @@ npm install
 npm --prefix core install
 npm --prefix client install
 
-# 2. Generar cliente Prisma
-npm --prefix core run prisma:generate
+# 2. Inicializar base de datos local para dev (Zero-Docker SQLite + Seed demo)
+npm run db:setup
 
 # 3. ¡Arrancar todo el sistema!
 npm run dev
@@ -49,7 +49,7 @@ El proyecto incluye archivos `.env` preconfigurados para desarrollo local inmedi
 | `NODE_ENV` | Entorno de ejecución (`development` o `production`) | `development` |
 | `PORT` | Puerto HTTP del servidor Express | `4000` |
 | `CLIENT_PORT` | Puerto del servidor de desarrollo Vite | `3000` |
-| `DATABASE_URL` | Cadena de conexión PostgreSQL | `postgresql://crm_user:crm_password@localhost:5432/dama_crm?schema=public` |
+| `DATABASE_URL` | Conexión BD (SQLite local dev o PostgreSQL) | `"file:./dev.db"` (dev) / `postgresql://...` (prod) |
 | `POSTGRES_USER` | Usuario de PostgreSQL para Docker Compose | `crm_user` |
 | `POSTGRES_PASSWORD` | Contraseña de PostgreSQL para Docker Compose | `crm_password` |
 | `POSTGRES_DB` | Nombre de la base de datos | `dama_crm` |
