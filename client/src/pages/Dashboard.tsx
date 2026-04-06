@@ -14,6 +14,7 @@ import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { AnimatedCounter } from '../components/ui/AnimatedCounter';
 import { AnimatedIcon } from '../components/ui/AnimatedIcon';
+import { BarChart } from '../components/ui/Charts';
 
 export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ onNavigate }) => {
   const { t } = useLanguage();
@@ -21,6 +22,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
   const [tasks, setTasks] = useState<any[]>([]);
   const [contactsCount, setContactsCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [chartView, setChartView] = useState<'bars' | 'list'>('bars');
 
   useEffect(() => {
     async function loadData() {
@@ -44,6 +46,13 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
   const wonValue = pipelineData?.summary?.wonValue || 0;
   const activeDeals = pipelineData?.summary?.totalDeals || 0;
   const pendingTasks = tasks.filter((t) => t.status !== 'DONE').length;
+
+  const stageChartData =
+    pipelineData?.stages?.map((stage: any) => ({
+      label: stage.name,
+      value: stage.metrics.totalValue,
+      color: stage.color,
+    })) || [];
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -205,45 +214,86 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
       {/* Pipeline Funnel Distribution & Recent Tasks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Pipeline Stages Breakdown */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Distribución del Embudo Comercial</h2>
-            <button
-              onClick={() => onNavigate('/pipeline')}
-              className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center"
-            >
-              Ver Kanban <ExternalLink className="w-3 h-3 ml-1" />
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {pipelineData?.stages?.map((stage: any) => {
-              const maxVal = Math.max(...(pipelineData?.stages?.map((s: any) => s.metrics.totalValue) || [1]));
-              const percent = maxVal > 0 ? (stage.metrics.totalValue / maxVal) * 100 : 0;
-
-              return (
-                <div key={stage.id} className="space-y-1">
-                  <div className="flex justify-between text-xs font-medium">
-                    <span className="text-gray-700 dark:text-slate-300 flex items-center">
-                      <span className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: stage.color }} />
-                      {stage.name} ({stage.metrics.count})
-                    </span>
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {stage.metrics.totalValue.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="h-2 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.max(percent, 4)}%`,
-                        backgroundColor: stage.color,
-                      }}
-                    />
-                  </div>
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Distribución del Embudo Comercial</h2>
+                <p className="text-[11px] text-gray-500 dark:text-slate-400">Volumen económico acumulado por fase</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="flex p-0.5 bg-gray-100 dark:bg-slate-800 rounded-lg text-[10px] font-semibold">
+                  <button
+                    onClick={() => setChartView('bars')}
+                    className={`px-2 py-0.5 rounded-md transition-colors ${
+                      chartView === 'bars'
+                        ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
+                    }`}
+                  >
+                    Gráfico
+                  </button>
+                  <button
+                    onClick={() => setChartView('list')}
+                    className={`px-2 py-0.5 rounded-md transition-colors ${
+                      chartView === 'list'
+                        ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
+                    }`}
+                  >
+                    Desglose
+                  </button>
                 </div>
-              );
-            })}
+                <button
+                  onClick={() => onNavigate('/pipeline')}
+                  className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center ml-2"
+                >
+                  Ver Kanban <ExternalLink className="w-3 h-3 ml-1" />
+                </button>
+              </div>
+            </div>
+
+            {chartView === 'bars' ? (
+              <div className="py-2">
+                <BarChart
+                  data={stageChartData}
+                  height={180}
+                  valueFormatter={(v) =>
+                    v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+                  }
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pipelineData?.stages?.map((stage: any) => {
+                  const maxVal = Math.max(...(pipelineData?.stages?.map((s: any) => s.metrics.totalValue) || [1]));
+                  const percent = maxVal > 0 ? (stage.metrics.totalValue / maxVal) * 100 : 0;
+
+                  return (
+                    <div key={stage.id} className="space-y-1">
+                      <div className="flex justify-between text-xs font-medium">
+                        <span className="text-gray-700 dark:text-slate-300 flex items-center">
+                          <span className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: stage.color }} />
+                          {stage.name} ({stage.metrics.count})
+                        </span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {stage.metrics.totalValue.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="h-2 rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.max(percent, 4)}%`,
+                            backgroundColor: stage.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

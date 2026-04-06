@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Download, PieChart, CheckCircle2, DollarSign, Target, Award, ArrowDownToLine } from 'lucide-react';
+import { BarChart3, TrendingUp, Download, PieChart, CheckCircle2, DollarSign, Target, Award, ArrowDownToLine, Layers } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { BarChart, DonutChart } from '../components/ui/Charts';
 
 export const Reports: React.FC = () => {
   const [salesData, setSalesData] = useState<any>(null);
@@ -37,6 +38,26 @@ export const Reports: React.FC = () => {
   };
 
   const kpis = salesData?.kpis || {};
+
+  const monthlyBarData =
+    salesData?.monthlyRevenue?.map((m: any) => ({
+      label: m.month,
+      value: m.revenue,
+      color: '#3B82F6',
+    })) || [];
+
+  const dealsDonutData = [
+    { label: 'Ganadas', value: kpis.wonDealsCount || 0, color: '#10B981' },
+    { label: 'Perdidas', value: kpis.lostDealsCount || 0, color: '#EF4444' },
+    { label: 'En Curso', value: kpis.openDealsCount || 0, color: '#3B82F6' },
+  ].filter((d) => d.value > 0);
+
+  const agileDonutData = [
+    { label: 'Hechas', value: agileData?.doneTasks || 0, color: '#10B981' },
+    { label: 'En Curso', value: agileData?.inProgressTasks || 0, color: '#3B82F6' },
+    { label: 'Revisión', value: agileData?.reviewTasks || 0, color: '#F59E0B' },
+    { label: 'Por Hacer', value: agileData?.todoTasks || 0, color: '#8B5CF6' },
+  ].filter((d) => d.value > 0);
 
   return (
     <div className="space-y-6">
@@ -112,7 +133,7 @@ export const Reports: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Analytics Charts */}
+      {/* Main Analytics Visualizations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Revenue Projection Bar Chart */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
@@ -124,24 +145,64 @@ export const Reports: React.FC = () => {
             <span className="text-[11px] text-gray-400">Últimos 6 Meses</span>
           </div>
 
-          <div className="h-44 flex items-end justify-between gap-3 pt-6 px-2 border-b border-gray-200 dark:border-slate-800">
-            {salesData?.monthlyRevenue?.map((m: any, idx: number) => {
-              const maxVal = Math.max(...salesData.monthlyRevenue.map((item: any) => item.revenue));
-              const heightPercent = maxVal > 0 ? (m.revenue / maxVal) * 100 : 20;
+          <div className="pt-2">
+            <BarChart
+              data={monthlyBarData}
+              height={190}
+              valueFormatter={(v) =>
+                v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+              }
+            />
+          </div>
+        </div>
 
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
-                  <div className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {(m.revenue / 1000).toFixed(0)}k€
-                  </div>
-                  <div
-                    className="w-full bg-blue-600 hover:bg-blue-700 rounded-t-md transition-all duration-300 shadow-xs"
-                    style={{ height: `${Math.max(heightPercent, 12)}%` }}
-                  />
-                  <span className="text-[11px] font-medium text-gray-500 mt-1">{m.month}</span>
-                </div>
-              );
-            })}
+        {/* Win/Loss Deals Donut Chart */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+              <PieChart className="w-4 h-4 text-emerald-600" />
+              <span>Estado del Embudo Comercial</span>
+            </h2>
+            <span className="text-[11px] text-gray-400">Tasa de éxito</span>
+          </div>
+
+          <div className="pt-2 flex justify-center">
+            {dealsDonutData.length > 0 ? (
+              <DonutChart
+                data={dealsDonutData}
+                size={180}
+                strokeWidth={22}
+                centerTitle={`${kpis.winRate || 0}%`}
+                centerSubtitle="Win Rate"
+              />
+            ) : (
+              <div className="py-12 text-xs text-gray-400">Sin datos de oportunidades suficientes.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Agile Tasks Status Donut Chart */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+              <Layers className="w-4 h-4 text-purple-600" />
+              <span>Distribución de Tareas en Sprints</span>
+            </h2>
+            <span className="text-[11px] text-gray-400">Sprint Activo</span>
+          </div>
+
+          <div className="pt-2 flex justify-center">
+            {agileDonutData.length > 0 ? (
+              <DonutChart
+                data={agileDonutData}
+                size={180}
+                strokeWidth={22}
+                centerTitle={`${agileData?.completionRate || 0}%`}
+                centerSubtitle="Completado"
+              />
+            ) : (
+              <div className="py-12 text-xs text-gray-400">Sin tareas registradas en sprints.</div>
+            )}
           </div>
         </div>
 
@@ -152,13 +213,14 @@ export const Reports: React.FC = () => {
               <Award className="w-4 h-4 text-amber-500" />
               <span>Top 5 Clientes por Volumen de Negocio</span>
             </h2>
+            <span className="text-[11px] text-gray-400">Ingresos acumulados</span>
           </div>
 
           <div className="space-y-2.5 pt-2">
             {salesData?.topCompanies?.map((comp: any, idx: number) => (
               <div
                 key={idx}
-                className="p-3 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 flex items-center justify-between"
+                className="p-3 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 flex items-center justify-between hover:bg-gray-100/60 dark:hover:bg-slate-800/80 transition-colors"
               >
                 <div className="flex items-center space-x-3">
                   <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold text-xs flex items-center justify-center">
