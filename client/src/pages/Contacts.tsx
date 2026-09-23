@@ -13,21 +13,60 @@ import {
   Trash2,
   ArrowUpDown,
   Filter,
+  DollarSign,
+  FileText,
+  Receipt,
+  Check,
+  Copy,
+  ExternalLink,
+  Calendar,
+  Shield,
+  Sparkles,
+  Smartphone,
+  Briefcase,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import { RecordDrawer } from '../components/crm/RecordDrawer';
 import { isValidEmail, isValidPhone } from '../utils/validators';
 
 export const Contacts: React.FC = () => {
   const { t } = useLanguage();
   const toast = useToast();
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('contacts', 'update') || hasPermission('contacts', 'manage');
+  const canDelete = hasPermission('contacts', 'delete') || hasPermission('contacts', 'manage');
+  const canCreate = hasPermission('contacts', 'create') || hasPermission('contacts', 'manage');
+
   const [contacts, setContacts] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Comprehensive Contact Detail Modal state
+  const [detailModalContact, setDetailModalContact] = useState<any | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [detailTab, setDetailTab] = useState<'info' | 'company' | 'deals' | 'invoicing' | 'messages'>('info');
+  const [isEditingInModal, setIsEditingInModal] = useState(false);
+
+  // In-modal edit form fields
+  const [detailFirstName, setDetailFirstName] = useState('');
+  const [detailLastName, setDetailLastName] = useState('');
+  const [detailEmail, setDetailEmail] = useState('');
+  const [detailPhone, setDetailPhone] = useState('');
+  const [detailMobile, setDetailMobile] = useState('');
+  const [detailPosition, setDetailPosition] = useState('');
+  const [detailDepartment, setDetailDepartment] = useState('');
+  const [detailCompanyId, setDetailCompanyId] = useState('');
+  const [detailIsLead, setDetailIsLead] = useState(false);
+  const [detailNotes, setDetailNotes] = useState('');
+  const [detailFormError, setDetailFormError] = useState('');
+  const [isSavingDetail, setIsSavingDetail] = useState(false);
+  const [isCopiedEmail, setIsCopiedEmail] = useState(false);
 
   // Filters & Sorting state
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'LEAD' | 'CLIENT'>('ALL');
@@ -209,6 +248,87 @@ export const Contacts: React.FC = () => {
     }
   };
 
+  const handleOpenDetailModal = async (contactId: string) => {
+    setIsDetailModalOpen(true);
+    setIsDetailLoading(true);
+    setIsEditingInModal(false);
+    setDetailFormError('');
+    setDetailTab('info');
+
+    const res = await apiRequest(`/contacts/${contactId}`);
+    if (res.success && res.data) {
+      const c = res.data;
+      setDetailModalContact(c);
+      setDetailFirstName(c.firstName || '');
+      setDetailLastName(c.lastName || '');
+      setDetailEmail(c.email || '');
+      setDetailPhone(c.phone || '');
+      setDetailMobile(c.mobile || '');
+      setDetailPosition(c.position || '');
+      setDetailDepartment(c.department || '');
+      setDetailCompanyId(c.companyId || c.company?.id || '');
+      setDetailIsLead(Boolean(c.isLead));
+      setDetailNotes(c.notes || '');
+    } else {
+      toast.error('Error al cargar', 'No se pudieron obtener los datos completos del contacto.');
+      setIsDetailModalOpen(false);
+    }
+    setIsDetailLoading(false);
+  };
+
+  const handleSaveDetail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!detailModalContact) return;
+    setDetailFormError('');
+
+    if (!detailFirstName.trim() || !detailLastName.trim() || !detailEmail.trim()) {
+      setDetailFormError('Nombre, apellidos y correo electrónico son obligatorios (*).');
+      return;
+    }
+
+    if (!isValidEmail(detailEmail)) {
+      setDetailFormError('El correo electrónico no tiene un formato válido.');
+      return;
+    }
+
+    if (detailPhone && !isValidPhone(detailPhone)) {
+      setDetailFormError('El teléfono fijo no tiene un formato válido.');
+      return;
+    }
+
+    if (detailMobile && !isValidPhone(detailMobile)) {
+      setDetailFormError('El teléfono móvil no tiene un formato válido.');
+      return;
+    }
+
+    setIsSavingDetail(true);
+    const res = await apiRequest(`/contacts/${detailModalContact.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        firstName: detailFirstName.trim(),
+        lastName: detailLastName.trim(),
+        email: detailEmail.trim().toLowerCase(),
+        phone: detailPhone ? detailPhone.trim() : null,
+        mobile: detailMobile ? detailMobile.trim() : null,
+        position: detailPosition ? detailPosition.trim() : null,
+        department: detailDepartment ? detailDepartment.trim() : null,
+        companyId: detailCompanyId || null,
+        isLead: detailIsLead,
+        notes: detailNotes ? detailNotes.trim() : null,
+      }),
+    });
+    setIsSavingDetail(false);
+
+    if (res.success && res.data) {
+      toast.success('Contacto Actualizado', 'Los datos del contacto se han guardado con éxito.');
+      setDetailModalContact((prev: any) => ({ ...prev, ...res.data }));
+      setIsEditingInModal(false);
+      loadContacts();
+    } else {
+      setDetailFormError(res.message || 'Error al actualizar el contacto');
+    }
+  };
+
   // Filter and sort contacts
   const filteredAndSortedContacts = useMemo(() => {
     return contacts
@@ -378,9 +498,21 @@ export const Contacts: React.FC = () => {
                 </tr>
               ) : (
                 filteredAndSortedContacts.map((contact) => (
-                  <tr key={contact.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr
+                    key={contact.id}
+                    onClick={() => handleOpenDetailModal(contact.id)}
+                    className="hover:bg-blue-50/60 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                    title="Haz clic para ver toda la información de este contacto"
+                  >
                     <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
-                      {contact.firstName} {contact.lastName}
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform">
+                          {contact.firstName ? contact.firstName.charAt(0).toUpperCase() : 'C'}
+                        </div>
+                        <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {contact.firstName} {contact.lastName}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-2.5">
                       {contact.company ? (
@@ -417,29 +549,33 @@ export const Contacts: React.FC = () => {
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <div className="inline-flex items-center space-x-1.5">
+                      <div className="inline-flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => openTimeline(contact.id)}
-                          title="Ver Timeline"
-                          className="inline-flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-semibold bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                          onClick={() => handleOpenDetailModal(contact.id)}
+                          title="Ver Ficha Completa"
+                          className="inline-flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 transition-colors"
                         >
-                          <MessageSquare className="w-3 h-3" />
-                          <span className="hidden sm:inline">Timeline</span>
+                          <User className="w-3 h-3" />
+                          <span className="hidden sm:inline">Detalles</span>
                         </button>
-                        <button
-                          onClick={() => handleOpenEdit(contact)}
-                          title="Editar Contacto"
-                          className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingContact(contact)}
-                          title="Eliminar Contacto"
-                          className="p-1.5 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleOpenEdit(contact)}
+                            title="Editar Contacto"
+                            className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => setDeletingContact(contact)}
+                            title="Eliminar Contacto"
+                            className="p-1.5 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -761,6 +897,594 @@ export const Contacts: React.FC = () => {
                 className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg shadow-xs"
               >
                 {isDeleting ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comprehensive Contact Detail & In-Place Edit Modal */}
+      {isDetailModalOpen && (
+        <div
+          onClick={() => setIsDetailModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden"
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-gray-200 dark:border-slate-800 bg-gray-50/70 dark:bg-slate-800/50 flex items-start justify-between gap-3">
+              <div className="flex items-center space-x-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center shadow-md shrink-0">
+                  {detailModalContact?.firstName ? detailModalContact.firstName.charAt(0).toUpperCase() : 'C'}
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                      {detailModalContact ? `${detailModalContact.firstName} ${detailModalContact.lastName}` : 'Cargando contacto...'}
+                    </h2>
+                    {detailModalContact && (
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          detailModalContact.isLead
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300'
+                        }`}
+                      >
+                        {detailModalContact.isLead ? 'Lead' : 'Cliente Oficial'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    {detailModalContact?.position && <span>{detailModalContact.position}</span>}
+                    {detailModalContact?.company && (
+                      <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-slate-300">
+                        • <Building2 className="w-3 h-3 text-gray-400" /> {detailModalContact.company.name}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Header Actions */}
+              <div className="flex items-center space-x-2 shrink-0">
+                {canEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingInModal(!isEditingInModal);
+                      setDetailFormError('');
+                    }}
+                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                      isEditingInModal
+                        ? 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-200'
+                        : 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 hover:bg-blue-100'
+                    }`}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>{isEditingInModal ? 'Ver Detalles' : 'Editar Ficha'}</span>
+                  </button>
+                ) : (
+                  <span className="hidden sm:inline-flex items-center space-x-1 text-[11px] font-medium text-gray-400 bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+                    <Shield className="w-3 h-3 text-gray-400" />
+                    <span>Solo lectura</span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                  title="Cerrar ventana"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex items-center space-x-1 px-4 py-2 border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto text-xs">
+              <button
+                type="button"
+                onClick={() => setDetailTab('info')}
+                className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                  detailTab === 'info'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                Información Personal
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailTab('company')}
+                className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                  detailTab === 'company'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                Empresa Asignada
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailTab('deals')}
+                className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                  detailTab === 'deals'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                Ventas ({detailModalContact?.deals?.length || 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailTab('invoicing')}
+                className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                  detailTab === 'invoicing'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                Facturación ({(detailModalContact?.invoices?.length || 0) + (detailModalContact?.quotes?.length || 0)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailTab('messages')}
+                className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                  detailTab === 'messages'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                Comunicaciones ({detailModalContact?.omniMessages?.length || 0})
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {isDetailLoading ? (
+                <div className="p-12 text-center text-xs text-gray-400 space-y-2">
+                  <div className="w-7 h-7 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p>Cargando información del contacto...</p>
+                </div>
+              ) : detailModalContact ? (
+                <div>
+                  {/* TAB 1: Información Personal (Lectura o Edición) */}
+                  {detailTab === 'info' && (
+                    <div>
+                      {isEditingInModal ? (
+                        /* In-Place Editing Form */
+                        <form onSubmit={handleSaveDetail} className="space-y-4">
+                          <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800">
+                            <span className="text-xs font-bold text-gray-800 dark:text-slate-200">
+                              Modificar Datos del Contacto
+                            </span>
+                            <span className="text-[11px] text-blue-600 font-semibold">
+                              Permisos de edición activos
+                            </span>
+                          </div>
+
+                          {detailFormError && (
+                            <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <span>{detailFormError}</span>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Nombre <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                value={detailFirstName}
+                                onChange={(e) => setDetailFirstName(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Apellidos <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                value={detailLastName}
+                                onChange={(e) => setDetailLastName(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Correo Electrónico <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="email"
+                                required
+                                value={detailEmail}
+                                onChange={(e) => setDetailEmail(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Teléfono Fijo
+                              </label>
+                              <input
+                                type="text"
+                                value={detailPhone}
+                                onChange={(e) => setDetailPhone(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Teléfono Móvil
+                              </label>
+                              <input
+                                type="text"
+                                value={detailMobile}
+                                onChange={(e) => setDetailMobile(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Cargo o Puesto
+                              </label>
+                              <input
+                                type="text"
+                                value={detailPosition}
+                                onChange={(e) => setDetailPosition(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Departamento
+                              </label>
+                              <input
+                                type="text"
+                                value={detailDepartment}
+                                onChange={(e) => setDetailDepartment(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Empresa Vinculada
+                              </label>
+                              <select
+                                value={detailCompanyId}
+                                onChange={(e) => setDetailCompanyId(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                              >
+                                <option value="">Sin empresa asociada</option>
+                                {companies.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="flex items-center pt-5">
+                              <label className="relative flex items-center space-x-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={detailIsLead}
+                                  onChange={(e) => setDetailIsLead(e.target.checked)}
+                                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+                                  Marcar como Lead Comercial
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                              Notas Internas
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={detailNotes}
+                              onChange={(e) => setDetailNotes(e.target.value)}
+                              placeholder="Anotaciones clave sobre este contacto..."
+                              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                            />
+                          </div>
+
+                          <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingInModal(false)}
+                              className="px-3.5 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={isSavingDetail}
+                              className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl shadow-xs"
+                            >
+                              {isSavingDetail ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        /* Read-Only Structured View */
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 space-y-2.5">
+                              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                                Canales de Contacto
+                              </span>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Email:</span>
+                                <div className="flex items-center space-x-1.5">
+                                  <a href={`mailto:${detailModalContact.email}`} className="font-semibold text-blue-600 hover:underline">
+                                    {detailModalContact.email}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(detailModalContact.email);
+                                      setIsCopiedEmail(true);
+                                      setTimeout(() => setIsCopiedEmail(false), 2000);
+                                    }}
+                                    className="p-1 rounded text-gray-400 hover:text-gray-600"
+                                    title="Copiar email"
+                                  >
+                                    {isCopiedEmail ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Teléfono:</span>
+                                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                                  {detailModalContact.phone ? (
+                                    <a href={`tel:${detailModalContact.phone}`} className="text-blue-600 hover:underline">
+                                      {detailModalContact.phone}
+                                    </a>
+                                  ) : (
+                                    'No especificado'
+                                  )}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Móvil:</span>
+                                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                                  {detailModalContact.mobile ? (
+                                    <a href={`tel:${detailModalContact.mobile}`} className="text-blue-600 hover:underline">
+                                      {detailModalContact.mobile}
+                                    </a>
+                                  ) : (
+                                    'No especificado'
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 space-y-2.5">
+                              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                                Posición & Clasificación
+                              </span>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Cargo:</span>
+                                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                                  {detailModalContact.position || 'No especificado'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Departamento:</span>
+                                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                                  {detailModalContact.department || 'No especificado'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">Empresa:</span>
+                                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                                  {detailModalContact.company?.name || 'Independiente'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Notes */}
+                          <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700">
+                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
+                              Notas Internas
+                            </span>
+                            <p className="text-xs text-gray-700 dark:text-slate-300 whitespace-pre-wrap">
+                              {detailModalContact.notes || 'No se han registrado notas internas para este contacto.'}
+                            </p>
+                          </div>
+
+                          {/* Metadata */}
+                          <div className="flex items-center justify-between text-[11px] text-gray-400 px-1">
+                            <span>Registrado el: {new Date(detailModalContact.createdAt).toLocaleString()}</span>
+                            <span>Última modificación: {new Date(detailModalContact.updatedAt).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 2: Empresa Asignada */}
+                  {detailTab === 'company' && (
+                    <div className="space-y-4">
+                      {detailModalContact.company ? (
+                        <div className="space-y-3">
+                          <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-slate-800/60 border border-blue-100 dark:border-slate-700 flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2.5 rounded-xl bg-blue-600 text-white">
+                                <Building2 className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {detailModalContact.company.name}
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                  {detailModalContact.company.industry || 'Sector no especificado'}
+                                </p>
+                              </div>
+                            </div>
+                            {detailModalContact.company.taxId && (
+                              <span className="text-xs font-mono px-2.5 py-1 bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 font-semibold">
+                                CIF: {detailModalContact.company.taxId}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="p-3 rounded-xl border border-gray-200 dark:border-slate-800">
+                              <span className="text-gray-400 block mb-0.5">Ubicación</span>
+                              <span className="font-semibold text-gray-800 dark:text-slate-200">
+                                {[detailModalContact.company.address, detailModalContact.company.city, detailModalContact.company.country].filter(Boolean).join(', ') || 'No indicada'}
+                              </span>
+                            </div>
+                            <div className="p-3 rounded-xl border border-gray-200 dark:border-slate-800">
+                              <span className="text-gray-400 block mb-0.5">Sitio Web</span>
+                              {detailModalContact.company.website ? (
+                                <a href={detailModalContact.company.website} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 hover:underline flex items-center space-x-1">
+                                  <span>{detailModalContact.company.website}</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                <span className="text-gray-500 font-semibold">No registrado</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center text-xs text-gray-400">
+                          Este contacto no está vinculado a ninguna empresa.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 3: Deals & Oportunidades */}
+                  {detailTab === 'deals' && (
+                    <div className="space-y-3">
+                      {detailModalContact.deals && detailModalContact.deals.length > 0 ? (
+                        detailModalContact.deals.map((deal: any) => (
+                          <div key={deal.id} className="p-3 rounded-xl border border-gray-200 dark:border-slate-800 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <div className="flex items-center space-x-2.5">
+                              <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                                <DollarSign className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-gray-900 dark:text-white">{deal.title}</h4>
+                                <span className="text-[11px] text-gray-400">
+                                  Fase: {deal.stage?.name || 'Pipeline'} • Estado: {deal.status}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-xs font-bold font-mono text-gray-900 dark:text-white">
+                              {deal.value?.toLocaleString('es-ES', { style: 'currency', currency: deal.currency || 'EUR' })}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center text-xs text-gray-400">
+                          No hay oportunidades comerciales (deals) asociadas a este contacto.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 4: Facturación */}
+                  {detailTab === 'invoicing' && (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-gray-700 dark:text-slate-300">Facturas</span>
+                        {detailModalContact.invoices && detailModalContact.invoices.length > 0 ? (
+                          detailModalContact.invoices.map((inv: any) => (
+                            <div key={inv.id} className="p-2.5 rounded-lg border border-gray-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                              <div className="flex items-center space-x-2">
+                                <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                                <span className="font-semibold">{inv.invoiceNumber}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 font-medium">{inv.status}</span>
+                              </div>
+                              <span className="font-bold font-mono">{inv.total?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-gray-400 italic">Sin facturas emitidas a este contacto.</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+                        <span className="text-xs font-bold text-gray-700 dark:text-slate-300">Presupuestos / Cotizaciones</span>
+                        {detailModalContact.quotes && detailModalContact.quotes.length > 0 ? (
+                          detailModalContact.quotes.map((q: any) => (
+                            <div key={q.id} className="p-2.5 rounded-lg border border-gray-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                              <div className="flex items-center space-x-2">
+                                <Receipt className="w-3.5 h-3.5 text-teal-500" />
+                                <span className="font-semibold">{q.quoteNumber}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 font-medium">{q.status}</span>
+                              </div>
+                              <span className="font-bold font-mono">{q.total?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-gray-400 italic">Sin presupuestos emitidos.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 5: Comunicaciones / Timeline */}
+                  {detailTab === 'messages' && (
+                    <div className="space-y-2.5">
+                      {detailModalContact.omniMessages && detailModalContact.omniMessages.length > 0 ? (
+                        detailModalContact.omniMessages.map((msg: any) => (
+                          <div key={msg.id} className="p-3 rounded-xl border border-gray-200 dark:border-slate-800 text-xs space-y-1">
+                            <div className="flex items-center justify-between text-[11px] text-gray-400">
+                              <span className="font-semibold text-blue-600 dark:text-blue-400">{msg.channel} ({msg.direction})</span>
+                              <span>{new Date(msg.timestamp).toLocaleString()}</span>
+                            </div>
+                            <p className="text-gray-800 dark:text-slate-200">{msg.content || msg.text}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center text-xs text-gray-400">
+                          No se han registrado mensajes u omnicanalidad para este contacto.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3 border-t border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs">
+              <span className="text-gray-500 dark:text-slate-400">
+                {canEdit ? 'Puedes editar todos los campos pulsando "Editar Ficha"' : 'Modo consulta (permisos de lectura)'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl font-semibold bg-gray-200 dark:bg-slate-800 text-gray-800 dark:text-slate-200 hover:bg-gray-300 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cerrar Ficha
               </button>
             </div>
           </div>

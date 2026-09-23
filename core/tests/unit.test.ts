@@ -449,6 +449,37 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.ok(csvLine.includes('"Tecnologías ""Avanzadas"" SL"'));
     });
   });
+
+  describe('RFC 6238 TOTP Authenticator Engine', () => {
+    // Dynamic import / require of totp utility
+    const { verifyTotpCode, generateTotpCode } = require('../src/utils/totp');
+    const testSecret = 'JBSWY3DPEHPK3PXP'; // Base32 test secret
+
+    it('should generate a valid 6-digit TOTP code and verify it successfully', () => {
+      const code = generateTotpCode(testSecret);
+      assert.strictEqual(typeof code, 'string');
+      assert.strictEqual(code.length, 6);
+      assert.strictEqual(/^\d{6}$/.test(code), true);
+
+      const isValid = verifyTotpCode(testSecret, code);
+      assert.strictEqual(isValid, true);
+    });
+
+    it('should accept codes within acceptable time window drift (+/- 30s)', () => {
+      const pastCode = generateTotpCode(testSecret, -1);
+      assert.strictEqual(verifyTotpCode(testSecret, pastCode), true);
+
+      const futureCode = generateTotpCode(testSecret, 1);
+      assert.strictEqual(verifyTotpCode(testSecret, futureCode), true);
+    });
+
+    it('should reject invalid or malformed codes', () => {
+      assert.strictEqual(verifyTotpCode(testSecret, '0000000'), false);
+      assert.strictEqual(verifyTotpCode(testSecret, '12345'), false);
+      assert.strictEqual(verifyTotpCode(testSecret, 'abcdef'), false);
+      assert.strictEqual(verifyTotpCode('', '123456'), false);
+    });
+  });
 });
 
 

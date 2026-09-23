@@ -71,13 +71,14 @@ export const Workflows: React.FC = () => {
   }, []);
 
   const handleTestRun = async (wf: any) => {
-    toast.info('Ejecutando prueba...', `Disparando evento para el workflow "${wf.name}"`);
+    toast.info('Ejecutando prueba...', `Lanzando ejecución para "${wf.name}"`);
     const res = await apiRequest(`/workflows/${wf.id}/test`, { method: 'POST' });
     if (res.success) {
-      toast.success('Disparo de prueba lanzado', res.message);
-      setTimeout(() => loadData(), 800);
+      toast.success('Prueba Completada', res.message || 'Workflow ejecutado con éxito.');
+      await loadData();
     } else {
       toast.error('Error en prueba', res.message || 'No se pudo ejecutar el workflow.');
+      await loadData();
     }
   };
 
@@ -409,8 +410,17 @@ export const Workflows: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 font-mono text-[10px] text-gray-500 max-w-xs truncate">
-                      {log.result || 'OK'}
+                    <td
+                      className="px-4 py-2 font-mono text-[10px] text-gray-500 max-w-xs truncate"
+                      title={log.errorMessage || (typeof log.resultData === 'string' ? log.resultData : JSON.stringify(log.resultData))}
+                    >
+                      {log.errorMessage
+                        ? `Error: ${log.errorMessage}`
+                        : log.resultData
+                        ? typeof log.resultData === 'string'
+                          ? log.resultData
+                          : JSON.stringify(log.resultData)
+                        : 'Acción ejecutada correctamente'}
                     </td>
                     <td className="px-4 py-2 text-right text-gray-400 text-[10px]">
                       {new Date(log.executedAt).toLocaleString()}
