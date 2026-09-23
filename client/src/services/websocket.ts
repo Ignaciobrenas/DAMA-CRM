@@ -60,6 +60,18 @@ class WebSocketClient {
     return this.isConnected && this.ws?.readyState === WebSocket.OPEN;
   }
 
+  public disconnect(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.isConnected = false;
+  }
+
   private emit(event: string, data: any): void {
     if (this.listeners.has(event)) {
       this.listeners.get(event)?.forEach((callback) => callback(data));

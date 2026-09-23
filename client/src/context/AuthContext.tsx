@@ -40,14 +40,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
+    const token = localStorage.getItem('dama_token');
     const saved = localStorage.getItem('dama_user');
-    return saved ? JSON.parse(saved) : null;
+    if (!token || !saved) {
+      localStorage.removeItem('dama_token');
+      localStorage.removeItem('dama_user');
+      return null;
+    }
+    try {
+      return JSON.parse(saved);
+    } catch {
+      localStorage.removeItem('dama_user');
+      return null;
+    }
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const handleUnauthorized = () => {
+      localStorage.removeItem('dama_token');
+      localStorage.removeItem('dama_user');
       setUser(null);
+      window.history.replaceState(null, '', '/login');
     };
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
@@ -55,17 +69,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Verify session
     const token = localStorage.getItem('dama_token');
     if (token) {
-      apiRequest('/auth/me').then((res) => {
-        if (res.success && res.user) {
-          setUser(res.user);
-          localStorage.setItem('dama_user', JSON.stringify(res.user));
-        } else {
+      apiRequest('/auth/me')
+        .then((res) => {
+          if (res.success && res.user) {
+            setUser(res.user);
+            localStorage.setItem('dama_user', JSON.stringify(res.user));
+          } else {
+            setUser(null);
+            localStorage.removeItem('dama_token');
+            localStorage.removeItem('dama_user');
+            window.history.replaceState(null, '', '/login');
+          }
+          setIsLoading(false);
+        })
+        .catch(() => {
           setUser(null);
           localStorage.removeItem('dama_token');
           localStorage.removeItem('dama_user');
-        }
-        setIsLoading(false);
-      });
+          window.history.replaceState(null, '', '/login');
+          setIsLoading(false);
+        });
     } else {
       setIsLoading(false);
     }
@@ -112,7 +135,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     localStorage.removeItem('dama_token');
     localStorage.removeItem('dama_user');
+    sessionStorage.removeItem('dama_intended_route');
     setUser(null);
+    window.history.replaceState(null, '', '/login');
   };
 
   const hasPermission = (resource: string, action: string): boolean => {
@@ -179,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        isAuthenticated: Boolean(user && localStorage.getItem('dama_token')),
         isLoading,
         login,
         verify2FA,

@@ -25,15 +25,98 @@ import { Settings } from './pages/Settings';
 import { ClientPortal } from './pages/ClientPortal';
 import { Reports } from './pages/Reports';
 
+const normalizeRoute = (path: string): string => {
+  const clean = path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+  return clean || '/';
+};
+
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [currentRoute, setCurrentRoute] = useState<string>('/');
+  const [currentRoute, setCurrentRoute] = useState<string>(() => {
+    return normalizeRoute(window.location.pathname);
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  // Sync route on popstate (browser back/forward buttons)
   useEffect(() => {
-    wsClient.connect();
-  }, []);
+    const handlePopState = () => {
+      const path = normalizeRoute(window.location.pathname);
+      if (!isAuthenticated) {
+        if (path !== '/login') {
+          window.history.replaceState(null, '', '/login');
+        }
+        setCurrentRoute('/login');
+      } else {
+        if (path === '/login') {
+          window.history.replaceState(null, '', '/');
+          setCurrentRoute('/');
+        } else {
+          setCurrentRoute(path);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isAuthenticated]);
+
+  // Enforce strict route guard on auth/loading changes
+  useEffect(() => {
+    if (isLoading) return;
+
+    const currentPath = normalizeRoute(window.location.pathname);
+
+    if (!isAuthenticated) {
+      // If user attempted to visit any protected route directly via URL, remember it
+      if (currentPath !== '/login' && currentPath !== '/') {
+        sessionStorage.setItem('dama_intended_route', currentPath);
+      }
+      // Strictly force URL bar to /login
+      if (window.location.pathname !== '/login') {
+        window.history.replaceState(null, '', '/login');
+      }
+      if (currentRoute !== '/login') {
+        setCurrentRoute('/login');
+      }
+    } else {
+      // Authenticated user
+      const intended = sessionStorage.getItem('dama_intended_route');
+      if (intended) {
+        sessionStorage.removeItem('dama_intended_route');
+        const target = normalizeRoute(intended);
+        if (window.location.pathname !== target) {
+          window.history.replaceState(null, '', target);
+        }
+        setCurrentRoute(target);
+      } else if (currentPath === '/login') {
+        window.history.replaceState(null, '', '/');
+        setCurrentRoute('/');
+      } else if (currentRoute !== currentPath) {
+        setCurrentRoute(currentPath);
+      }
+    }
+  }, [isAuthenticated, isLoading]);
+
+  // Connect WebSockets when authenticated, disconnect on logout
+  useEffect(() => {
+    if (isAuthenticated) {
+      wsClient.connect();
+    } else {
+      wsClient.disconnect();
+    }
+    return () => {
+      wsClient.disconnect();
+    };
+  }, [isAuthenticated]);
+
+  const navigateTo = (route: string) => {
+    const target = normalizeRoute(route);
+    if (window.location.pathname !== target) {
+      window.history.pushState(null, '', target);
+    }
+    setCurrentRoute(target);
+  };
 
   if (isLoading) {
     return (
@@ -46,14 +129,14 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // If not logged in and not accessing public portal, show login
-  if (!isAuthenticated && currentRoute !== '/portal') {
+  // Strict Login Guard: Login is 100% mandatory and cannot be skipped via URL
+  if (!isAuthenticated) {
     return <Login />;
   }
 
   const renderActiveView = () => {
     switch (currentRoute) {
-      case '/': return <Dashboard onNavigate={setCurrentRoute} />;
+      case '/': return <Dashboard onNavigate={navigateTo} />;
       case '/pipeline': return <Pipeline />;
       case '/agile': return <AgilePlanner />;
       case '/contacts': return <Contacts />;
@@ -65,7 +148,7 @@ const AppContent: React.FC = () => {
       case '/reports': return <Reports />;
       case '/settings': return <Settings />;
       case '/portal': return <ClientPortal />;
-      default: return <Dashboard onNavigate={setCurrentRoute} />;
+      default: return <Dashboard onNavigate={navigateTo} />;
     }
   };
 
@@ -74,7 +157,7 @@ const AppContent: React.FC = () => {
       {/* Sidebar */}
       <Sidebar
         currentRoute={currentRoute}
-        onNavigate={setCurrentRoute}
+        onNavigate={navigateTo}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
@@ -106,7 +189,7 @@ const AppContent: React.FC = () => {
       <CommandMenu
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        onNavigate={setCurrentRoute}
+        onNavigate={navigateTo}
       />
     </div>
   );
