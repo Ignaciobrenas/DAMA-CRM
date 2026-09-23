@@ -157,7 +157,7 @@ export async function createDeal(req: Request, res: Response): Promise<void> {
       include: { stage: true, company: true, contact: true },
     });
 
-    await logAudit(req.user?.id || null, 'CREATE', 'Deal', deal.id, { title: deal.title, value: deal.value }, req.ip);
+    await logAudit((req as any).user?.id || null, 'CREATE', 'Deal', deal.id, { title: deal.title, value: deal.value }, req.ip);
 
     // Broadcast real-time WebSocket events
     wsService.broadcast('deal:created', deal);
@@ -180,7 +180,7 @@ export async function createDeal(req: Request, res: Response): Promise<void> {
 export async function patchDeal(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { stageId, status, value, title, expectedCloseDate, notes } = req.body;
+    const { stageId, status, value, title, expectedCloseDate, notes, companyId, contactId } = req.body;
 
     const currentDeal = await prisma.deal.findUnique({
       where: { id },
@@ -196,9 +196,11 @@ export async function patchDeal(req: Request, res: Response): Promise<void> {
     if (stageId !== undefined) data.stageId = stageId;
     if (status !== undefined) data.status = status;
     if (value !== undefined) data.value = parseFloat(value);
-    if (title !== undefined) data.title = title;
+    if (title !== undefined) data.title = title.trim();
     if (expectedCloseDate !== undefined) data.expectedCloseDate = expectedCloseDate ? new Date(expectedCloseDate) : null;
     if (notes !== undefined) data.notes = notes;
+    if (companyId !== undefined) data.companyId = companyId || null;
+    if (contactId !== undefined) data.contactId = contactId || null;
 
     // Check if new stage is WON / LOST
     if (stageId && stageId !== currentDeal.stageId) {
@@ -219,7 +221,7 @@ export async function patchDeal(req: Request, res: Response): Promise<void> {
     });
 
     await logAudit(
-      req.user?.id || null,
+      (req as any).user?.id || null,
       'PATCH',
       'Deal',
       id,
