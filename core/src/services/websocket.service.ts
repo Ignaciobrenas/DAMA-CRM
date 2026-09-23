@@ -30,6 +30,10 @@ class WebSocketService {
           const parsed = JSON.parse(message.toString());
           if (parsed.event === 'ping') {
             ws.send(JSON.stringify({ event: 'pong', timestamp: new Date().toISOString() }));
+          } else if (parsed.event === 'omnichannel:typing') {
+            this.broadcastExcept(ws, 'omnichannel:typing', parsed.data);
+          } else if (parsed.event === 'chat:message') {
+            this.broadcast('omnichannel:message', parsed.data);
           }
         } catch {
           // Ignore malformed client messages quietly
@@ -61,6 +65,28 @@ class WebSocketService {
 
     this.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(serialized);
+        } catch {
+          this.clients.delete(client);
+        }
+      }
+    });
+  }
+
+  public broadcastExcept(sender: WebSocket, event: string, data: any): void {
+    if (!this.wss || this.clients.size === 0) return;
+
+    const payload: WsMessage = {
+      event,
+      data,
+      timestamp: new Date().toISOString(),
+    };
+
+    const serialized = JSON.stringify(payload);
+
+    this.clients.forEach((client) => {
+      if (client !== sender && client.readyState === WebSocket.OPEN) {
         try {
           client.send(serialized);
         } catch {
