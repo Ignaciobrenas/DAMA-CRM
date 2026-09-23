@@ -8,6 +8,7 @@ import {
   listQuotes,
   createQuote,
   downloadQuotePdf,
+  convertQuoteToInvoice,
   publicPortalDownload,
 } from './invoices.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
@@ -34,5 +35,6 @@ router.get('/:id/pdf', requirePermission('invoices', 'read'), downloadInvoicePdf
 router.get('/quotes/all', requirePermission('quotes', 'read'), listQuotes);
 router.post('/quotes', requirePermission('quotes', 'create'), createQuote);
 router.get('/quotes/:id/pdf', requirePermission('quotes', 'read'), downloadQuotePdf);
+router.post('/quotes/:id/convert', requirePermission('invoices', 'create'), convertQuoteToInvoice);
 
 export default router;
