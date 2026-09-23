@@ -14,6 +14,8 @@ import {
   ExternalLink,
   ChevronLeft,
   BarChart3,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -33,8 +35,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose,
 }) => {
   const { t } = useLanguage();
-  const { hasPermission } = useAuth();
+  const { user, hasPermission, updatePreferences } = useAuth();
   const { branding } = useBranding();
+
+  const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
+  const pinnedRoutes = user?.preferences?.sidebarPinnedItems;
 
   const navItems = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/' },
@@ -63,12 +68,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-60 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-transform duration-200 ease-in-out md:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-all duration-200 ease-in-out md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } ${isCollapsed ? 'w-16' : 'w-60'}`}
       >
         {/* Brand Header */}
-        <div className="flex items-center justify-between h-14 px-4 border-b border-gray-200 dark:border-slate-800">
+        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} h-14 border-b border-gray-200 dark:border-slate-800`}>
           <div className="flex items-center space-x-2.5 truncate">
             {branding.logoUrl ? (
               <img
@@ -86,17 +91,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </svg>
               </div>
             )}
-            <div className="truncate">
-              <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white truncate block">
-                {branding.companyName}
-              </span>
-              <span
-                className="block text-[9px] font-semibold uppercase tracking-wider"
-                style={{ color: branding.primaryColor }}
-              >
-                Enterprise CRM
-              </span>
-            </div>
+            {!isCollapsed && (
+              <div className="truncate">
+                <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white truncate block">
+                  {branding.companyName}
+                </span>
+                <span
+                  className="block text-[9px] font-semibold uppercase tracking-wider"
+                  style={{ color: branding.primaryColor }}
+                >
+                  Enterprise CRM
+                </span>
+              </div>
+            )}
           </div>
 
           <button
@@ -108,10 +115,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-2.5 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
           {navItems.map((item) => {
             if (item.resource && !hasPermission(item.resource, 'read')) {
               return null;
+            }
+
+            // Check if user has customized pinned items
+            if (pinnedRoutes && Array.isArray(pinnedRoutes) && pinnedRoutes.length > 0) {
+              if (item.route !== '/settings' && !pinnedRoutes.includes(item.route)) {
+                return null;
+              }
             }
 
             const isActive = currentRoute === item.route;
@@ -120,13 +134,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <motion.button
                 key={item.id}
-                whileHover={{ x: 2 }}
+                whileHover={{ x: isCollapsed ? 0 : 2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   onNavigate(item.route);
                   onClose();
                 }}
-                className={`relative w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                title={item.label}
+                className={`relative w-full flex items-center ${
+                  isCollapsed ? 'justify-center px-2 py-2.5' : 'space-x-3 px-3 py-2'
+                } rounded-lg text-xs font-medium transition-colors ${
                   isActive
                     ? 'text-white font-semibold'
                     : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/60 dark:hover:bg-slate-800/40'
@@ -140,21 +157,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                   />
                 )}
-                <span className="relative z-10 flex items-center space-x-3">
+                <span className={`relative z-10 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
                   <Icon className={`w-4 h-4 shrink-0 transition-transform ${isActive ? 'text-white scale-105' : 'text-gray-400 dark:text-slate-400'}`} />
-                  <span className="truncate">{item.label}</span>
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </span>
               </motion.button>
             );
           })}
         </nav>
 
-        {/* System & Version Badge */}
-        <div className="p-3 border-t border-gray-200 dark:border-slate-800 text-[10px] text-gray-400 dark:text-slate-500 flex items-center justify-between">
-          <span>v1.0.0 Self-Hosted</span>
-          <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-mono text-[9px]">
-            Zero-Cost
-          </span>
+        {/* System Footer & Collapse/Expand Toggle */}
+        <div className="p-2.5 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between text-[10px] text-gray-400 dark:text-slate-500">
+          {!isCollapsed && (
+            <div className="flex items-center space-x-1.5 truncate">
+              <span>v1.0.0</span>
+              <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-mono text-[9px]">
+                Self-Hosted
+              </span>
+            </div>
+          )}
+
+          <button
+            onClick={() => updatePreferences({ sidebarCollapsed: !isCollapsed })}
+            className={`p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors hidden md:flex items-center justify-center ${
+              isCollapsed ? 'mx-auto' : ''
+            }`}
+            title={isCollapsed ? 'Expandir barra lateral' : 'Minimizar barra lateral'}
+          >
+            {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
         </div>
       </aside>
     </>

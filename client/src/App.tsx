@@ -26,7 +26,7 @@ import { ClientPortal } from './pages/ClientPortal';
 import { Reports } from './pages/Reports';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [currentRoute, setCurrentRoute] = useState<string>('/');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -80,7 +80,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 md:pl-60 transition-all duration-200">
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${user?.preferences?.sidebarCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}

@@ -1,5 +1,14 @@
 import { Router } from 'express';
-import { listUsers, createUser, listRoles, updateRolePermissions, listAuditLogs } from './users.controller';
+import {
+  listUsers,
+  createUser,
+  listRoles,
+  updateRolePermissions,
+  listAuditLogs,
+  getUserPreferences,
+  updateUserPreferences,
+  updateProfile,
+} from './users.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
 import { validate } from '../../middlewares/validate.middleware';
@@ -9,6 +18,12 @@ const router = Router();
 
 router.use(authMiddleware);
 
+// Current User Self-Service Endpoints
+router.get('/preferences', getUserPreferences);
+router.patch('/preferences', updateUserPreferences);
+router.patch('/profile', updateProfile);
+
+// System User Management (RBAC-protected)
 router.get('/', requirePermission('users', 'read'), listUsers);
 router.post('/', requirePermission('users', 'create'), validate(createUserSchema), createUser);
 router.get('/roles', requirePermission('users', 'read'), listRoles);

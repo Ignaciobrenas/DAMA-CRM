@@ -18,7 +18,15 @@ import {
   History,
   Activity,
   FileText,
+  Volume2,
+  VolumeX,
+  Sliders,
+  PanelLeft,
+  User as UserIcon,
+  Layers,
+  Bell,
 } from 'lucide-react';
+import { soundService } from '../services/sound';
 import { apiRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -26,9 +34,23 @@ import { useBranding } from '../context/BrandingContext';
 import { useToast } from '../context/ToastContext';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
 
+const ALL_SIDEBAR_ITEMS = [
+  { route: '/', label: 'Panel de Control (Dashboard)' },
+  { route: '/pipeline', label: 'Embudo de Ventas (Pipeline)' },
+  { route: '/agile', label: 'Planificador Ágil (Sprints/Tareas)' },
+  { route: '/contacts', label: 'Contactos y Clientes' },
+  { route: '/companies', label: 'Empresas y Cuentas' },
+  { route: '/invoicing', label: 'Facturación y Presupuestos' },
+  { route: '/inventory', label: 'Catálogo de Inventario UnoPIM' },
+  { route: '/workflows', label: 'Automatizaciones & Triggers' },
+  { route: '/omnichannel', label: 'Centro Omnicanal y Chat' },
+  { route: '/reports', label: 'Informes BI y Analítica' },
+  { route: '/portal', label: 'Portal del Cliente' },
+];
+
 export const Settings: React.FC = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, updatePreferences, updateProfile } = useAuth();
   const toast = useToast();
   const { branding, updateBranding, resetBranding } = useBranding();
   const [brandForm, setBrandForm] = useState(branding);
@@ -40,6 +62,30 @@ export const Settings: React.FC = () => {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(user?.twoFactorEnabled || false);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [rolePermissions, setRolePermissions] = useState<Array<{ resource: string; action: string }>>([]);
+
+  // User Profile state
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profileAvatar, setProfileAvatar] = useState(user?.avatar || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // User Preferences state
+  const [soundEnabled, setSoundEnabled] = useState(user?.preferences?.soundEnabled ?? true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(user?.preferences?.sidebarCollapsed ?? false);
+  const [sidebarPinnedItems, setSidebarPinnedItems] = useState<string[]>(
+    user?.preferences?.sidebarPinnedItems || ALL_SIDEBAR_ITEMS.map((i) => i.route)
+  );
+
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name || '');
+      setProfileAvatar(user.avatar || '');
+      setSoundEnabled(user.preferences?.soundEnabled ?? true);
+      setSidebarCollapsed(user.preferences?.sidebarCollapsed ?? false);
+      if (user.preferences?.sidebarPinnedItems) {
+        setSidebarPinnedItems(user.preferences.sidebarPinnedItems);
+      }
+    }
+  }, [user]);
 
   // User creation modal state
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -197,6 +243,82 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const handleToggleSound = async () => {
+    const nextVal = !soundEnabled;
+    setSoundEnabled(nextVal);
+    if (nextVal) {
+      soundService.setMuted(false);
+      soundService.playMessageChime();
+    } else {
+      soundService.setMuted(true);
+    }
+    const ok = await updatePreferences({ soundEnabled: nextVal });
+    if (ok) {
+      toast.success('Preferencia guardada', nextVal ? 'Efectos de sonido activados' : 'Efectos de sonido silenciados');
+    }
+  };
+
+  const handleTestSound = () => {
+    soundService.setMuted(false);
+    soundService.playMessageChime();
+    setTimeout(() => {
+      soundService.playSuccessChime();
+    }, 450);
+    toast.info('Reproduciendo sonido amigable', 'Escuchando campana binaural de notificación.');
+  };
+
+  const handleToggleSidebarCollapsed = async () => {
+    const nextVal = !sidebarCollapsed;
+    setSidebarCollapsed(nextVal);
+    const ok = await updatePreferences({ sidebarCollapsed: nextVal });
+    if (ok) {
+      toast.success(
+        'Preferencia guardada',
+        nextVal ? 'Barra lateral minimizada por defecto' : 'Barra lateral expandida por defecto'
+      );
+    }
+  };
+
+  const handleTogglePinnedItem = async (route: string) => {
+    let nextItems: string[];
+    if (sidebarPinnedItems.includes(route)) {
+      if (sidebarPinnedItems.length <= 1) {
+        toast.warning('Aviso', 'Debe mantenerse al menos un acceso directo visible.');
+        return;
+      }
+      nextItems = sidebarPinnedItems.filter((r) => r !== route);
+    } else {
+      nextItems = [...sidebarPinnedItems, route];
+    }
+    setSidebarPinnedItems(nextItems);
+    const ok = await updatePreferences({ sidebarPinnedItems: nextItems });
+    if (ok) {
+      toast.success('Barra lateral actualizada', 'Accesos directos guardados en tu perfil.');
+    }
+  };
+
+  const handleSelectAllPinned = async (selectAll: boolean) => {
+    const nextItems = selectAll ? ALL_SIDEBAR_ITEMS.map((i) => i.route) : ['/'];
+    setSidebarPinnedItems(nextItems);
+    await updatePreferences({ sidebarPinnedItems: nextItems });
+    toast.success('Barra lateral actualizada', selectAll ? 'Todos los accesos activados' : 'Solo Dashboard activado');
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingProfile(true);
+    const ok = await updateProfile({
+      name: profileName,
+      avatar: profileAvatar,
+    });
+    setIsSavingProfile(false);
+    if (ok) {
+      toast.success('Perfil Actualizado', 'Nombre y avatar guardados en la base de datos.');
+    } else {
+      toast.error('Error al guardar', 'No se ha podido actualizar tu perfil.');
+    }
+  };
+
   const selectedRole = roles.find((r) => r.id === selectedRoleId);
 
   return (
@@ -207,7 +329,7 @@ export const Settings: React.FC = () => {
           {t('settings')}
         </h1>
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          Control de Acceso Basado en Roles Dinámicos (RBAC), Seguridad 2FA y Usuarios
+          Control de Acceso Basado en Roles Dinámicos (RBAC), Seguridad 2FA, Preferencias y Usuarios
         </p>
       </div>
 
@@ -216,6 +338,283 @@ export const Settings: React.FC = () => {
           {statusMessage}
         </div>
       )}
+
+      {/* User Profile & Personal Preferences Card */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-slate-800">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <Sliders className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Mi Perfil y Preferencias de Usuario</h2>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  Guardado en Base de Datos
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                Personaliza tu avatar, nombre, efectos sonoros amigables y accesos de la barra lateral (leftbar)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Section 1: User Profile Customization */}
+          <div className="bg-gray-50/60 dark:bg-slate-800/40 p-4 rounded-xl border border-gray-100 dark:border-slate-800 flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 mb-3">
+                <UserIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white">Personalización del Perfil</h3>
+              </div>
+
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="relative">
+                  {profileAvatar ? (
+                    <img
+                      src={profileAvatar}
+                      alt={profileName || 'Usuario'}
+                      className="w-12 h-12 rounded-full object-cover border-2 border-blue-500 shadow-xs bg-white"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-base flex items-center justify-center border-2 border-blue-500">
+                      {(profileName || user?.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs">
+                  <div className="font-semibold text-gray-900 dark:text-white">{user?.name}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400">{user?.email}</div>
+                  <span className="inline-block mt-0.5 px-2 py-0.2 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                    {user?.role || 'USUARIO'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Nombre Completo
+                  </label>
+                  <input
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="Tu nombre y apellidos"
+                    className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    URL o Imagen del Avatar
+                  </label>
+                  <input
+                    type="text"
+                    value={profileAvatar}
+                    onChange={(e) => setProfileAvatar(e.target.value)}
+                    placeholder="https://ejemplo.com/avatar.png"
+                    className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 mb-1.5"
+                  />
+                  <label className="inline-flex items-center space-x-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                    <Image className="w-3.5 h-3.5" />
+                    <span>Subir imagen desde equipo local</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setProfileAvatar(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="button"
+              disabled={isSavingProfile}
+              onClick={handleSaveProfile}
+              className="w-full inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{isSavingProfile ? 'Guardando...' : 'Guardar Perfil'}</span>
+            </motion.button>
+          </div>
+
+          {/* Section 2: Sound & Notifications */}
+          <div className="bg-gray-50/60 dark:bg-slate-800/40 p-4 rounded-xl border border-gray-100 dark:border-slate-800 flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 mb-3">
+                <Bell className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white">Sonido y Notificaciones Amigables</h3>
+              </div>
+
+              <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
+                Campanadas binaurales sintetizadas para mensajes de WhatsApp, menciones y acciones del CRM.
+              </p>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700">
+                  <div className="flex items-center space-x-2.5">
+                    {soundEnabled ? (
+                      <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <VolumeX className="w-4 h-4 text-gray-400" />
+                    )}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-900 dark:text-white">
+                        {soundEnabled ? 'Sonidos Activados' : 'Sonidos Deshabilitados'}
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        {soundEnabled ? 'Chimes activos en notificaciones y chat' : 'Todo silenciado'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleToggleSound}
+                    className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      soundEnabled ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        soundEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 space-y-2">
+                  <div className="text-xs font-semibold text-gray-900 dark:text-white">Probar Efectos Sonoros</div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400">
+                    Comprueba cómo suena la campana amigable en tus altavoces:
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={handleTestSound}
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Reproducir Campanada de Prueba</span>
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-gray-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-gray-100 dark:border-slate-800">
+              💡 También puedes silenciar o activar el sonido rápidamente desde el icono de altavoz en la barra superior.
+            </div>
+          </div>
+
+          {/* Section 3: Leftbar & Navigation Customization */}
+          <div className="bg-gray-50/60 dark:bg-slate-800/40 p-4 rounded-xl border border-gray-100 dark:border-slate-800 flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center space-x-2 mb-3">
+                <PanelLeft className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white">Personalizar Barra Lateral (Leftbar)</h3>
+              </div>
+
+              {/* Sidebar Collapse Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 mb-3">
+                <div>
+                  <div className="text-xs font-semibold text-gray-900 dark:text-white">
+                    Modo Minimizado / Oculto
+                  </div>
+                  <div className="text-[10px] text-gray-400">
+                    {sidebarCollapsed ? 'Barra lateral contraída (solo iconos)' : 'Barra lateral expandida completa'}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleToggleSidebarCollapsed}
+                  className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    sidebarCollapsed ? 'bg-purple-600' : 'bg-gray-300 dark:bg-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      sidebarCollapsed ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Pinned Endpoints Checklist */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-gray-700 dark:text-slate-300">
+                    Endpoints / Módulos Visibles:
+                  </span>
+                  <div className="flex items-center space-x-2 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAllPinned(true)}
+                      className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                    >
+                      Todos
+                    </button>
+                    <span className="text-gray-300 dark:text-slate-600">|</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAllPinned(false)}
+                      className="text-gray-500 hover:text-gray-800 dark:hover:text-slate-200"
+                    >
+                      Mínimo
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-48 overflow-y-auto space-y-1 bg-white dark:bg-slate-900 p-2 rounded-lg border border-gray-200 dark:border-slate-700 scrollbar-thin">
+                  {ALL_SIDEBAR_ITEMS.map((item) => {
+                    const isChecked = sidebarPinnedItems.includes(item.route);
+                    return (
+                      <label
+                        key={item.route}
+                        className="flex items-center space-x-2 p-1 rounded hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer text-xs"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleTogglePinnedItem(item.route)}
+                          className="w-3.5 h-3.5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
+                        />
+                        <span
+                          className={`text-[11px] ${
+                            isChecked ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-slate-500'
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-gray-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-gray-100 dark:border-slate-800">
+              🔒 El acceso a Configuración permanece siempre disponible para evitar bloqueos accidentales.
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* White-label Branding & Customization Card */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-5">

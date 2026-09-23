@@ -86,6 +86,7 @@ export async function login(req: Request, res: Response): Promise<void> {
         avatar: user.avatar,
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
+        preferences: user.preferences ? JSON.parse(user.preferences) : {},
         permissions: user.role.permissions.map((p) => ({
           resource: p.resource,
           action: p.action,
@@ -236,6 +237,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
         avatar: user.avatar,
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
+        preferences: user.preferences ? JSON.parse(user.preferences) : {},
         permissions: user.role.permissions.map((p) => ({
           resource: p.resource,
           action: p.action,
