@@ -12,10 +12,10 @@ class WebSocketClient {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // If running in development with Vite default 5173 port, point directly to 4000; otherwise use host with proxy
+    // If running in development with Vite port 5173, point directly to 3000; otherwise use host with proxy
     let host = window.location.host;
     if (window.location.port === '5173') {
-      host = `${window.location.hostname}:4000`;
+      host = `${window.location.hostname}:3000`;
     }
     const wsUrl = `${protocol}//${host}/ws`;
 
