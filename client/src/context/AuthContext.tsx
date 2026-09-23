@@ -1,5 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiRequest } from '../services/api';
+import { soundService } from '../services/sound';
+
+export interface UserPreferences {
+  soundEnabled?: boolean;
+  sidebarCollapsed?: boolean;
+  sidebarPinnedItems?: string[];
+  dashboardWidgets?: string[];
+  theme?: 'light' | 'dark' | 'system';
+  language?: string;
+  emailNotifications?: boolean;
+  compactMode?: boolean;
+}
 
 export interface User {
   id: string;
@@ -8,6 +20,7 @@ export interface User {
   avatar?: string;
   role: string;
   twoFactorEnabled: boolean;
+  preferences?: UserPreferences;
   permissions: Array<{ resource: string; action: string }>;
 }
 
@@ -19,6 +32,8 @@ interface AuthContextType {
   verify2FA: (tempToken: string, code: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   hasPermission: (resource: string, action: string) => boolean;
+  updatePreferences: (newPreferences: Partial<UserPreferences>) => Promise<boolean>;
+  updateProfile: (profile: { name?: string; avatar?: string }) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,9 +118,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasPermission = (resource: string, action: string): boolean => {
     if (!user) return false;
     if (user.role === 'ADMIN') return true;
-    return user.permissions.some(
-      (p) => (p.resource === resource || p.resource === '*') && (p.action === action || p.action === 'manage')
+    return (
+      user.permissions?.some(
+        (p) => (p.resource === resource || p.resource === '*') && (p.action === action || p.action === 'manage')
+      ) || false
     );
+  };
+
+  const updatePreferences = async (newPreferences: Partial<UserPreferences>): Promise<boolean> => {
+    if (!user) return false;
+
+    const mergedPrefs = { ...(user.preferences || {}), ...newPreferences };
+    const updatedUser = { ...user, preferences: mergedPrefs };
+
+    // Optimistically update local state & sound
+    setUser(updatedUser);
+    localStorage.setItem('dama_user', JSON.stringify(updatedUser));
+    if (newPreferences.soundEnabled !== undefined) {
+      soundService.setMuted(!newPreferences.soundEnabled);
+    }
+
+    try {
+      const res = await apiRequest('/users/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(newPreferences),
+      });
+      if (res.success && res.data) {
+        const finalUser = { ...user, preferences: res.data };
+        setUser(finalUser);
+        localStorage.setItem('dama_user', JSON.stringify(finalUser));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const updateProfile = async (profile: { name?: string; avatar?: string }): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const res = await apiRequest('/users/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(profile),
+      });
+      if (res.success && res.data) {
+        const updated = { ...user, ...res.data };
+        setUser(updated);
+        localStorage.setItem('dama_user', JSON.stringify(updated));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   };
 
   return (
@@ -118,6 +185,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verify2FA,
         logout,
         hasPermission,
+        updatePreferences,
+        updateProfile,
       }}
     >
       {children}

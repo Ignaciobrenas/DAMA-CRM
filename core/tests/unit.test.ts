@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { DEFAULT_PREFERENCES } from '../src/modules/users/users.controller';
 
 describe('DAMA-CRM Core Unit Tests', () => {
   describe('Authentication & Security', () => {
@@ -305,6 +306,39 @@ describe('DAMA-CRM Core Unit Tests', () => {
 
       const isInvalid = await bcrypt.compare('WrongPass', hash);
       assert.strictEqual(isInvalid, false);
+    });
+  });
+
+  describe('User Preferences & Customization Persistence', () => {
+    it('should have sound, sidebar and dashboard defaults configured', () => {
+      assert.strictEqual(DEFAULT_PREFERENCES.soundEnabled, true);
+      assert.strictEqual(DEFAULT_PREFERENCES.sidebarCollapsed, false);
+      assert.ok(Array.isArray(DEFAULT_PREFERENCES.sidebarPinnedItems));
+      assert.ok(DEFAULT_PREFERENCES.sidebarPinnedItems.includes('/pipeline'));
+      assert.ok(Array.isArray(DEFAULT_PREFERENCES.dashboardWidgets));
+      assert.ok(DEFAULT_PREFERENCES.dashboardWidgets.includes('kpis'));
+    });
+
+    it('should merge updated preferences with defaults and serialize to JSON correctly', () => {
+      const existingPreferencesJson = JSON.stringify(DEFAULT_PREFERENCES);
+      const parsed = JSON.parse(existingPreferencesJson);
+
+      const updates = {
+        soundEnabled: false,
+        sidebarCollapsed: true,
+        sidebarPinnedItems: ['/', '/pipeline', '/invoicing'],
+        dashboardWidgets: ['quick_actions', 'top_deals', 'kpis'],
+      };
+
+      const merged = { ...parsed, ...updates };
+      const serialized = JSON.stringify(merged);
+      const deserialized = JSON.parse(serialized);
+
+      assert.strictEqual(deserialized.soundEnabled, false);
+      assert.strictEqual(deserialized.sidebarCollapsed, true);
+      assert.deepStrictEqual(deserialized.sidebarPinnedItems, ['/', '/pipeline', '/invoicing']);
+      assert.deepStrictEqual(deserialized.dashboardWidgets, ['quick_actions', 'top_deals', 'kpis']);
+      assert.strictEqual(deserialized.theme, 'light');
     });
   });
 });
