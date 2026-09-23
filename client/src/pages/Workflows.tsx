@@ -10,6 +10,14 @@ export const Workflows: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [testResult, setTestResult] = useState('');
 
+  // Create workflow modal state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [trigger, setTrigger] = useState('deal.won');
+  const [action, setAction] = useState('create_project');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const loadData = async () => {
     setIsLoading(true);
     const [resWorkflows, resLogs] = await Promise.all([
@@ -43,16 +51,51 @@ export const Workflows: React.FC = () => {
     loadData();
   };
 
+  const handleCreateWorkflow = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    setIsSubmitting(true);
+    const res = await apiRequest('/workflows', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        description,
+        trigger,
+        action,
+        actionConfig: { autoTriggered: true, createdAt: new Date().toISOString() },
+      }),
+    });
+
+    setIsSubmitting(false);
+    if (res.success) {
+      setIsCreateOpen(false);
+      setName('');
+      setDescription('');
+      loadData();
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-          {t('workflows')}
-        </h1>
-        <p className="text-xs text-gray-500 dark:text-slate-400">
-          Motor de reglas automatizadas en segundo plano (Disparadores 'Si X ocurre → Haz Y')
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+            {t('workflows')}
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            Motor de reglas automatizadas en segundo plano (Disparadores 'Si X ocurre → Haz Y')
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsCreateOpen(true)}
+          className="inline-flex items-center space-x-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Nueva Regla Automática</span>
+        </button>
       </div>
 
       {testResult && (
@@ -166,6 +209,111 @@ export const Workflows: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Create Workflow Modal */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                  Nueva Regla de Automatización
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsCreateOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateWorkflow} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Nombre de la regla *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Notificar al ganar venta"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Descripción operativa
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Describe qué objetivo persigue esta automatización..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Disparador (Si...)
+                  </label>
+                  <select
+                    value={trigger}
+                    onChange={(e) => setTrigger(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="deal.won">Venta Ganada</option>
+                    <option value="deal.stage_changed">Cambio de Fase Kanban</option>
+                    <option value="contact.created">Nuevo Contacto Creado</option>
+                    <option value="invoice.paid">Factura Pagada</option>
+                    <option value="product.stock_low">Stock Crítico</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Acción (Entonces...)
+                  </label>
+                  <select
+                    value={action}
+                    onChange={(e) => setAction(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="create_project">Crear Proyecto Ágil</option>
+                    <option value="send_email">Enviar Notificación Email</option>
+                    <option value="create_task">Crear Tarea en Sprint</option>
+                    <option value="notify_webhook">Enviar Webhook Externo</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 text-xs font-medium rounded-lg text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-xs font-semibold text-white rounded-lg shadow-xs transition-colors disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Guardando...' : 'Crear Automatización'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

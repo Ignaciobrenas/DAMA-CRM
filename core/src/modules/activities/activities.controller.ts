@@ -10,11 +10,17 @@ export async function listActivities(req: Request, res: Response): Promise<void>
     if (dealId) where.dealId = String(dealId);
     if (type) where.type = String(type);
 
-    const activities = await prisma.activity.findMany({
+    const rawActivities = await prisma.activity.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
+
+    const activities = rawActivities.map((act) => ({
+      ...act,
+      title: act.subject,
+      isCompleted: Boolean(act.completedAt || act.outcome === 'COMPLETED'),
+    }));
 
     res.json({ success: true, data: activities });
   } catch (error: any) {
@@ -24,22 +30,25 @@ export async function listActivities(req: Request, res: Response): Promise<void>
 
 export async function createActivity(req: Request, res: Response): Promise<void> {
   try {
-    const { type, subject, description, durationMinutes, outcome, scheduledAt, contactId, dealId } = req.body;
+    const { type, subject, title, description, durationMinutes, outcome, isCompleted, scheduledAt, contactId, dealId } = req.body;
+    const finalSubject = subject || title;
 
-    if (!type || !subject) {
+    if (!type || !finalSubject) {
       res.status(400).json({ success: false, message: 'Tipo de actividad y asunto son obligatorios' });
       return;
     }
 
+    const completed = isCompleted !== undefined ? Boolean(isCompleted) : Boolean(outcome);
+
     const activity = await prisma.activity.create({
       data: {
         type,
-        subject,
+        subject: finalSubject,
         description,
         durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 15,
-        outcome,
+        outcome: completed ? (outcome || 'COMPLETED') : null,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
-        completedAt: outcome ? new Date() : null,
+        completedAt: completed ? new Date() : null,
         contactId: contactId || null,
         dealId: dealId || null,
         userId: req.user?.id || null,
@@ -48,7 +57,13 @@ export async function createActivity(req: Request, res: Response): Promise<void>
 
     await logAudit(req.user?.id || null, 'CREATE', 'Activity', activity.id, { type: activity.type, subject: activity.subject }, req.ip);
 
-    res.status(201).json({ success: true, data: activity });
+    const formatted = {
+      ...activity,
+      title: activity.subject,
+      isCompleted: Boolean(activity.completedAt || activity.outcome === 'COMPLETED'),
+    };
+
+    res.status(201).json({ success: true, data: formatted });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -57,20 +72,33 @@ export async function createActivity(req: Request, res: Response): Promise<void>
 export async function updateActivity(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { subject, description, durationMinutes, outcome, completedAt } = req.body;
+    const { subject, title, description, durationMinutes, outcome, isCompleted, completedAt } = req.body;
+
+    const data: any = {};
+    if (subject || title) data.subject = subject || title;
+    if (description !== undefined) data.description = description;
+    if (durationMinutes !== undefined) data.durationMinutes = parseInt(durationMinutes, 10);
+    
+    if (isCompleted !== undefined) {
+      data.completedAt = isCompleted ? new Date() : null;
+      data.outcome = isCompleted ? 'COMPLETED' : null;
+    } else {
+      if (outcome !== undefined) data.outcome = outcome;
+      if (completedAt !== undefined) data.completedAt = completedAt ? new Date(completedAt) : null;
+    }
 
     const updated = await prisma.activity.update({
       where: { id },
-      data: {
-        subject,
-        description,
-        durationMinutes: durationMinutes !== undefined ? parseInt(durationMinutes, 10) : undefined,
-        outcome,
-        completedAt: completedAt ? new Date(completedAt) : undefined,
-      },
+      data,
     });
 
-    res.json({ success: true, data: updated });
+    const formatted = {
+      ...updated,
+      title: updated.subject,
+      isCompleted: Boolean(updated.completedAt || updated.outcome === 'COMPLETED'),
+    };
+
+    res.json({ success: true, data: formatted });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

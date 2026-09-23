@@ -266,4 +266,33 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
 * **Trazabilidad y Registro de Auditoría Visual ([`client/src/pages/Settings.tsx`](client/src/pages/Settings.tsx)):**
   - Panel interactivo con histórico inmutable de eventos de seguridad (inicios de sesión, 2FA, creaciones y modificaciones) sincronizado con `/api/users/audit-logs`.
 
+---
+
+## 🗄️ 13. Base de Datos Local Zero-Docker (Dual Prisma & SQLite)
+
+* **Desarrollo sin Contenedores:**
+  - Esquema dual [`core/prisma/schema.sqlite.prisma`](core/prisma/schema.sqlite.prisma) con persistencia en archivo `dev.db` sin requerir PostgreSQL ni Docker activos.
+  - Sincronización y repoblación con un solo comando: `npm run db:setup`.
+  - Consultas globales de búsqueda y modelos unificados para compatibilidad 100% cruzada (SQLite y PostgreSQL).
+
+---
+
+## 📊 14. Motor de Gráficos Interactivos y Visualización BI
+
+* **Suite Vectorial Ligera SVG (`client/src/components/ui/Charts.tsx`):**
+  - **`BarChart` con Tooltips Reactivos:** Gráfico de barras animado con interpolación de altura (`spring`), hover focus, eje X inteligente y formateo de divisas.
+  - **`DonutChart` con Métricas Centrales:** Diagrama circular SVG con trazo perimetral dinámico (`strokeDasharray`), cálculo porcentual y desglose de etiquetas.
+  - **Integración en Dashboard ([`client/src/pages/Dashboard.tsx`](client/src/pages/Dashboard.tsx)):** Selector de vista Gráfico vs Desglose en la distribución del embudo comercial por etapas.
+  - **Integración en Informes ([`client/src/pages/Reports.tsx`](client/src/pages/Reports.tsx)):** Visualización en vivo de la tasa de cierre (Win Rate), estado de oportunidades comerciales y distribución de tareas en sprints ágiles.
+
+---
+
+## ⚡ 15. Constructor Visual de Automatizaciones y Timeline
+
+* **Creador de Reglas en Caliente ([`client/src/pages/Workflows.tsx`](client/src/pages/Workflows.tsx)):**
+  - Modal interactivo para definir disparadores (*Triggers*: `deal.won`, `deal.stage_changed`, `contact.created`, `invoice.paid`, `product.stock_low`) y acciones (*Actions*: `create_project`, `send_email`, `create_task`, `notify_webhook`).
+  - Activación/desactivación instantánea y prueba en segundo plano con auditoría.
+* **Interoperabilidad Total en Timeline de Actividades ([`RecordDrawer.tsx`](client/src/components/crm/RecordDrawer.tsx)):**
+  - Soporte bidireccional de títulos, fechas, estados de completado (`isCompleted`/`outcome`) y campos personalizados.
+
 
