@@ -85,8 +85,8 @@ export async function createProject(req: Request, res: Response): Promise<void> 
 
     const project = await prisma.project.create({
       data: {
-        name,
-        description,
+        name: name.trim(),
+        description: description ? description.trim() : null,
         status: status || 'ACTIVE',
         priority: priority || 'MEDIUM',
         dealId: dealId || null,
@@ -96,9 +96,79 @@ export async function createProject(req: Request, res: Response): Promise<void> 
       },
     });
 
-    await logAudit(req.user?.id || null, 'CREATE', 'Project', project.id, { name: project.name }, req.ip);
+    await logAudit((req as any).user?.id || null, 'CREATE', 'Project', project.id, { name: project.name }, req.ip);
 
     res.status(201).json({ success: true, data: project });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updateProject(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { name, description, status, priority, dealId, startDate, endDate, budget } = req.body;
+
+    const existing = await prisma.project.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Proyecto no encontrado' });
+      return;
+    }
+
+    const updated = await prisma.project.update({
+      where: { id },
+      data: {
+        name: name ? name.trim() : undefined,
+        description: description !== undefined ? description?.trim() : undefined,
+        status: status || undefined,
+        priority: priority || undefined,
+        dealId: dealId !== undefined ? (dealId || null) : undefined,
+        startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
+        endDate: endDate !== undefined ? (endDate ? new Date(endDate) : null) : undefined,
+        budget: budget !== undefined ? (budget ? parseFloat(budget) : null) : undefined,
+      },
+    });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'UPDATE',
+      'Project',
+      updated.id,
+      { name: updated.name },
+      req.ip
+    );
+
+    res.json({ success: true, data: updated, message: 'Proyecto actualizado con éxito' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteProject(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.project.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Proyecto no encontrado' });
+      return;
+    }
+
+    // Cascade delete tasks and sprints first
+    await prisma.task.deleteMany({ where: { projectId: id } });
+    await prisma.sprint.deleteMany({ where: { projectId: id } });
+    await prisma.project.delete({ where: { id } });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'DELETE',
+      'Project',
+      id,
+      { name: existing.name },
+      req.ip
+    );
+
+    res.json({ success: true, message: `Proyecto "${existing.name}" eliminado correctamente` });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -117,8 +187,8 @@ export async function createSprint(req: Request, res: Response): Promise<void> {
     const sprint = await prisma.sprint.create({
       data: {
         projectId,
-        name,
-        goal,
+        name: name.trim(),
+        goal: goal ? goal.trim() : null,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         status: 'ACTIVE',
@@ -169,8 +239,8 @@ export async function createTask(req: Request, res: Response): Promise<void> {
       data: {
         projectId,
         sprintId: sprintId || null,
-        title,
-        description,
+        title: title.trim(),
+        description: description ? description.trim() : null,
         status: status || 'TODO',
         priority: priority || 'MEDIUM',
         storyPoints: storyPoints ? parseInt(storyPoints, 10) : 1,
@@ -184,7 +254,7 @@ export async function createTask(req: Request, res: Response): Promise<void> {
       },
     });
 
-    await logAudit(req.user?.id || null, 'CREATE', 'Task', task.id, { title: task.title }, req.ip);
+    await logAudit((req as any).user?.id || null, 'CREATE', 'Task', task.id, { title: task.title }, req.ip);
 
     res.status(201).json({ success: true, data: task });
   } catch (error: any) {
@@ -192,9 +262,6 @@ export async function createTask(req: Request, res: Response): Promise<void> {
   }
 }
 
-/**
- * PATCH method for Agile Task Kanban Drag & Drop and quick edits
- */
 export async function patchTask(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
@@ -209,8 +276,8 @@ export async function patchTask(req: Request, res: Response): Promise<void> {
     if (assigneeId !== undefined) data.assigneeId = assigneeId || null;
     if (sprintId !== undefined) data.sprintId = sprintId || null;
     if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
-    if (title !== undefined) data.title = title;
-    if (description !== undefined) data.description = description;
+    if (title !== undefined) data.title = title.trim();
+    if (description !== undefined) data.description = description ? description.trim() : null;
 
     const updated = await prisma.task.update({
       where: { id },
@@ -222,19 +289,42 @@ export async function patchTask(req: Request, res: Response): Promise<void> {
       },
     });
 
-    res.json({ success: true, data: updated });
+    res.json({ success: true, data: updated, message: 'Tarea actualizada' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 }
 
-/**
- * Mobile-friendly endpoint for "Mis Tareas Pendientes"
- * Prioritized for Capacitor touch interaction
- */
+export async function deleteTask(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.task.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
+
+    await prisma.task.delete({ where: { id } });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'DELETE',
+      'Task',
+      id,
+      { title: existing.title },
+      req.ip
+    );
+
+    res.json({ success: true, message: `Tarea "${existing.title}" eliminada correctamente` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export async function getMyTasks(req: Request, res: Response): Promise<void> {
   try {
-    const userId = req.user!.id;
+    const userId = (req as any).user?.id;
 
     const myTasks = await prisma.task.findMany({
       where: {

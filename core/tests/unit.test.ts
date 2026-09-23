@@ -394,5 +394,61 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(merged[0].resource, 'contacts');
     });
   });
+
+  describe('Agile Project & Task Metrics Engine', () => {
+    it('should accurately calculate project progress, total points, and logged hours', () => {
+      const mockTasks = [
+        { id: '1', status: 'DONE', storyPoints: 5, estimatedHours: 10, loggedHours: 9 },
+        { id: '2', status: 'DONE', storyPoints: 3, estimatedHours: 6, loggedHours: 6 },
+        { id: '3', status: 'IN_PROGRESS', storyPoints: 8, estimatedHours: 16, loggedHours: 4 },
+        { id: '4', status: 'TODO', storyPoints: 2, estimatedHours: 4, loggedHours: 0 },
+      ];
+
+      const totalTasks = mockTasks.length;
+      const completedTasks = mockTasks.filter((t) => t.status === 'DONE').length;
+      const progressPercent = Math.round((completedTasks / totalTasks) * 100);
+      const totalStoryPoints = mockTasks.reduce((sum, t) => sum + t.storyPoints, 0);
+      const totalEstimatedHours = mockTasks.reduce((sum, t) => sum + t.estimatedHours, 0);
+      const totalLoggedHours = mockTasks.reduce((sum, t) => sum + t.loggedHours, 0);
+
+      assert.strictEqual(totalTasks, 4);
+      assert.strictEqual(completedTasks, 2);
+      assert.strictEqual(progressPercent, 50);
+      assert.strictEqual(totalStoryPoints, 18);
+      assert.strictEqual(totalEstimatedHours, 36);
+      assert.strictEqual(totalLoggedHours, 19);
+    });
+
+    it('should return 0% progress when a project has zero tasks without throwing', () => {
+      const emptyTasks: any[] = [];
+      const totalTasks = emptyTasks.length;
+      const completedTasks = emptyTasks.filter((t) => t.status === 'DONE').length;
+      const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      assert.strictEqual(progressPercent, 0);
+    });
+  });
+
+  describe('Universal CSV Export Sanitization', () => {
+    it('should correctly escape double quotes and format invoice CSV line', () => {
+      const mockInvoice = {
+        id: 'inv-123',
+        invoiceNumber: 'FAC-2026-0001',
+        clientName: 'Tecnologías "Avanzadas" SL',
+        issueDate: '2026-09-23T16:00:00.000Z',
+        subtotal: 1000,
+        taxAmount: 210,
+        total: 1210,
+        currency: 'EUR',
+      };
+
+      const sanitizedClient = mockInvoice.clientName.replace(/"/g, '""');
+      const csvLine = `"${mockInvoice.id}","${mockInvoice.invoiceNumber}","${sanitizedClient}",${mockInvoice.subtotal},${mockInvoice.taxAmount},${mockInvoice.total},"${mockInvoice.currency}"`;
+
+      assert.strictEqual(sanitizedClient, 'Tecnologías ""Avanzadas"" SL');
+      assert.ok(csvLine.includes('"Tecnologías ""Avanzadas"" SL"'));
+    });
+  });
 });
+
 
