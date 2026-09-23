@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
-import { dispatchWorkflowEvent } from './workflow.runner';
+import { dispatchWorkflowEvent, executeWorkflow } from './workflow.runner';
 import { logAudit } from '../../middlewares/audit.middleware';
 
 export async function listWorkflows(req: Request, res: Response): Promise<void> {
@@ -139,22 +139,31 @@ export async function triggerTestWorkflow(req: Request, res: Response): Promise<
       return;
     }
 
-    // Trigger test event
-    await dispatchWorkflowEvent({
-      trigger: workflow.trigger,
-      data: {
-        test: true,
-        title: 'Oportunidad de Prueba Automática',
-        email: 'test@cliente.com',
-        value: 12500,
-        timestamp: new Date().toISOString(),
-      },
-    });
+    // Generate test data tailored to the trigger
+    const testData: Record<string, any> = {
+      test: true,
+      title: `Prueba Automatizada: ${workflow.name}`,
+      email: 'prueba@cliente.com',
+      value: 12500,
+      timestamp: new Date().toISOString(),
+    };
 
-    res.json({
-      success: true,
-      message: `Disparo de prueba lanzado para el workflow '${workflow.name}'. Verifique los registros en unos instantes.`,
-    });
+    // Execute directly and synchronously
+    const result = await executeWorkflow(workflow, testData);
+
+    if (result.status === 'SUCCESS') {
+      res.json({
+        success: true,
+        message: `Workflow '${workflow.name}' ejecutado con éxito. Estado: Completado.`,
+        data: result,
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: `Error al ejecutar workflow '${workflow.name}': ${result.errorMessage}`,
+        data: result,
+      });
+    }
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

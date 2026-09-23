@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Sun, Moon, Globe, LogOut, Menu, Shield, Bell, Check, MessageSquare, TrendingUp, AlertTriangle, Radio, Volume2, VolumeX } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -19,6 +19,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
   const { language, setLanguage, t } = useLanguage();
   const { user, logout } = useAuth();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    if (isNotificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isNotificationsOpen]);
   const [isMuted, setIsMuted] = useState(soundService.isMuted());
   const [notifications, setNotifications] = useState([
     {
@@ -150,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         </div>
 
         {/* Notification Center */}
-        <div className="relative">
+        <div ref={notifRef} className="relative">
           <button
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
             aria-label="Notificaciones del sistema"

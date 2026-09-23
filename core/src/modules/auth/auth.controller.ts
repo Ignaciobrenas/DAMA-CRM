@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import { prisma } from '../../prisma';
+import { config } from '../../config';
 import { generateToken, verifyToken } from '../../utils/jwt';
 import { sendOtpEmail } from '../../utils/mailer';
+import { verifyTotpCode } from '../../utils/totp';
 import { logAudit } from '../../middlewares/audit.middleware';
 
 function buildUserPermissions(user: any): Array<{ resource: string; action: string }> {
@@ -56,8 +58,17 @@ export async function login(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Check if 2FA is required
-    if (user.twoFactorEnabled) {
+    // 2FA Requirement Logic:
+    // Strictly mandatory in production (NODE_ENV === 'production').
+    // In dev (NODE_ENV === 'development' || NODE_ENV === 'dev'), 2FA is NOT necessary.
+    const envStr = (config.env || process.env.NODE_ENV || 'development').toLowerCase();
+    const isDev = envStr.includes('dev');
+    const isProd = envStr === 'production' || process.env.NODE_ENV === 'production';
+
+    // Mandatory in production; in dev it is completely skipped/not necessary
+    const requires2FA = isProd ? true : (isDev ? false : Boolean(user.twoFactorEnabled));
+
+    if (requires2FA) {
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -68,6 +79,8 @@ export async function login(req: Request, res: Response): Promise<void> {
           expiresAt,
         },
       });
+
+      console.log(`🔐 [2FA Engine] Código 2FA generado para ${user.email}: ${otpCode}`);
 
       // Send OTP via SMTP & display in console
       await sendOtpEmail(user.email, user.name, otpCode);
@@ -81,7 +94,9 @@ export async function login(req: Request, res: Response): Promise<void> {
         success: true,
         require2FA: true,
         tempToken,
-        message: 'Código de verificación 2FA enviado a tu correo electrónico',
+        message: isProd
+          ? 'Autenticación 2FA obligatoria en entorno de Producción. Introduce el código enviado a tu correo o app.'
+          : 'Código de verificación 2FA enviado a tu correo electrónico',
       });
       return;
     }
@@ -130,27 +145,6 @@ export async function verify2FA(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const validToken = await prisma.twoFactorToken.findFirst({
-      where: {
-        userId: payload.userId,
-        code: code.trim(),
-        used: false,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!validToken) {
-      res.status(401).json({ success: false, message: 'Código de verificación incorrecto o expirado' });
-      return;
-    }
-
-    // Mark token as used
-    await prisma.twoFactorToken.update({
-      where: { id: validToken.id },
-      data: { used: true },
-    });
-
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: {
@@ -165,6 +159,33 @@ export async function verify2FA(req: Request, res: Response): Promise<void> {
     if (!user) {
       res.status(404).json({ success: false, message: 'Usuario no encontrado' });
       return;
+    }
+
+    // 1. Check database OTP token
+    const validToken = await prisma.twoFactorToken.findFirst({
+      where: {
+        userId: payload.userId,
+        code: code.trim(),
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // 2. Check authenticator app (Google Authenticator / RFC 6238)
+    const isTotpValid = user.twoFactorSecret ? verifyTotpCode(user.twoFactorSecret, code.trim()) : false;
+
+    if (!validToken && !isTotpValid) {
+      res.status(401).json({ success: false, message: 'Código de verificación 2FA incorrecto o expirado' });
+      return;
+    }
+
+    if (validToken) {
+      // Mark token as used
+      await prisma.twoFactorToken.update({
+        where: { id: validToken.id },
+        data: { used: true },
+      });
     }
 
     const token = generateToken({
