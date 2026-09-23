@@ -449,7 +449,7 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
     });
 
     await logAudit(
-      req.user?.id || null,
+      (req as any).user?.id || null,
       'CONVERT_QUOTE',
       'Invoice',
       invoice.id,
@@ -462,6 +462,44 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
       message: `Presupuesto ${quote.quoteNumber} convertido a factura ${invoice.invoiceNumber} correctamente`,
       data: invoice,
     });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteInvoice(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const invoice = await prisma.invoice.findUnique({ where: { id } });
+    if (!invoice) {
+      res.status(404).json({ success: false, message: 'Factura no encontrada' });
+      return;
+    }
+
+    await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
+    await prisma.invoice.delete({ where: { id } });
+    await logAudit((req as any).user?.id || null, 'DELETE', 'Invoice', id, { invoiceNumber: invoice.invoiceNumber }, req.ip);
+
+    res.json({ success: true, message: `Factura ${invoice.invoiceNumber} eliminada correctamente` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteQuote(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const quote = await prisma.quote.findUnique({ where: { id } });
+    if (!quote) {
+      res.status(404).json({ success: false, message: 'Presupuesto no encontrado' });
+      return;
+    }
+
+    await prisma.invoiceItem.deleteMany({ where: { quoteId: id } });
+    await prisma.quote.delete({ where: { id } });
+    await logAudit((req as any).user?.id || null, 'DELETE', 'Quote', id, { quoteNumber: quote.quoteNumber }, req.ip);
+
+    res.json({ success: true, message: `Presupuesto ${quote.quoteNumber} eliminado correctamente` });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

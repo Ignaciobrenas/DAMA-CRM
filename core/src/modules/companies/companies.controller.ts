@@ -98,7 +98,7 @@ export async function createCompany(req: Request, res: Response): Promise<void> 
       },
     });
 
-    await logAudit(req.user?.id || null, 'CREATE', 'Company', company.id, { name: company.name }, req.ip);
+    await logAudit((req as any).user?.id || null, 'CREATE', 'Company', company.id, { name: company.name }, req.ip);
 
     res.status(201).json({ success: true, data: company });
   } catch (error: any) {
@@ -129,7 +129,7 @@ export async function updateCompany(req: Request, res: Response): Promise<void> 
       },
     });
 
-    await logAudit(req.user?.id || null, 'UPDATE', 'Company', id, { name: updated.name }, req.ip);
+    await logAudit((req as any).user?.id || null, 'UPDATE', 'Company', id, { name: updated.name }, req.ip);
 
     res.json({ success: true, data: updated });
   } catch (error: any) {
@@ -141,7 +141,7 @@ export async function deleteCompany(req: Request, res: Response): Promise<void> 
   try {
     const { id } = req.params;
     await prisma.company.delete({ where: { id } });
-    await logAudit(req.user?.id || null, 'DELETE', 'Company', id, {}, req.ip);
+    await logAudit((req as any).user?.id || null, 'DELETE', 'Company', id, {}, req.ip);
     res.json({ success: true, message: 'Empresa eliminada correctamente' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

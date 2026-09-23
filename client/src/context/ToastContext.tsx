@@ -96,6 +96,15 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const warning = useCallback((title: string, message?: string) => showToast('warning', title, message), [showToast]);
   const info = useCallback((title: string, message?: string) => showToast('info', title, message), [showToast]);
 
+  React.useEffect(() => {
+    const handleGlobalToastError = (e: any) => {
+      const { title, message } = e.detail || {};
+      if (title) error(title, message);
+    };
+    window.addEventListener('app:toast-error', handleGlobalToastError);
+    return () => window.removeEventListener('app:toast-error', handleGlobalToastError);
+  }, [error]);
+
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info, dismiss }}>
       {children}

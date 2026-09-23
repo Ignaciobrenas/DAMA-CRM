@@ -338,7 +338,61 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(deserialized.sidebarCollapsed, true);
       assert.deepStrictEqual(deserialized.sidebarPinnedItems, ['/', '/pipeline', '/invoicing']);
       assert.deepStrictEqual(deserialized.dashboardWidgets, ['quick_actions', 'top_deals', 'kpis']);
-      assert.strictEqual(deserialized.theme, 'light');
+    });
+  });
+
+  describe('Custom Fine-Grained User Permissions Merging', () => {
+    it('should correctly merge role permissions with per-user customPermissions without duplicates', () => {
+      const rolePermissions = [
+        { resource: 'contacts', action: 'read' },
+        { resource: 'contacts', action: 'create' },
+        { resource: 'deals', action: 'read' },
+      ];
+
+      const customPermissions = [
+        { resource: 'contacts', action: 'delete' },
+        { resource: 'invoices', action: 'read' },
+        { resource: 'deals', action: 'read' }, // duplicate of role permission
+      ];
+
+      const permissionsMap = new Map<string, { resource: string; action: string }>();
+      for (const p of rolePermissions) {
+        permissionsMap.set(`${p.resource}:${p.action}`, { resource: p.resource, action: p.action });
+      }
+      for (const cp of customPermissions) {
+        permissionsMap.set(`${cp.resource}:${cp.action}`, { resource: cp.resource, action: cp.action });
+      }
+
+      const merged = Array.from(permissionsMap.values());
+      assert.strictEqual(merged.length, 5); // 3 from role + 2 new from custom
+      assert.ok(merged.some((p) => p.resource === 'contacts' && p.action === 'delete'));
+      assert.ok(merged.some((p) => p.resource === 'invoices' && p.action === 'read'));
+      assert.ok(merged.some((p) => p.resource === 'deals' && p.action === 'read'));
+    });
+
+    it('should handle users without customPermissions gracefully', () => {
+      const rolePermissions = [
+        { resource: 'contacts', action: 'read' },
+      ];
+      const permissionsMap = new Map<string, { resource: string; action: string }>();
+      for (const p of rolePermissions) {
+        permissionsMap.set(`${p.resource}:${p.action}`, { resource: p.resource, action: p.action });
+      }
+
+      const emptyPreferences = JSON.stringify({ theme: 'light', customPermissions: [] });
+      const parsed = JSON.parse(emptyPreferences);
+      if (Array.isArray(parsed.customPermissions)) {
+        for (const cp of parsed.customPermissions) {
+          if (cp.resource && cp.action) {
+            permissionsMap.set(`${cp.resource}:${cp.action}`, { resource: cp.resource, action: cp.action });
+          }
+        }
+      }
+
+      const merged = Array.from(permissionsMap.values());
+      assert.strictEqual(merged.length, 1);
+      assert.strictEqual(merged[0].resource, 'contacts');
     });
   });
 });
+

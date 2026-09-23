@@ -51,16 +51,31 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       return;
     }
 
+    const permissionsMap = new Map<string, { resource: string; action: string }>();
+    for (const p of user.role.permissions) {
+      permissionsMap.set(`${p.resource}:${p.action}`, { resource: p.resource, action: p.action });
+    }
+
+    if (user.preferences) {
+      try {
+        const parsed = JSON.parse(user.preferences);
+        if (Array.isArray(parsed.customPermissions)) {
+          for (const cp of parsed.customPermissions) {
+            if (cp.resource && cp.action) {
+              permissionsMap.set(`${cp.resource}:${cp.action}`, { resource: cp.resource, action: cp.action });
+            }
+          }
+        }
+      } catch {}
+    }
+
     req.user = {
       id: user.id,
       email: user.email,
       name: user.name,
       roleId: user.roleId,
       role: user.role.name,
-      permissions: user.role.permissions.map((p) => ({
-        resource: p.resource,
-        action: p.action,
-      })),
+      permissions: Array.from(permissionsMap.values()),
     };
 
     next();

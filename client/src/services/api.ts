@@ -63,6 +63,28 @@ export async function apiRequest<T = any>(
         }
       }
 
+      if (!(options as any).suppressToast) {
+        const errorTitle =
+          res.status === 403
+            ? 'Permiso Denegado'
+            : res.status === 404
+            ? 'Elemento No Encontrado'
+            : res.status === 409
+            ? 'Conflicto de Registro'
+            : res.status >= 500
+            ? 'Error del Servidor'
+            : 'Error en la Solicitud';
+
+        window.dispatchEvent(
+          new CustomEvent('app:toast-error', {
+            detail: {
+              title: errorTitle,
+              message: friendlyMsg,
+            },
+          })
+        );
+      }
+
       return {
         success: false,
         message: friendlyMsg,
@@ -71,9 +93,21 @@ export async function apiRequest<T = any>(
 
     return data;
   } catch {
+    const errorMsg = 'No se pudo conectar con el servidor. Comprueba tu conexión de red.';
+    if (!(options as any).suppressToast) {
+      window.dispatchEvent(
+        new CustomEvent('app:toast-error', {
+          detail: {
+            title: 'Fallo de Red',
+            message: errorMsg,
+          },
+        })
+      );
+    }
+
     return {
       success: false,
-      message: 'No se pudo conectar con el servidor. Comprueba tu conexión de red.',
+      message: errorMsg,
     };
   }
 }

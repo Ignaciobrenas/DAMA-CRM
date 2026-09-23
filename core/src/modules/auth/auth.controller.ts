@@ -5,6 +5,26 @@ import { generateToken, verifyToken } from '../../utils/jwt';
 import { sendOtpEmail } from '../../utils/mailer';
 import { logAudit } from '../../middlewares/audit.middleware';
 
+function buildUserPermissions(user: any): Array<{ resource: string; action: string }> {
+  const map = new Map<string, { resource: string; action: string }>();
+  for (const p of user.role?.permissions || []) {
+    map.set(`${p.resource}:${p.action}`, { resource: p.resource, action: p.action });
+  }
+  if (user.preferences) {
+    try {
+      const prefs = typeof user.preferences === 'string' ? JSON.parse(user.preferences) : user.preferences;
+      if (Array.isArray(prefs.customPermissions)) {
+        for (const cp of prefs.customPermissions) {
+          if (cp.resource && cp.action) {
+            map.set(`${cp.resource}:${cp.action}`, { resource: cp.resource, action: cp.action });
+          }
+        }
+      }
+    } catch {}
+  }
+  return Array.from(map.values());
+}
+
 export async function login(req: Request, res: Response): Promise<void> {
   try {
     const { email, password } = req.body;
@@ -87,10 +107,7 @@ export async function login(req: Request, res: Response): Promise<void> {
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
         preferences: user.preferences ? JSON.parse(user.preferences) : {},
-        permissions: user.role.permissions.map((p) => ({
-          resource: p.resource,
-          action: p.action,
-        })),
+        permissions: buildUserPermissions(user),
       },
     });
   } catch (error: any) {
@@ -168,10 +185,8 @@ export async function verify2FA(req: Request, res: Response): Promise<void> {
         avatar: user.avatar,
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
-        permissions: user.role.permissions.map((p) => ({
-          resource: p.resource,
-          action: p.action,
-        })),
+        preferences: user.preferences ? JSON.parse(user.preferences) : {},
+        permissions: buildUserPermissions(user),
       },
     });
   } catch (error: any) {
@@ -238,10 +253,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
         preferences: user.preferences ? JSON.parse(user.preferences) : {},
-        permissions: user.role.permissions.map((p) => ({
-          resource: p.resource,
-          action: p.action,
-        })),
+        permissions: buildUserPermissions(user),
       },
     });
   } catch (error: any) {
