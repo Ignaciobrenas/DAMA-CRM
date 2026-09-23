@@ -9,7 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 export const config = {
   env: process.env.NODE_ENV || 'development',
-  port: parseInt(process.env.PORT || '4000', 10),
+  port: parseInt(process.env.PORT || '3000', 10),
   jwt: {
     secret: process.env.JWT_SECRET || 'super_secret_jwt_key_crm_dama_change_me_in_production',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
