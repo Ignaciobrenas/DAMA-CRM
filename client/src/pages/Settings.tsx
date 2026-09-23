@@ -25,6 +25,12 @@ import {
   User as UserIcon,
   Layers,
   Bell,
+  Search,
+  Edit2,
+  Trash2,
+  Filter,
+  ArrowUpDown,
+  KeyRound,
 } from 'lucide-react';
 import { soundService } from '../services/sound';
 import { apiRequest } from '../services/api';
@@ -92,6 +98,30 @@ export const Settings: React.FC = () => {
   const [newUserForm, setNewUserForm] = useState({ name: '', email: '', password: '', roleId: '' });
   const [userModalError, setUserModalError] = useState('');
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
+
+  // User Management Filtering & Sorting
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('');
+  const [userStatusFilter, setUserStatusFilter] = useState('');
+  const [userSort, setUserSort] = useState<'name_asc' | 'name_desc' | 'email_asc' | 'role' | 'recent'>('name_asc');
+
+  // Edit User & Custom Permissions Modal
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [editUserForm, setEditUserForm] = useState({
+    name: '',
+    email: '',
+    roleId: '',
+    password: '',
+    isActive: true,
+  });
+  const [editUserCustomPermissions, setEditUserCustomPermissions] = useState<Array<{ resource: string; action: string }>>([]);
+  const [isSubmittingEditUser, setIsSubmittingEditUser] = useState(false);
+  const [editUserModalError, setEditUserModalError] = useState('');
+
+  // Delete User Confirmation Modal
+  const [userToDelete, setUserToDelete] = useState<any | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const resources = [
     { id: 'companies', label: 'Empresas' },
@@ -240,6 +270,110 @@ export const Settings: React.FC = () => {
     } else {
       setUserModalError(res.message || 'Error al registrar el usuario');
       toast.error('Error al crear usuario', res.message);
+    }
+  };
+
+  const openEditUserModal = (u: any) => {
+    setEditingUser(u);
+    setEditUserForm({
+      name: u.name,
+      email: u.email,
+      roleId: u.roleId,
+      password: '',
+      isActive: u.isActive,
+    });
+    setEditUserCustomPermissions(
+      u.customPermissions && u.customPermissions.length > 0
+        ? [...u.customPermissions]
+        : (u.rolePermissions || []).map((p: any) => ({ resource: p.resource, action: p.action }))
+    );
+    setEditUserModalError('');
+    setIsEditUserModalOpen(true);
+  };
+
+  const toggleEditUserPermission = (resource: string, action: string) => {
+    const exists = editUserCustomPermissions.some((p) => p.resource === resource && p.action === action);
+    if (exists) {
+      setEditUserCustomPermissions(
+        editUserCustomPermissions.filter((p) => !(p.resource === resource && p.action === action))
+      );
+    } else {
+      setEditUserCustomPermissions([...editUserCustomPermissions, { resource, action }]);
+    }
+  };
+
+  const inheritPermissionsFromRole = (roleId: string) => {
+    const roleObj = roles.find((r) => r.id === roleId);
+    if (roleObj) {
+      setEditUserCustomPermissions(
+        (roleObj.permissions || []).map((p: any) => ({ resource: p.resource, action: p.action }))
+      );
+      toast.info('Permisos Heredados', `Se han sincronizado los permisos con la plantilla del rol ${roleObj.name}.`);
+    }
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setEditUserModalError('');
+
+    if (!editUserForm.name.trim() || !editUserForm.email.trim()) {
+      setEditUserModalError('El nombre y el correo electrónico son obligatorios.');
+      return;
+    }
+
+    if (!isValidEmail(editUserForm.email)) {
+      setEditUserModalError('El formato del correo electrónico no es válido.');
+      return;
+    }
+
+    if (editUserForm.password && editUserForm.password.length < 4) {
+      setEditUserModalError('Si introduces una nueva contraseña, debe tener al menos 4 caracteres.');
+      return;
+    }
+
+    setIsSubmittingEditUser(true);
+    const body: any = {
+      name: editUserForm.name.trim(),
+      email: editUserForm.email.trim().toLowerCase(),
+      roleId: editUserForm.roleId,
+      isActive: editUserForm.isActive,
+      customPermissions: editUserCustomPermissions,
+    };
+    if (editUserForm.password) {
+      body.password = editUserForm.password;
+    }
+
+    const res = await apiRequest(`/users/${editingUser.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    setIsSubmittingEditUser(false);
+
+    if (res.success) {
+      setIsEditUserModalOpen(false);
+      setEditingUser(null);
+      toast.success('Usuario y Permisos Actualizados', `Se han guardado los cambios para ${body.name}.`);
+      await loadData();
+    } else {
+      setEditUserModalError(res.message || 'Error al actualizar usuario');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeletingUser(true);
+    const res = await apiRequest(`/users/${userToDelete.id}`, {
+      method: 'DELETE',
+    });
+    setIsDeletingUser(false);
+
+    if (res.success) {
+      setUserToDelete(null);
+      toast.success('Usuario Eliminado', res.message || 'Usuario eliminado con éxito');
+      await loadData();
+    } else {
+      toast.error('Error al eliminar', res.message);
     }
   };
 
@@ -942,11 +1076,14 @@ export const Settings: React.FC = () => {
       </div>
 
       {/* Users Management */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs space-y-3 p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
           <div className="flex items-center space-x-2">
             <Users className="w-4 h-4 text-gray-500" />
-            <h2 className="text-xs font-bold text-gray-900 dark:text-white">Cuentas de Usuarios Corporativos</h2>
+            <div>
+              <h2 className="text-xs font-bold text-gray-900 dark:text-white">Cuentas de Usuarios Corporativos</h2>
+              <p className="text-[10px] text-gray-500">Gestión completa de usuarios y permisos directos por usuario</p>
+            </div>
           </div>
           <button
             onClick={() => {
@@ -954,48 +1091,179 @@ export const Settings: React.FC = () => {
               setUserModalError('');
               setIsUserModalOpen(true);
             }}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Nuevo Usuario</span>
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Filter and Sorting Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-2">
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[160px] max-w-xs">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
+              <input
+                type="text"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Buscar por nombre o email..."
+                className="w-full pl-8 pr-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            {/* Filter by Role */}
+            <select
+              value={userRoleFilter}
+              onChange={(e) => setUserRoleFilter(e.target.value)}
+              className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Todos los Roles</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.name}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Filter by Status */}
+            <select
+              value={userStatusFilter}
+              onChange={(e) => setUserStatusFilter(e.target.value)}
+              className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Todos los Estados</option>
+              <option value="active">Solo Activos</option>
+              <option value="inactive">Solo Desactivados</option>
+            </select>
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="flex items-center space-x-1.5 shrink-0">
+            <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+            <select
+              value={userSort}
+              onChange={(e) => setUserSort(e.target.value as any)}
+              className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
+            >
+              <option value="name_asc">Nombre (A - Z)</option>
+              <option value="name_desc">Nombre (Z - A)</option>
+              <option value="email_asc">Email (A - Z)</option>
+              <option value="role">Rol Asignado</option>
+              <option value="recent">Más recientes primero</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-800">
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
                 <th className="px-4 py-2.5">Nombre</th>
                 <th className="px-4 py-2.5">Email</th>
-                <th className="px-4 py-2.5">Rol Asignado</th>
+                <th className="px-4 py-2.5">Rol & Permisos</th>
                 <th className="px-4 py-2.5">2FA</th>
-                <th className="px-4 py-2.5 text-right">Estado</th>
+                <th className="px-4 py-2.5">Estado</th>
+                <th className="px-4 py-2.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">{u.name}</td>
-                  <td className="px-4 py-2.5 text-gray-600 dark:text-slate-300">{u.email}</td>
-                  <td className="px-4 py-2.5">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    {u.twoFactorEnabled ? (
-                      <span className="text-emerald-600 font-semibold text-[11px]">Activado</span>
-                    ) : (
-                      <span className="text-gray-400 text-[11px]">Desactivado</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-                      Activo
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {users
+                .filter((u) => {
+                  const matchSearch =
+                    !userSearch ||
+                    u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.email.toLowerCase().includes(userSearch.toLowerCase());
+                  const matchRole = !userRoleFilter || u.role === userRoleFilter;
+                  const matchStatus =
+                    !userStatusFilter ||
+                    (userStatusFilter === 'active' && u.isActive) ||
+                    (userStatusFilter === 'inactive' && !u.isActive);
+                  return matchSearch && matchRole && matchStatus;
+                })
+                .sort((a, b) => {
+                  if (userSort === 'name_asc') return a.name.localeCompare(b.name);
+                  if (userSort === 'name_desc') return b.name.localeCompare(a.name);
+                  if (userSort === 'email_asc') return a.email.localeCompare(b.email);
+                  if (userSort === 'role') return a.role.localeCompare(b.role);
+                  if (userSort === 'recent')
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                  return 0;
+                })
+                .map((u) => {
+                  const hasCustom = u.customPermissions && u.customPermissions.length > 0;
+                  const isCurrent = user?.id === u.id;
+
+                  return (
+                    <tr key={u.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
+                      <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
+                        <div className="flex items-center space-x-1.5">
+                          <span>{u.name}</span>
+                          {isCurrent && (
+                            <span className="text-[9px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded font-normal">
+                              Tú
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-600 dark:text-slate-300">{u.email}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                            {u.role}
+                          </span>
+                          {hasCustom && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              +{u.customPermissions.length} custom
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {u.twoFactorEnabled ? (
+                          <span className="text-emerald-600 font-semibold text-[11px]">Activado</span>
+                        ) : (
+                          <span className="text-gray-400 text-[11px]">Desactivado</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {u.isActive ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                            Activo
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400">
+                            Desactivado
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="flex items-center justify-end space-x-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openEditUserModal(u)}
+                            title="Editar usuario y personalizar permisos"
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded text-[11px] font-semibold transition-colors"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>Editar</span>
+                          </button>
+                          {!isCurrent && (
+                            <button
+                              type="button"
+                              onClick={() => setUserToDelete(u)}
+                              title="Eliminar usuario"
+                              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -1217,6 +1485,301 @@ export const Settings: React.FC = () => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Editar Usuario y Matriz de Permisos Personalizados */}
+      <AnimatePresence>
+        {isEditUserModalOpen && editingUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 max-h-[92vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <Edit2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                      Editar Usuario y Matriz de Permisos
+                    </h3>
+                    <p className="text-[11px] text-gray-500">
+                      Modifica los datos del usuario y ajusta permisos específicos para este usuario
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditUserModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {editUserModalError && (
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{editUserModalError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateUser} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      Nombre Completo <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editUserForm.name}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      Correo Electrónico <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={editUserForm.email}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      Rol Asignado
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <select
+                        value={editUserForm.roleId}
+                        onChange={(e) => setEditUserForm({ ...editUserForm, roleId: e.target.value })}
+                        className="flex-1 px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600 font-semibold"
+                      >
+                        {roles.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} - {r.description}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => inheritPermissionsFromRole(editUserForm.roleId)}
+                        title="Heredar permisos de este rol"
+                        className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-[10px] font-semibold whitespace-nowrap"
+                      >
+                        Heredar Rol
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                      Nueva Contraseña (opcional)
+                    </label>
+                    <input
+                      type="password"
+                      value={editUserForm.password}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+                      placeholder="Dejar en blanco para mantener actual"
+                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                </div>
+
+                {/* Account Status Switch */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800/40 border border-gray-200 dark:border-slate-700">
+                  <div>
+                    <div className="text-xs font-semibold text-gray-900 dark:text-white">
+                      Estado de la Cuenta
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {editUserForm.isActive ? 'Usuario con acceso permitido al sistema' : 'Usuario temporalmente desactivado'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditUserForm({ ...editUserForm, isActive: !editUserForm.isActive })}
+                    className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      editUserForm.isActive ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        editUserForm.isActive ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* User-Specific Fine-Grained Permissions Matrix */}
+                <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                        Matriz de Permisos Personalizados del Usuario
+                      </h4>
+                      <p className="text-[10px] text-gray-500">
+                        Ajusta permisos individuales que complementan o personalizan su rol
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-1.5 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const all: Array<{ resource: string; action: string }> = [];
+                          for (const res of resources) {
+                            for (const act of actions) {
+                              all.push({ resource: res.id, action: act.id });
+                            }
+                          }
+                          setEditUserCustomPermissions(all);
+                        }}
+                        className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                      >
+                        Conceder Todos
+                      </button>
+                      <span className="text-gray-300 dark:text-slate-600">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditUserCustomPermissions([])}
+                        className="text-gray-500 hover:text-gray-800 dark:hover:text-slate-200"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-slate-800 scrollbar-thin">
+                    <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+                      <thead className="bg-gray-50 dark:bg-slate-800/80 text-[10px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-1.5">Módulo / Recurso</th>
+                          {actions.map((act) => (
+                            <th key={act.id} className="px-2 py-1.5 text-center">
+                              {act.label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                        {resources.map((res) => (
+                          <tr key={res.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
+                            <td className="px-3 py-1.5 font-medium text-gray-900 dark:text-white text-[11px]">
+                              {res.label}
+                            </td>
+                            {actions.map((act) => {
+                              const isChecked = editUserCustomPermissions.some(
+                                (p) => p.resource === res.id && p.action === act.id
+                              );
+                              return (
+                                <td key={act.id} className="px-2 py-1.5 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleEditUserPermission(res.id, act.id)}
+                                    className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditUserModalOpen(false)}
+                    className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingEditUser}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-opacity disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{isSubmittingEditUser ? 'Guardando...' : 'Guardar Cambios y Permisos'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Confirmación de Eliminación de Usuario */}
+      <AnimatePresence>
+        {userToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 p-6 space-y-4"
+            >
+              <div className="flex items-center space-x-3 text-red-600 dark:text-red-400">
+                <div className="p-2 rounded-xl bg-red-50 dark:bg-red-950/60">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Eliminar Usuario</h3>
+                  <p className="text-[11px] text-gray-500">Esta acción no se puede deshacer</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-600 dark:text-slate-300">
+                ¿Estás seguro de que deseas eliminar permanentemente la cuenta de{' '}
+                <strong className="text-gray-900 dark:text-white">{userToDelete.name}</strong> ({userToDelete.email})?
+              </p>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setUserToDelete(null)}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingUser}
+                  onClick={handleDeleteUser}
+                  className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                >
+                  {isDeletingUser ? 'Eliminando...' : 'Eliminar Definitivamente'}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

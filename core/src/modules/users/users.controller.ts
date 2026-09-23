@@ -16,17 +16,27 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
       orderBy: { createdAt: 'desc' },
     });
 
-    const safeUsers = users.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      avatar: u.avatar,
-      isActive: u.isActive,
-      twoFactorEnabled: u.twoFactorEnabled,
-      role: u.role.name,
-      roleId: u.roleId,
-      createdAt: u.createdAt,
-    }));
+    const safeUsers = users.map((u) => {
+      let customPermissions: any[] = [];
+      try {
+        const p = JSON.parse(u.preferences || '{}');
+        if (Array.isArray(p.customPermissions)) customPermissions = p.customPermissions;
+      } catch {}
+
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        avatar: u.avatar,
+        isActive: u.isActive,
+        twoFactorEnabled: u.twoFactorEnabled,
+        role: u.role.name,
+        roleId: u.roleId,
+        customPermissions,
+        rolePermissions: u.role.permissions.map((p) => ({ resource: p.resource, action: p.action })),
+        createdAt: u.createdAt,
+      };
+    });
 
     res.json({ success: true, data: safeUsers });
   } catch (error: any) {
@@ -73,6 +83,118 @@ export async function createUser(req: Request, res: Response): Promise<void> {
         isActive: user.isActive,
       },
     });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updateUser(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { name, email, roleId, password, isActive, customPermissions } = req.body;
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, preferences: true },
+    });
+    if (!existingUser) {
+      res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+      return;
+    }
+
+    const dataToUpdate: any = {};
+    if (name) dataToUpdate.name = name.trim();
+    if (email) dataToUpdate.email = email.toLowerCase().trim();
+    if (roleId) dataToUpdate.roleId = roleId;
+    if (typeof isActive === 'boolean') dataToUpdate.isActive = isActive;
+    if (password && password.trim()) {
+      dataToUpdate.passwordHash = await bcrypt.hash(password.trim(), 10);
+    }
+
+    // Merge or update customPermissions inside preferences JSON
+    if (customPermissions !== undefined) {
+      let currentPrefs: any = {};
+      try {
+        currentPrefs = JSON.parse(existingUser.preferences || '{}');
+      } catch {}
+      currentPrefs.customPermissions = Array.isArray(customPermissions) ? customPermissions : [];
+      dataToUpdate.preferences = JSON.stringify(currentPrefs);
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: dataToUpdate,
+      include: {
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
+    });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'UPDATE',
+      'User',
+      id,
+      { name: updated.name, email: updated.email, role: updated.role.name },
+      req.ip
+    );
+
+    let parsedCustomPermissions: any[] = [];
+    try {
+      const p = JSON.parse(updated.preferences || '{}');
+      if (Array.isArray(p.customPermissions)) {
+        parsedCustomPermissions = p.customPermissions;
+      }
+    } catch {}
+
+    res.json({
+      success: true,
+      message: `Usuario ${updated.name} actualizado con éxito`,
+      data: {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        avatar: updated.avatar,
+        isActive: updated.isActive,
+        twoFactorEnabled: updated.twoFactorEnabled,
+        role: updated.role.name,
+        roleId: updated.roleId,
+        customPermissions: parsedCustomPermissions,
+        rolePermissions: updated.role.permissions.map((p) => ({ resource: p.resource, action: p.action })),
+        createdAt: updated.createdAt,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteUser(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const currentUserId = (req as any).user?.id;
+
+    if (id === currentUserId) {
+      res.status(400).json({
+        success: false,
+        message: 'Por seguridad, no puedes eliminar tu propia cuenta en sesión activa.',
+      });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+      return;
+    }
+
+    await prisma.user.delete({ where: { id } });
+    await logAudit(currentUserId || null, 'DELETE', 'User', id, { email: user.email }, req.ip);
+
+    res.json({ success: true, message: `Usuario ${user.name} eliminado correctamente` });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
