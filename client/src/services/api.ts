@@ -32,7 +32,7 @@ export async function apiRequest<T = any>(
       headers,
     });
 
-    if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/verify-2fa')) {
+    if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/verify-2fa') && !endpoint.includes('/branding')) {
       localStorage.removeItem('dama_token');
       localStorage.removeItem('dama_user');
       window.dispatchEvent(new Event('auth:unauthorized'));

@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiRequest } from '../services/api';
+import { wsClient } from '../services/websocket';
 
 export interface BrandingConfig {
   companyName: string;
@@ -55,13 +57,61 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [branding]);
 
-  const updateBranding = (newConfig: Partial<BrandingConfig>) => {
-    setBranding((prev) => ({ ...prev, ...newConfig }));
+  useEffect(() => {
+    // Fetch persisted branding from server
+    apiRequest('/branding')
+      .then((res) => {
+        if (res.success && res.data) {
+          setBranding((prev) => ({ ...prev, ...res.data }));
+          try {
+            localStorage.setItem('dama_crm_branding', JSON.stringify({ ...branding, ...res.data }));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    // Listen to real-time branding updates via WebSocket
+    const unsub = wsClient.on('branding:update', (updated: BrandingConfig) => {
+      if (updated) {
+        setBranding((prev) => ({ ...prev, ...updated }));
+        try {
+          localStorage.setItem('dama_crm_branding', JSON.stringify(updated));
+        } catch {}
+      }
+    });
+
+    return () => unsub();
+  }, []);
+
+  const updateBranding = async (newConfig: Partial<BrandingConfig>) => {
+    setBranding((prev) => {
+      const merged = { ...prev, ...newConfig };
+      try {
+        localStorage.setItem('dama_crm_branding', JSON.stringify(merged));
+      } catch {}
+      return merged;
+    });
+
+    try {
+      await apiRequest('/branding', {
+        method: 'PATCH',
+        body: JSON.stringify(newConfig),
+      });
+    } catch {}
   };
 
-  const resetBranding = () => {
+  const resetBranding = async () => {
     setBranding(DEFAULT_BRANDING);
-    localStorage.removeItem('dama_crm_branding');
+    try {
+      localStorage.removeItem('dama_crm_branding');
+    } catch {}
+
+    try {
+      await apiRequest('/branding', {
+        method: 'PATCH',
+        body: JSON.stringify(DEFAULT_BRANDING),
+      });
+    } catch {}
   };
 
   return (
