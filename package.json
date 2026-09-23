@@ -15,6 +15,8 @@
     "build:core": "npm --prefix core run build",
     "build:client": "npm --prefix client run build",
     "build": "npm run build:core && npm run build:client",
+    "db:setup": "npm --prefix core run db:setup",
+    "db:setup:pg": "npm --prefix core run db:setup:pg",
     "db:migrate": "npm --prefix core run db:migrate",
     "db:seed": "npm --prefix core run db:seed",
     "docker:up": "docker compose up -d --build",
