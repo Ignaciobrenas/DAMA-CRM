@@ -3,6 +3,7 @@ import { MessageSquare, Send, Phone, Mail, User, Check, CheckCheck, Search, Spar
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { wsClient } from '../services/websocket';
+import { soundService } from '../services/sound';
 
 const CANNED_RESPONSES = [
   {
@@ -76,6 +77,10 @@ export const Omnichannel: React.FC = () => {
 
     // Listen to incoming real-time messages across any conversation
     const unsubMsg = wsClient.on('omnichannel:message', (msg: any) => {
+      if (msg.direction === 'INBOUND') {
+        soundService.playMessageChime();
+      }
+
       if (msg.contactId) {
         setLastMessages((prev) => ({
           ...prev,
