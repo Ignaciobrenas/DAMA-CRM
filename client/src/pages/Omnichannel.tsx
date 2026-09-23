@@ -36,7 +36,12 @@ export const Omnichannel: React.FC = () => {
   const [selectedChannel, setSelectedChannel] = useState<'WHATSAPP' | 'EMAIL'>('WHATSAPP');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isWsConnected, setIsWsConnected] = useState<boolean>(wsClient.isWsConnected());
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<{ [contactId: string]: number }>({});
+  const [lastMessages, setLastMessages] = useState<{ [contactId: string]: { content: string; time?: string } }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,34 +68,86 @@ export const Omnichannel: React.FC = () => {
 
   useEffect(() => {
     loadContacts();
+
+    // Listen to WebSocket connection state changes
+    const unsubConn = wsClient.on('connection:change', ({ connected }) => {
+      setIsWsConnected(connected);
+    });
+
+    // Listen to incoming real-time messages across any conversation
+    const unsubMsg = wsClient.on('omnichannel:message', (msg: any) => {
+      if (msg.contactId) {
+        setLastMessages((prev) => ({
+          ...prev,
+          [msg.contactId]: { content: msg.content, time: msg.timestamp },
+        }));
+      }
+
+      setSelectedContact((currentSelected: any) => {
+        if (currentSelected && msg.contactId === currentSelected.id) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+        } else if (msg.contactId) {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            [msg.contactId]: (prev[msg.contactId] || 0) + 1,
+          }));
+        }
+        return currentSelected;
+      });
+    });
+
+    // Listen for real-time typing events from peers
+    const unsubTyping = wsClient.on('omnichannel:typing', (data: any) => {
+      setSelectedContact((currentSelected: any) => {
+        if (currentSelected && data.contactId === currentSelected.id) {
+          setIsPartnerTyping(Boolean(data.isTyping));
+          if (data.isTyping) {
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => setIsPartnerTyping(false), 3500);
+          }
+        }
+        return currentSelected;
+      });
+    });
+
+    return () => {
+      unsubConn();
+      unsubMsg();
+      unsubTyping();
+    };
   }, []);
 
   useEffect(() => {
     if (selectedContact) {
       loadMessages(selectedContact.id);
+      setIsPartnerTyping(false);
+      // Clear unread count for selected contact
+      setUnreadCounts((prev) => ({ ...prev, [selectedContact.id]: 0 }));
     }
-
-    const unsub = wsClient.on('omnichannel:message', (msg: any) => {
-      if (selectedContact && msg.contactId === selectedContact.id) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
-      }
-    });
-
-    return unsub;
   }, [selectedContact]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isPartnerTyping]);
 
   const applyCannedResponse = (template: string) => {
     if (!selectedContact) return;
     const name = selectedContact.firstName || 'estimado/a';
     const filled = template.replace(/\{\{name\}\}/g, name);
     setReplyContent(filled);
+  };
+
+  const handleTypingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setReplyContent(e.target.value);
+    if (!selectedContact) return;
+    wsClient.send('omnichannel:typing', { contactId: selectedContact.id, isTyping: true });
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      wsClient.send('omnichannel:typing', { contactId: selectedContact.id, isTyping: false });
+    }, 2000);
   };
 
   const filteredContacts = contacts.filter((c) => {
@@ -106,6 +163,9 @@ export const Omnichannel: React.FC = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyContent.trim() || !selectedContact) return;
+
+    // Send typing stop signal
+    wsClient.send('omnichannel:typing', { contactId: selectedContact.id, isTyping: false });
 
     const res = await apiRequest('/omnichannel/messages', {
       method: 'POST',
@@ -125,13 +185,33 @@ export const Omnichannel: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-          {t('omnichannel')}
-        </h1>
-        <p className="text-xs text-gray-500 dark:text-slate-400">
-          Bandeja de entrada unificada de WhatsApp Meta Cloud API y correos electrónicos
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+            {t('omnichannel')}
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            Bandeja de entrada unificada de WhatsApp Meta Cloud API y correos electrónicos
+          </p>
+        </div>
+
+        {/* Real-time WebSocket Status Pill */}
+        <div className="flex items-center space-x-2">
+          <span
+            className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
+              isWsConnected
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800'
+                : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
+            />
+            <span>{isWsConnected ? 'WebSocket en vivo' : 'Reconectando canal...'}</span>
+          </span>
+        </div>
       </div>
 
       {/* Two-Column Chat Box */}
@@ -183,9 +263,14 @@ export const Omnichannel: React.FC = () => {
                       <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
                         {c.firstName} {c.lastName}
                       </span>
+                      {unreadCounts[c.id] > 0 && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-600 text-white shrink-0">
+                          {unreadCounts[c.id]}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] text-gray-500 dark:text-slate-400 truncate">
-                      {c.company?.name || c.phone || c.email}
+                      {lastMessages[c.id]?.content || c.company?.name || c.phone || c.email}
                     </div>
                   </div>
                 </button>
@@ -268,6 +353,20 @@ export const Omnichannel: React.FC = () => {
                 );
               })
             )}
+            {isPartnerTyping && (
+              <div className="flex items-start animate-in fade-in duration-150">
+                <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-3 py-2 rounded-xl rounded-bl-none shadow-xs flex items-center space-x-2 text-xs text-gray-500">
+                  <span className="text-[11px] font-semibold text-gray-700 dark:text-slate-300">
+                    {selectedContact?.firstName} está escribiendo
+                  </span>
+                  <span className="flex space-x-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -300,7 +399,7 @@ export const Omnichannel: React.FC = () => {
               type="text"
               required
               value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
+              onChange={handleTypingChange}
               placeholder={`Escribe un mensaje por ${selectedChannel === 'WHATSAPP' ? 'WhatsApp' : 'Email'}...`}
               className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
