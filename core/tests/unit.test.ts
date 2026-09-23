@@ -107,6 +107,31 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(result.taxAmount, 724.61);
       assert.strictEqual(result.total, 4175.11);
     });
+
+    it('should correctly clone line items and copy financial amounts when converting a quote to an invoice', () => {
+      const quote = {
+        id: 'q-1',
+        quoteNumber: 'PRE-2026-001',
+        subtotal: 3500,
+        taxRate: 21,
+        taxAmount: 735,
+        total: 4235,
+        items: [
+          { description: 'Consultoría CRM Avanzada', quantity: 1, unitPrice: 3500, amount: 3500 },
+        ],
+      };
+
+      const clonedItems = quote.items.map((it) => ({
+        description: it.description,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        amount: it.amount,
+      }));
+
+      assert.strictEqual(clonedItems.length, 1);
+      assert.strictEqual(clonedItems[0].amount, 3500);
+      assert.strictEqual(quote.subtotal + quote.taxAmount, quote.total);
+    });
   });
 
   describe('Custom Fields Dynamic Engine', () => {

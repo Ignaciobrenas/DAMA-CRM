@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Download, FileText, CheckCircle, Clock, AlertCircle, X, Trash2 } from 'lucide-react';
+import { Plus, Download, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, ArrowRightLeft } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -11,6 +11,8 @@ export const Invoicing: React.FC = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [convertingQuoteId, setConvertingQuoteId] = useState<string | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -76,6 +78,22 @@ export const Invoicing: React.FC = () => {
       body: JSON.stringify({ status: 'PAID' }),
     });
     loadData();
+  };
+
+  const handleConvertQuote = async (id: string, number: string) => {
+    setConvertingQuoteId(id);
+    const res = await apiRequest(`/invoices/quotes/${id}/convert`, {
+      method: 'POST',
+    });
+    setConvertingQuoteId(null);
+    if (res.success) {
+      setActionFeedback(`¡Presupuesto ${number} convertido con éxito en la factura ${res.data?.invoiceNumber || ''}!`);
+      setTimeout(() => setActionFeedback(null), 5000);
+      await loadData();
+      setActiveTab('invoices');
+    } else {
+      alert(res.message || 'Error al convertir el presupuesto');
+    }
   };
 
   const addItemRow = () => {
@@ -146,6 +164,18 @@ export const Invoicing: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {actionFeedback && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-300 animate-in fade-in">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>{actionFeedback}</span>
+          </div>
+          <button onClick={() => setActionFeedback(null)} className="text-emerald-500 hover:text-emerald-700">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Header & Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -290,7 +320,26 @@ export const Invoicing: React.FC = () => {
                     <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
                       {q.total.toLocaleString('es-ES', { style: 'currency', currency: q.currency })}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right space-x-1.5">
+                      <button
+                        onClick={() => handleConvertQuote(q.id, q.quoteNumber)}
+                        disabled={convertingQuoteId === q.id || q.status === 'ACCEPTED'}
+                        className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+                          q.status === 'ACCEPTED'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 cursor-default'
+                            : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400'
+                        }`}
+                        title={q.status === 'ACCEPTED' ? 'Ya facturado' : 'Convertir este presupuesto en factura'}
+                      >
+                        <ArrowRightLeft className="w-3 h-3" />
+                        <span>
+                          {convertingQuoteId === q.id
+                            ? 'Convirtiendo...'
+                            : q.status === 'ACCEPTED'
+                            ? 'Facturado'
+                            : 'Convertir'}
+                        </span>
+                      </button>
                       <button
                         onClick={() => handleDownloadQuotePdf(q.id, q.quoteNumber)}
                         className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 rounded text-xs font-semibold"
