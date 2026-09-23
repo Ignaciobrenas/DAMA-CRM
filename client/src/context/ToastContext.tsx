@@ -57,6 +57,8 @@ const toastColors = {
   },
 };
 
+import { soundService } from '../services/sound';
+
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -68,6 +70,15 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (type: ToastType, title: string, message?: string, duration = 4000) => {
       const id = Math.random().toString(36).substring(2, 9);
       const newToast: ToastItem = { id, type, title, message, duration };
+
+      // Play matching friendly synthesized chime
+      if (type === 'success') {
+        soundService.playSuccessChime();
+      } else if (type === 'error' || type === 'warning') {
+        soundService.playAlertSound();
+      } else {
+        soundService.playMessageChime();
+      }
 
       setToasts((prev) => [...prev, newToast]);
 

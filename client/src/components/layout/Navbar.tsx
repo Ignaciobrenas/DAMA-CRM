@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sun, Moon, Globe, LogOut, Menu, Shield, Bell, Check, MessageSquare, TrendingUp, AlertTriangle, Radio } from 'lucide-react';
+import { Search, Sun, Moon, Globe, LogOut, Menu, Shield, Bell, Check, MessageSquare, TrendingUp, AlertTriangle, Radio, Volume2, VolumeX } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { wsClient } from '../../services/websocket';
+import { soundService } from '../../services/sound';
 import { SUPPORTED_LANGUAGES, Language } from '../../i18n';
 import { AnimatedIcon } from '../ui/AnimatedIcon';
 
@@ -18,6 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
   const { language, setLanguage, t } = useLanguage();
   const { user, logout } = useAuth();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(soundService.isMuted());
   const [notifications, setNotifications] = useState([
     {
       id: '1',
@@ -47,6 +49,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
 
   useEffect(() => {
     const unsub = wsClient.on('notification:new', (notif: any) => {
+      // Play warm, friendly sound matching notification type
+      if (notif.type === 'chat') {
+        soundService.playMessageChime();
+      } else if (notif.type === 'stock' || notif.type === 'alert') {
+        soundService.playAlertSound();
+      } else {
+        soundService.playSuccessChime();
+      }
+
       setNotifications((prev) => [
         {
           id: String(Date.now()),
@@ -66,6 +77,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
 
   const markAllAsRead = () => {
     setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+  };
+
+  const handleToggleSound = () => {
+    const nextMuted = soundService.toggleMute();
+    setIsMuted(nextMuted);
+    if (!nextMuted) {
+      soundService.playMessageChime();
+    }
   };
 
   return (
@@ -168,15 +187,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
                       </span>
                     )}
                   </div>
-                  {unreadCount > 0 && (
+                  <div className="flex items-center space-x-2">
                     <button
-                      onClick={markAllAsRead}
-                      className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-0.5"
+                      onClick={handleToggleSound}
+                      className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 rounded transition-colors"
+                      title={isMuted ? 'Activar sonido de notificaciones' : 'Silenciar notificaciones'}
                     >
-                      <Check className="w-3 h-3" />
-                      <span>Marcar leídas</span>
+                      {isMuted ? (
+                        <VolumeX className="w-3.5 h-3.5 text-rose-500" />
+                      ) : (
+                        <Volume2 className="w-3.5 h-3.5 text-emerald-500" />
+                      )}
                     </button>
-                  )}
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-0.5"
+                      >
+                        <Check className="w-3 h-3" />
+                        <span>Marcar leídas</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-2 space-y-2 max-h-72 overflow-y-auto">
