@@ -28,6 +28,7 @@ export const Login: React.FC = () => {
       return;
     }
 
+    setIsLoading(true);
     const res = await login(email, password);
     setIsLoading(false);
 
