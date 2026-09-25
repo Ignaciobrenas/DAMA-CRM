@@ -799,7 +799,14 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
           <div className="text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2 text-center">
             {t('quickDemoAccess')}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => setDemoCredentials('ignaciobrenas@gmail.com', '1')}
+              className="px-2 py-1.5 text-[11px] font-medium bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-800/60 rounded-xl text-blue-700 dark:text-blue-300 transition-colors text-center truncate font-semibold"
+            >
+              Ignacio
+            </button>
             <button
               type="button"
               onClick={() => setDemoCredentials('admin@dama-crm.local', 'Admin1234!')}

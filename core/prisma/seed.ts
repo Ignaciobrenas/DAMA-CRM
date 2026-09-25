@@ -131,6 +131,7 @@ async function main() {
   const passwordHashAdmin = await bcrypt.hash('Admin1234!', 10);
   const passwordHashSales = await bcrypt.hash('Ventas1234!', 10);
   const passwordHashPm = await bcrypt.hash('Pm1234!', 10);
+  const passwordHashIgnacio = await bcrypt.hash('1', 10);
 
   const adminUser = await prisma.user.create({
     data: {
@@ -139,6 +140,17 @@ async function main() {
       name: 'Ignacio Administrador',
       roleId: adminRole.id,
       twoFactorEnabled: false, // Can be toggled on in settings
+      isActive: true,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      email: 'ignaciobrenas@gmail.com',
+      passwordHash: passwordHashIgnacio,
+      name: 'Ignacio Breñas',
+      roleId: adminRole.id,
+      twoFactorEnabled: false,
       isActive: true,
     },
   });
@@ -691,6 +703,7 @@ async function main() {
   console.log('✅ Seed completed successfully!');
   console.log('---------------------------------------------------------');
   console.log('🔑 Credenciales de Acceso:');
+  console.log('   Admin:   ignaciobrenas@gmail.com / 1');
   console.log('   Admin:   admin@dama-crm.local / Admin1234!');
   console.log('   Ventas:  ventas@dama-crm.local / Ventas1234!');
   console.log('   PM:      pm@dama-crm.local / Pm1234!');
