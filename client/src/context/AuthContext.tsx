@@ -16,6 +16,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ require2FA?: boolean; tempToken?: string; success: boolean; message?: string }>;
+  register: (name: string, email: string, password: string, companyName?: string) => Promise<{ success: boolean; message?: string }>;
   verify2FA: (tempToken: string, code: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   hasPermission: (resource: string, action: string) => boolean;
@@ -78,6 +79,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: false, message: res.message || 'Error al iniciar sesión' };
   };
 
+  const register = async (name: string, email: string, password: string, companyName?: string) => {
+    const res = await apiRequest('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password, companyName }),
+    });
+
+    if (res.success && (res as any).token && (res as any).user) {
+      localStorage.setItem('dama_token', (res as any).token);
+      localStorage.setItem('dama_user', JSON.stringify((res as any).user));
+      setUser((res as any).user);
+      return { success: true };
+    }
+
+    return { success: false, message: res.message || 'Error al registrar usuario' };
+  };
+
   const verify2FA = async (tempToken: string, code: string) => {
     const res = await apiRequest('/auth/verify-2fa', {
       method: 'POST',
@@ -115,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
+        register,
         verify2FA,
         logout,
         hasPermission,

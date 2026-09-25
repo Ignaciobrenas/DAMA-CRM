@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import { prisma } from '../../prisma';
 import { generateToken, verifyToken } from '../../utils/jwt';
-import { sendOtpEmail } from '../../utils/mailer';
+import { sendOtpEmail, sendPasswordResetEmail } from '../../utils/mailer';
 import { logAudit } from '../../middlewares/audit.middleware';
 
 export async function login(req: Request, res: Response): Promise<void> {
@@ -241,6 +241,265 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
           action: p.action,
         })),
       },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function register(req: Request, res: Response): Promise<void> {
+  try {
+    const { name, email, password, companyName } = req.body;
+
+    if (!name || !email || !password) {
+      res.status(400).json({ success: false, message: 'Nombre, email y contraseña requeridos' });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 6 caracteres' });
+      return;
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const existingUser = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
+
+    if (existingUser) {
+      res.status(409).json({ success: false, message: 'Ya existe una cuenta con este correo electrónico' });
+      return;
+    }
+
+    // Default role assignment: assign SALES role by default, or ADMIN if first user
+    const totalUsers = await prisma.user.count();
+    let targetRole = await prisma.role.findUnique({
+      where: { name: totalUsers === 0 ? 'ADMIN' : 'SALES' },
+    });
+
+    if (!targetRole) {
+      targetRole = await prisma.role.findFirst();
+    }
+
+    if (!targetRole) {
+      res.status(500).json({ success: false, message: 'Error de configuración: no hay roles creados en el sistema' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const newUser = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: cleanEmail,
+        passwordHash,
+        roleId: targetRole.id,
+        isActive: true,
+      },
+      include: {
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
+    });
+
+    // Optionally create user's company if provided
+    if (companyName && companyName.trim()) {
+      await prisma.company.create({
+        data: {
+          name: companyName.trim(),
+          email: cleanEmail,
+        },
+      });
+    }
+
+    await logAudit(newUser.id, 'REGISTER', 'User', newUser.id, { email: cleanEmail, name }, req.ip);
+
+    const token = generateToken({
+      userId: newUser.id,
+      email: newUser.email,
+      role: newUser.role.name,
+    });
+
+    res.status(201).json({
+      success: true,
+      token,
+      message: 'Cuenta creada con éxito',
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        avatar: newUser.avatar,
+        twoFactorEnabled: newUser.twoFactorEnabled,
+        role: newUser.role.name,
+        permissions: newUser.role.permissions.map((p) => ({
+          resource: p.resource,
+          action: p.action,
+        })),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ success: false, message: 'El correo electrónico es obligatorio' });
+      return;
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
+
+    // For security, do not disclose if email exists or not
+    if (!user) {
+      res.json({
+        success: true,
+        message: 'Si el correo está registrado, recibirás un código de recuperación en breve',
+      });
+      return;
+    }
+
+    // Generate 6-digit verification code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await prisma.twoFactorToken.create({
+      data: {
+        userId: user.id,
+        code: resetCode,
+        expiresAt,
+      },
+    });
+
+    await sendPasswordResetEmail(user.email, user.name, resetCode);
+    await logAudit(user.id, 'FORGOT_PASSWORD_REQUEST', 'User', user.id, { email: cleanEmail }, req.ip);
+
+    res.json({
+      success: true,
+      message: 'Código de recuperación enviado. Revisa tu bandeja de entrada.',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      res.status(400).json({ success: false, message: 'Email, código y nueva contraseña requeridos' });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({ success: false, message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+      return;
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
+
+    if (!user) {
+      res.status(400).json({ success: false, message: 'Usuario no encontrado o código inválido' });
+      return;
+    }
+
+    const validToken = await prisma.twoFactorToken.findFirst({
+      where: {
+        userId: user.id,
+        code: code.trim(),
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!validToken) {
+      res.status(400).json({ success: false, message: 'Código de recuperación incorrecto o caducado' });
+      return;
+    }
+
+    // Mark token as used
+    await prisma.twoFactorToken.update({
+      where: { id: validToken.id },
+      data: { used: true },
+    });
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    await logAudit(user.id, 'PASSWORD_RESET_SUCCESS', 'User', user.id, { email: cleanEmail }, req.ip);
+
+    res.json({
+      success: true,
+      message: 'Tu contraseña ha sido restablecida correctamente. Ya puedes iniciar sesión.',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function changePassword(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ success: false, message: 'Contraseña actual y nueva contraseña requeridas' });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({ success: false, message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      res.status(400).json({ success: false, message: 'La contraseña actual no es correcta' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    await logAudit(userId, 'PASSWORD_CHANGED', 'User', userId, {}, req.ip);
+
+    res.json({
+      success: true,
+      message: 'Contraseña actualizada con éxito',
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

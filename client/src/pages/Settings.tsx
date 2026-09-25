@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldCheck, Users, Lock, Key, Check, Save, Paintbrush, Image, RotateCcw, Sparkles } from 'lucide-react';
+import { Shield, ShieldCheck, Users, Lock, Key, Check, Save, Paintbrush, Image, RotateCcw, Sparkles, KeyRound } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useBranding } from '../context/BrandingContext';
+import { Modal } from '../components/common/Modal';
 
 export const Settings: React.FC = () => {
   const { t } = useLanguage();
@@ -17,6 +18,15 @@ export const Settings: React.FC = () => {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(user?.twoFactorEnabled || false);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [rolePermissions, setRolePermissions] = useState<Array<{ resource: string; action: string }>>([]);
+
+  // Change Password Modal State
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   const resources = [
     { id: 'companies', label: 'Empresas' },
@@ -111,6 +121,42 @@ export const Settings: React.FC = () => {
   };
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError(t('passwordMismatch'));
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError(t('passwordTooShort'));
+      return;
+    }
+
+    setIsSavingPassword(true);
+    const res = await apiRequest('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    setIsSavingPassword(false);
+
+    if (res.success) {
+      setPasswordSuccess(t('passwordChangedSuccess'));
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordSuccess('');
+      }, 1500);
+    } else {
+      setPasswordError(res.message || 'Error al actualizar contraseña');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -382,30 +428,59 @@ export const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Security: 2FA Toggle Card */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-            <Lock className="w-5 h-5" />
+      {/* Security: 2FA & Password Management */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 2FA Toggle Card */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-gray-900 dark:text-white">Doble Factor (2FA OTP)</h3>
+              <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                Código temporal de 6 dígitos en cada inicio de sesión
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xs font-bold text-gray-900 dark:text-white">Doble Factor de Autenticación (2FA OTP)</h3>
-            <p className="text-[11px] text-gray-500 dark:text-slate-400">
-              Envía un código de 6 dígitos mediante Nodemailer a tu correo electrónico en cada inicio de sesión
-            </p>
-          </div>
+
+          <button
+            onClick={handleToggle2FA}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 ${
+              twoFactorEnabled
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                : 'bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300'
+            }`}
+          >
+            {twoFactorEnabled ? '2FA Activado' : 'Activar 2FA'}
+          </button>
         </div>
 
-        <button
-          onClick={handleToggle2FA}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            twoFactorEnabled
-              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-              : 'bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300'
-          }`}
-        >
-          {twoFactorEnabled ? '2FA Activado (Protegido)' : 'Activar 2FA'}
-        </button>
+        {/* Change Password Card */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-gray-900 dark:text-white">{t('changePassword')}</h3>
+              <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                Actualiza tu clave de acceso personal con cifrado bcrypt
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setPasswordError('');
+              setPasswordSuccess('');
+              setShowPasswordModal(true);
+            }}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shrink-0"
+          >
+            {t('changePassword')}
+          </button>
+        </div>
       </div>
 
       {/* Dynamic RBAC Matrix Editor */}
@@ -534,6 +609,89 @@ export const Settings: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <Modal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        title={t('changePassword')}
+        size="md"
+      >
+        <form onSubmit={handleChangePassword} className="space-y-3.5">
+          {passwordError && (
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
+              <Lock className="w-4 h-4 shrink-0" />
+              <span>{passwordError}</span>
+            </div>
+          )}
+
+          {passwordSuccess && (
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300">
+              <Check className="w-4 h-4 shrink-0" />
+              <span>{passwordSuccess}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              {t('currentPassword')}
+            </label>
+            <input
+              type="password"
+              required
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              {t('newPassword')}
+            </label>
+            <input
+              type="password"
+              required
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              {t('confirmPassword')}
+            </label>
+            <input
+              type="password"
+              required
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              placeholder="Repite la nueva contraseña"
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            />
+          </div>
+
+          <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowPasswordModal(false)}
+              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              disabled={isSavingPassword}
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs disabled:opacity-50"
+            >
+              {isSavingPassword ? 'Actualizando...' : t('save')}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

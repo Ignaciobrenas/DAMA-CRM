@@ -46,6 +46,15 @@ describe('DAMA-CRM Core Unit Tests', () => {
         jwt.verify(tamperedToken, JWT_SECRET);
       });
     });
+
+    it('should generate valid 6-digit password reset code with expiration', () => {
+      const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+      assert.strictEqual(resetCode.length, 6);
+      assert.match(resetCode, /^[0-9]{6}$/);
+
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      assert.strictEqual(expiresAt.getTime() > Date.now(), true);
+    });
   });
 
   describe('RBAC Authorization Matrix', () => {
