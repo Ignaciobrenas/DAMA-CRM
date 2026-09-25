@@ -9,7 +9,7 @@ export interface BrandingConfig {
 
 const DEFAULT_BRANDING: BrandingConfig = {
   companyName: 'DAMA-CRM',
-  logoUrl: '',
+  logoUrl: '/assets/logos/dama-symbol-dark.svg',
   primaryColor: '#2563EB',
   borderRadius: 'md',
 };

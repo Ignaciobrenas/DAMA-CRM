@@ -44,7 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
   ]);
 
   useEffect(() => {
-    const unsub = wsClient.on('notification:new', (notif: any) => {
+    const unsubNotif = wsClient.on('notification:new', (notif: any) => {
       setNotifications((prev) => [
         {
           id: String(Date.now()),
@@ -57,7 +57,85 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         ...prev,
       ]);
     });
-    return unsub;
+
+    const unsubLead = wsClient.on('lead:captured', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: '🎯 ¡Nuevo Lead Web Capturado!',
+          desc: `${data.name} (${data.email}) desde ${data.source}`,
+          time: 'Ahora mismo',
+          type: 'deal',
+          unread: true,
+        },
+        ...prev,
+      ]);
+    });
+
+    const unsubCart = wsClient.on('ecommerce:cart_abandoned', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: '🛒 Carrito Abandonado Detectado',
+          desc: `${data.email} dejó una cesta de ${data.cartTotal}€ (${data.itemCount} productos)`,
+          time: 'Ahora mismo',
+          type: 'stock',
+          unread: true,
+        },
+        ...prev,
+      ]);
+    });
+
+    const unsubOrder = wsClient.on('ecommerce:order_placed', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: data.isVip ? '⭐ ¡Compra VIP Recibida!' : '💰 Pedido E-commerce Completado',
+          desc: `Pedido #${data.orderId}: ${data.total} ${data.currency} por ${data.customerEmail}`,
+          time: 'Ahora mismo',
+          type: 'deal',
+          unread: true,
+        },
+        ...prev,
+      ]);
+    });
+
+    const unsubTicket = wsClient.on('ticket:created', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: `🎫 Incidencia ${data.ticketNumber} [${data.priority}]`,
+          desc: `${data.subject} (${data.contactEmail})`,
+          time: 'Ahora mismo',
+          type: 'chat',
+          unread: true,
+        },
+        ...prev,
+      ]);
+    });
+
+    const unsubAppt = wsClient.on('appointment:booked', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: '📅 Nueva Reunión Comercial Agendada',
+          desc: `${data.name} reservó una cita (${data.type}) para el ${new Date(data.date).toLocaleDateString()}`,
+          time: 'Ahora mismo',
+          type: 'deal',
+          unread: true,
+        },
+        ...prev,
+      ]);
+    });
+
+    return () => {
+      unsubNotif();
+      unsubLead();
+      unsubCart();
+      unsubOrder();
+      unsubTicket();
+      unsubAppt();
+    };
   }, []);
 
   const unreadCount = notifications.filter((n) => n.unread).length;

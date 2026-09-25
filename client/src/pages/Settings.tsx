@@ -218,6 +218,45 @@ export const Settings: React.FC = () => {
                   }}
                 />
               </label>
+              <div className="pt-2">
+                <div className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1.5">
+                  Variantes Oficiales DAMA (1-Clic):
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setBrandForm({ ...brandForm, logoUrl: '/assets/logos/dama-symbol-dark.svg' })}
+                    className="p-1.5 text-[10px] font-medium bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-lg text-left truncate flex items-center space-x-1"
+                  >
+                    <img src="/assets/logos/dama-symbol-dark.svg" alt="DM" className="w-3.5 h-3.5 object-contain" />
+                    <span className="truncate">Símbolo DM (Oscuro)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBrandForm({ ...brandForm, logoUrl: '/assets/logos/dama-symbol-light.svg' })}
+                    className="p-1.5 text-[10px] font-medium bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-lg text-left truncate flex items-center space-x-1"
+                  >
+                    <img src="/assets/logos/dama-symbol-light.svg" alt="DM" className="w-3.5 h-3.5 object-contain" />
+                    <span className="truncate">Símbolo DM (Claro)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBrandForm({ ...brandForm, logoUrl: '/assets/logos/dama-logo-dark.svg' })}
+                    className="p-1.5 text-[10px] font-medium bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-lg text-left truncate flex items-center space-x-1"
+                  >
+                    <img src="/assets/logos/dama-logo-dark.svg" alt="DAMA" className="w-3.5 h-3.5 object-contain" />
+                    <span className="truncate">Logo DAMA (Oscuro)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBrandForm({ ...brandForm, logoUrl: '/assets/logos/dama-logo-light.svg' })}
+                    className="p-1.5 text-[10px] font-medium bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-lg text-left truncate flex items-center space-x-1"
+                  >
+                    <img src="/assets/logos/dama-logo-light.svg" alt="DAMA" className="w-3.5 h-3.5 object-contain" />
+                    <span className="truncate">Logo DAMA (Blanco)</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

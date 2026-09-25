@@ -22,6 +22,7 @@ import searchRoutes from './modules/search/search.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import activitiesRoutes from './modules/activities/activities.routes';
 import customFieldsRoutes from './modules/custom-fields/custom-fields.routes';
+import leadCaptureRoutes from './modules/lead-capture/lead-capture.routes';
 
 const app = express();
 
@@ -101,6 +102,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/activities', activitiesRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);
+app.use('/api/lead-capture', leadCaptureRoutes);
 
 // Centralized error handler
 app.use(errorHandler);

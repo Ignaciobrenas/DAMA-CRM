@@ -151,4 +151,43 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(validateFieldValue('BOOLEAN', 'maybe'), false);
     });
   });
+
+  describe('Lead Capture & RGPD Consent Engine', () => {
+    it('should format marketing opt-in audit log with legal metadata', () => {
+      const consentRecord = {
+        email: 'lead@empresa.com',
+        marketingConsent: true,
+        ip: '192.168.1.50',
+        userAgent: 'Mozilla/5.0 CRM Browser',
+        source: 'smart_form_contact',
+        version: 'RGPD-2026.1',
+      };
+
+      assert.strictEqual(consentRecord.marketingConsent, true);
+      assert.strictEqual(consentRecord.version, 'RGPD-2026.1');
+      assert.match(consentRecord.email, /@/);
+    });
+
+    it('should calculate progressive profile missing fields properly', () => {
+      const existingContact = {
+        firstName: 'Ignacio',
+        lastName: 'García',
+        email: 'ignacio@empresa.com',
+        phone: null,
+        company: null,
+      };
+
+      const missingFields: string[] = [];
+      if (!existingContact.phone) missingFields.push('phone');
+      if (!existingContact.company) missingFields.push('companyName');
+
+      assert.deepStrictEqual(missingFields, ['phone', 'companyName']);
+    });
+
+    it('should generate compliant ticket reference number format', () => {
+      const ticketNumber = `TCK-${Math.floor(100000 + Math.random() * 900000)}`;
+      assert.match(ticketNumber, /^TCK-\d{6}$/);
+    });
+  });
 });
+

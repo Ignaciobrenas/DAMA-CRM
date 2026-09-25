@@ -80,6 +80,34 @@ async function executeWorkflow(workflow: any, triggerData: Record<string, any>):
         break;
       }
 
+      case 'send_recovery_email': {
+        resultData = {
+          recipient: triggerData.email,
+          cartTotal: triggerData.cartTotal,
+          couponApplied: 'RECUPERA10',
+          sent: true,
+        };
+        break;
+      }
+
+      case 'send_lead_magnet': {
+        resultData = {
+          recipient: triggerData.email,
+          resource: triggerData.resource || 'Guia-DAMA-CRM.pdf',
+          sent: true,
+        };
+        break;
+      }
+
+      case 'assign_ticket': {
+        resultData = {
+          ticketNumber: triggerData.ticketNumber,
+          assignedAgent: 'Equipo Soporte Nivel 2',
+          slaHours: triggerData.priority === 'URGENT' ? 2 : 8,
+        };
+        break;
+      }
+
       default: {
         resultData = { executed: true, action: workflow.action };
         break;

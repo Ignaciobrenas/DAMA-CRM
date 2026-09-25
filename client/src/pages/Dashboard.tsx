@@ -8,9 +8,14 @@ import {
   Plus,
   Briefcase,
   ExternalLink,
+  Zap,
+  ShoppingCart,
+  LifeBuoy,
+  Calendar,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { SkeletonCard } from '../components/common/Loading';
 
 export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ onNavigate }) => {
   const { t } = useLanguage();
@@ -57,15 +62,22 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
 
         <div className="flex items-center space-x-2">
           <button
+            onClick={() => onNavigate('/lead-capture')}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Puntos de Captura</span>
+          </button>
+          <button
             onClick={() => onNavigate('/pipeline')}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{t('newDeal')}</span>
           </button>
           <button
             onClick={() => onNavigate('/invoicing')}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium transition-colors"
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-medium transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{t('newInvoice')}</span>
@@ -73,8 +85,17 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      ) : (
+        <>
+          {/* KPI Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Revenue / Pipeline */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
@@ -137,6 +158,86 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
             En sprints de desarrollo activo
+          </div>
+        </div>
+      </div>
+
+      {/* Lead Capture & E-commerce Operational Intelligence Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Web Leads Captured */}
+        <div
+          onClick={() => onNavigate('/lead-capture')}
+          className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Leads Web Capturados</span>
+            <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+              <Zap className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+            {contactsCount}
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
+            <span>Formularios & Lead Magnets</span>
+            <span className="text-[10px] underline">Ver Centro →</span>
+          </div>
+        </div>
+
+        {/* E-commerce Abandoned Cart Recovery */}
+        <div
+          onClick={() => onNavigate('/lead-capture')}
+          className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Carritos en Riesgo</span>
+            <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+              <ShoppingCart className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400">
+            1.420 €
+          </div>
+          <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
+            3 cestas con flujos activos
+          </div>
+        </div>
+
+        {/* Helpdesk & Ticketing SLA */}
+        <div
+          onClick={() => onNavigate('/portal')}
+          className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs cursor-pointer hover:border-cyan-300 dark:hover:border-cyan-700 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Tickets de Soporte</span>
+            <div className="p-2 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400">
+              <LifeBuoy className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+            100% SLA
+          </div>
+          <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
+            Tiempo medio resp: 12 min
+          </div>
+        </div>
+
+        {/* Web Tracking Dwell Time */}
+        <div
+          onClick={() => onNavigate('/lead-capture')}
+          className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Píxel Telemetría</span>
+            <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+              <Calendar className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            2m 45s
+          </div>
+          <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
+            Permanencia media web
           </div>
         </div>
       </div>
@@ -228,6 +329,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           </div>
         </div>
       </div>
-    </div>
-  );
+    </>
+  )}
+</div>
+);
 };
