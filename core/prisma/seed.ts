@@ -564,38 +564,38 @@ async function main() {
   // 13. Create Custom Fields Definitions & Values
   const cfContactTier = await prisma.customField.create({
     data: {
-      entity: 'CONTACT',
-      name: 'Nivel de Prioridad (Tier)',
-      key: 'tier',
-      type: 'SELECT',
-      options: ['TIER_1_ENTERPRISE', 'TIER_2_MIDMARKET', 'STARTUP_PYME'],
+      entityType: 'CONTACT',
+      name: 'tier',
+      label: 'Nivel de Prioridad (Tier)',
+      fieldType: 'SELECT',
+      optionsJson: JSON.stringify(['TIER_1_ENTERPRISE', 'TIER_2_MIDMARKET', 'STARTUP_PYME']),
     },
   });
 
   const cfLinkedin = await prisma.customField.create({
     data: {
-      entity: 'CONTACT',
-      name: 'Perfil LinkedIn',
-      key: 'linkedin_url',
-      type: 'TEXT',
+      entityType: 'CONTACT',
+      name: 'linkedin_url',
+      label: 'Perfil LinkedIn',
+      fieldType: 'TEXT',
     },
   });
 
   const cfCompetitor = await prisma.customField.create({
     data: {
-      entity: 'DEAL',
-      name: 'Competidor Principal',
-      key: 'competitor',
-      type: 'TEXT',
+      entityType: 'DEAL',
+      name: 'competitor',
+      label: 'Competidor Principal',
+      fieldType: 'TEXT',
     },
   });
 
   const cfBudgetApproved = await prisma.customField.create({
     data: {
-      entity: 'DEAL',
-      name: 'Presupuesto Aprobado por CFO',
-      key: 'budget_approved',
-      type: 'BOOLEAN',
+      entityType: 'DEAL',
+      name: 'budget_approved',
+      label: 'Presupuesto Aprobado por CFO',
+      fieldType: 'BOOLEAN',
     },
   });
 
@@ -636,11 +636,11 @@ async function main() {
   await prisma.activity.create({
     data: {
       type: 'CALL',
-      title: 'Llamada de cualificación técnica con COO',
+      subject: 'Llamada de cualificación técnica con COO',
       description: 'Se revisaron requerimientos de hosting on-premise y compatibilidad con PostgreSQL 15.',
       scheduledAt: new Date(Date.now() - 24 * 3600 * 1000),
       durationMinutes: 30,
-      isCompleted: true,
+      completedAt: new Date(),
       contactId: contact1.id,
       dealId: deal1.id,
       userId: salesUser.id,
@@ -650,11 +650,11 @@ async function main() {
   await prisma.activity.create({
     data: {
       type: 'MEETING',
-      title: 'Demo en vivo de DAMA-CRM y despliegue Docker Traefik',
+      subject: 'Demo en vivo de DAMA-CRM y despliegue Docker Traefik',
       description: 'Presentación ejecutiva al equipo directivo de Innovatech Solutions SL.',
       scheduledAt: new Date(Date.now() + 48 * 3600 * 1000),
       durationMinutes: 45,
-      isCompleted: false,
+      completedAt: null,
       contactId: contact1.id,
       dealId: deal1.id,
       userId: adminUser.id,
@@ -664,10 +664,10 @@ async function main() {
   await prisma.activity.create({
     data: {
       type: 'NOTE',
-      title: 'Acuerdo de pagos y sincronización UnoPIM',
+      subject: 'Acuerdo de pagos y sincronización UnoPIM',
       description: 'Cliente solicita sweep nocturno a las 03:00 AM para no saturar su servidor de repuestos.',
       scheduledAt: new Date(),
-      isCompleted: true,
+      completedAt: new Date(),
       contactId: contact2.id,
       dealId: deal2.id,
       userId: salesUser.id,
@@ -677,11 +677,11 @@ async function main() {
   await prisma.activity.create({
     data: {
       type: 'TASK',
-      title: 'Preparar anexo técnico de SLA 99.9%',
+      subject: 'Preparar anexo técnico de SLA 99.9%',
       description: 'Redactar especificación de alta disponibilidad con failover local.',
       scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
       durationMinutes: 60,
-      isCompleted: false,
+      completedAt: null,
       contactId: contact3.id,
       dealId: deal3.id,
       userId: pmUser.id,
