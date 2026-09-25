@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Download, FileText, CheckCircle, Clock, AlertCircle, X, Trash2 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { Modal } from '../components/common/Modal';
+import { PermissionGate } from '../components/common/PermissionGate';
 
 export const Invoicing: React.FC = () => {
   const { t } = useLanguage();
@@ -181,13 +183,15 @@ export const Invoicing: React.FC = () => {
             </button>
           </div>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t('newInvoice')}</span>
-          </button>
+          <PermissionGate resource="invoices" action="create">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newInvoice')}</span>
+            </button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -308,132 +312,126 @@ export const Invoicing: React.FC = () => {
       )}
 
       {/* Create Invoice Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('newInvoice')}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={t('newInvoice')}
+        size="lg"
+      >
+        <form onSubmit={handleCreateInvoice} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Empresa</label>
+              <select
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="">-- Seleccionar Empresa --</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Contacto</label>
+              <select
+                value={contactId}
+                onChange={(e) => setContactId(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="">-- Seleccionar Contacto --</option>
+                {contacts.map((ct) => (
+                  <option key={ct.id} value={ct.id}>
+                    {ct.firstName} {ct.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Items Table in Modal */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-900 dark:text-white">Líneas de Factura</label>
+              <button
+                type="button"
+                onClick={addItemRow}
+                className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+              >
+                + Añadir Línea
               </button>
             </div>
 
-            <form onSubmit={handleCreateInvoice} className="mt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Empresa</label>
-                  <select
-                    value={companyId}
-                    onChange={(e) => setCompanyId(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                  >
-                    <option value="">-- Seleccionar Empresa --</option>
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Contacto</label>
-                  <select
-                    value={contactId}
-                    onChange={(e) => setContactId(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                  >
-                    <option value="">-- Seleccionar Contacto --</option>
-                    {contacts.map((ct) => (
-                      <option key={ct.id} value={ct.id}>
-                        {ct.firstName} {ct.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Items Table in Modal */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-gray-900 dark:text-white">Líneas de Factura</label>
+            {items.map((it, idx) => (
+              <div key={idx} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  placeholder="Descripción del concepto"
+                  required
+                  value={it.description}
+                  onChange={(e) => updateItem(idx, 'description', e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                />
+                <input
+                  type="number"
+                  placeholder="Cant."
+                  required
+                  value={it.quantity}
+                  onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                  className="w-16 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
+                />
+                <input
+                  type="number"
+                  placeholder="Precio €"
+                  required
+                  value={it.unitPrice}
+                  onChange={(e) => updateItem(idx, 'unitPrice', e.target.value)}
+                  className="w-24 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-right"
+                />
+                {items.length > 1 && (
                   <button
                     type="button"
-                    onClick={addItemRow}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                    onClick={() => removeItemRow(idx)}
+                    className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
                   >
-                    + Añadir Línea
+                    <Trash2 className="w-4 h-4" />
                   </button>
-                </div>
-
-                {items.map((it, idx) => (
-                  <div key={idx} className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      placeholder="Descripción del concepto"
-                      required
-                      value={it.description}
-                      onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                      className="flex-1 px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Cant."
-                      required
-                      value={it.quantity}
-                      onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                      className="w-16 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Precio €"
-                      required
-                      value={it.unitPrice}
-                      onChange={(e) => updateItem(idx, 'unitPrice', e.target.value)}
-                      className="w-24 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-right"
-                    />
-                    {items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItemRow(idx)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                )}
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Notas u Observaciones</label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Plazos de pago, datos bancarios..."
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
-                >
-                  Generar Factura
-                </button>
-              </div>
-            </form>
+            ))}
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Notas u Observaciones</label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Plazos de pago, datos bancarios..."
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+            />
+          </div>
+
+          <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
+            >
+              Generar Factura
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

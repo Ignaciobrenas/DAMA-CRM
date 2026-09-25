@@ -5,6 +5,8 @@ import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { RecordDrawer } from '../components/crm/RecordDrawer';
 import { wsClient } from '../services/websocket';
+import { Modal } from '../components/common/Modal';
+import { PermissionGate } from '../components/common/PermissionGate';
 
 export const Pipeline: React.FC = () => {
   const { t } = useLanguage();
@@ -152,13 +154,15 @@ export const Pipeline: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>{t('newDeal')}</span>
-        </button>
+        <PermissionGate resource="deals" action="create">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{t('newDeal')}</span>
+          </button>
+        </PermissionGate>
       </div>
 
       {/* Kanban Board Container (Horizontal Scroll for High Density & Mobile) */}
@@ -235,118 +239,112 @@ export const Pipeline: React.FC = () => {
       </div>
 
       {/* New Deal Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('newDeal')}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateDeal} className="mt-4 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Título del Negocio
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ej: Licencia ERP Cloud + Consultoría"
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Valor Proyectado (€)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  placeholder="15000"
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Etapa Inicial
-                </label>
-                <select
-                  value={selectedStageId}
-                  onChange={(e) => setSelectedStageId(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                >
-                  {stages.map((st) => (
-                    <option key={st.id} value={st.id}>
-                      {st.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Empresa Asociada
-                </label>
-                <select
-                  value={companyId}
-                  onChange={(e) => setCompanyId(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                >
-                  <option value="">-- Sin Empresa --</option>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Contacto de Referencia
-                </label>
-                <select
-                  value={contactId}
-                  onChange={(e) => setContactId(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                >
-                  <option value="">-- Sin Contacto --</option>
-                  {contacts.map((ct) => (
-                    <option key={ct.id} value={ct.id}>
-                      {ct.firstName} {ct.lastName} ({ct.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
-                >
-                  {t('save')}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={t('newDeal')}
+        size="md"
+      >
+        <form onSubmit={handleCreateDeal} className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              Título del Negocio
+            </label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ej: Licencia ERP Cloud + Consultoría"
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              Valor Proyectado (€)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              required
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="15000"
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              Etapa Inicial
+            </label>
+            <select
+              value={selectedStageId}
+              onChange={(e) => setSelectedStageId(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            >
+              {stages.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              Empresa Asociada
+            </label>
+            <select
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            >
+              <option value="">-- Sin Empresa --</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              Contacto de Referencia
+            </label>
+            <select
+              value={contactId}
+              onChange={(e) => setContactId(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            >
+              <option value="">-- Sin Contacto --</option>
+              {contacts.map((ct) => (
+                <option key={ct.id} value={ct.id}>
+                  {ct.firstName} {ct.lastName} ({ct.email})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
+            >
+              {t('save')}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Deal Activity & Custom Fields Drawer */}
       {selectedDeal && (

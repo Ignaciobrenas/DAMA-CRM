@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Sun, Moon, Globe, LogOut, Menu, Shield, Bell, Check, MessageSquare, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -16,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
   const { language, setLanguage, t } = useLanguage();
   const { user, logout } = useAuth();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
   const [notifications, setNotifications] = useState([
     {
       id: '1',
@@ -138,6 +139,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
     };
   }, []);
 
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsNotificationsOpen(false);
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotificationsOpen]);
+
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   const markAllAsRead = () => {
@@ -198,7 +217,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         </button>
 
         {/* Notification Center */}
-        <div className="relative">
+        <div ref={notifRef} className="relative">
           <button
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
             aria-label="Notificaciones del sistema"

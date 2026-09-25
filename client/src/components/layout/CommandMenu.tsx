@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Building2, User, DollarSign, CheckSquare, FileText, Package, X } from 'lucide-react';
 import { apiRequest } from '../../services/api';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface SearchResult {
   category: string;
@@ -24,10 +25,17 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
+  const { hasPermission } = useAuth();
 
   useEffect(() => {
     if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
       setTimeout(() => inputRef.current?.focus(), 50);
+
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
     } else {
       setQuery('');
       setResults([]);
@@ -61,13 +69,25 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
       setIsLoading(true);
       const res = await apiRequest<SearchResult[]>(`/search?q=${encodeURIComponent(query)}`);
       if (res.success && res.data) {
-        setResults(res.data);
+        // Strict RBAC filtering on search results
+        const filtered = res.data.filter((item) => {
+          switch (item.category) {
+            case 'Empresas': return hasPermission('companies', 'read');
+            case 'Contactos': return hasPermission('contacts', 'read');
+            case 'Oportunidades (Deals)': return hasPermission('deals', 'read');
+            case 'Tareas Ágiles': return hasPermission('projects', 'read');
+            case 'Facturas': return hasPermission('invoices', 'read');
+            case 'Inventario': return hasPermission('inventory', 'read');
+            default: return true;
+          }
+        });
+        setResults(filtered);
       }
       setIsLoading(false);
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, hasPermission]);
 
   if (!isOpen) return null;
 
@@ -84,8 +104,14 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden"
+      >
         {/* Search Input Bar */}
         <div className="flex items-center px-4 py-3 border-b border-gray-200 dark:border-slate-800">
           <Search className="w-5 h-5 text-gray-400 dark:text-gray-500 mr-3" />

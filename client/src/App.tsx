@@ -9,6 +9,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
+import { PermissionGate, AccessDenied } from './components/common/PermissionGate';
 
 // Views
 import { Login } from './pages/Login';
@@ -69,21 +70,76 @@ const AppContent: React.FC = () => {
 
   const renderActiveView = () => {
     switch (currentRoute) {
-      case '/': return <Dashboard onNavigate={setCurrentRoute} />;
-      case '/pipeline': return <Pipeline />;
-      case '/agile': return <AgilePlanner />;
-      case '/contacts': return <Contacts />;
-      case '/companies': return <Companies />;
-      case '/invoicing': return <Invoicing />;
-      case '/inventory': return <Inventory />;
-      case '/workflows': return <Workflows />;
-      case '/omnichannel': return <Omnichannel />;
-      case '/lead-capture': return <LeadCapture />;
-      case '/reports': return <Reports />;
-      case '/settings': return <Settings />;
-      case '/portal': return <ClientPortal />;
-      case '/privacy': return <PrivacyPolicy onBack={() => setCurrentRoute('/')} />;
-      default: return <Dashboard onNavigate={setCurrentRoute} />;
+      case '/':
+        return <Dashboard onNavigate={setCurrentRoute} />;
+      case '/pipeline':
+        return (
+          <PermissionGate resource="deals" action="read" fallback={<AccessDenied resource="deals" onGoBack={() => setCurrentRoute('/')} />}>
+            <Pipeline />
+          </PermissionGate>
+        );
+      case '/agile':
+        return (
+          <PermissionGate resource="projects" action="read" fallback={<AccessDenied resource="projects" onGoBack={() => setCurrentRoute('/')} />}>
+            <AgilePlanner />
+          </PermissionGate>
+        );
+      case '/contacts':
+        return (
+          <PermissionGate resource="contacts" action="read" fallback={<AccessDenied resource="contacts" onGoBack={() => setCurrentRoute('/')} />}>
+            <Contacts />
+          </PermissionGate>
+        );
+      case '/companies':
+        return (
+          <PermissionGate resource="companies" action="read" fallback={<AccessDenied resource="companies" onGoBack={() => setCurrentRoute('/')} />}>
+            <Companies />
+          </PermissionGate>
+        );
+      case '/invoicing':
+        return (
+          <PermissionGate resource="invoices" action="read" fallback={<AccessDenied resource="invoices" onGoBack={() => setCurrentRoute('/')} />}>
+            <Invoicing />
+          </PermissionGate>
+        );
+      case '/inventory':
+        return (
+          <PermissionGate resource="inventory" action="read" fallback={<AccessDenied resource="inventory" onGoBack={() => setCurrentRoute('/')} />}>
+            <Inventory />
+          </PermissionGate>
+        );
+      case '/workflows':
+        return (
+          <PermissionGate resource="workflows" action="read" fallback={<AccessDenied resource="workflows" onGoBack={() => setCurrentRoute('/')} />}>
+            <Workflows />
+          </PermissionGate>
+        );
+      case '/omnichannel':
+        return (
+          <PermissionGate resource="omnichannel" action="read" fallback={<AccessDenied resource="omnichannel" onGoBack={() => setCurrentRoute('/')} />}>
+            <Omnichannel />
+          </PermissionGate>
+        );
+      case '/lead-capture':
+        return <LeadCapture />;
+      case '/reports':
+        return (
+          <PermissionGate resource="reports" action="read" fallback={<AccessDenied resource="reports" onGoBack={() => setCurrentRoute('/')} />}>
+            <Reports />
+          </PermissionGate>
+        );
+      case '/settings':
+        return (
+          <PermissionGate resource="users" action="read" fallback={<AccessDenied resource="users" onGoBack={() => setCurrentRoute('/')} />}>
+            <Settings />
+          </PermissionGate>
+        );
+      case '/portal':
+        return <ClientPortal />;
+      case '/privacy':
+        return <PrivacyPolicy onBack={() => setCurrentRoute('/')} />;
+      default:
+        return <Dashboard onNavigate={setCurrentRoute} />;
     }
   };
 
