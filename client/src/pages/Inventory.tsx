@@ -66,7 +66,7 @@ export const Inventory: React.FC = () => {
             {t('inventory')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Microservicio de sincronización de catálogo con UnoPIM y stock en tiempo real
+            {t('inventorySubtitle')}
           </p>
         </div>
 
@@ -77,7 +77,7 @@ export const Inventory: React.FC = () => {
             title="Simular POST entrante de UnoPIM"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Simular Webhook UnoPIM</span>
+            <span>{t('syncUnoPIM')}</span>
           </button>
 
           <button
@@ -85,7 +85,7 @@ export const Inventory: React.FC = () => {
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Barrido Nocturno (Cron)</span>
+            <span>{t('refresh')}</span>
           </button>
         </div>
       </div>
@@ -103,13 +103,13 @@ export const Inventory: React.FC = () => {
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-3">SKU</th>
-                <th className="px-4 py-3">ID UnoPIM Externo</th>
-                <th className="px-4 py-3">Nombre del Producto</th>
-                <th className="px-4 py-3">Categoría</th>
-                <th className="px-4 py-3">Stock</th>
-                <th className="px-4 py-3">Precio PVP</th>
-                <th className="px-4 py-3 text-right">Estado Sincronización</th>
+                <th className="px-4 py-3">{t('sku')}</th>
+                <th className="px-4 py-3">UnoPIM ID</th>
+                <th className="px-4 py-3">{t('productName')}</th>
+                <th className="px-4 py-3">{t('category')}</th>
+                <th className="px-4 py-3">{t('stockUnits')}</th>
+                <th className="px-4 py-3">{t('unitPrice')}</th>
+                <th className="px-4 py-3 text-right">{t('status')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">

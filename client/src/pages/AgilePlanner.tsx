@@ -46,10 +46,10 @@ export const AgilePlanner: React.FC = () => {
   }, []);
 
   const columns = [
-    { id: 'TODO', label: 'Por Hacer', color: '#94A3B8' },
-    { id: 'IN_PROGRESS', label: 'En Progreso', color: '#3B82F6' },
-    { id: 'REVIEW', label: 'En Revisión', color: '#F59E0B' },
-    { id: 'DONE', label: 'Completado', color: '#10B981' },
+    { id: 'TODO', label: t('todo'), color: '#94A3B8' },
+    { id: 'IN_PROGRESS', label: t('inProgress'), color: '#3B82F6' },
+    { id: 'REVIEW', label: t('review'), color: '#F59E0B' },
+    { id: 'DONE', label: t('done'), color: '#10B981' },
   ];
 
   const handleDragStart = (taskId: string) => {
@@ -108,7 +108,7 @@ export const AgilePlanner: React.FC = () => {
             {t('agile')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Gestión técnica y ejecución tras el cierre de ventas
+            {t('agileSubtitle')}
           </p>
         </div>
 
@@ -123,7 +123,7 @@ export const AgilePlanner: React.FC = () => {
                   : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
               }`}
             >
-              Tablero
+              {t('agile')}
             </button>
             <button
               onClick={() => setActiveTab('my-tasks')}
@@ -134,7 +134,7 @@ export const AgilePlanner: React.FC = () => {
               }`}
             >
               <Smartphone className="w-3 h-3 mr-1" />
-              <span>Mis Tareas</span>
+              <span>{t('myTasks')}</span>
             </button>
             <button
               onClick={() => setActiveTab('projects')}
@@ -144,7 +144,7 @@ export const AgilePlanner: React.FC = () => {
                   : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
               }`}
             >
-              Proyectos
+              {t('allTasks')}
             </button>
           </div>
 
@@ -154,7 +154,7 @@ export const AgilePlanner: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Nueva Tarea</span>
+              <span className="hidden sm:inline">{t('newTask')}</span>
             </button>
           </PermissionGate>
         </div>
@@ -327,27 +327,27 @@ export const AgilePlanner: React.FC = () => {
       <Modal
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
-        title="Nueva Tarea Ágil"
+        title={t('newTask')}
         size="md"
       >
         <form onSubmit={handleCreateTask} className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Título de la Tarea
+              {t('taskTitle')}
             </label>
             <input
               type="text"
               required
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
-              placeholder="Ej: Implementar conector webhook UnoPIM"
+              placeholder="Ej: Webhook UnoPIM"
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Proyecto
+              {t('details')}
             </label>
             <select
               value={taskProjectId}
@@ -389,17 +389,17 @@ export const AgilePlanner: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Prioridad
+              {t('priority')}
             </label>
             <select
               value={taskPriority}
               onChange={(e) => setTaskPriority(e.target.value)}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             >
-              <option value="LOW">Baja (LOW)</option>
-              <option value="MEDIUM">Media (MEDIUM)</option>
-              <option value="HIGH">Alta (HIGH)</option>
-              <option value="URGENT">Urgente (URGENT)</option>
+              <option value="LOW">{t('low')}</option>
+              <option value="MEDIUM">{t('medium')}</option>
+              <option value="HIGH">{t('high')}</option>
+              <option value="URGENT">{t('urgent')}</option>
             </select>
           </div>
 

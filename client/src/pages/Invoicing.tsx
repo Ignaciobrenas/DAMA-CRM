@@ -122,25 +122,25 @@ export const Invoicing: React.FC = () => {
       case 'PAID':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-            <CheckCircle className="w-2.5 h-2.5 mr-1" /> Cobrada
+            <CheckCircle className="w-2.5 h-2.5 mr-1" /> {t('statusPaid')}
           </span>
         );
       case 'SENT':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
-            <Clock className="w-2.5 h-2.5 mr-1" /> Enviada
+            <Clock className="w-2.5 h-2.5 mr-1" /> {t('pending')}
           </span>
         );
       case 'OVERDUE':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400">
-            <AlertCircle className="w-2.5 h-2.5 mr-1" /> Vencida
+            <AlertCircle className="w-2.5 h-2.5 mr-1" /> {t('statusOverdue')}
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-300">
-            Borrador
+            {t('statusDraft')}
           </span>
         );
     }
@@ -155,7 +155,7 @@ export const Invoicing: React.FC = () => {
             {t('invoicing')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Generación de presupuestos y facturas mercantiles con exportación PDF nativa
+            {t('invoicingSubtitle')}
           </p>
         </div>
 
@@ -169,7 +169,7 @@ export const Invoicing: React.FC = () => {
                   : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
               }`}
             >
-              Facturas ({invoices.length})
+              {t('invoicing')} ({invoices.length})
             </button>
             <button
               onClick={() => setActiveTab('quotes')}
@@ -202,12 +202,12 @@ export const Invoicing: React.FC = () => {
             <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
               <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
                 <tr>
-                  <th className="px-4 py-3">Número</th>
-                  <th className="px-4 py-3">Cliente / Empresa</th>
-                  <th className="px-4 py-3">Fecha Emisión</th>
-                  <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
+                  <th className="px-4 py-3">{t('invoiceNumber')}</th>
+                  <th className="px-4 py-3">{t('client')}</th>
+                  <th className="px-4 py-3">{t('issueDate')}</th>
+                  <th className="px-4 py-3">{t('status')}</th>
+                  <th className="px-4 py-3">{t('total')}</th>
+                  <th className="px-4 py-3 text-right">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
@@ -355,13 +355,13 @@ export const Invoicing: React.FC = () => {
           {/* Items Table in Modal */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-900 dark:text-white">Líneas de Factura</label>
+              <label className="text-xs font-bold text-gray-900 dark:text-white">{t('items')}</label>
               <button
                 type="button"
                 onClick={addItemRow}
                 className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
               >
-                + Añadir Línea
+                + {t('create')}
               </button>
             </div>
 
@@ -369,7 +369,7 @@ export const Invoicing: React.FC = () => {
               <div key={idx} className="flex items-center space-x-2">
                 <input
                   type="text"
-                  placeholder="Descripción del concepto"
+                  placeholder="Descripción"
                   required
                   value={it.description}
                   onChange={(e) => updateItem(idx, 'description', e.target.value)}
@@ -405,12 +405,11 @@ export const Invoicing: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Notas u Observaciones</label>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('notes')}</label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Plazos de pago, datos bancarios..."
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             />
           </div>
@@ -427,7 +426,7 @@ export const Invoicing: React.FC = () => {
               type="submit"
               className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
             >
-              Generar Factura
+              {t('newInvoice')}
             </button>
           </div>
         </form>

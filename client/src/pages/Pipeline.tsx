@@ -248,21 +248,21 @@ export const Pipeline: React.FC = () => {
         <form onSubmit={handleCreateDeal} className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Título del Negocio
+              {t('dealTitle')}
             </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej: Licencia ERP Cloud + Consultoría"
+              placeholder="Ej: ERP Cloud"
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Valor Proyectado (€)
+              {t('dealValue')} (€)
             </label>
             <input
               type="number"
@@ -277,7 +277,7 @@ export const Pipeline: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Etapa Inicial
+              {t('status')}
             </label>
             <select
               value={selectedStageId}
@@ -294,14 +294,14 @@ export const Pipeline: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Empresa Asociada
+              {t('dealCompany')}
             </label>
             <select
               value={companyId}
               onChange={(e) => setCompanyId(e.target.value)}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             >
-              <option value="">-- Sin Empresa --</option>
+              <option value="">-- {t('noData')} --</option>
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -312,14 +312,14 @@ export const Pipeline: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Contacto de Referencia
+              {t('dealContact')}
             </label>
             <select
               value={contactId}
               onChange={(e) => setContactId(e.target.value)}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             >
-              <option value="">-- Sin Contacto --</option>
+              <option value="">-- {t('noData')} --</option>
               {contacts.map((ct) => (
                 <option key={ct.id} value={ct.id}>
                   {ct.firstName} {ct.lastName} ({ct.email})

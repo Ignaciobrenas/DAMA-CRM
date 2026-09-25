@@ -22,9 +22,11 @@ import {
   Gift,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 import { LoadingSpinner } from '../components/common/Loading';
 
 export const LeadCapture: React.FC = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<
     'smart_forms' | 'lead_magnets' | 'progressive' | 'whatsapp' | 'scheduler' | 'pixel' | 'ecommerce'
   >('smart_forms');
@@ -174,10 +176,10 @@ export const LeadCapture: React.FC = () => {
           <span>Generación de Leads, Conectores & Tracking Omnicanal</span>
         </div>
         <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-          Puntos de Captura & Integraciones Web
+          {t('leadCapture')}
         </h1>
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          Convierte visitas anónimas en clientes fidelizados con formularios inteligentes, perfilado progresivo, agendamiento de citas y píxel de tracking.
+          {t('leadCaptureSubtitle')}
         </p>
       </div>
 

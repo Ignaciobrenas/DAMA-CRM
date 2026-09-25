@@ -17,6 +17,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
+import { useLanguage } from '../context/LanguageContext';
 import { apiRequest } from '../services/api';
 import { LoadingSpinner } from '../components/common/Loading';
 
@@ -25,6 +26,7 @@ interface PrivacyPolicyProps {
 }
 
 export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
+  const { t } = useLanguage();
   const { branding } = useBranding();
   const [activeTab, setActiveTab] = useState<'policy' | 'preferences' | 'export'>('policy');
 
@@ -110,7 +112,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             className="inline-flex items-center space-x-2 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Volver a la aplicación</span>
+            <span>{t('back')}</span>
           </button>
 
           <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-slate-400">
@@ -127,7 +129,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             <div className="space-y-3">
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Privacidad y Protección de Datos</span>
+                <span>{t('privacyPolicy')}</span>
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
                 Política de Privacidad de {branding.companyName}

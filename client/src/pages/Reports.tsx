@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Download, PieChart, CheckCircle2, DollarSign, Target, Award, ArrowDownToLine } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 
 export const Reports: React.FC = () => {
+  const { t } = useLanguage();
   const [salesData, setSalesData] = useState<any>(null);
   const [agileData, setAgileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,10 +46,10 @@ export const Reports: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Informes y Business Intelligence (BI)
+            {t('reportsBI')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Análisis de rendimiento comercial, tasa de conversión y velocidad de entrega ágil
+            {t('reportsSubtitle')}
           </p>
         </div>
 
@@ -57,14 +59,14 @@ export const Reports: React.FC = () => {
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold shadow-xs transition-colors"
           >
             <ArrowDownToLine className="w-3.5 h-3.5 text-blue-600" />
-            <span>Exportar Ventas (CSV)</span>
+            <span>{t('exportCsv')} ({t('pipeline')})</span>
           </button>
           <button
             onClick={() => handleExport('contacts')}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold shadow-xs transition-colors"
           >
             <ArrowDownToLine className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Exportar Contactos (CSV)</span>
+            <span>{t('exportCsv')} ({t('contacts')})</span>
           </button>
         </div>
       </div>
@@ -72,7 +74,7 @@ export const Reports: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Ingresos Ganados</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('wonSales')}</span>
           <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {(kpis.totalWonRevenue || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
           </div>

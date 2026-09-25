@@ -56,7 +56,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
             {t('dashboard')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Resumen operativo y comercial de la empresa en tiempo real
+            {t('dashboardSubtitle')}
           </p>
         </div>
 
@@ -66,7 +66,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
             className="inline-flex items-center space-x-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>Puntos de Captura</span>
+            <span>{t('quickCapture')}</span>
           </button>
           <button
             onClick={() => onNavigate('/pipeline')}
@@ -99,7 +99,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         {/* Total Revenue / Pipeline */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Total en Pipeline</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('pipelineTotal')}</span>
             <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
               <DollarSign className="w-4 h-4" />
             </div>
@@ -109,14 +109,14 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           </div>
           <div className="mt-1 flex items-center text-[11px] text-emerald-600 dark:text-emerald-400">
             <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
-            <span>Valor ponderado: {(pipelineData?.summary?.weightedValue || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
+            <span>{t('weightedValue')}: {(pipelineData?.summary?.weightedValue || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</span>
           </div>
         </div>
 
         {/* Closed Won Revenue */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Ventas Ganadas</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('wonSales')}</span>
             <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
               <TrendingUp className="w-4 h-4" />
             </div>
@@ -125,7 +125,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
             {wonValue.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
-            Facturadas y en ejecución
+            {t('invoicedAndExecuted')}
           </div>
         </div>
 
@@ -141,7 +141,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
             {activeDeals}
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
-            Oportunidades en embudo
+            {t('dealsInPipeline')}
           </div>
         </div>
 
@@ -157,7 +157,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
             {pendingTasks}
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
-            En sprints de desarrollo activo
+            {t('tasksInActiveSprints')}
           </div>
         </div>
       </div>
@@ -170,7 +170,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-all"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Leads Web Capturados</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('webLeadsCaptured')}</span>
             <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
               <Zap className="w-4 h-4" />
             </div>
@@ -179,8 +179,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
             {contactsCount}
           </div>
           <div className="mt-1 flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
-            <span>Formularios & Lead Magnets</span>
-            <span className="text-[10px] underline">Ver Centro →</span>
+            <span>{t('formsAndMagnets')}</span>
+            <span className="text-[10px] underline">{t('viewCenter')}</span>
           </div>
         </div>
 
@@ -190,7 +190,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 transition-all"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Carritos en Riesgo</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('abandonedCarts')}</span>
             <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
               <ShoppingCart className="w-4 h-4" />
             </div>
@@ -199,7 +199,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
             1.420 €
           </div>
           <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">
-            3 cestas con flujos activos
+            3 {t('activeCartFlows')}
           </div>
         </div>
 
@@ -209,7 +209,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs cursor-pointer hover:border-cyan-300 dark:hover:border-cyan-700 transition-all"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Tickets de Soporte</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('supportTickets')}</span>
             <div className="p-2 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400">
               <LifeBuoy className="w-4 h-4" />
             </div>
@@ -247,12 +247,12 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         {/* Pipeline Stages Breakdown */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Distribución del Embudo Comercial</h2>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('pipelineSubtitle')}</h2>
             <button
               onClick={() => onNavigate('/pipeline')}
               className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center"
             >
-              Ver Kanban <ExternalLink className="w-3 h-3 ml-1" />
+              <span>{t('pipeline')}</span> <ExternalLink className="w-3 h-3 ml-1" />
             </button>
           </div>
 
@@ -295,7 +295,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               onClick={() => onNavigate('/agile')}
               className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
             >
-              Ver Todas
+              {t('allTasks')}
             </button>
           </div>
 

@@ -84,7 +84,7 @@ export const Contacts: React.FC = () => {
             {t('contacts')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Directorio unificado de personas de contacto y leads
+            {t('contactsSubtitle')}
           </p>
         </div>
 
@@ -95,7 +95,7 @@ export const Contacts: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar contacto..."
+              placeholder={t('searchContacts')}
               className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
@@ -118,12 +118,12 @@ export const Contacts: React.FC = () => {
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3">Empresa</th>
-                <th className="px-4 py-3">Puesto</th>
-                <th className="px-4 py-3">Email & Teléfono</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3 text-right">Línea de Tiempo</th>
+                <th className="px-4 py-3">{t('fullName')}</th>
+                <th className="px-4 py-3">{t('companies')}</th>
+                <th className="px-4 py-3">{t('jobTitle')}</th>
+                <th className="px-4 py-3">{t('email')} & {t('phone')}</th>
+                <th className="px-4 py-3">{t('status')}</th>
+                <th className="px-4 py-3 text-right">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
@@ -206,7 +206,7 @@ export const Contacts: React.FC = () => {
         <form onSubmit={handleCreateContact} className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('fullName')}</label>
               <input
                 type="text"
                 required
@@ -216,7 +216,7 @@ export const Contacts: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Apellidos</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('details')}</label>
               <input
                 type="text"
                 required
@@ -228,7 +228,7 @@ export const Contacts: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email</label>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('email')}</label>
             <input
               type="email"
               required
@@ -240,7 +240,7 @@ export const Contacts: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('phone')}</label>
               <input
                 type="text"
                 value={phone}
@@ -249,7 +249,7 @@ export const Contacts: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Cargo</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('jobTitle')}</label>
               <input
                 type="text"
                 value={position}
@@ -260,13 +260,13 @@ export const Contacts: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Empresa</label>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('dealCompany')}</label>
             <select
               value={companyId}
               onChange={(e) => setCompanyId(e.target.value)}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             >
-              <option value="">-- Sin Empresa --</option>
+              <option value="">-- {t('noData')} --</option>
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

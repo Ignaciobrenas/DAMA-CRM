@@ -80,7 +80,7 @@ export const Omnichannel: React.FC = () => {
           {t('omnichannel')}
         </h1>
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          Bandeja de entrada unificada de WhatsApp Meta Cloud API y correos electrónicos
+          {t('omnichannelSubtitle')}
         </p>
       </div>
 
@@ -89,7 +89,7 @@ export const Omnichannel: React.FC = () => {
         {/* Left: Contacts List */}
         <div className="w-1/3 border-r border-gray-200 dark:border-slate-800 flex flex-col">
           <div className="p-3 border-b border-gray-200 dark:border-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300">
-            Conversaciones Activas
+            {t('allConversations')}
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-800/60">
@@ -209,13 +209,13 @@ export const Omnichannel: React.FC = () => {
               required
               value={replyContent}
               onChange={(e) => setReplyContent(e.target.value)}
-              placeholder={`Escribe un mensaje por ${selectedChannel === 'WHATSAPP' ? 'WhatsApp' : 'Email'}...`}
+              placeholder={t('typeMessage')}
               className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
             <button
               type="submit"
               className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs transition-colors shrink-0"
-              title="Enviar"
+              title={t('send')}
             >
               <Send className="w-4 h-4" />
             </button>

@@ -166,7 +166,7 @@ export const Settings: React.FC = () => {
           {t('settings')}
         </h1>
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          Control de Acceso Basado en Roles Dinámicos (RBAC), Seguridad 2FA y Usuarios
+          {t('settingsSubtitle')}
         </p>
       </div>
 
@@ -187,9 +187,9 @@ export const Settings: React.FC = () => {
               <Paintbrush className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Identidad de Marca & Logo Corporativo</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('companyBranding')}</h2>
               <p className="text-xs text-gray-500 dark:text-slate-400">
-                Personaliza los colores, logo y curvatura de bordes para adaptar DAMA-CRM a la imagen de tu empresa
+                {t('brandingSettings')}
               </p>
             </div>
           </div>
@@ -201,7 +201,7 @@ export const Settings: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restablecer</span>
+              <span>{t('refresh')}</span>
             </button>
             <button
               type="button"
@@ -214,7 +214,7 @@ export const Settings: React.FC = () => {
               style={{ backgroundColor: brandForm.primaryColor }}
             >
               <Save className="w-3.5 h-3.5" />
-              <span>{brandSaved ? '¡Guardado!' : 'Guardar Marca'}</span>
+              <span>{brandSaved ? `✓ ${t('saveChanges')}` : t('saveChanges')}</span>
             </button>
           </div>
         </div>
@@ -687,7 +687,7 @@ export const Settings: React.FC = () => {
               disabled={isSavingPassword}
               className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs disabled:opacity-50"
             >
-              {isSavingPassword ? 'Actualizando...' : t('save')}
+              {isSavingPassword ? t('loading') : t('save')}
             </button>
           </div>
         </form>

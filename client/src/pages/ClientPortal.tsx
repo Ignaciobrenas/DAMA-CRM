@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useBranding } from '../context/BrandingContext';
+import { useLanguage } from '../context/LanguageContext';
 import { LoadingSpinner, SkeletonTable } from '../components/common/Loading';
 
 export const ClientPortal: React.FC = () => {
+  const { t } = useLanguage();
   const { branding } = useBranding();
   const [companies, setCompanies] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
@@ -156,7 +158,7 @@ export const ClientPortal: React.FC = () => {
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Mis Facturas</span>
+          <span>{t('invoicing')}</span>
         </button>
 
         <button
@@ -168,7 +170,7 @@ export const ClientPortal: React.FC = () => {
           }`}
         >
           <LifeBuoy className="w-4 h-4" />
-          <span>Soporte Técnico (Helpdesk)</span>
+          <span>{t('supportTickets')}</span>
         </button>
 
         <button
@@ -180,7 +182,7 @@ export const ClientPortal: React.FC = () => {
           }`}
         >
           <Lock className="w-4 h-4" />
-          <span>Privacidad & RGPD</span>
+          <span>{t('privacyPolicy')}</span>
         </button>
       </div>
 

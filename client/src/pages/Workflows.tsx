@@ -81,7 +81,7 @@ export const Workflows: React.FC = () => {
             {t('workflows')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Motor de reglas automatizadas en segundo plano (Disparadores 'Si X ocurre → Haz Y')
+            {t('workflowsSubtitle')}
           </p>
         </div>
 
@@ -91,7 +91,7 @@ export const Workflows: React.FC = () => {
             className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Nuevo Flujo</span>
+            <span>{t('newWorkflow')}</span>
           </button>
         </PermissionGate>
       </div>
@@ -224,71 +224,70 @@ export const Workflows: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Nuevo Flujo de Automatización"
+        title={t('newWorkflow')}
         size="md"
       >
         <form onSubmit={handleCreateWorkflow} className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Nombre de la Automatización
+              {t('workflowName')}
             </label>
             <input
               type="text"
               required
               value={wfName}
               onChange={(e) => setWfName(e.target.value)}
-              placeholder="Ej: Onboarding de Clientes VIP"
+              placeholder="Ej: Onboarding VIP"
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Descripción
+              {t('details')}
             </label>
             <textarea
               rows={2}
               value={wfDescription}
               onChange={(e) => setWfDescription(e.target.value)}
-              placeholder="Explica qué hace esta automatización..."
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Disparador (Trigger)
+              {t('trigger')}
             </label>
             <select
               value={wfTrigger}
               onChange={(e) => setWfTrigger(e.target.value)}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white font-mono"
             >
-              <option value="deal.won">deal.won (Negocio Ganado)</option>
-              <option value="contact.created">contact.created (Contacto Creado)</option>
-              <option value="invoice.paid">invoice.paid (Factura Cobrada)</option>
-              <option value="lead.captured">lead.captured (Lead Capturado)</option>
-              <option value="ecommerce.cart_abandoned">ecommerce.cart_abandoned (Carrito Abandonado)</option>
-              <option value="ticket.created">ticket.created (Ticket de Soporte Creado)</option>
-              <option value="appointment.booked">appointment.booked (Cita Agendada)</option>
+              <option value="deal.won">deal.won</option>
+              <option value="contact.created">contact.created</option>
+              <option value="invoice.paid">invoice.paid</option>
+              <option value="lead.captured">lead.captured</option>
+              <option value="ecommerce.cart_abandoned">ecommerce.cart_abandoned</option>
+              <option value="ticket.created">ticket.created</option>
+              <option value="appointment.booked">appointment.booked</option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-              Acción Automática
+              {t('action')}
             </label>
             <select
               value={wfAction}
               onChange={(e) => setWfAction(e.target.value)}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white font-mono"
             >
-              <option value="create_project">create_project (Crear Proyecto Ágil)</option>
-              <option value="send_email">send_email (Enviar Email Notificación)</option>
-              <option value="create_activity">create_activity (Programar Tarea / Llamada CRM)</option>
-              <option value="send_recovery_email">send_recovery_email (Enviar Email de Recuperación)</option>
-              <option value="send_lead_magnet">send_lead_magnet (Enviar Lead Magnet PDF)</option>
-              <option value="assign_ticket">assign_ticket (Asignar Ticket a Soporte)</option>
+              <option value="create_project">create_project</option>
+              <option value="send_email">send_email</option>
+              <option value="create_activity">create_activity</option>
+              <option value="send_recovery_email">send_recovery_email</option>
+              <option value="send_lead_magnet">send_lead_magnet</option>
+              <option value="assign_ticket">assign_ticket</option>
             </select>
           </div>
 
@@ -304,7 +303,7 @@ export const Workflows: React.FC = () => {
               type="submit"
               className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
             >
-              Guardar y Activar
+              {t('save')}
             </button>
           </div>
         </form>

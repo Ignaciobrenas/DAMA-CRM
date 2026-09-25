@@ -72,7 +72,7 @@ export const Companies: React.FC = () => {
             {t('companies')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Directorio corporativo de cuentas de clientes y proveedores
+            {t('companiesSubtitle')}
           </p>
         </div>
 
@@ -83,7 +83,7 @@ export const Companies: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar empresa..."
+              placeholder={t('searchCompanies')}
               className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
@@ -117,7 +117,7 @@ export const Companies: React.FC = () => {
                     {company.name}
                   </h3>
                   <span className="text-[10px] text-gray-500 dark:text-slate-400">
-                    {company.industry || 'Industria no especificada'}
+                    {company.industry || t('noData')}
                   </span>
                 </div>
               </div>
@@ -173,7 +173,7 @@ export const Companies: React.FC = () => {
       >
         <form onSubmit={handleCreateCompany} className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre Comercial</label>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companyName')}</label>
             <input
               type="text"
               required
@@ -184,19 +184,18 @@ export const Companies: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Sector / Industria</label>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('industry')}</label>
             <input
               type="text"
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
-              placeholder="Ej: Software, Logística, Salud"
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Ciudad</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('city')}</label>
               <input
                 type="text"
                 value={city}
@@ -205,7 +204,7 @@ export const Companies: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Facturación Anual (€)</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('annualRevenue')}</label>
               <input
                 type="number"
                 value={annualRevenue}
@@ -217,7 +216,7 @@ export const Companies: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Sitio Web</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('website')}</label>
               <input
                 type="url"
                 value={website}
@@ -227,7 +226,7 @@ export const Companies: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('phone')}</label>
               <input
                 type="text"
                 value={phone}
