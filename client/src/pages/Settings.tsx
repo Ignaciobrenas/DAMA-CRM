@@ -482,13 +482,13 @@ export const Settings: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Mi Perfil y Preferencias de Usuario</h2>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('settings.userProfileSection')}</h2>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                   Guardado en Base de Datos
                 </span>
               </div>
               <p className="text-xs text-gray-500 dark:text-slate-400">
-                Personaliza tu avatar, nombre, efectos sonoros amigables y accesos de la barra lateral (leftbar)
+                {t('settings.profileDesc')}
               </p>
             </div>
           </div>
@@ -500,7 +500,7 @@ export const Settings: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2 mb-3">
                 <UserIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-xs font-bold text-gray-900 dark:text-white">Personalización del Perfil</h3>
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.profileCustomization')}</h3>
               </div>
 
               <div className="flex items-center space-x-3 mb-4">
@@ -535,7 +535,7 @@ export const Settings: React.FC = () => {
                     type="text"
                     value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
-                    placeholder="Tu nombre y apellidos"
+                    placeholder={t('settings.namePlaceholder')}
                     className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -553,7 +553,7 @@ export const Settings: React.FC = () => {
                   />
                   <label className="inline-flex items-center space-x-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
                     <Image className="w-3.5 h-3.5" />
-                    <span>Subir imagen desde equipo local</span>
+                    <span>{t('settings.avatarUploadLocal')}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -592,7 +592,7 @@ export const Settings: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2 mb-3">
                 <Bell className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <h3 className="text-xs font-bold text-gray-900 dark:text-white">Sonido y Notificaciones Amigables</h3>
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.soundAndFriendlyNotifs')}</h3>
               </div>
 
               <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
@@ -633,9 +633,9 @@ export const Settings: React.FC = () => {
                 </div>
 
                 <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 space-y-2">
-                  <div className="text-xs font-semibold text-gray-900 dark:text-white">Probar Efectos Sonoros</div>
+                  <div className="text-xs font-semibold text-gray-900 dark:text-white">{t('settings.testSoundEffects')}</div>
                   <div className="text-[11px] text-gray-500 dark:text-slate-400">
-                    Comprueba cómo suena la campana amigable en tus altavoces:
+                    {t('settings.testChimeDesc')}
                   </div>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -645,14 +645,14 @@ export const Settings: React.FC = () => {
                     className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition-colors"
                   >
                     <Volume2 className="w-3.5 h-3.5" />
-                    <span>Reproducir Campanada de Prueba</span>
+                    <span>{t('settings.playTestChime')}</span>
                   </motion.button>
                 </div>
               </div>
             </div>
 
             <div className="text-[11px] text-gray-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-gray-100 dark:border-slate-800">
-              💡 También puedes silenciar o activar el sonido rápidamente desde el icono de altavoz en la barra superior.
+              {t('settings.soundTip')}
             </div>
           </div>
 
@@ -661,7 +661,7 @@ export const Settings: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2 mb-3">
                 <PanelLeft className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <h3 className="text-xs font-bold text-gray-900 dark:text-white">Personalizar Barra Lateral (Leftbar)</h3>
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.customizeSidebar')}</h3>
               </div>
 
               {/* Sidebar Collapse Toggle */}
@@ -761,9 +761,9 @@ export const Settings: React.FC = () => {
               <Paintbrush className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Identidad de Marca & Logo Corporativo</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('settings.brandIdentityLogo')}</h2>
               <p className="text-xs text-gray-500 dark:text-slate-400">
-                Personaliza los colores, logo y curvatura de bordes para adaptar DAMA-CRM a la imagen de tu empresa
+                {t('settings.brandIdentityDesc')}
               </p>
             </div>
           </div>
@@ -780,7 +780,7 @@ export const Settings: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restablecer</span>
+              <span>{t('settings.resetBrandingBtn')}</span>
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -796,7 +796,7 @@ export const Settings: React.FC = () => {
               style={{ backgroundColor: brandForm.primaryColor }}
             >
               <Save className="w-3.5 h-3.5" />
-              <span>{brandSaved ? '¡Guardado!' : 'Guardar Marca'}</span>
+              <span>{brandSaved ? t('settings.savedSuccess') : t('settings.saveBrand')}</span>
             </motion.button>
           </div>
         </div>
@@ -829,7 +829,7 @@ export const Settings: React.FC = () => {
               />
               <label className="inline-flex items-center space-x-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
                 <Image className="w-3.5 h-3.5" />
-                <span>Subir archivo de imagen local</span>
+                <span>{t('settings.uploadLocalLogo')}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -924,7 +924,7 @@ export const Settings: React.FC = () => {
             <div>
               <span className="text-[10px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider flex items-center space-x-1 mb-2">
                 <Sparkles className="w-3 h-3 text-amber-500" />
-                <span>Vista Previa en Vivo</span>
+                <span>{t('settings.livePreview')}</span>
               </span>
 
               <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 space-y-2.5 shadow-xs">
@@ -978,7 +978,7 @@ export const Settings: React.FC = () => {
             <Lock className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-gray-900 dark:text-white">Doble Factor de Autenticación (2FA OTP)</h3>
+            <h3 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.twoFactorOtp')}</h3>
             <p className="text-[11px] text-gray-500 dark:text-slate-400">
               Envía un código de 6 dígitos mediante Nodemailer a tu correo electrónico en cada inicio de sesión
             </p>
@@ -1003,8 +1003,8 @@ export const Settings: React.FC = () => {
           <div className="flex items-center space-x-2">
             <ShieldCheck className="w-5 h-5 text-blue-600" />
             <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Matriz Dinámica de Permisos (RBAC)</h2>
-              <p className="text-[11px] text-gray-500">Configuración cruzada granular en PostgreSQL</p>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('settings.dynamicRbacMatrix')}</h2>
+              <p className="text-[11px] text-gray-500">{t('settings.dynamicRbacDesc')}</p>
             </div>
           </div>
 
@@ -1026,7 +1026,7 @@ export const Settings: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Guardar Matriz</span>
+              <span>{t('settings.saveMatrix')}</span>
             </button>
           </div>
         </div>
@@ -1036,7 +1036,7 @@ export const Settings: React.FC = () => {
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-2.5">Módulo / Recurso</th>
+                <th className="px-4 py-2.5">{t('settings.moduleResource')}</th>
                 {actions.map((act) => (
                   <th key={act.id} className="px-4 py-2.5 text-center">
                     {act.label}
@@ -1081,8 +1081,8 @@ export const Settings: React.FC = () => {
           <div className="flex items-center space-x-2">
             <Users className="w-4 h-4 text-gray-500" />
             <div>
-              <h2 className="text-xs font-bold text-gray-900 dark:text-white">Cuentas de Usuarios Corporativos</h2>
-              <p className="text-[10px] text-gray-500">Gestión completa de usuarios y permisos directos por usuario</p>
+              <h2 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.corporateAccounts')}</h2>
+              <p className="text-[10px] text-gray-500">{t('settings.corporateAccountsDesc')}</p>
             </div>
           </div>
           <button
@@ -1094,7 +1094,7 @@ export const Settings: React.FC = () => {
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>Nuevo Usuario</span>
+            <span>{t('settings.newUserBtn')}</span>
           </button>
         </div>
 
@@ -1108,7 +1108,7 @@ export const Settings: React.FC = () => {
                 type="text"
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                placeholder="Buscar por nombre o email..."
+                placeholder={t('settings.searchUserPlaceholder')}
                 className="w-full pl-8 pr-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
@@ -1119,7 +1119,7 @@ export const Settings: React.FC = () => {
               onChange={(e) => setUserRoleFilter(e.target.value)}
               className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
             >
-              <option value="">Todos los Roles</option>
+              <option value="">{t('settings.allRoles')}</option>
               {roles.map((r) => (
                 <option key={r.id} value={r.name}>
                   {r.name}
@@ -1133,9 +1133,9 @@ export const Settings: React.FC = () => {
               onChange={(e) => setUserStatusFilter(e.target.value)}
               className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
             >
-              <option value="">Todos los Estados</option>
-              <option value="active">Solo Activos</option>
-              <option value="inactive">Solo Desactivados</option>
+              <option value="">{t('settings.allStatuses')}</option>
+              <option value="active">{t('settings.onlyActiveUsers')}</option>
+              <option value="inactive">{t('settings.onlyDisabledUsers')}</option>
             </select>
           </div>
 
@@ -1147,11 +1147,11 @@ export const Settings: React.FC = () => {
               onChange={(e) => setUserSort(e.target.value as any)}
               className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
             >
-              <option value="name_asc">Nombre (A - Z)</option>
-              <option value="name_desc">Nombre (Z - A)</option>
-              <option value="email_asc">Email (A - Z)</option>
-              <option value="role">Rol Asignado</option>
-              <option value="recent">Más recientes primero</option>
+              <option value="name_asc">{t('settings.sortNameAsc')}</option>
+              <option value="name_desc">{t('settings.sortNameDesc')}</option>
+              <option value="email_asc">{t('settings.sortEmailAsc')}</option>
+              <option value="role">{t('settings.sortRole')}</option>
+              <option value="recent">{t('settings.sortRecent')}</option>
             </select>
           </div>
         </div>
@@ -1160,12 +1160,12 @@ export const Settings: React.FC = () => {
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-2.5">Nombre</th>
-                <th className="px-4 py-2.5">Email</th>
-                <th className="px-4 py-2.5">Rol & Permisos</th>
+                <th className="px-4 py-2.5">{t('settings.userNameCol')}</th>
+                <th className="px-4 py-2.5">{t('settings.userEmailCol')}</th>
+                <th className="px-4 py-2.5">{t('settings.userRoleCol')}</th>
                 <th className="px-4 py-2.5">2FA</th>
-                <th className="px-4 py-2.5">Estado</th>
-                <th className="px-4 py-2.5 text-right">Acciones</th>
+                <th className="px-4 py-2.5">{t('settings.userStatusCol')}</th>
+                <th className="px-4 py-2.5 text-right">{t('settings.userActionsCol')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
@@ -1222,9 +1222,9 @@ export const Settings: React.FC = () => {
                       </td>
                       <td className="px-4 py-2.5">
                         {u.twoFactorEnabled ? (
-                          <span className="text-emerald-600 font-semibold text-[11px]">Activado</span>
+                          <span className="text-emerald-600 font-semibold text-[11px]">{t('settings.userStatusActive')}</span>
                         ) : (
-                          <span className="text-gray-400 text-[11px]">Desactivado</span>
+                          <span className="text-gray-400 text-[11px]">{t('settings.userStatusDisabled')}</span>
                         )}
                       </td>
                       <td className="px-4 py-2.5">
@@ -1274,7 +1274,7 @@ export const Settings: React.FC = () => {
         <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <History className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-xs font-bold text-gray-900 dark:text-white">Registro de Auditoría & Trazabilidad de Seguridad</h2>
+            <h2 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.securityAuditLog')}</h2>
           </div>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
             {auditLogs.length} eventos registrados
@@ -1285,11 +1285,11 @@ export const Settings: React.FC = () => {
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800 sticky top-0">
               <tr>
-                <th className="px-4 py-2.5">Acción</th>
-                <th className="px-4 py-2.5">Recurso / Entidad</th>
-                <th className="px-4 py-2.5">Usuario Responsable</th>
-                <th className="px-4 py-2.5">Dirección IP</th>
-                <th className="px-4 py-2.5 text-right">Fecha y Hora</th>
+                <th className="px-4 py-2.5">{t('settings.auditActionCol')}</th>
+                <th className="px-4 py-2.5">{t('settings.auditResourceCol')}</th>
+                <th className="px-4 py-2.5">{t('settings.auditUserCol')}</th>
+                <th className="px-4 py-2.5">{t('settings.auditIpCol')}</th>
+                <th className="px-4 py-2.5 text-right">{t('settings.auditDateCol')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
@@ -1355,8 +1355,8 @@ export const Settings: React.FC = () => {
                     <UserPlus className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Alta de Nuevo Usuario Corporativo</h3>
-                    <p className="text-[11px] text-gray-500">Valida formato de email y contraseña segura</p>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">{t('settings.newUserModalTitle')}</h3>
+                    <p className="text-[11px] text-gray-500">{t('settings.newUserModalDesc')}</p>
                   </div>
                 </div>
                 <button
@@ -1385,7 +1385,7 @@ export const Settings: React.FC = () => {
                     required
                     value={newUserForm.name}
                     onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                    placeholder="Ej. Ana Belén García"
+                    placeholder={t('settings.newUserNamePlaceholder')}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
                   />
                 </div>
@@ -1399,7 +1399,7 @@ export const Settings: React.FC = () => {
                     required
                     value={newUserForm.email}
                     onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                    placeholder="usuario@tuempresa.com"
+                    placeholder={t('settings.newUserEmailPlaceholder')}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
                   />
                   {newUserForm.email && !isValidEmail(newUserForm.email) && (
@@ -1443,7 +1443,7 @@ export const Settings: React.FC = () => {
                     required
                     value={newUserForm.password}
                     onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                    placeholder="Mínimo 8 caracteres, mayúscula, minúscula, número y símbolo"
+                    placeholder={t('settings.passwordReqsPlaceholder')}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
                   />
 
@@ -1601,7 +1601,7 @@ export const Settings: React.FC = () => {
                       type="password"
                       value={editUserForm.password}
                       onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
-                      placeholder="Dejar en blanco para mantener actual"
+                      placeholder={t('settings.leaveBlankToKeep')}
                       className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
                     />
                   </div>
@@ -1674,7 +1674,7 @@ export const Settings: React.FC = () => {
                     <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
                       <thead className="bg-gray-50 dark:bg-slate-800/80 text-[10px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800 sticky top-0">
                         <tr>
-                          <th className="px-3 py-1.5">Módulo / Recurso</th>
+                          <th className="px-3 py-1.5">{t('settings.moduleResource')}</th>
                           {actions.map((act) => (
                             <th key={act.id} className="px-2 py-1.5 text-center">
                               {act.label}
@@ -1753,8 +1753,8 @@ export const Settings: React.FC = () => {
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Eliminar Usuario</h3>
-                  <p className="text-[11px] text-gray-500">Esta acción no se puede deshacer</p>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">{t('settings.deleteUserModalTitle')}</h3>
+                  <p className="text-[11px] text-gray-500">{t('settings.deleteUserModalDesc')}</p>
                 </div>
               </div>
 

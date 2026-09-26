@@ -173,7 +173,7 @@ export const LeadCapture: React.FC = () => {
       <div>
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-2">
           <Zap className="w-3.5 h-3.5" />
-          <span>Generación de Leads, Conectores & Tracking Omnicanal</span>
+          <span>{t('leadCapture.subtitle')}</span>
         </div>
         <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
           {t('leadCapture')}
@@ -229,21 +229,21 @@ export const LeadCapture: React.FC = () => {
             <form onSubmit={handleContactSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.firstName')}</label>
                   <input
                     type="text"
                     required
-                    placeholder="Ignacio"
+                    placeholder={t('leadCapture.firstNamePlaceholder', 'Ignacio')}
                     value={contactForm.firstName}
                     onChange={(e) => setContactForm({ ...contactForm, firstName: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Apellidos</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.lastName')}</label>
                   <input
                     type="text"
-                    placeholder="García"
+                    placeholder={t('leadCapture.lastNamePlaceholder', 'García')}
                     value={contactForm.lastName}
                     onChange={(e) => setContactForm({ ...contactForm, lastName: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
@@ -252,7 +252,7 @@ export const LeadCapture: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email Profesional</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.emailProfessional')}</label>
                 <input
                   type="email"
                   required
@@ -265,7 +265,7 @@ export const LeadCapture: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.phone')}</label>
                   <input
                     type="tel"
                     placeholder="+34 600 00 00 00"
@@ -275,10 +275,10 @@ export const LeadCapture: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Empresa</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.company')}</label>
                   <input
                     type="text"
-                    placeholder="Mi Empresa S.L."
+                    placeholder={t('companies.namePlaceholder', 'Mi Empresa S.L.')}
                     value={contactForm.companyName}
                     onChange={(e) => setContactForm({ ...contactForm, companyName: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
@@ -287,10 +287,10 @@ export const LeadCapture: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Mensaje o Necesidad</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.message')}</label>
                 <textarea
                   rows={2}
-                  placeholder="Nos gustaría implementar DAMA-CRM para 15 usuarios..."
+                  placeholder={t('leadCapture.messagePlaceholder')}
                   value={contactForm.message}
                   onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
                   className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
@@ -320,12 +320,12 @@ export const LeadCapture: React.FC = () => {
                 {isSubmittingContact ? (
                   <>
                     <LoadingSpinner size="sm" color="white" />
-                    <span>Inyectando Prospecto en CRM...</span>
+                    <span>{t('leadCapture.injectingLead')}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Enviar Formulario & Crear Ficha en CRM</span>
+                    <span>{t('leadCapture.sendFormBtn')}</span>
                   </>
                 )}
               </button>
@@ -335,7 +335,7 @@ export const LeadCapture: React.FC = () => {
               <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 flex items-start space-x-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
-                  <div className="font-bold">¡Lead sincronizado exitosamente!</div>
+                  <div className="font-bold">{t('leadCapture.leadSyncSuccess')}</div>
                   <div className="text-[11px] mt-0.5">
                     ID Contacto: {contactResult.data?.contactId} • Estado: {contactResult.data?.isNewLead ? 'Nuevo Lead creado + Oportunidad en Pipeline' : 'Contacto actualizado'}
                   </div>
@@ -383,20 +383,20 @@ export const LeadCapture: React.FC = () => {
     Acepto recibir comunicaciones de marketing
   </label>
   
-  <button type="submit">Enviar al CRM</button>
+  <button type="submit">{t('leadCapture.sendToCrm')}</button>
 </form>`}
             </pre>
 
             <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-300 space-y-1">
               <div className="font-bold flex items-center space-x-1.5">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Comportamiento Automático del CRM:</span>
+                <span>{t('leadCapture.crmBehaviorTitle')}</span>
               </div>
               <ul className="list-disc list-inside space-y-0.5 text-[11px] text-blue-800 dark:text-blue-300">
-                <li>Valida y normaliza el email para evitar duplicados.</li>
-                <li>Si es nuevo, crea una ficha de Lead + Oportunidad por 500 € en el Pipeline.</li>
-                <li>Si ya existe, añade una nota cronológica al timeline del cliente sin borrar nada.</li>
-                <li>Dispara una alerta en tiempo real vía WebSockets a los comerciales.</li>
+                <li>{t('leadCapture.crmBehavior1')}</li>
+                <li>{t('leadCapture.crmBehavior2')}</li>
+                <li>{t('leadCapture.crmBehavior3')}</li>
+                <li>{t('leadCapture.crmBehavior4')}</li>
               </ul>
             </div>
           </div>
@@ -426,14 +426,14 @@ export const LeadCapture: React.FC = () => {
                   onChange={(e) => setSelectedMagnet(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
                 >
-                  <option value="ebook-crm-guia">📘 Guía Magistral: Implementación de CRM en PYMES (PDF)</option>
-                  <option value="webinar-ventas-2026">🎥 Webinar: Automatización del Pipeline B2B</option>
-                  <option value="cupon-descuento-20">🏷️ Cupón 20% de Descuento en Primera Compra</option>
+                  <option value="ebook-crm-guia">{t('leadCapture.magnetGuidePdf')}</option>
+                  <option value="webinar-ventas-2026">{t('leadCapture.magnetWebinar')}</option>
+                  <option value="cupon-descuento-20">{t('leadCapture.magnetCoupon')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Tu Nombre</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.yourName')}</label>
                 <input
                   type="text"
                   required
@@ -445,7 +445,7 @@ export const LeadCapture: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email donde recibir el PDF</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.emailPdfReceive')}</label>
                 <input
                   type="email"
                   required
@@ -464,12 +464,12 @@ export const LeadCapture: React.FC = () => {
                 {isDownloadingMagnet ? (
                   <>
                     <LoadingSpinner size="sm" color="white" />
-                    <span>Generando enlace de descarga...</span>
+                    <span>{t('leadCapture.generatingDownload')}</span>
                   </>
                 ) : (
                   <>
                     <Gift className="w-4 h-4" />
-                    <span>Descargar Recurso & Registrar Prospecto</span>
+                    <span>{t('leadCapture.downloadResourceBtn')}</span>
                   </>
                 )}
               </button>
@@ -479,7 +479,7 @@ export const LeadCapture: React.FC = () => {
               <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
                 <div className="font-bold flex items-center space-x-1.5">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>¡Recurso generado!</span>
+                  <span>{t('leadCapture.resourceGenerated')}</span>
                 </div>
                 <p className="text-[11px]">
                   El lead ha sido etiquetado en el CRM como suscriptor de &ldquo;{selectedMagnet}&rdquo;.
@@ -490,7 +490,7 @@ export const LeadCapture: React.FC = () => {
                   rel="noreferrer"
                   className="inline-flex items-center space-x-1 font-bold underline pt-1 text-emerald-900 dark:text-emerald-200"
                 >
-                  <span>Abrir archivo descargable</span>
+                  <span>{t('leadCapture.openDownloadable')}</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -503,16 +503,16 @@ export const LeadCapture: React.FC = () => {
             </h2>
             <div className="space-y-3 text-xs text-gray-600 dark:text-slate-400">
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 space-y-1">
-                <div className="font-bold text-gray-900 dark:text-white">Día 0: Entrega Inmediata</div>
-                <div>El CRM envía un email transaccional con el enlace de descarga directo y crea la ficha en el módulo Contactos.</div>
+                <div className="font-bold text-gray-900 dark:text-white">{t('leadCapture.nurturingDay0')}</div>
+                <div>{t('leadCapture.nurturingDay0Desc')}</div>
               </div>
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 space-y-1">
-                <div className="font-bold text-gray-900 dark:text-white">Día 2: Caso de Éxito Relacionado</div>
-                <div>El flujo de trabajo automático comprueba si el usuario abrió el PDF y envía un estudio de ROI.</div>
+                <div className="font-bold text-gray-900 dark:text-white">{t('leadCapture.nurturingDay2')}</div>
+                <div>{t('leadCapture.nurturingDay2Desc')}</div>
               </div>
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 space-y-1">
-                <div className="font-bold text-gray-900 dark:text-white">Día 5: Propuesta de Videollamada</div>
-                <div>Dispara invitación directa con el Agendador de Citas del CRM.</div>
+                <div className="font-bold text-gray-900 dark:text-white">{t('leadCapture.nurturingDay5')}</div>
+                <div>{t('leadCapture.nurturingDay5Desc')}</div>
               </div>
             </div>
           </div>
@@ -578,22 +578,22 @@ export const LeadCapture: React.FC = () => {
                           {profileResult.nextSuggestedFields.includes('phone') && (
                             <input
                               type="tel"
-                              placeholder="Tu teléfono directo"
+                              placeholder={t('leadCapture.directPhonePlaceholder')}
                               className="w-full px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
                             />
                           )}
                           {profileResult.nextSuggestedFields.includes('companySize') && (
                             <select className="w-full px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg">
-                              <option>¿Tamaño de tu equipo? (1-10 empleados)</option>
-                              <option>11-50 empleados</option>
-                              <option>50+ empleados</option>
+                              <option>{t('leadCapture.teamSizeQuestion')}</option>
+                              <option>{t('leadCapture.teamSize11to50')}</option>
+                              <option>{t('leadCapture.teamSize50plus')}</option>
                             </select>
                           )}
                           {profileResult.nextSuggestedFields.includes('annualBudget') && (
                             <select className="w-full px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg">
-                              <option>Presupuesto anual estimado (&lt; 5.000 €)</option>
+                              <option>{t('leadCapture.annualBudgetQuestion')}</option>
                               <option>5.000 € - 20.000 €</option>
-                              <option>&gt; 20.000 €</option>
+                              <option>{t('leadCapture.budget20kplus')}</option>
                             </select>
                           )}
                         </div>
@@ -616,15 +616,15 @@ export const LeadCapture: React.FC = () => {
             <div className="space-y-3 text-xs text-gray-600 dark:text-slate-400">
               <div className="flex items-start space-x-2">
                 <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center font-bold text-[11px] shrink-0">1</span>
-                <div><strong>Menor fricción inicial:</strong> Formularios de 2 campos aumentan la conversión hasta un 120% en la primera interacción.</div>
+                <div><strong>{t('leadCapture.lowerFrictionTitle')}</strong> {t('leadCapture.lowerFrictionDesc')}</div>
               </div>
               <div className="flex items-start space-x-2">
                 <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
-                <div><strong>Enriquecimiento progresivo:</strong> En la segunda visita se pide el teléfono; en la tercera, el presupuesto y tamaño de empresa.</div>
+                <div><strong>{t('leadCapture.progressiveEnrichTitle')}</strong> {t('leadCapture.progressiveEnrichDesc')}</div>
               </div>
               <div className="flex items-start space-x-2">
                 <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center font-bold text-[11px] shrink-0">3</span>
-                <div><strong>Lead Scoring automático:</strong> A medida que el prospecto completa más campos, su puntuación de lead sube en el pipeline.</div>
+                <div><strong>{t('leadCapture.autoLeadScoringTitle')}</strong> {t('leadCapture.autoLeadScoringDesc')}</div>
               </div>
             </div>
           </div>
@@ -646,7 +646,7 @@ export const LeadCapture: React.FC = () => {
 
             <form onSubmit={handleChatInitiate} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.firstName')}</label>
                 <input
                   type="text"
                   required
@@ -658,7 +658,7 @@ export const LeadCapture: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono Móvil (con prefijo)</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.mobilePhonePrefix')}</label>
                 <input
                   type="tel"
                   required
@@ -670,7 +670,7 @@ export const LeadCapture: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email (Opcional)</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.optionalEmail')}</label>
                 <input
                   type="email"
                   placeholder="laura@empresa.com"
@@ -681,10 +681,10 @@ export const LeadCapture: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Motivo de la consulta</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.inquiryReason')}</label>
                 <input
                   type="text"
-                  placeholder="Deseo presupuesto para integración de software"
+                  placeholder={t('leadCapture.inquiryPlaceholder')}
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
@@ -696,13 +696,13 @@ export const LeadCapture: React.FC = () => {
                 className="w-full inline-flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Registrar Lead & Abrir WhatsApp Web</span>
+                <span>{t('leadCapture.registerLeadWhatsappBtn')}</span>
               </button>
             </form>
 
             {chatResult && (
               <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
-                <div className="font-bold">¡Lead registrado en Omnichannel!</div>
+                <div className="font-bold">{t('leadCapture.leadRegisteredOmnichannel')}</div>
                 <div className="text-[11px]">Mensaje inicial guardado en el timeline de {chatName}.</div>
                 {chatResult.whatsAppUrl && (
                   <a
@@ -735,7 +735,7 @@ export const LeadCapture: React.FC = () => {
             background:#25D366; color:white; padding:12px 18px; 
             border-radius:30px; box-shadow:0 4px 12px rgba(0,0,0,0.15); 
             cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:8px;">
-  <span>💬 ¿Hablamos por WhatsApp?</span>
+  <span>{t('leadCapture.chatWhatsappPrompt')}</span>
 </div>`}
             </pre>
           </div>
@@ -757,7 +757,7 @@ export const LeadCapture: React.FC = () => {
 
             <form onSubmit={handleBookAppt} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre Completo</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.fullName')}</label>
                 <input
                   type="text"
                   required
@@ -769,7 +769,7 @@ export const LeadCapture: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email Profesional</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.emailProfessional')}</label>
                 <input
                   type="email"
                   required
@@ -782,20 +782,20 @@ export const LeadCapture: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Modalidad</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.modality')}</label>
                   <select
                     value={apptType}
                     onChange={(e) => setApptType(e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
                   >
-                    <option value="VIDEOCALL">📹 Videollamada (Google Meet / Zoom)</option>
-                    <option value="PHONE">📞 Llamada Telefónica</option>
-                    <option value="IN_PERSON">🏢 Reunión Presencial</option>
+                    <option value="VIDEOCALL">{t('leadCapture.modalityVideocall')}</option>
+                    <option value="PHONE">{t('leadCapture.modalityPhone')}</option>
+                    <option value="IN_PERSON">{t('leadCapture.modalityInPerson')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Fecha y Hora</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.dateTime')}</label>
                   <input
                     type="datetime-local"
                     value={apptDate}
@@ -810,7 +810,7 @@ export const LeadCapture: React.FC = () => {
                 className="w-full inline-flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors"
               >
                 <Calendar className="w-4 h-4" />
-                <span>Confirmar Reserva & Sincronizar en CRM</span>
+                <span>{t('leadCapture.confirmBookingBtn')}</span>
               </button>
             </form>
 
@@ -835,7 +835,7 @@ export const LeadCapture: React.FC = () => {
               DAMA-CRM se conecta bidireccionalmente con Google Calendar, Microsoft Outlook y Cal.com.
             </p>
             <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 space-y-2 text-xs">
-              <div className="font-bold text-gray-900 dark:text-white">Enlace público de reservas del usuario:</div>
+              <div className="font-bold text-gray-900 dark:text-white">{t('leadCapture.publicBookingLink')}</div>
               <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border font-mono text-[11px] flex items-center justify-between">
                 <span className="truncate">https://crm.tu-dominio.com/citas/ignacio</span>
                 <button
@@ -884,16 +884,16 @@ export const LeadCapture: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 space-y-1 text-xs">
-                <div className="font-bold text-gray-900 dark:text-white">Páginas Vistas Automáticas</div>
-                <div className="text-gray-500 text-[11px]">Registra cada URL y tiempo de permanencia mediante la API navigator.sendBeacon.</div>
+                <div className="font-bold text-gray-900 dark:text-white">{t('leadCapture.autoPageViews')}</div>
+                <div className="text-gray-500 text-[11px]">{t('leadCapture.autoPageViewsDesc')}</div>
               </div>
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 space-y-1 text-xs">
-                <div className="font-bold text-gray-900 dark:text-white">Disparo de Eventos Manuales</div>
+                <div className="font-bold text-gray-900 dark:text-white">{t('leadCapture.manualEventsTrigger')}</div>
                 <div className="text-gray-500 text-[11px]">Dispones de window.damaTrack(&apos;CLICK&apos;, &#123; btn: &apos;comprar&apos; &#125;) para botones clave.</div>
               </div>
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 space-y-1 text-xs">
-                <div className="font-bold text-gray-900 dark:text-white">Conexión con Leads</div>
-                <div className="text-gray-500 text-[11px]">Cuando el usuario rellena un formulario, el historial anónimo previo se vincula a su ficha.</div>
+                <div className="font-bold text-gray-900 dark:text-white">{t('leadCapture.leadsConnection')}</div>
+                <div className="text-gray-500 text-[11px]">{t('leadCapture.leadsConnectionDesc')}</div>
               </div>
             </div>
           </div>
@@ -915,7 +915,7 @@ export const LeadCapture: React.FC = () => {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email del Comprador</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.buyerEmail')}</label>
                 <input
                   type="email"
                   placeholder="comprador@gmail.com"
@@ -926,7 +926,7 @@ export const LeadCapture: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Importe del Carrito (€)</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('leadCapture.cartTotalAmount')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -941,13 +941,13 @@ export const LeadCapture: React.FC = () => {
                 className="w-full inline-flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-colors"
               >
                 <ShoppingCart className="w-4 h-4" />
-                <span>Simular Abandono de Carrito en CRM</span>
+                <span>{t('leadCapture.simulateCartAbandon')}</span>
               </button>
             </div>
 
             {cartResult && (
               <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-300 space-y-1">
-                <div className="font-bold">¡Evento de Carrito Registrado!</div>
+                <div className="font-bold">{t('leadCapture.cartEventSuccess')}</div>
                 <div className="text-[11px]">{cartResult.message}</div>
               </div>
             )}

@@ -25,7 +25,7 @@ export const Invoicing: React.FC = () => {
   const [taxRate, setTaxRate] = useState('21');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<Array<{ description: string; quantity: number; unitPrice: number }>>([
-    { description: 'Licencia / Servicio CRM', quantity: 1, unitPrice: 1500 },
+    { description: '', quantity: 1, unitPrice: 0 },
   ]);
 
   const loadData = async () => {
@@ -167,7 +167,7 @@ export const Invoicing: React.FC = () => {
       toast.success(t('success'), modalType === 'invoice' ? 'Factura generada' : 'Presupuesto creado');
       setIsModalOpen(false);
       setNotes('');
-      setItems([{ description: 'Servicio / Licencia', quantity: 1, unitPrice: 1500 }]);
+      setItems([{ description: '', quantity: 1, unitPrice: 0 }]);
       loadData();
     } else {
       toast.error(t('error'), res.message || 'Error al crear documento');
@@ -349,7 +349,7 @@ export const Invoicing: React.FC = () => {
             <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
               <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
                 <tr>
-                  <th className="px-4 py-3">Número</th>
+                  <th className="px-4 py-3">{t('invoicing.invoiceNumberCol')}</th>
                   <th className="px-4 py-3">{t('client')}</th>
                   <th className="px-4 py-3">{t('issueDate')}</th>
                   <th className="px-4 py-3">{t('status')}</th>
@@ -437,7 +437,7 @@ export const Invoicing: React.FC = () => {
                 onChange={(e) => setCompanyId(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
               >
-                <option value="">-- Seleccionar Empresa --</option>
+                <option value="">{t('invoicing.selectCompanyPrompt')}</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -452,7 +452,7 @@ export const Invoicing: React.FC = () => {
                 onChange={(e) => setContactId(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
               >
-                <option value="">-- Seleccionar Contacto --</option>
+                <option value="">{t('invoicing.selectContactPrompt')}</option>
                 {contacts.map((ct) => (
                   <option key={ct.id} value={ct.id}>
                     {ct.firstName} {ct.lastName}
@@ -496,7 +496,7 @@ export const Invoicing: React.FC = () => {
                 />
                 <input
                   type="number"
-                  placeholder="Precio €"
+                  placeholder={t('invoicing.pricePlaceholder')}
                   required
                   step="0.01"
                   value={it.unitPrice}
@@ -522,7 +522,7 @@ export const Invoicing: React.FC = () => {
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Datos bancarios, plazos de pago..."
+              placeholder={t('invoicing.paymentTermsPlaceholder')}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             />
           </div>

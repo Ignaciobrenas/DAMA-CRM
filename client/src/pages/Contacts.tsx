@@ -317,7 +317,7 @@ export const Contacts: React.FC = () => {
                           className="inline-flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
                         >
                           <MessageSquare className="w-3 h-3" />
-                          <span>Timeline</span>
+                          <span>{t('contacts.timeline')}</span>
                         </button>
                       </div>
                     </td>
@@ -360,18 +360,18 @@ export const Contacts: React.FC = () => {
                 required
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Nombre"
+                placeholder={t('contacts.firstName')}
                 className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Apellidos</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.lastName')}</label>
               <input
                 type="text"
                 required
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                placeholder="Apellidos"
+                placeholder={t('contacts.lastName')}
                 className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
@@ -406,7 +406,7 @@ export const Contacts: React.FC = () => {
                 type="text"
                 value={position}
                 onChange={(e) => setPosition(e.target.value)}
-                placeholder="CEO / Responsable Compras"
+                placeholder={t('contacts.jobTitlePlaceholder', 'CEO / Responsable Compras')}
                 className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
@@ -419,7 +419,7 @@ export const Contacts: React.FC = () => {
               onChange={(e) => setCompanyId(e.target.value)}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             >
-              <option value="">-- Sin Empresa Asignada --</option>
+              <option value="">{t('contacts.unassignedCompany')}</option>
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -601,7 +601,7 @@ export const Contacts: React.FC = () => {
                         <form onSubmit={handleSaveDetailModal} className="space-y-4">
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre</label>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.firstName')}</label>
                               <input
                                 type="text"
                                 required
@@ -611,7 +611,7 @@ export const Contacts: React.FC = () => {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Apellidos</label>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.lastName')}</label>
                               <input
                                 type="text"
                                 required
@@ -624,7 +624,7 @@ export const Contacts: React.FC = () => {
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email</label>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.email')}</label>
                               <input
                                 type="email"
                                 required
@@ -634,7 +634,7 @@ export const Contacts: React.FC = () => {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono Fijo</label>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.landline')}</label>
                               <input
                                 type="tel"
                                 value={detailPhone}
@@ -646,7 +646,7 @@ export const Contacts: React.FC = () => {
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Cargo / Puesto</label>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.jobTitle')}</label>
                               <input
                                 type="text"
                                 value={detailPosition}
@@ -655,13 +655,13 @@ export const Contacts: React.FC = () => {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Empresa</label>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.company')}</label>
                               <select
                                 value={detailCompanyId}
                                 onChange={(e) => setDetailCompanyId(e.target.value)}
                                 className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
                               >
-                                <option value="">-- Sin Empresa --</option>
+                                <option value="">{t('contacts.noCompanyOption')}</option>
                                 {companies.map((co) => (
                                   <option key={co.id} value={co.id}>
                                     {co.name}

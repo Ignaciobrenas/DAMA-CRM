@@ -199,7 +199,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         <button
           onClick={onToggleSidebar}
           className="p-1.5 rounded-lg md:hidden text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800"
-          title="Menú"
+          title={t('menu')}
+          aria-label={t('menu')}
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -224,15 +225,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
-          <span>{t('liveSync') || 'En vivo'}</span>
+          <span>{t('liveSync')}</span>
         </div>
 
         {/* Audio Mute/Unmute toggle */}
         <button
           onClick={handleToggleSound}
-          aria-label={isMuted ? 'Activar sonido' : 'Silenciar sonido'}
+          aria-label={isMuted ? t('enableSound') : t('muteSound')}
           className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-          title={isMuted ? 'Activar sonido de notificaciones' : 'Silenciar notificaciones'}
+          title={isMuted ? t('enableSound') : t('muteSound')}
         >
           {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-500" />}
         </button>
@@ -243,7 +244,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as Language)}
-            aria-label="Seleccionar idioma"
+            aria-label={t('languageSelect')}
             className="text-xs bg-transparent border border-gray-200 dark:border-slate-700 rounded-md py-1 px-1.5 text-gray-700 dark:text-gray-200 focus:outline-none cursor-pointer"
           >
             {SUPPORTED_LANGUAGES.map((l) => (
@@ -257,9 +258,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          aria-label="Alternar modo claro u oscuro"
+          aria-label={t('themeToggle')}
           className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-          title={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+          title={theme === 'dark' ? t('lightMode') : t('darkMode')}
         >
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
@@ -268,9 +269,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         <div ref={notifRef} className="relative">
           <button
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            aria-label="Notificaciones del sistema"
+            aria-label={t('notifications')}
             className="relative p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            title="Notificaciones"
+            title={t('notifications')}
           >
             {unreadCount > 0 ? (
               <AnimatedIcon animation="shake">
@@ -295,10 +296,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
               >
                 <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800">
                   <div className="flex items-center space-x-1.5">
-                    <span className="text-xs font-bold text-gray-900 dark:text-white">Notificaciones</span>
+                    <span className="text-xs font-bold text-gray-900 dark:text-white">{t('notifications')}</span>
                     {unreadCount > 0 && (
                       <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                        {unreadCount} nuevas
+                        {unreadCount} {t('newNotificationsCount')}
                       </span>
                     )}
                   </div>
@@ -308,7 +309,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
                       className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-0.5"
                     >
                       <Check className="w-3 h-3" />
-                      <span>Marcar leídas</span>
+                      <span>{t('markAsRead')}</span>
                     </button>
                   )}
                 </div>

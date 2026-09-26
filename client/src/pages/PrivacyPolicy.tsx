@@ -117,7 +117,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
 
           <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Conformidad RGPD (UE 2016/679) & LOPD-GDD</span>
+            <span>{t('privacy.gdprCompliance')}</span>
           </div>
         </div>
 
@@ -138,7 +138,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                 Transparencia total sobre cómo capturamos, procesamos y protegemos tus datos personales en nuestros formularios web, integraciones y plataforma CRM.
               </p>
               <div className="text-xs text-gray-500 dark:text-slate-400 pt-1">
-                Última revisión: <span className="font-semibold text-gray-700 dark:text-slate-300">25 de Septiembre de 2026</span> • Versión: <span className="font-semibold text-gray-700 dark:text-slate-300">3.2-CRM</span>
+                {t('privacy.lastReviewed', 'Última revisión')}: <span className="font-semibold text-gray-700 dark:text-slate-300">{t('privacy.lastUpdated')}</span> • {t('privacy.versionLabel')} <span className="font-semibold text-gray-700 dark:text-slate-300">3.2-CRM</span>
               </div>
             </div>
 
@@ -216,25 +216,25 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 space-y-2">
-                  <h3 className="font-bold text-gray-900 dark:text-white">Formularios Inteligentes & Leads</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white">{t('privacy.smartFormsAndLeads')}</h3>
                   <p className="text-gray-600 dark:text-slate-400">
                     Al rellenar formularios de contacto, registro de webinars o descarga de recursos (Lead Magnets), tus datos se incorporan a nuestra base de datos para responder consultas y gestionar la relación comercial.
                   </p>
                 </div>
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 space-y-2">
-                  <h3 className="font-bold text-gray-900 dark:text-white">Perfilado Progresivo</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white">{t('privacy.progressiveProfiling')}</h3>
                   <p className="text-gray-600 dark:text-slate-400">
                     Para no solicitar repetidamente la misma información, nuestro sistema reconoce visitantes previos y solicita de forma progresiva únicamente los datos necesarios para ajustar la propuesta comercial.
                   </p>
                 </div>
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 space-y-2">
-                  <h3 className="font-bold text-gray-900 dark:text-white">Píxel de Seguimiento del CRM</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white">{t('privacy.crmTrackingPixel')}</h3>
                   <p className="text-gray-600 dark:text-slate-400">
                     Utilizamos un script ligero de telemetría para medir el tiempo de permanencia, las páginas de producto visitadas y la interacción con botones, optimizando la experiencia de usuario y previniendo el fraude.
                   </p>
                 </div>
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 space-y-2">
-                  <h3 className="font-bold text-gray-900 dark:text-white">Sincronización E-commerce</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white">{t('privacy.ecommerceSync')}</h3>
                   <p className="text-gray-600 dark:text-slate-400">
                     Si inicias un proceso de compra o abandonas un carrito, el CRM registra la cesta para ofrecer asistencia en el pago o enviarte recordatorios si has prestado tu consentimiento.
                   </p>
@@ -251,10 +251,10 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                 </h2>
               </div>
               <ul className="text-xs text-gray-600 dark:text-slate-300 space-y-2 list-disc list-inside">
-                <li><strong className="text-gray-900 dark:text-white">Consentimiento explícito (Art. 6.1.a RGPD):</strong> Para suscripción a boletines comerciales (Opt-in) y almacenamiento de cookies no esenciales.</li>
-                <li><strong className="text-gray-900 dark:text-white">Ejecución contractual (Art. 6.1.b RGPD):</strong> Para la gestión de presupuestos, facturación y soporte técnico.</li>
-                <li><strong className="text-gray-900 dark:text-white">Cumplimiento de obligaciones legales (Art. 6.1.c RGPD):</strong> Conservación de facturas según normativa mercantil y fiscal.</li>
-                <li><strong className="text-gray-900 dark:text-white">Interés legítimo (Art. 6.1.f RGPD):</strong> Prevención del fraude y seguridad informática del software.</li>
+                <li><strong className="text-gray-900 dark:text-white">{t('privacy.legalBasisConsent')}</strong> {t('privacy.legalBasisConsentDesc')}</li>
+                <li><strong className="text-gray-900 dark:text-white">{t('privacy.legalBasisContract')}</strong> {t('privacy.legalBasisContractDesc')}</li>
+                <li><strong className="text-gray-900 dark:text-white">{t('privacy.legalBasisObligation')}</strong> {t('privacy.legalBasisObligationDesc')}</li>
+                <li><strong className="text-gray-900 dark:text-white">{t('privacy.legalBasisLegitimate')}</strong> {t('privacy.legalBasisLegitimateDesc')}</li>
               </ul>
             </section>
 
@@ -271,28 +271,28 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-800">
-                  <div className="font-bold text-gray-900 dark:text-white">Acceso</div>
-                  <div className="text-[11px] text-gray-500 dark:text-slate-400">Saber qué datos conservamos sobre ti.</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{t('privacy.rightAccess')}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400">{t('privacy.rightAccessDesc')}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-800">
-                  <div className="font-bold text-gray-900 dark:text-white">Rectificación</div>
-                  <div className="text-[11px] text-gray-500 dark:text-slate-400">Modificar datos inexactos o incompletos.</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{t('privacy.rightRectification')}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400">{t('privacy.rightRectificationDesc')}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-800">
-                  <div className="font-bold text-gray-900 dark:text-white">Supresión (Olvido)</div>
-                  <div className="text-[11px] text-gray-500 dark:text-slate-400">Borrado de tus datos cuando no sean necesarios.</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{t('privacy.rightErasure')}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400">{t('privacy.rightErasureDesc')}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-800">
-                  <div className="font-bold text-gray-900 dark:text-white">Portabilidad</div>
-                  <div className="text-[11px] text-gray-500 dark:text-slate-400">Descargar tus datos en formato digital JSON.</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{t('privacy.rightPortability')}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400">{t('privacy.rightPortabilityDesc')}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-800">
-                  <div className="font-bold text-gray-900 dark:text-white">Oposición</div>
-                  <div className="text-[11px] text-gray-500 dark:text-slate-400">Detener envíos comerciales al instante.</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{t('privacy.rightOpposition')}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400">{t('privacy.rightOppositionDesc')}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-800">
-                  <div className="font-bold text-gray-900 dark:text-white">Limitación</div>
-                  <div className="text-[11px] text-gray-500 dark:text-slate-400">Congelar el tratamiento temporalmente.</div>
+                  <div className="font-bold text-gray-900 dark:text-white">{t('privacy.rightLimitation')}</div>
+                  <div className="text-[11px] text-gray-500 dark:text-slate-400">{t('privacy.rightLimitationDesc')}</div>
                 </div>
               </div>
             </section>
@@ -311,19 +311,19 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
                   <span className="font-bold text-gray-900 dark:text-white block mb-1">Odoo ERP & WooCommerce</span>
-                  <span className="text-gray-500 dark:text-slate-400">Intercambio de pedidos y fichas de facturación fiscal a través de canales TLS 1.3 con autenticación por clave de API.</span>
+                  <span className="text-gray-500 dark:text-slate-400">{t('privacy.integrationsOdooDesc')}</span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
                   <span className="font-bold text-gray-900 dark:text-white block mb-1">Shopify & HMAC SHA-256</span>
-                  <span className="text-gray-500 dark:text-slate-400">Los webhooks entrantes son verificados con firmas criptográficas para garantizar que solo provienen de tu tienda autorizada.</span>
+                  <span className="text-gray-500 dark:text-slate-400">{t('privacy.integrationsShopifyDesc')}</span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
                   <span className="font-bold text-gray-900 dark:text-white block mb-1">Automatizaciones n8n</span>
-                  <span className="text-gray-500 dark:text-slate-400">Los eventos salientes hacia flujos de trabajo n8n no contienen contraseñas ni datos sensibles bancarios.</span>
+                  <span className="text-gray-500 dark:text-slate-400">{t('privacy.integrationsN8nDesc')}</span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
                   <span className="font-bold text-gray-900 dark:text-white block mb-1">WhatsApp Cloud (Meta)</span>
-                  <span className="text-gray-500 dark:text-slate-400">Las comunicaciones por mensajería se gestionan bajo los términos de privacidad corporativos de Meta Cloud API.</span>
+                  <span className="text-gray-500 dark:text-slate-400">{t('privacy.integrationsWhatsappDesc')}</span>
                 </div>
               </div>
             </section>
@@ -400,7 +400,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
               {isUpdatingConsent && (
                 <div className="flex items-center space-x-2 text-xs text-blue-600 dark:text-blue-400">
                   <LoadingSpinner size="sm" color="currentColor" />
-                  <span>Sincronizando estado con el servidor de privacidad...</span>
+                  <span>{t('privacy.syncingPrivacy')}</span>
                 </div>
               )}
 
@@ -458,12 +458,12 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                 {isExporting ? (
                   <>
                     <LoadingSpinner size="sm" color="white" />
-                    <span>Empaquetando datos...</span>
+                    <span>{t('privacy.packagingData')}</span>
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>Descargar archivo de mis datos (JSON)</span>
+                    <span>{t('privacy.downloadMyDataJson')}</span>
                   </>
                 )}
               </button>

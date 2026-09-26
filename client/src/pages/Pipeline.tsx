@@ -198,7 +198,7 @@ export const Pipeline: React.FC = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por título, empresa o contacto..."
+            placeholder={t('pipeline.searchFilterPlaceholder')}
             className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
           />
         </div>
@@ -210,7 +210,7 @@ export const Pipeline: React.FC = () => {
             onChange={(e) => setSelectedCompanyFilter(e.target.value)}
             className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-gray-200 focus:outline-none"
           >
-            <option value="">Todas las empresas</option>
+            <option value="">{t('pipeline.allCompanies')}</option>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -352,7 +352,7 @@ export const Pipeline: React.FC = () => {
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej: Licencia Anual ERP"
+              placeholder={t('pipeline.dealTitlePlaceholder')}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
@@ -371,7 +371,7 @@ export const Pipeline: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Fase Inicial</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('pipeline.stageInitial')}</label>
               <select
                 value={selectedStageId}
                 onChange={(e) => setSelectedStageId(e.target.value)}
@@ -394,7 +394,7 @@ export const Pipeline: React.FC = () => {
                 onChange={(e) => setCompanyId(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
               >
-                <option value="">-- Sin Empresa --</option>
+                <option value="">{t('pipeline.noCompanyOption')}</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -409,7 +409,7 @@ export const Pipeline: React.FC = () => {
                 onChange={(e) => setContactId(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
               >
-                <option value="">-- Sin Contacto --</option>
+                <option value="">{t('pipeline.noContactOption')}</option>
                 {contacts.map((ct) => (
                   <option key={ct.id} value={ct.id}>
                     {ct.firstName} {ct.lastName}

@@ -171,7 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center space-x-1.5 truncate">
               <span className="font-mono font-semibold">v1.2.0-staging</span>
               <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-mono text-[9px]">
-                Activa
+                {t('systemStatusActive')}
               </span>
             </div>
           )}
@@ -181,7 +181,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className={`p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors hidden md:flex items-center justify-center ${
               isCollapsed ? 'mx-auto' : ''
             }`}
-            title={isCollapsed ? 'Expandir barra lateral' : 'Minimizar barra lateral'}
+            title={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
+            aria-label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
           >
             {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
           </button>

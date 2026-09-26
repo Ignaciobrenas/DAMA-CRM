@@ -15,6 +15,8 @@ export interface ModalProps {
   closeOnEsc?: boolean;
 }
 
+import { useLanguage } from '../../context/LanguageContext';
+
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
@@ -28,6 +30,13 @@ export const Modal: React.FC<ModalProps> = ({
   closeOnEsc = true,
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
+  let closeLabel = 'Cerrar modal';
+  try {
+    const lang = useLanguage();
+    if (lang && lang.t) closeLabel = lang.t('closeModal', 'Cerrar modal');
+  } catch {
+    // context not available
+  }
 
   // Lock background scroll when open
   useEffect(() => {
@@ -106,7 +115,7 @@ export const Modal: React.FC<ModalProps> = ({
             <button
               onClick={onClose}
               className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-              aria-label="Cerrar modal"
+              aria-label={closeLabel}
             >
               <X className="w-4 h-4" />
             </button>
@@ -145,11 +154,28 @@ export const ConfirmDialog: React.FC<{
   onConfirm,
   title,
   message,
-  confirmText = 'Confirmar',
-  cancelText = 'Cancelar',
+  confirmText,
+  cancelText,
   isDestructive = true,
   isLoading = false,
 }) => {
+  let defaultConfirm = 'Confirmar';
+  let defaultCancel = 'Cancelar';
+  let processingText = 'Procesando...';
+  try {
+    const lang = useLanguage();
+    if (lang && lang.t) {
+      defaultConfirm = lang.t('confirm', 'Confirmar');
+      defaultCancel = lang.t('cancel', 'Cancelar');
+      processingText = lang.t('processing', 'Procesando...');
+    }
+  } catch {
+    // context not available
+  }
+
+  const finalConfirmText = confirmText || defaultConfirm;
+  const finalCancelText = cancelText || defaultCancel;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -164,7 +190,7 @@ export const ConfirmDialog: React.FC<{
             disabled={isLoading}
             className="px-3.5 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
           >
-            {cancelText}
+            {finalCancelText}
           </button>
           <button
             type="button"
@@ -175,7 +201,7 @@ export const ConfirmDialog: React.FC<{
               isDestructive ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
             )}
           >
-            {isLoading ? 'Procesando...' : confirmText}
+            {isLoading ? processingText : finalConfirmText}
           </button>
         </>
       }

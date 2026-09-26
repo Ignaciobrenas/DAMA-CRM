@@ -16,6 +16,7 @@ import {
   Save,
 } from 'lucide-react';
 import { apiRequest } from '../../services/api';
+import { useLanguage } from '../../context/LanguageContext';
 
 export interface RecordDrawerProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
   extraBadge,
   omniMessages = [],
 }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'activities' | 'customFields' | 'messages'>('activities');
   
   // Activities state
@@ -157,7 +159,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
 
     setIsSavingFields(false);
     if (res.success) {
-      setSaveStatus('Guardado correctamente');
+      setSaveStatus(t('recordDrawer.savedSuccess'));
       setTimeout(() => setSaveStatus(null), 3000);
     }
   };
@@ -174,6 +176,21 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
         return <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />;
       default:
         return <FileText className="w-3.5 h-3.5 text-gray-500" />;
+    }
+  };
+
+  const getActivityTypeName = (type: string) => {
+    switch (type) {
+      case 'CALL':
+        return t('recordDrawer.typeCall');
+      case 'MEETING':
+        return t('recordDrawer.typeMeeting');
+      case 'NOTE':
+        return t('recordDrawer.typeNote');
+      case 'TASK':
+        return t('recordDrawer.typeTask');
+      default:
+        return type;
     }
   };
 
@@ -201,6 +218,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
           <button
             onClick={onClose}
             className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label={t('close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -217,7 +235,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>Actividades ({activities.length})</span>
+            <span>{t('recordDrawer.activities')} ({activities.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('customFields')}
@@ -228,7 +246,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Campos Meta</span>
+            <span>{t('recordDrawer.metaFields')}</span>
           </button>
           {entityType === 'CONTACT' && (
             <button
@@ -240,7 +258,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>Mensajes ({omniMessages.length})</span>
+              <span>{t('recordDrawer.messages')} ({omniMessages.length})</span>
             </button>
           )}
         </div>
@@ -252,14 +270,14 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
-                  Timeline de Interacciones
+                  {t('recordDrawer.interactionTimeline')}
                 </span>
                 <button
                   onClick={() => setIsAddingActivity(!isAddingActivity)}
                   className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-xs transition-colors"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>{isAddingActivity ? 'Cancelar' : 'Registrar'}</span>
+                  <span>{isAddingActivity ? t('cancel') : t('recordDrawer.register')}</span>
                 </button>
               </div>
 
@@ -270,18 +288,18 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                   className="p-3 bg-gray-50 dark:bg-slate-800/80 rounded-xl border border-gray-200 dark:border-slate-700 space-y-2.5 animate-in fade-in"
                 >
                   <div className="flex space-x-1 text-xs">
-                    {(['CALL', 'MEETING', 'NOTE', 'TASK'] as const).map((t) => (
+                    {(['CALL', 'MEETING', 'NOTE', 'TASK'] as const).map((tType) => (
                       <button
-                        key={t}
+                        key={tType}
                         type="button"
-                        onClick={() => setActivityType(t)}
+                        onClick={() => setActivityType(tType)}
                         className={`flex-1 py-1 rounded text-center font-semibold transition-colors ${
-                          activityType === t
+                          activityType === tType
                             ? 'bg-blue-600 text-white'
                             : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300'
                         }`}
                       >
-                        {t === 'CALL' ? 'Llamada' : t === 'MEETING' ? 'Reunión' : t === 'NOTE' ? 'Nota' : 'Tarea'}
+                        {getActivityTypeName(tType)}
                       </button>
                     ))}
                   </div>
@@ -289,14 +307,14 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Título de la actividad..."
+                    placeholder={t('recordDrawer.activityTitlePlaceholder')}
                     value={activityTitle}
                     onChange={(e) => setActivityTitle(e.target.value)}
                     className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-md text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
                   />
 
                   <textarea
-                    placeholder="Detalles, resumen o acuerdos..."
+                    placeholder={t('recordDrawer.activityDescPlaceholder')}
                     rows={2}
                     value={activityDesc}
                     onChange={(e) => setActivityDesc(e.target.value)}
@@ -305,7 +323,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">Fecha y hora</label>
+                      <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">{t('recordDrawer.dateTime')}</label>
                       <input
                         type="datetime-local"
                         value={activityDate}
@@ -314,7 +332,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">Duración (min)</label>
+                      <label className="block text-[10px] text-gray-500 dark:text-slate-400 mb-0.5">{t('recordDrawer.durationMin')}</label>
                       <input
                         type="number"
                         min="5"
@@ -331,7 +349,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                       type="submit"
                       className="px-3 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-xs"
                     >
-                      Guardar Actividad
+                      {t('recordDrawer.saveActivity')}
                     </button>
                   </div>
                 </form>
@@ -341,7 +359,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
               <div className="space-y-2">
                 {activities.length === 0 ? (
                   <div className="py-8 text-center text-xs text-gray-400 border border-dashed border-gray-200 dark:border-slate-800 rounded-lg">
-                    No hay actividades registradas todavía.
+                    {t('recordDrawer.noActivities')}
                   </div>
                 ) : (
                   activities.map((act) => (
@@ -385,11 +403,11 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
 
                       <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-slate-500 pl-6 pt-1 border-t border-gray-100 dark:border-slate-800">
                         <span>
-                          {act.user ? `Por ${act.user.name}` : 'Registrado'}
+                          {act.user ? `${t('recordDrawer.byUser')} ${act.user.name}` : t('recordDrawer.registered')}
                           {act.durationMinutes ? ` • ${act.durationMinutes} min` : ''}
                         </span>
                         <span className="uppercase tracking-wider font-semibold text-[9px]">
-                          {act.type}
+                          {getActivityTypeName(act.type)}
                         </span>
                       </div>
                     </div>
@@ -404,7 +422,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
-                  Metadatos Personalizados
+                  {t('recordDrawer.customMetadata')}
                 </span>
                 <button
                   onClick={handleSaveCustomFields}
@@ -412,7 +430,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                   className="inline-flex items-center space-x-1 px-3 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md shadow-xs transition-colors"
                 >
                   <Save className="w-3 h-3" />
-                  <span>{isSavingFields ? 'Guardando...' : 'Guardar'}</span>
+                  <span>{isSavingFields ? t('processing') : t('save')}</span>
                 </button>
               </div>
 
@@ -424,7 +442,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
 
               {fieldDefinitions.length === 0 ? (
                 <div className="py-8 text-center text-xs text-gray-400 border border-dashed border-gray-200 dark:border-slate-800 rounded-lg">
-                  No se han configurado campos adicionales para {entityType}. Configúralos en Ajustes o mediante API.
+                  {t('recordDrawer.noCustomFields')}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -483,7 +501,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                             }
                             className="rounded text-blue-600 focus:ring-0"
                           />
-                          <span>Habilitado / Marcado</span>
+                          <span>{t('recordDrawer.enabledChecked')}</span>
                         </label>
                       )}
 
@@ -495,7 +513,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                           }
                           className="w-full px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
                         >
-                          <option value="">-- Seleccionar opción --</option>
+                          <option value="">{t('recordDrawer.selectOption')}</option>
                           {field.options?.map((opt: string) => (
                             <option key={opt} value={opt}>
                               {opt}
@@ -514,7 +532,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
           {activeTab === 'messages' && (
             <div className="space-y-3">
               <span className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
-                Conversaciones WhatsApp / Email
+                {t('recordDrawer.omniConversations')}
               </span>
 
               {omniMessages && omniMessages.length > 0 ? (
@@ -543,7 +561,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                 ))
               ) : (
                 <div className="py-12 text-center text-xs text-gray-400">
-                  Sin interacciones registradas para este contacto.
+                  {t('recordDrawer.noMessages')}
                 </div>
               )}
             </div>
