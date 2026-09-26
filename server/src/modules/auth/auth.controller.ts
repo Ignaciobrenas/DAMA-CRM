@@ -266,101 +266,12 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
-  try {
-    const { name, email, password, companyName } = req.body;
-
-    if (!name || !email || !password) {
-      res.status(400).json({ success: false, message: 'Nombre, email y contraseña requeridos' });
-      return;
-    }
-
-    if (password.length < 6) {
-      res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 6 caracteres' });
-      return;
-    }
-
-    const cleanEmail = email.toLowerCase().trim();
-    const existingUser = await prisma.user.findUnique({
-      where: { email: cleanEmail },
-    });
-
-    if (existingUser) {
-      res.status(409).json({ success: false, message: 'Ya existe una cuenta con este correo electrónico' });
-      return;
-    }
-
-    // Default role assignment: assign SALES role by default, or ADMIN if first user
-    const totalUsers = await prisma.user.count();
-    let targetRole = await prisma.role.findUnique({
-      where: { name: totalUsers === 0 ? 'ADMIN' : 'SALES' },
-    });
-
-    if (!targetRole) {
-      targetRole = await prisma.role.findFirst();
-    }
-
-    if (!targetRole) {
-      res.status(500).json({ success: false, message: 'Error de configuración: no hay roles creados en el sistema' });
-      return;
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-
-    const newUser = await prisma.user.create({
-      data: {
-        name: name.trim(),
-        email: cleanEmail,
-        passwordHash,
-        roleId: targetRole.id,
-        isActive: true,
-      },
-      include: {
-        role: {
-          include: {
-            permissions: true,
-          },
-        },
-      },
-    });
-
-    // Optionally create user's company if provided
-    if (companyName && companyName.trim()) {
-      await prisma.company.create({
-        data: {
-          name: companyName.trim(),
-          email: cleanEmail,
-        },
-      });
-    }
-
-    await logAudit(newUser.id, 'REGISTER', 'User', newUser.id, { email: cleanEmail, name }, req.ip);
-
-    const token = generateToken({
-      userId: newUser.id,
-      email: newUser.email,
-      role: newUser.role.name,
-    });
-
-    res.status(201).json({
-      success: true,
-      token,
-      message: 'Cuenta creada con éxito',
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        avatar: newUser.avatar,
-        twoFactorEnabled: newUser.twoFactorEnabled,
-        role: newUser.role.name,
-        preferences: newUser.preferences ? JSON.parse(newUser.preferences) : {},
-        permissions: buildUserPermissions(newUser),
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  res.status(403).json({
+    success: false,
+    message: 'El registro público de cuentas está deshabilitado. Los nuevos usuarios deben ser aprovisionados por el Administrador de su Empresa o por el SuperAdmin God.',
+  });
 }
+
 
 export async function forgotPassword(req: Request, res: Response): Promise<void> {
   try {
