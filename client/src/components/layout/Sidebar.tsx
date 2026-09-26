@@ -22,6 +22,7 @@ import {
   HelpCircle,
   Ticket,
   WalletCards,
+  UserCheck,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -49,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/' },
+    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado' },
     { id: 'tickets', label: t('sidebar.tickets'), icon: Ticket, route: '/tickets', resource: 'tickets' },
     { id: 'expenses', label: t('sidebar.expenses'), icon: WalletCards, route: '/expenses', resource: 'expenses' },
     { id: 'pipeline', label: t('pipeline'), icon: TrendingUp, route: '/pipeline', resource: 'deals' },

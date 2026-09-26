@@ -6,6 +6,10 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting DAMA-CRM database seed...');
 
+  await prisma.timeRecord.deleteMany();
+  await prisma.payroll.deleteMany();
+  await prisma.employee.deleteMany();
+  await prisma.notification.deleteMany();
   await prisma.ticketMessage.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.expense.deleteMany();
@@ -900,6 +904,107 @@ async function main() {
       status: 'PENDING',
       paymentMethod: 'BANK_TRANSFER',
       notes: 'Presentación trimestral Modelo 303 de IVA y asesoramiento RGPD',
+      tenantId: 'master',
+    },
+  });
+
+  // 12. Seed HR Employees, Payrolls & Time Records
+  const godUser = await prisma.user.findUnique({ where: { email: 'ignaciobrenas@gmail.com' } });
+  const salesEmpUser = await prisma.user.findUnique({ where: { email: 'ventas@dama-crm.local' } });
+
+  const emp1 = await prisma.employee.create({
+    data: {
+      userId: godUser?.id,
+      firstName: 'Ignacio',
+      lastName: 'Brenas',
+      email: 'ignaciobrenas@gmail.com',
+      phone: '+34 600 000 001',
+      jobTitle: 'Director General & CTO',
+      department: 'ENGINEERING',
+      contractType: 'INDEFINIDO',
+      baseSalary: 4500.0,
+      iban: 'ES91 2100 0418 4502 0005 1332',
+      status: 'ACTIVE',
+      odooEmployeeId: 101,
+      tenantId: 'master',
+    },
+  });
+
+  const emp2 = await prisma.employee.create({
+    data: {
+      userId: salesEmpUser?.id,
+      firstName: 'Lucía',
+      lastName: 'García',
+      email: 'ventas@dama-crm.local',
+      phone: '+34 600 000 002',
+      jobTitle: 'Ejecutiva de Cuentas Senior',
+      department: 'SALES',
+      contractType: 'INDEFINIDO',
+      baseSalary: 2800.0,
+      iban: 'ES76 0049 1500 0512 3456 7890',
+      status: 'ACTIVE',
+      odooEmployeeId: 102,
+      tenantId: 'master',
+    },
+  });
+
+  // Seed Payrolls
+  await prisma.payroll.create({
+    data: {
+      employeeId: emp1.id,
+      month: 8,
+      year: 2026,
+      baseSalary: 4500.0,
+      bonuses: 500.0,
+      deductions: 950.0,
+      netSalary: 4050.0,
+      status: 'PAID',
+      paidAt: new Date('2026-08-30'),
+      notes: 'Nómina Agosto 2026 abonada por transferencia',
+      tenantId: 'master',
+    },
+  });
+
+  await prisma.payroll.create({
+    data: {
+      employeeId: emp2.id,
+      month: 8,
+      year: 2026,
+      baseSalary: 2800.0,
+      bonuses: 350.0,
+      deductions: 580.0,
+      netSalary: 2570.0,
+      status: 'PAID',
+      paidAt: new Date('2026-08-30'),
+      notes: 'Nómina Agosto 2026 con incentivo por ventas',
+      tenantId: 'master',
+    },
+  });
+
+  // Seed Time Records
+  await prisma.timeRecord.create({
+    data: {
+      employeeId: emp1.id,
+      userId: godUser?.id,
+      clockIn: new Date(Date.now() - 4 * 3600 * 1000),
+      clockOut: new Date(Date.now() - 30 * 60 * 1000),
+      durationMinutes: 210,
+      type: 'WORK',
+      reason: 'Oficina Central',
+      status: 'VALID',
+      tenantId: 'master',
+    },
+  });
+
+  await prisma.timeRecord.create({
+    data: {
+      employeeId: emp2.id,
+      userId: salesEmpUser?.id,
+      clockIn: new Date(Date.now() - 2 * 3600 * 1000),
+      clockOut: null,
+      type: 'REMOTE',
+      reason: 'Teletrabajo',
+      status: 'VALID',
       tenantId: 'master',
     },
   });

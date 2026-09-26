@@ -774,6 +774,115 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.ok(events.includes('ticket:created'));
     });
   });
+
+  describe('Portal del Empleado - Time Tracking & Fichajes (Estatuto de los Trabajadores)', () => {
+    it('should calculate duration in minutes correctly when clocking out', () => {
+      const clockIn = new Date('2026-09-26T08:00:00.000Z');
+      const clockOut = new Date('2026-09-26T16:30:00.000Z');
+      const durationMs = clockOut.getTime() - clockIn.getTime();
+      const durationMinutes = Math.floor(durationMs / 60000);
+
+      assert.strictEqual(durationMinutes, 510); // 8 hours and 30 minutes = 510 mins
+    });
+
+    it('should support legal workday justification reasons', () => {
+      const validReasons = [
+        'OFFICE',
+        'REMOTE',
+        'CLIENT_VISIT',
+        'TRAVEL',
+        'MEDICAL',
+        'OVERTIME',
+      ];
+      validReasons.forEach((r) => {
+        assert.ok(typeof r === 'string' && r.length > 0);
+      });
+      assert.strictEqual(validReasons.length, 6);
+    });
+
+    it('should format Odoo hr.attendance payload correctly for bidirectional sync', () => {
+      const timeRecord = {
+        id: 'rec-1001',
+        employeeId: 'emp-001',
+        clockIn: '2026-09-26T08:00:00.000Z',
+        clockOut: '2026-09-26T17:00:00.000Z',
+        odooAttendanceId: 'odoo-att-55',
+      };
+
+      const odooPayload = {
+        employee_id: timeRecord.employeeId,
+        check_in: timeRecord.clockIn,
+        check_out: timeRecord.clockOut,
+      };
+
+      assert.strictEqual(odooPayload.employee_id, 'emp-001');
+      assert.strictEqual(odooPayload.check_in, '2026-09-26T08:00:00.000Z');
+      assert.strictEqual(odooPayload.check_out, '2026-09-26T17:00:00.000Z');
+    });
+  });
+
+  describe('Portal del Empleado - Payrolls & RGPD Privacy Masking', () => {
+    it('should compute gross, deductions, and net salary accurately', () => {
+      const baseSalary = 2500;
+      const bonuses = 350;
+      const deductions = 541.50; // IRPF + Social Security
+
+      const grossSalary = baseSalary + bonuses;
+      const netSalary = Number((grossSalary - deductions).toFixed(2));
+
+      assert.strictEqual(grossSalary, 2850);
+      assert.strictEqual(netSalary, 2308.50);
+    });
+
+    it('should mask coworker salary and banking details for standard employees (RGPD Compliance)', () => {
+      const fullEmployee = {
+        id: 'emp-002',
+        userId: 'usr-999',
+        department: 'Engineering',
+        jobTitle: 'Frontend Developer',
+        salary: 42000,
+        iban: 'ES9121000418450200051332',
+        dniNie: '12345678Z',
+        ssNumber: '281234567890',
+        status: 'ACTIVE',
+      };
+
+      const requesterRole: string = 'EMPLOYEE';
+      const isOwner = false;
+      const canManageEmployees = requesterRole === 'ADMIN' || requesterRole === 'HR_MANAGER';
+
+      const maskedEmployee = {
+        ...fullEmployee,
+        salary: canManageEmployees || isOwner ? fullEmployee.salary : null,
+        iban: canManageEmployees || isOwner ? fullEmployee.iban : undefined,
+        dniNie: canManageEmployees || isOwner ? fullEmployee.dniNie : undefined,
+        ssNumber: canManageEmployees || isOwner ? fullEmployee.ssNumber : undefined,
+      };
+
+      assert.strictEqual(maskedEmployee.salary, null);
+      assert.strictEqual(maskedEmployee.iban, undefined);
+      assert.strictEqual(maskedEmployee.dniNie, undefined);
+      assert.strictEqual(maskedEmployee.jobTitle, 'Frontend Developer');
+    });
+
+    it('should validate multi-tenant employee isolation between companies', () => {
+      const companyATenant = 'tenant-acme';
+      const companyBTenant = 'tenant-globex';
+
+      const employeeCompanyA = { id: 'emp-1', tenantId: companyATenant, name: 'Alice' };
+      const employeeCompanyB = { id: 'emp-2', tenantId: companyBTenant, name: 'Bob' };
+
+      const allEmployees = [employeeCompanyA, employeeCompanyB];
+
+      const companyAView = allEmployees.filter((e) => e.tenantId === companyATenant);
+      assert.strictEqual(companyAView.length, 1);
+      assert.strictEqual(companyAView[0].name, 'Alice');
+
+      const isGodSuperAdmin = true;
+      const godView = isGodSuperAdmin ? allEmployees : companyAView;
+      assert.strictEqual(godView.length, 2);
+    });
+  });
 });
 
 

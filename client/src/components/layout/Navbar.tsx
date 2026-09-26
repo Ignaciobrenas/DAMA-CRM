@@ -17,6 +17,7 @@ import { soundService } from '../../services/sound';
 import { SUPPORTED_LANGUAGES, Language } from '../../i18n';
 import { GodModeModal } from '../modals/GodModeModal';
 import { NotificationCenter } from '../notifications/NotificationCenter';
+import { ClockWidget } from '../employee-portal/ClockWidget';
 
 interface NavbarProps {
   onOpenSearch: () => void;
@@ -83,6 +84,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
             <span className="hidden md:inline font-mono">{activeTenant?.name || 'God Mode'}</span>
           </button>
         )}
+
+        {/* 1-Click Clock In/Out Real-Time Widget */}
+        <ClockWidget compact />
 
         {/* Real-time sync indicator */}
         <div className="hidden sm:flex items-center space-x-1.5 px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
