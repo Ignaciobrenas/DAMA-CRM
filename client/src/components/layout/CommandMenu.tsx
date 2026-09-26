@@ -10,6 +10,8 @@ import {
   Receipt,
   Sparkles,
   ArrowRight,
+  Blocks,
+  Rocket,
   X,
 } from 'lucide-react';
 import { apiRequest } from '../../services/api';
@@ -320,6 +322,34 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                   <div>
                     <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('agile')}</div>
                     <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('agileSubtitle')}</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelect('/integrations')}
+                  className="flex items-center space-x-2.5 p-2 rounded-xl border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 text-left transition-colors"
+                >
+                  <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400">
+                    <Blocks className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('integrations')}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">Odoo, WooCommerce, Shopify, n8n</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelect('/onboarding')}
+                  className="flex items-center space-x-2.5 p-2 rounded-xl border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 text-left transition-colors"
+                >
+                  <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                    <Rocket className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('onboarding.setupWizard', 'Asistente de Bienvenida')}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">Configuración guiada inicial</div>
                   </div>
                 </button>
               </div>

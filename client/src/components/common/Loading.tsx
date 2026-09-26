@@ -62,7 +62,12 @@ export const PulseLogo: React.FC<{ size?: number; className?: string }> = ({
         <img
           src="/assets/logos/dama-symbol-dark.svg"
           alt="DAMA"
-          className="w-4/5 h-4/5 object-contain filter drop-shadow-xs dark:invert"
+          className="w-4/5 h-4/5 object-contain filter drop-shadow-xs dark:hidden"
+        />
+        <img
+          src="/assets/logos/dama-symbol-white.svg"
+          alt="DAMA"
+          className="w-4/5 h-4/5 object-contain filter drop-shadow-xs hidden dark:block"
         />
       </div>
     </div>

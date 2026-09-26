@@ -122,6 +122,37 @@ El proyecto incluye archivos `.env` preconfigurados para desarrollo local inmedi
 * **Iconos Animados Interactivos (`AnimatedIcon`):** Micro-interacciones de hover-scale, pulse, bounce y campanilla reactiva (`shake`).
 * **Auditoría Forense Visual:** Panel inmutable de trazabilidad de seguridad en Ajustes sincronizado en tiempo real.
 
+### 🔌 12. Conectores & Endpoint de Integraciones de Terceros (`/api/integraciones-de-terceros`)
+* **Endpoint Centralizado de Aplicaciones:** Catálogo completo expuesto en `GET /api/integraciones-de-terceros` y `/api/integrations/third-party`.
+* **Odoo ERP:** Sincronización bidireccional mediante XML-RPC / JSON-RPC de contactos (`res.partner`), pedidos de venta, facturas (`account.move`) y catálogo de productos.
+* **WooCommerce:** Webhooks en tiempo real (`order.created`, `order.updated`, `customer.created`) con conversión automática a oportunidades de venta y clientes en el CRM.
+* **Shopify Store:** Conexión para comercio de alto volumen con verificación de firma criptográfica **HMAC-SHA256** (`X-Shopify-Hmac-Sha256`), creación de tratos e importación de catálogo.
+* **n8n Workflow Automation:** Disparador de eventos salientes del CRM y receptor de acciones entrantes (`/api/integrations/n8n/action`) para crear contactos, oportunidades, actividades y productos desde cualquier flujo n8n.
+* **UnoPIM & WhatsApp Meta Cloud:** Integraciones nativas de PIM para gestión de inventario y bandeja omnicanal 24/7.
+* **Pasarelas & Webhooks:** Stripe Payments y REST Hooks para Zapier y Make.
+
+### 🚀 13. Asistente de Bienvenida & Onboarding Guiado (`/onboarding`)
+* Wizard en 4 pasos desplegado automáticamente en el primer inicio de sesión del usuario:
+  1. **Organización & Marca:** Definición del nombre de la empresa, divisa base (EUR, USD, GBP, MXN) y paleta de colores.
+  2. **Identidad Adaptativa:** Previsualización en vivo del imagotipo DAMA adaptándose con contraste óptimo en fondos claros y oscuros.
+  3. **Rol & Equipo:** Selección del perfil operativo e invitaciones a compañeros de trabajo mediante chips de correo.
+  4. **Ecosistema & Lanzamiento:** Activación de conectores externos, opción de precarga de datos de demostración interactivos y celebración con fuegos artificiales (`canvas-confetti`).
+
+### 🎨 14. Nueva Identidad de Marca DAMA Vectorial (Light & Dark Mode)
+* **Logotipos Oficiales Vectorizados:** Colección SVG en [`client/public/assets/logos/`](client/public/assets/logos/) procesada sin pérdida de calidad.
+* **Comportamiento Placeholder Dinámico:** Si la empresa no sube un logotipo personalizado, el imagotipo institucional DAMA se renderiza como marcador predeterminado: color azul corporativo navy (`#072053`) en modo claro y blanco puro (`#FFFFFF`) con transparencia perfecta en modo oscuro.
+
+### 📈 15. Seguimiento de Analíticas & Telemetría en Vivo
+* **Privacidad por Diseño (RGPD):** Seguimiento interno de navegación y eventos sin intermediarios publicitarios externos ni cookies de terceros.
+* **Métricas en Tiempo Real:** Monitorización de páginas más visitadas, eventos de interacción de usuario, tasa de conversión y registro en vivo en el módulo de Informes (`/reports`).
+
+### ❓ 16. Centro de Ayuda & Preguntas Frecuentes (FAQ) (`/faq`)
+* Buscador en tiempo real de dudas frecuentes clasificadas en categorías: General & Módulos, Conectores & Webhooks, Seguridad & RGPD, Ventas & Facturación, y Marca Corporativa.
+* Sistema de retroalimentación interactiva ("¿Te ha resultado útil?") y acceso directo a soporte técnico omnicanal.
+
+### 🏷️ 17. Indicador de Versión Activa en Ejecución
+* Visualización en pie de página global y panel lateral de la versión actual: `v1.2.0-staging (Build 2026.09.26)`.
+
 ---
 
 ## 👥 Credenciales de Acceso Demo

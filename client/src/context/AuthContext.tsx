@@ -11,6 +11,7 @@ export interface UserPreferences {
   language?: string;
   emailNotifications?: boolean;
   compactMode?: boolean;
+  onboardingCompleted?: boolean;
 }
 
 export interface User {

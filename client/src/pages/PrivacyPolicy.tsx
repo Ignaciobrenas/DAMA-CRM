@@ -296,6 +296,50 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                 </div>
               </div>
             </section>
+
+            {/* Section 5: Integraciones de Terceros */}
+            <section className="space-y-3">
+              <div className="flex items-center space-x-2.5 text-blue-600 dark:text-blue-400">
+                <Globe className="w-5 h-5" />
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                  5. Transferencias y Conectores con Terceros (Odoo, WooCommerce, Shopify, n8n, Meta)
+                </h2>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+                Cuando habilitas conectores en el endpoint central <code className="bg-gray-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">/api/integraciones-de-terceros</code>, los datos se sincronizan exclusivamente según tus instrucciones directas:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="font-bold text-gray-900 dark:text-white block mb-1">Odoo ERP & WooCommerce</span>
+                  <span className="text-gray-500 dark:text-slate-400">Intercambio de pedidos y fichas de facturación fiscal a través de canales TLS 1.3 con autenticación por clave de API.</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="font-bold text-gray-900 dark:text-white block mb-1">Shopify & HMAC SHA-256</span>
+                  <span className="text-gray-500 dark:text-slate-400">Los webhooks entrantes son verificados con firmas criptográficas para garantizar que solo provienen de tu tienda autorizada.</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="font-bold text-gray-900 dark:text-white block mb-1">Automatizaciones n8n</span>
+                  <span className="text-gray-500 dark:text-slate-400">Los eventos salientes hacia flujos de trabajo n8n no contienen contraseñas ni datos sensibles bancarios.</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="font-bold text-gray-900 dark:text-white block mb-1">WhatsApp Cloud (Meta)</span>
+                  <span className="text-gray-500 dark:text-slate-400">Las comunicaciones por mensajería se gestionan bajo los términos de privacidad corporativos de Meta Cloud API.</span>
+                </div>
+              </div>
+            </section>
+
+            {/* Section 6: Telemetría y Analíticas */}
+            <section className="space-y-3">
+              <div className="flex items-center space-x-2.5 text-blue-600 dark:text-blue-400">
+                <ShieldCheck className="w-5 h-5" />
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                  6. Telemetría Interna y Métricas de Uso
+                </h2>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+                El sistema dispone de un servicio de seguimiento de analíticas interno enfocado en la privacidad. No se comparten datos de navegación con intermediarios publicitarios ni redes de rastreo de terceros. Los identificadores de sesión son efímeros y se almacenan localmente en tu navegador.
+              </p>
+            </section>
           </div>
         )}
 
