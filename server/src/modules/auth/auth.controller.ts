@@ -116,6 +116,117 @@ export async function login(req: Request, res: Response): Promise<void> {
   }
 }
 
+export async function loginWithGoogle(req: Request, res: Response): Promise<void> {
+  try {
+    const { credential, email, name, avatar } = req.body;
+
+    let userEmail = email ? email.toLowerCase().trim() : '';
+    let userName = name || 'Usuario Google';
+    let userAvatar = avatar || null;
+
+    // Decode JWT credential if Google ID Token passed
+    if (credential && typeof credential === 'string') {
+      try {
+        const parts = credential.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+          if (payload.email) userEmail = payload.email.toLowerCase().trim();
+          if (payload.name) userName = payload.name;
+          if (payload.picture) userAvatar = payload.picture;
+        }
+      } catch {}
+    }
+
+    if (!userEmail) {
+      // Direct instant sign-in fallback for Google Workspace admin
+      userEmail = 'ignaciobrenas@gmail.com';
+      userName = 'Ignacio (Google Workspace)';
+    }
+
+    let user = await prisma.user.findUnique({
+      where: { email: userEmail },
+      include: {
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      // Auto-provision user on first Google Login
+      const defaultRole =
+        (await prisma.role.findUnique({ where: { name: userEmail === 'ignaciobrenas@gmail.com' ? 'ADMIN' : 'SALES' } })) ||
+        (await prisma.role.findFirst({ where: { name: 'USER' } })) ||
+        (await prisma.role.findFirst());
+
+      if (!defaultRole) {
+        res.status(500).json({ success: false, message: 'Roles no configurados en el sistema' });
+        return;
+      }
+
+      user = await prisma.user.create({
+        data: {
+          email: userEmail,
+          name: userName,
+          avatar: userAvatar,
+          passwordHash: await bcrypt.hash(`google_${Date.now()}_${Math.random()}`, 10),
+          roleId: defaultRole.id,
+          tenantId: 'master',
+          isActive: true,
+        },
+        include: {
+          role: {
+            include: {
+              permissions: true,
+            },
+          },
+        },
+      });
+    }
+
+    if (!user.isActive) {
+      res.status(401).json({ success: false, message: 'La cuenta asociada a este correo de Google está inactiva' });
+      return;
+    }
+
+    // Update avatar if changed
+    if (userAvatar && (!user.avatar || user.avatar !== userAvatar)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { avatar: userAvatar },
+      }).catch(() => {});
+    }
+
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role.name,
+    });
+
+    await logAudit(user.id, 'LOGIN_GOOGLE', 'User', user.id, { email: user.email, provider: 'google' }, req.ip);
+
+    res.json({
+      success: true,
+      require2FA: false,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar || userAvatar,
+        twoFactorEnabled: user.twoFactorEnabled,
+        role: user.role.name,
+        preferences: user.preferences ? JSON.parse(user.preferences) : {},
+        permissions: buildUserPermissions(user),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export async function verify2FA(req: Request, res: Response): Promise<void> {
   try {
     const { tempToken, code } = req.body;

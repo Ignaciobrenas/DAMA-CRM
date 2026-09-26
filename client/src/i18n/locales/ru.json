@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "Экспорт счетов (CSV)",
   "invoicing.exportQuotesCsv": "Экспорт предложений (CSV)",
   "invoicing.reminderSent": "Напоминание об оплате успешно отправлено",
-  "invoicing.sendReminder": "Напомнить об оплате"
+  "invoicing.sendReminder": "Напомнить об оплате",
+  "loginWithGoogle": "Продолжить через Google",
+  "orWithCredentials": "или войти с помощью эл. почты"
 }

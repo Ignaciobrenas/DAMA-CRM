@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "Rechnungen exportieren (CSV)",
   "invoicing.exportQuotesCsv": "Angebote exportieren (CSV)",
   "invoicing.reminderSent": "Zahlungserinnerung erfolgreich gesendet",
-  "invoicing.sendReminder": "Mahnung senden"
+  "invoicing.sendReminder": "Mahnung senden",
+  "loginWithGoogle": "Mit Google fortfahren",
+  "orWithCredentials": "oder mit E-Mail fortfahren"
 }

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   login,
+  loginWithGoogle,
   register,
   verify2FA,
   toggle2FA,
@@ -31,6 +32,7 @@ const sensitiveAuthLimiter = rateLimiter({
 });
 
 router.post('/login', loginLimiter, validate(loginSchema), login);
+router.post('/google', loginLimiter, loginWithGoogle);
 router.post('/register', register);
 router.post('/verify-2fa', sensitiveAuthLimiter, verify2FA);
 router.post('/forgot-password', sensitiveAuthLimiter, forgotPassword);

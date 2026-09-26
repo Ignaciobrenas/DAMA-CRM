@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "تصدير الفواتير (CSV)",
   "invoicing.exportQuotesCsv": "تصدير عروض الأسعار (CSV)",
   "invoicing.reminderSent": "تم إرسال تذكير الدفع بنجاح",
-  "invoicing.sendReminder": "إرسال تذكير"
+  "invoicing.sendReminder": "إرسال تذكير",
+  "loginWithGoogle": "المتابعة باستخدام Google",
+  "orWithCredentials": "أو المتابعة عبر البريد الإلكتروني"
 }
