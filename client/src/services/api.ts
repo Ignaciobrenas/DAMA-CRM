@@ -9,6 +9,7 @@ export interface ApiResponse<T = any> {
   message?: string;
   require2FA?: boolean;
   tempToken?: string;
+  [key: string]: any;
 }
 
 export async function apiRequest<T = any>(

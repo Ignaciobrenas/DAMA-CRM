@@ -14,6 +14,8 @@ import {
   ExternalLink,
   ChevronLeft,
   BarChart3,
+  Zap,
+  Lock,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -51,9 +53,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'inventory', label: t('inventory'), icon: Package, route: '/inventory', resource: 'inventory' },
     { id: 'workflows', label: t('workflows'), icon: Cpu, route: '/workflows', resource: 'workflows' },
     { id: 'omnichannel', label: t('omnichannel'), icon: MessageSquare, route: '/omnichannel', resource: 'omnichannel' },
-    { id: 'reports', label: 'Informes & BI', icon: BarChart3, route: '/reports', resource: 'reports' },
+    { id: 'lead-capture', label: t('leadCapture'), icon: Zap, route: '/lead-capture' },
+    { id: 'reports', label: t('reportsBI'), icon: BarChart3, route: '/reports', resource: 'reports' },
     { id: 'settings', label: t('settings'), icon: ShieldCheck, route: '/settings', resource: 'users' },
     { id: 'portal', label: t('clientPortal'), icon: ExternalLink, route: '/portal', resource: 'invoices' },
+    { id: 'privacy', label: t('privacyPolicy'), icon: Lock, route: '/privacy' },
   ];
 
   return (
@@ -100,22 +104,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className="block text-[9px] font-semibold uppercase tracking-wider"
                   style={{ color: branding.primaryColor }}
                 >
-                  Enterprise CRM
+                  {t('enterpriseCrm')}
                 </span>
               </div>
             )}
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1 rounded-md md:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
+          {!isCollapsed && (
+            <button
+              onClick={onClose}
+              className="p-1 rounded-md md:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
+        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             if (item.resource && !hasPermission(item.resource, 'read')) {
               return null;
@@ -123,7 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             // Check if user has customized pinned items
             if (pinnedRoutes && Array.isArray(pinnedRoutes) && pinnedRoutes.length > 0) {
-              if (item.route !== '/settings' && !pinnedRoutes.includes(item.route)) {
+              if (item.route !== '/settings' && item.route !== '/' && !pinnedRoutes.includes(item.route)) {
                 return null;
               }
             }

@@ -82,6 +82,25 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
     });
   }, [isOpen, entityId, entityType]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleCreateActivity = async (e: React.FormEvent) => {
@@ -159,7 +178,12 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/50 backdrop-blur-xs animate-in fade-in"
+    >
       <div className="w-full max-w-lg h-full bg-white dark:bg-slate-900 shadow-2xl border-l border-gray-200 dark:border-slate-800 p-6 flex flex-col">
         {/* Drawer Header */}
         <div className="flex items-start justify-between pb-4 border-b border-gray-200 dark:border-slate-800">

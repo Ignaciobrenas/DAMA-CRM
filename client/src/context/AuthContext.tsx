@@ -29,6 +29,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ require2FA?: boolean; tempToken?: string; success: boolean; message?: string }>;
+  register: (name: string, email: string, password: string, companyName?: string) => Promise<{ success: boolean; message?: string }>;
   verify2FA: (tempToken: string, code: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   hasPermission: (resource: string, action: string) => boolean;
@@ -61,7 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('dama_token');
       localStorage.removeItem('dama_user');
       setUser(null);
-      window.history.replaceState(null, '', '/login');
     };
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
@@ -74,11 +74,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (res.success && res.user) {
             setUser(res.user);
             localStorage.setItem('dama_user', JSON.stringify(res.user));
+            if (res.user.preferences?.soundEnabled !== undefined) {
+              soundService.setMuted(!res.user.preferences.soundEnabled);
+            }
           } else {
             setUser(null);
             localStorage.removeItem('dama_token');
             localStorage.removeItem('dama_user');
-            window.history.replaceState(null, '', '/login');
           }
           setIsLoading(false);
         })
@@ -86,7 +88,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           localStorage.removeItem('dama_token');
           localStorage.removeItem('dama_user');
-          window.history.replaceState(null, '', '/login');
           setIsLoading(false);
         });
     } else {
@@ -103,8 +104,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (res.require2FA && res.tempToken) {
-      return { require2FA: true, tempToken: res.tempToken, success: true };
+      return { require2FA: true, tempToken: res.tempToken, success: true, message: res.message };
     }
+
+    if (res.success && (res as any).token && (res as any).user) {
+      localStorage.setItem('dama_token', (res as any).token);
+      localStorage.setItem('dama_user', JSON.stringify((res as any).user));
+      setUser((res as any).user);
+      if ((res as any).user.preferences?.soundEnabled !== undefined) {
+        soundService.setMuted(!(res as any).user.preferences.soundEnabled);
+      }
+      return { success: true };
+    }
+
+    return { success: false, message: res.message || 'Error al iniciar sesión' };
+  };
+
+  const register = async (name: string, email: string, password: string, companyName?: string) => {
+    const res = await apiRequest('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password, companyName }),
+    });
 
     if (res.success && (res as any).token && (res as any).user) {
       localStorage.setItem('dama_token', (res as any).token);
@@ -113,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     }
 
-    return { success: false, message: res.message || 'Error al iniciar sesión' };
+    return { success: false, message: res.message || 'Error al crear la cuenta' };
   };
 
   const verify2FA = async (tempToken: string, code: string) => {
@@ -126,6 +146,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('dama_token', (res as any).token);
       localStorage.setItem('dama_user', JSON.stringify((res as any).user));
       setUser((res as any).user);
+      if ((res as any).user.preferences?.soundEnabled !== undefined) {
+        soundService.setMuted(!(res as any).user.preferences.soundEnabled);
+      }
       return { success: true };
     }
 
@@ -137,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('dama_user');
     sessionStorage.removeItem('dama_intended_route');
     setUser(null);
-    window.history.replaceState(null, '', '/login');
   };
 
   const hasPermission = (resource: string, action: string): boolean => {
@@ -207,6 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: Boolean(user && localStorage.getItem('dama_token')),
         isLoading,
         login,
+        register,
         verify2FA,
         logout,
         hasPermission,

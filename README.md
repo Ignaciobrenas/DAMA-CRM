@@ -195,6 +195,20 @@ git push origin staging
 
 ---
 
+## 🌐 Normas del Repositorio y Política Estricta de i18n
+
+> [!IMPORTANT]
+> **Regla de Oro del Proyecto (Cero Textos Hardcodeados):**
+> **Todas las palabras, etiquetas, botones, mensajes de error y textos visibles para el usuario DEBEN ser variables / claves del sistema de internacionalización (`t('clave')`).**
+> 
+> Queda terminantemente prohibido hardcodear textos planos directamente en las vistas o componentes TSX/JSX.
+> - Archivo maestro de traducciones: [`client/src/i18n/index.ts`](client/src/i18n/index.ts) y carpetas de locales JSON ([`client/src/i18n/locales/`](client/src/i18n/locales/))
+> - Hook de consumo: `const { t } = useLanguage();`
+> - Idiomas oficiales soportados: Español (`es`), Inglés (`en`), Francés (`fr`), Alemán (`de`), Italiano (`it`), Portugués (`pt`), Árabe (`ar`), Chino (`zh`), Japonés (`ja`) y Ruso (`ru`).
+> - Cualquier nuevo módulo, modal o botón añadido al proyecto debe registrar sus claves en todos los idiomas soportados.
+
+---
+
 ## 📄 Licencia
 
 Desarrollado bajo licencia **MIT** por [Ignacio](https://github.com/).

@@ -1,10 +1,10 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load from current working directory, then check parent directory (project root)
-dotenv.config();
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Load from core/.env first, then current working directory and project root
+dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env'), override: true });
+dotenv.config({ override: true });
 
 
 export const config = {
@@ -15,7 +15,7 @@ export const config = {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     tempExpiresIn: '10m', // For 2FA OTP verification
   },
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://crm_user:crm_password@localhost:5432/dama_crm?schema=public',
+  databaseUrl: process.env.DATABASE_URL || 'postgresql://crm_user:crm_password@localhost:5433/dama_crm?schema=public',
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),

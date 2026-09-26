@@ -164,6 +164,36 @@ class SoundService {
       // Handled gracefully
     }
   }
+
+  /**
+   * Subtle bubble pop sound
+   */
+  public playPopSound(): void {
+    if (this.muted) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.08);
+      gainNode.gain.setValueAtTime(0.08, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } catch {}
+  }
+
+  /**
+   * Action completion chime
+   */
+  public playCompleteSound(): void {
+    this.playSuccessChime();
+  }
 }
 
 export const soundService = new SoundService();
