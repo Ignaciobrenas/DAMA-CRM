@@ -291,6 +291,9 @@ export const DEFAULT_PREFERENCES = {
   language: 'es',
   emailNotifications: true,
   compactMode: false,
+  fontSize: 'md',
+  uiScale: 1.0,
+  iconStyle: 'animated',
 };
 
 export async function getUserPreferences(req: Request, res: Response): Promise<void> {

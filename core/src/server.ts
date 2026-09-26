@@ -30,6 +30,7 @@ import ticketsRoutes from './modules/tickets/tickets.routes';
 import expensesRoutes from './modules/expenses/expenses.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
 import employeesRoutes from './modules/employees/employees.routes';
+import modulesRoutes from './modules/modules/modules.routes';
 
 const app = express();
 
@@ -150,6 +151,7 @@ app.use('/api/tickets', ticketsRoutes);
 app.use('/api/expenses', expensesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/employees', employeesRoutes);
+app.use('/api/modules', modulesRoutes);
 
 // Explicit third-party integrations catalog endpoint
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';

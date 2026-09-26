@@ -27,6 +27,8 @@ import {
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
+import { useModules, CompanyModulesConfig } from '../../context/ModulesContext';
+import { DynamicIcon, IconAnimationVariant } from '../ui/DynamicIcon';
 
 interface SidebarProps {
   currentRoute: string;
@@ -44,30 +46,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { t } = useLanguage();
   const { user, hasPermission, updatePreferences } = useAuth();
   const { branding, getLogo } = useBranding();
+  const { isModuleEnabled } = useModules();
 
   const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
   const pinnedRoutes = user?.preferences?.sidebarPinnedItems;
 
-  const navItems = [
-    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/' },
-    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado' },
-    { id: 'tickets', label: t('sidebar.tickets'), icon: Ticket, route: '/tickets', resource: 'tickets' },
-    { id: 'expenses', label: t('sidebar.expenses'), icon: WalletCards, route: '/expenses', resource: 'expenses' },
-    { id: 'pipeline', label: t('pipeline'), icon: TrendingUp, route: '/pipeline', resource: 'deals' },
-    { id: 'agile', label: t('agile'), icon: CheckSquare, route: '/agile', resource: 'projects' },
-    { id: 'contacts', label: t('contacts'), icon: Users, route: '/contacts', resource: 'contacts' },
-    { id: 'companies', label: t('companies'), icon: Building2, route: '/companies', resource: 'companies' },
-    { id: 'invoicing', label: t('invoicing'), icon: Receipt, route: '/invoicing', resource: 'invoices' },
-    { id: 'inventory', label: t('inventory'), icon: Package, route: '/inventory', resource: 'inventory' },
-    { id: 'workflows', label: t('workflows'), icon: Cpu, route: '/workflows', resource: 'workflows' },
-    { id: 'omnichannel', label: t('omnichannel'), icon: MessageSquare, route: '/omnichannel', resource: 'omnichannel' },
-    { id: 'integrations', label: t('integrations'), icon: Blocks, route: '/integrations' },
-    { id: 'lead-capture', label: t('leadCapture'), icon: Zap, route: '/lead-capture' },
-    { id: 'reports', label: t('reportsBI'), icon: BarChart3, route: '/reports', resource: 'reports' },
-    { id: 'settings', label: t('settings'), icon: ShieldCheck, route: '/settings', resource: 'users' },
-    { id: 'portal', label: t('clientPortal'), icon: ExternalLink, route: '/portal', resource: 'invoices' },
-    { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq' },
-    { id: 'privacy', label: t('privacyPolicy'), icon: Lock, route: '/privacy' },
+  const navItems: Array<{
+    id: string;
+    label: string;
+    icon: any;
+    route: string;
+    resource?: string;
+    moduleKey?: keyof CompanyModulesConfig;
+    animation?: IconAnimationVariant;
+  }> = [
+    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/', animation: 'bounce' },
+    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', moduleKey: 'portalEmpleado', animation: 'float' },
+    { id: 'tickets', label: t('sidebar.tickets'), icon: Ticket, route: '/tickets', resource: 'tickets', moduleKey: 'tickets', animation: 'tilt' },
+    { id: 'expenses', label: t('sidebar.expenses'), icon: WalletCards, route: '/expenses', resource: 'expenses', moduleKey: 'expenses', animation: 'float' },
+    { id: 'pipeline', label: t('pipeline'), icon: TrendingUp, route: '/pipeline', resource: 'deals', moduleKey: 'pipeline', animation: 'bounce' },
+    { id: 'agile', label: t('agile'), icon: CheckSquare, route: '/agile', resource: 'projects', moduleKey: 'agile', animation: 'bounce' },
+    { id: 'contacts', label: t('contacts'), icon: Users, route: '/contacts', resource: 'contacts', moduleKey: 'contacts', animation: 'float' },
+    { id: 'companies', label: t('companies'), icon: Building2, route: '/companies', resource: 'companies', moduleKey: 'companies', animation: 'float' },
+    { id: 'invoicing', label: t('invoicing'), icon: Receipt, route: '/invoicing', resource: 'invoices', moduleKey: 'invoicing', animation: 'glow' },
+    { id: 'inventory', label: t('inventory'), icon: Package, route: '/inventory', resource: 'inventory', moduleKey: 'inventory', animation: 'tilt' },
+    { id: 'workflows', label: t('workflows'), icon: Cpu, route: '/workflows', resource: 'workflows', moduleKey: 'workflows', animation: 'spin' },
+    { id: 'omnichannel', label: t('omnichannel'), icon: MessageSquare, route: '/omnichannel', resource: 'omnichannel', moduleKey: 'omnichannel', animation: 'pulse' },
+    { id: 'integrations', label: t('integrations'), icon: Blocks, route: '/integrations', moduleKey: 'integrations', animation: 'spin' },
+    { id: 'lead-capture', label: t('leadCapture'), icon: Zap, route: '/lead-capture', moduleKey: 'leadCapture', animation: 'glow' },
+    { id: 'reports', label: t('reportsBI'), icon: BarChart3, route: '/reports', resource: 'reports', moduleKey: 'reports', animation: 'bounce' },
+    { id: 'settings', label: t('settings'), icon: ShieldCheck, route: '/settings', resource: 'users', animation: 'spin' },
+    { id: 'portal', label: t('clientPortal'), icon: ExternalLink, route: '/portal', resource: 'invoices', moduleKey: 'clientPortal', animation: 'float' },
+    { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq', animation: 'bounce' },
+    { id: 'privacy', label: t('privacyPolicy'), icon: Lock, route: '/privacy', animation: 'tilt' },
   ];
 
   return (
@@ -122,7 +133,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation Items */}
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
+            // Check resource RBAC permissions
             if (item.resource && !hasPermission(item.resource, 'read')) {
+              return null;
+            }
+
+            // Check if module is enabled by company admin
+            if (item.moduleKey && !isModuleEnabled(item.moduleKey)) {
               return null;
             }
 
@@ -134,7 +151,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }
 
             const isActive = currentRoute === item.route;
-            const Icon = item.icon;
 
             return (
               <motion.button
@@ -163,7 +179,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   />
                 )}
                 <span className={`relative z-10 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
-                  <Icon className={`w-4 h-4 shrink-0 transition-transform ${isActive ? 'text-white scale-105' : 'text-gray-400 dark:text-slate-400'}`} />
+                  <DynamicIcon
+                    icon={item.icon}
+                    variant={item.animation || 'bounce'}
+                    size={16}
+                    active={isActive}
+                    className={isActive ? 'text-white' : 'text-gray-400 dark:text-slate-400'}
+                  />
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </span>
               </motion.button>

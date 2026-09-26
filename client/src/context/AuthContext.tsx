@@ -12,6 +12,9 @@ export interface UserPreferences {
   emailNotifications?: boolean;
   compactMode?: boolean;
   onboardingCompleted?: boolean;
+  fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  uiScale?: number;
+  iconStyle?: 'animated' | 'solid' | 'minimal';
 }
 
 export interface User {
