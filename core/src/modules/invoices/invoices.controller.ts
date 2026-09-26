@@ -372,3 +372,136 @@ export async function publicPortalDownload(req: Request, res: Response): Promise
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+/**
+ * Convert an approved or pending quote into a draft invoice automatically
+ */
+export async function convertQuoteToInvoice(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const quote = await prisma.quote.findUnique({
+      where: { id },
+      include: {
+        items: true,
+        company: true,
+        contact: true,
+      },
+    });
+
+    if (!quote) {
+      res.status(404).json({ success: false, message: 'Presupuesto no encontrado' });
+      return;
+    }
+
+    const existingInvoice = await prisma.invoice.findFirst({
+      where: { quoteId: quote.id },
+    });
+
+    if (existingInvoice) {
+      res.status(400).json({
+        success: false,
+        message: `Este presupuesto ya ha sido convertido previamente a la factura ${existingInvoice.invoiceNumber}`,
+        data: existingInvoice,
+      });
+      return;
+    }
+
+    const year = new Date().getFullYear();
+    const count = await prisma.invoice.count();
+    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(3, '0')}`;
+
+    const invoice = await prisma.invoice.create({
+      data: {
+        invoiceNumber,
+        quoteId: quote.id,
+        contactId: quote.contactId,
+        companyId: quote.companyId,
+        issueDate: new Date(),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        status: 'DRAFT',
+        subtotal: quote.subtotal,
+        taxRate: quote.taxRate,
+        taxAmount: quote.taxAmount,
+        total: quote.total,
+        currency: quote.currency,
+        notes: quote.notes ? `${quote.notes} (Convertido de ${quote.quoteNumber})` : `Convertido de presupuesto ${quote.quoteNumber}`,
+        items: {
+          create: quote.items.map((it) => ({
+            description: it.description,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            amount: it.amount,
+          })),
+        },
+      },
+      include: {
+        items: true,
+        company: true,
+        contact: true,
+        quote: true,
+      },
+    });
+
+    // Mark quote as ACCEPTED upon successful conversion
+    await prisma.quote.update({
+      where: { id: quote.id },
+      data: { status: 'ACCEPTED' },
+    });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'CONVERT_QUOTE',
+      'Invoice',
+      invoice.id,
+      { quoteId: quote.id, quoteNumber: quote.quoteNumber, invoiceNumber: invoice.invoiceNumber },
+      req.ip
+    );
+
+    res.status(201).json({
+      success: true,
+      message: `Presupuesto ${quote.quoteNumber} convertido a factura ${invoice.invoiceNumber} correctamente`,
+      data: invoice,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteInvoice(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const invoice = await prisma.invoice.findUnique({ where: { id } });
+    if (!invoice) {
+      res.status(404).json({ success: false, message: 'Factura no encontrada' });
+      return;
+    }
+
+    await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
+    await prisma.invoice.delete({ where: { id } });
+    await logAudit((req as any).user?.id || null, 'DELETE', 'Invoice', id, { invoiceNumber: invoice.invoiceNumber }, req.ip);
+
+    res.json({ success: true, message: `Factura ${invoice.invoiceNumber} eliminada correctamente` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteQuote(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const quote = await prisma.quote.findUnique({ where: { id } });
+    if (!quote) {
+      res.status(404).json({ success: false, message: 'Presupuesto no encontrado' });
+      return;
+    }
+
+    await prisma.invoiceItem.deleteMany({ where: { quoteId: id } });
+    await prisma.quote.delete({ where: { id } });
+    await logAudit((req as any).user?.id || null, 'DELETE', 'Quote', id, { quoteNumber: quote.quoteNumber }, req.ip);
+
+    res.json({ success: true, message: `Presupuesto ${quote.quoteNumber} eliminado correctamente` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+

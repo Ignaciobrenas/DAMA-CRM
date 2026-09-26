@@ -2,6 +2,8 @@ import { Router } from 'express';
 import {
   listWorkflows,
   createWorkflow,
+  updateWorkflow,
+  deleteWorkflow,
   toggleWorkflow,
   triggerTestWorkflow,
   getWorkflowLogs,
@@ -15,6 +17,8 @@ router.use(authMiddleware);
 
 router.get('/', requirePermission('workflows', 'read'), listWorkflows);
 router.post('/', requirePermission('workflows', 'create'), createWorkflow);
+router.put('/:id', requirePermission('workflows', 'update'), updateWorkflow);
+router.delete('/:id', requirePermission('workflows', 'delete'), deleteWorkflow);
 router.patch('/:id/toggle', requirePermission('workflows', 'update'), toggleWorkflow);
 router.post('/:id/test', requirePermission('workflows', 'manage'), triggerTestWorkflow);
 router.get('/logs/all', requirePermission('workflows', 'read'), getWorkflowLogs);

@@ -198,5 +198,171 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.match(ticketNumber, /^TCK-\d{6}$/);
     });
   });
+
+  describe('User Preferences Engine', () => {
+    it('should merge default and partial preferences without losing keys', () => {
+      const existingPreferencesJson = JSON.stringify({
+        soundEnabled: true,
+        sidebarCollapsed: false,
+        theme: 'dark',
+      });
+      const parsed = JSON.parse(existingPreferencesJson);
+
+      const updates = {
+        soundEnabled: false,
+        sidebarCollapsed: true,
+        sidebarPinnedItems: ['/', '/pipeline', '/invoicing'],
+        dashboardWidgets: ['quick_actions', 'top_deals', 'kpis'],
+      };
+
+      const merged = { ...parsed, ...updates };
+      const serialized = JSON.stringify(merged);
+      const deserialized = JSON.parse(serialized);
+
+      assert.strictEqual(deserialized.soundEnabled, false);
+      assert.strictEqual(deserialized.sidebarCollapsed, true);
+      assert.deepStrictEqual(deserialized.sidebarPinnedItems, ['/', '/pipeline', '/invoicing']);
+      assert.deepStrictEqual(deserialized.dashboardWidgets, ['quick_actions', 'top_deals', 'kpis']);
+    });
+  });
+
+  describe('Custom Fine-Grained User Permissions Merging', () => {
+    it('should correctly merge role permissions with per-user customPermissions without duplicates', () => {
+      const rolePermissions = [
+        { resource: 'contacts', action: 'read' },
+        { resource: 'contacts', action: 'create' },
+        { resource: 'deals', action: 'read' },
+      ];
+
+      const customPermissions = [
+        { resource: 'contacts', action: 'delete' },
+        { resource: 'invoices', action: 'read' },
+        { resource: 'deals', action: 'read' }, // duplicate of role permission
+      ];
+
+      const permissionsMap = new Map<string, { resource: string; action: string }>();
+      for (const p of rolePermissions) {
+        permissionsMap.set(`${p.resource}:${p.action}`, { resource: p.resource, action: p.action });
+      }
+      for (const cp of customPermissions) {
+        permissionsMap.set(`${cp.resource}:${cp.action}`, { resource: cp.resource, action: cp.action });
+      }
+
+      const merged = Array.from(permissionsMap.values());
+      assert.strictEqual(merged.length, 5); // 3 from role + 2 new from custom
+      assert.ok(merged.some((p) => p.resource === 'contacts' && p.action === 'delete'));
+      assert.ok(merged.some((p) => p.resource === 'invoices' && p.action === 'read'));
+      assert.ok(merged.some((p) => p.resource === 'deals' && p.action === 'read'));
+    });
+
+    it('should handle users without customPermissions gracefully', () => {
+      const rolePermissions = [
+        { resource: 'contacts', action: 'read' },
+      ];
+      const permissionsMap = new Map<string, { resource: string; action: string }>();
+      for (const p of rolePermissions) {
+        permissionsMap.set(`${p.resource}:${p.action}`, { resource: p.resource, action: p.action });
+      }
+
+      const emptyPreferences = JSON.stringify({ theme: 'light', customPermissions: [] });
+      const parsed = JSON.parse(emptyPreferences);
+      if (Array.isArray(parsed.customPermissions)) {
+        for (const cp of parsed.customPermissions) {
+          if (cp.resource && cp.action) {
+            permissionsMap.set(`${cp.resource}:${cp.action}`, { resource: cp.resource, action: cp.action });
+          }
+        }
+      }
+
+      const merged = Array.from(permissionsMap.values());
+      assert.strictEqual(merged.length, 1);
+      assert.strictEqual(merged[0].resource, 'contacts');
+    });
+  });
+
+  describe('Agile Project & Task Metrics Engine', () => {
+    it('should accurately calculate project progress, total points, and logged hours', () => {
+      const mockTasks = [
+        { id: '1', status: 'DONE', storyPoints: 5, estimatedHours: 10, loggedHours: 9 },
+        { id: '2', status: 'DONE', storyPoints: 3, estimatedHours: 6, loggedHours: 6 },
+        { id: '3', status: 'IN_PROGRESS', storyPoints: 8, estimatedHours: 16, loggedHours: 4 },
+        { id: '4', status: 'TODO', storyPoints: 2, estimatedHours: 4, loggedHours: 0 },
+      ];
+
+      const totalTasks = mockTasks.length;
+      const completedTasks = mockTasks.filter((t) => t.status === 'DONE').length;
+      const progressPercent = Math.round((completedTasks / totalTasks) * 100);
+      const totalStoryPoints = mockTasks.reduce((sum, t) => sum + t.storyPoints, 0);
+      const totalEstimatedHours = mockTasks.reduce((sum, t) => sum + t.estimatedHours, 0);
+      const totalLoggedHours = mockTasks.reduce((sum, t) => sum + t.loggedHours, 0);
+
+      assert.strictEqual(totalTasks, 4);
+      assert.strictEqual(completedTasks, 2);
+      assert.strictEqual(progressPercent, 50);
+      assert.strictEqual(totalStoryPoints, 18);
+      assert.strictEqual(totalEstimatedHours, 36);
+      assert.strictEqual(totalLoggedHours, 19);
+    });
+
+    it('should return 0% progress when a project has zero tasks without throwing', () => {
+      const emptyTasks: any[] = [];
+      const totalTasks = emptyTasks.length;
+      const completedTasks = emptyTasks.filter((t) => t.status === 'DONE').length;
+      const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      assert.strictEqual(progressPercent, 0);
+    });
+  });
+
+  describe('Universal CSV Export Sanitization', () => {
+    it('should correctly escape double quotes and format invoice CSV line', () => {
+      const mockInvoice = {
+        id: 'inv-123',
+        invoiceNumber: 'FAC-2026-0001',
+        clientName: 'Tecnologías "Avanzadas" SL',
+        issueDate: '2026-09-23T16:00:00.000Z',
+        subtotal: 1000,
+        taxAmount: 210,
+        total: 1210,
+        currency: 'EUR',
+      };
+
+      const sanitizedClient = mockInvoice.clientName.replace(/"/g, '""');
+      const csvLine = `"${mockInvoice.id}","${mockInvoice.invoiceNumber}","${sanitizedClient}",${mockInvoice.subtotal},${mockInvoice.taxAmount},${mockInvoice.total},"${mockInvoice.currency}"`;
+
+      assert.strictEqual(sanitizedClient, 'Tecnologías ""Avanzadas"" SL');
+      assert.ok(csvLine.includes('"Tecnologías ""Avanzadas"" SL"'));
+    });
+  });
+
+  describe('RFC 6238 TOTP Authenticator Engine', () => {
+    const { verifyTotpCode, generateTotpCode } = require('../src/utils/totp');
+    const testSecret = 'JBSWY3DPEHPK3PXP'; // Base32 test secret
+
+    it('should generate a valid 6-digit TOTP code and verify it successfully', () => {
+      const code = generateTotpCode(testSecret);
+      assert.strictEqual(typeof code, 'string');
+      assert.strictEqual(code.length, 6);
+      assert.strictEqual(/^\d{6}$/.test(code), true);
+
+      const isValid = verifyTotpCode(testSecret, code);
+      assert.strictEqual(isValid, true);
+    });
+
+    it('should accept codes within acceptable time window drift (+/- 30s)', () => {
+      const pastCode = generateTotpCode(testSecret, -1);
+      assert.strictEqual(verifyTotpCode(testSecret, pastCode), true);
+
+      const futureCode = generateTotpCode(testSecret, 1);
+      assert.strictEqual(verifyTotpCode(testSecret, futureCode), true);
+    });
+
+    it('should reject invalid or malformed codes', () => {
+      assert.strictEqual(verifyTotpCode(testSecret, '0000000'), false);
+      assert.strictEqual(verifyTotpCode(testSecret, '12345'), false);
+      assert.strictEqual(verifyTotpCode(testSecret, 'abcdef'), false);
+      assert.strictEqual(verifyTotpCode('', '123456'), false);
+    });
+  });
 });
 

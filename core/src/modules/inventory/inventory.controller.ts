@@ -86,9 +86,67 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
       },
     });
 
-    await logAudit(req.user?.id || null, 'CREATE', 'Product', product.id, { sku: product.sku }, req.ip);
+    await logAudit((req as any).user?.id || null, 'CREATE', 'Product', product.id, { sku: product.sku }, req.ip);
 
     res.status(201).json({ success: true, data: product });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updateProduct(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { sku, name, description, price, costPrice, stock, category, barcode } = req.body;
+
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Producto no encontrado' });
+      return;
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        sku: sku ? sku.trim() : undefined,
+        name: name ? name.trim() : undefined,
+        description,
+        price: price !== undefined ? parseFloat(price) : undefined,
+        costPrice: costPrice !== undefined ? (costPrice ? parseFloat(costPrice) : null) : undefined,
+        stock: stock !== undefined ? parseInt(stock, 10) : undefined,
+        category,
+        barcode,
+      },
+    });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'UPDATE',
+      'Product',
+      id,
+      { sku: updated.sku, name: updated.name },
+      req.ip
+    );
+
+    res.json({ success: true, data: updated, message: `Producto ${updated.name} actualizado` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteProduct(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Producto no encontrado' });
+      return;
+    }
+
+    await prisma.product.delete({ where: { id } });
+    await logAudit((req as any).user?.id || null, 'DELETE', 'Product', id, { sku: existing.sku }, req.ip);
+
+    res.json({ success: true, message: `Producto ${existing.name} eliminado correctamente` });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

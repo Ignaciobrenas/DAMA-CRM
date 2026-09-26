@@ -117,7 +117,7 @@ export async function getAgileVelocity(req: Request, res: Response): Promise<voi
 
 export async function exportCsv(req: Request, res: Response): Promise<void> {
   try {
-    const { type } = req.query; // deals, contacts, invoices
+    const { type } = req.query; // deals, contacts, invoices, companies, products, tasks
 
     if (type === 'deals') {
       const deals = await prisma.deal.findMany({
@@ -126,7 +126,7 @@ export async function exportCsv(req: Request, res: Response): Promise<void> {
 
       let csv = 'ID,Titulo,Valor,Moneda,Estado,Etapa,Empresa,Contacto,FechaCreacion\n';
       deals.forEach((d) => {
-        csv += `"${d.id}","${d.title}",${d.value},"${d.currency}","${d.status}","${d.stage.name}","${d.company?.name || ''}","${d.contact?.firstName || ''} ${d.contact?.lastName || ''}","${d.createdAt.toISOString()}"\n`;
+        csv += `"${d.id}","${d.title.replace(/"/g, '""')}",${d.value},"${d.currency}","${d.status}","${d.stage.name}","${(d.company?.name || '').replace(/"/g, '""')}","${d.contact?.firstName || ''} ${d.contact?.lastName || ''}","${d.createdAt.toISOString()}"\n`;
       });
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -140,13 +140,76 @@ export async function exportCsv(req: Request, res: Response): Promise<void> {
         include: { company: true },
       });
 
-      let csv = 'ID,Nombre,Apellidos,Email,Telefono,Puesto,Empresa,EsLead\n';
+      let csv = 'ID,Nombre,Apellidos,Email,Telefono,Puesto,Empresa,EsLead,FechaCreacion\n';
       contacts.forEach((c) => {
-        csv += `"${c.id}","${c.firstName}","${c.lastName}","${c.email}","${c.phone || ''}","${c.position || ''}","${c.company?.name || ''}",${c.isLead}\n`;
+        csv += `"${c.id}","${c.firstName.replace(/"/g, '""')}","${c.lastName.replace(/"/g, '""')}","${c.email}","${c.phone || ''}","${(c.position || '').replace(/"/g, '""')}","${(c.company?.name || '').replace(/"/g, '""')}",${c.isLead},"${c.createdAt.toISOString()}"\n`;
       });
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="contacts-export.csv"');
+      res.send('\uFEFF' + csv);
+      return;
+    }
+
+    if (type === 'companies') {
+      const companies = await prisma.company.findMany({
+        include: { _count: { select: { contacts: true, deals: true } } },
+      });
+
+      let csv = 'ID,Nombre,Sector,Ciudad,FacturacionAnual,SitioWeb,Telefono,Email,Contactos,Deals\n';
+      companies.forEach((c) => {
+        csv += `"${c.id}","${c.name.replace(/"/g, '""')}","${c.industry || ''}","${c.city || ''}",${c.annualRevenue || 0},"${c.website || ''}","${c.phone || ''}","${c.email || ''}",${c._count.contacts},${c._count.deals}\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="companies-export.csv"');
+      res.send('\uFEFF' + csv);
+      return;
+    }
+
+    if (type === 'invoices') {
+      const invoices = await prisma.invoice.findMany({
+        include: { company: true, contact: true },
+      });
+
+      let csv = 'ID,NumeroFactura,Cliente,FechaEmision,FechaVencimiento,Estado,BaseImponible,Impuestos,Total,Moneda\n';
+      invoices.forEach((inv) => {
+        const clientName = inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`;
+        csv += `"${inv.id}","${inv.invoiceNumber}","${clientName.replace(/"/g, '""')}","${inv.issueDate.toISOString()}","${inv.dueDate?.toISOString() || ''}","${inv.status}",${inv.subtotal},${inv.taxAmount},${inv.total},"${inv.currency}"\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="invoices-export.csv"');
+      res.send('\uFEFF' + csv);
+      return;
+    }
+
+    if (type === 'products') {
+      const products = await prisma.product.findMany();
+
+      let csv = 'ID,SKU,Nombre,Categoria,Stock,PrecioPVP,Coste,CodigoBarras,SincronizadoUnoPIM\n';
+      products.forEach((p) => {
+        csv += `"${p.id}","${p.sku}","${p.name.replace(/"/g, '""')}","${p.category || ''}",${p.stock},${p.price},${p.costPrice || 0},"${p.barcode || ''}",${p.isSync}\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="products-export.csv"');
+      res.send('\uFEFF' + csv);
+      return;
+    }
+
+    if (type === 'tasks') {
+      const tasks = await prisma.task.findMany({
+        include: { project: true, assignee: true },
+      });
+
+      let csv = 'ID,Titulo,Proyecto,AsignadoA,Estado,Prioridad,StoryPoints,HorasEstimadas,HorasImputadas\n';
+      tasks.forEach((t) => {
+        csv += `"${t.id}","${t.title.replace(/"/g, '""')}","${(t.project?.name || '').replace(/"/g, '""')}","${t.assignee?.name || ''}","${t.status}","${t.priority}",${t.storyPoints || 0},${t.estimatedHours || 0},${t.loggedHours || 0}\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="tasks-export.csv"');
       res.send('\uFEFF' + csv);
       return;
     }

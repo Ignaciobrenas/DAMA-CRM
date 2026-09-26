@@ -3,7 +3,28 @@ import * as bcrypt from 'bcryptjs';
 import { prisma } from '../../prisma';
 import { generateToken, verifyToken } from '../../utils/jwt';
 import { sendOtpEmail, sendPasswordResetEmail } from '../../utils/mailer';
+import { verifyTotpCode } from '../../utils/totp';
 import { logAudit } from '../../middlewares/audit.middleware';
+
+function buildUserPermissions(user: any): Array<{ resource: string; action: string }> {
+  const map = new Map<string, { resource: string; action: string }>();
+  for (const p of user.role?.permissions || []) {
+    map.set(`${p.resource}:${p.action}`, { resource: p.resource, action: p.action });
+  }
+  if (user.preferences) {
+    try {
+      const prefs = typeof user.preferences === 'string' ? JSON.parse(user.preferences) : user.preferences;
+      if (Array.isArray(prefs.customPermissions)) {
+        for (const cp of prefs.customPermissions) {
+          if (cp.resource && cp.action) {
+            map.set(`${cp.resource}:${cp.action}`, { resource: cp.resource, action: cp.action });
+          }
+        }
+      }
+    } catch {}
+  }
+  return Array.from(map.values());
+}
 
 export async function login(req: Request, res: Response): Promise<void> {
   try {
@@ -86,10 +107,8 @@ export async function login(req: Request, res: Response): Promise<void> {
         avatar: user.avatar,
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
-        permissions: user.role.permissions.map((p) => ({
-          resource: p.resource,
-          action: p.action,
-        })),
+        preferences: user.preferences ? JSON.parse(user.preferences) : {},
+        permissions: buildUserPermissions(user),
       },
     });
   } catch (error: any) {
@@ -112,27 +131,6 @@ export async function verify2FA(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const validToken = await prisma.twoFactorToken.findFirst({
-      where: {
-        userId: payload.userId,
-        code: code.trim(),
-        used: false,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!validToken) {
-      res.status(401).json({ success: false, message: 'Código de verificación incorrecto o expirado' });
-      return;
-    }
-
-    // Mark token as used
-    await prisma.twoFactorToken.update({
-      where: { id: validToken.id },
-      data: { used: true },
-    });
-
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: {
@@ -147,6 +145,30 @@ export async function verify2FA(req: Request, res: Response): Promise<void> {
     if (!user) {
       res.status(404).json({ success: false, message: 'Usuario no encontrado' });
       return;
+    }
+
+    const validToken = await prisma.twoFactorToken.findFirst({
+      where: {
+        userId: payload.userId,
+        code: code.trim(),
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const isTotpValid = user.twoFactorSecret ? verifyTotpCode(user.twoFactorSecret, code.trim()) : false;
+
+    if (!validToken && !isTotpValid) {
+      res.status(401).json({ success: false, message: 'Código de verificación 2FA incorrecto o expirado' });
+      return;
+    }
+
+    if (validToken) {
+      await prisma.twoFactorToken.update({
+        where: { id: validToken.id },
+        data: { used: true },
+      });
     }
 
     const token = generateToken({
@@ -167,10 +189,8 @@ export async function verify2FA(req: Request, res: Response): Promise<void> {
         avatar: user.avatar,
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
-        permissions: user.role.permissions.map((p) => ({
-          resource: p.resource,
-          action: p.action,
-        })),
+        preferences: user.preferences ? JSON.parse(user.preferences) : {},
+        permissions: buildUserPermissions(user),
       },
     });
   } catch (error: any) {
@@ -236,10 +256,8 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
         avatar: user.avatar,
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
-        permissions: user.role.permissions.map((p) => ({
-          resource: p.resource,
-          action: p.action,
-        })),
+        preferences: user.preferences ? JSON.parse(user.preferences) : {},
+        permissions: buildUserPermissions(user),
       },
     });
   } catch (error: any) {
@@ -335,10 +353,8 @@ export async function register(req: Request, res: Response): Promise<void> {
         avatar: newUser.avatar,
         twoFactorEnabled: newUser.twoFactorEnabled,
         role: newUser.role.name,
-        permissions: newUser.role.permissions.map((p) => ({
-          resource: p.resource,
-          action: p.action,
-        })),
+        preferences: newUser.preferences ? JSON.parse(newUser.preferences) : {},
+        permissions: buildUserPermissions(newUser),
       },
     });
   } catch (error: any) {

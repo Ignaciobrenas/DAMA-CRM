@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
-import { dispatchWorkflowEvent } from './workflow.runner';
+import { dispatchWorkflowEvent, executeWorkflow } from './workflow.runner';
 import { logAudit } from '../../middlewares/audit.middleware';
 
 export async function listWorkflows(req: Request, res: Response): Promise<void> {
@@ -29,8 +29,8 @@ export async function createWorkflow(req: Request, res: Response): Promise<void>
 
     const workflow = await prisma.workflow.create({
       data: {
-        name,
-        description,
+        name: name.trim(),
+        description: description ? description.trim() : null,
         trigger,
         triggerConfig: triggerConfig ? JSON.stringify(triggerConfig) : null,
         action,
@@ -39,9 +39,75 @@ export async function createWorkflow(req: Request, res: Response): Promise<void>
       },
     });
 
-    await logAudit(req.user?.id || null, 'CREATE', 'Workflow', workflow.id, { name: workflow.name }, req.ip);
+    await logAudit((req as any).user?.id || null, 'CREATE', 'Workflow', workflow.id, { name: workflow.name }, req.ip);
 
     res.status(201).json({ success: true, data: workflow });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updateWorkflow(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { name, description, trigger, action, isActive } = req.body;
+
+    const existing = await prisma.workflow.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Workflow no encontrado' });
+      return;
+    }
+
+    const updated = await prisma.workflow.update({
+      where: { id },
+      data: {
+        name: name ? name.trim() : undefined,
+        description: description !== undefined ? description?.trim() : undefined,
+        trigger: trigger || undefined,
+        action: action || undefined,
+        isActive: isActive !== undefined ? Boolean(isActive) : undefined,
+      },
+    });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'UPDATE',
+      'Workflow',
+      updated.id,
+      { name: updated.name },
+      req.ip
+    );
+
+    res.json({ success: true, data: updated, message: 'Workflow actualizado correctamente' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteWorkflow(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.workflow.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Workflow no encontrado' });
+      return;
+    }
+
+    // Cascade delete execution logs
+    await prisma.workflowLog.deleteMany({ where: { workflowId: id } });
+    await prisma.workflow.delete({ where: { id } });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'DELETE',
+      'Workflow',
+      id,
+      { name: existing.name },
+      req.ip
+    );
+
+    res.json({ success: true, message: `Workflow "${existing.name}" eliminado correctamente` });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -73,22 +139,31 @@ export async function triggerTestWorkflow(req: Request, res: Response): Promise<
       return;
     }
 
-    // Trigger test event
-    await dispatchWorkflowEvent({
-      trigger: workflow.trigger,
-      data: {
-        test: true,
-        title: 'Oportunidad de Prueba Automática',
-        email: 'test@cliente.com',
-        value: 12500,
-        timestamp: new Date().toISOString(),
-      },
-    });
+    // Generate test data tailored to the trigger
+    const testData: Record<string, any> = {
+      test: true,
+      title: `Prueba Automatizada: ${workflow.name}`,
+      email: 'prueba@cliente.com',
+      value: 12500,
+      timestamp: new Date().toISOString(),
+    };
 
-    res.json({
-      success: true,
-      message: `Disparo de prueba lanzado para el workflow '${workflow.name}'. Verifique los registros en unos instantes.`,
-    });
+    // Execute directly and synchronously
+    const result = await executeWorkflow(workflow, testData);
+
+    if (result.status === 'SUCCESS') {
+      res.json({
+        success: true,
+        message: `Workflow '${workflow.name}' ejecutado con éxito. Estado: Completado.`,
+        data: result,
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: `Error al ejecutar workflow '${workflow.name}': ${result.errorMessage}`,
+        data: result,
+      });
+    }
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

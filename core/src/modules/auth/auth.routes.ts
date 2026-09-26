@@ -10,10 +10,12 @@ import {
   getProfile,
 } from './auth.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
+import { validate } from '../../middlewares/validate.middleware';
+import { loginSchema } from '../../utils/validators';
 
 const router = Router();
 
-router.post('/login', login);
+router.post('/login', validate(loginSchema), login);
 router.post('/register', register);
 router.post('/verify-2fa', verify2FA);
 router.post('/forgot-password', forgotPassword);
