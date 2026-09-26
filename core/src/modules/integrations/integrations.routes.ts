@@ -8,6 +8,8 @@ import {
   handleWooCommerceWebhook,
   handleShopifyWebhook,
   handleN8nAction,
+  handleStripeWebhook,
+  handleZapierWebhook,
   triggerN8nTest,
 } from './integrations.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
@@ -25,6 +27,8 @@ router.get('/third-party', getIntegracionesDeTerceros);
 router.post('/woocommerce/webhook', handleWooCommerceWebhook);
 router.post('/shopify/webhook', handleShopifyWebhook);
 router.post('/n8n/action', handleN8nAction);
+router.post('/stripe/webhook', handleStripeWebhook);
+router.post('/zapier/webhook', handleZapierWebhook);
 
 // -----------------------------------------------------------------------------
 // Protected Management Endpoints (Requires Auth & Manage Permissions)

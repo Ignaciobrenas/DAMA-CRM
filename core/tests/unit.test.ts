@@ -424,6 +424,37 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.ok(appIds.includes('woocommerce'));
       assert.ok(appIds.includes('shopify'));
       assert.ok(appIds.includes('n8n'));
+      assert.ok(appIds.includes('stripe'));
+      assert.ok(appIds.includes('zapier'));
+      assert.ok(appIds.includes('google_calendar'));
+    });
+
+    it('should successfully execute syncConnector for odoo, woocommerce, shopify and stripe', async () => {
+      const odooSync = await IntegrationsService.syncConnector('odoo');
+      assert.strictEqual(odooSync.success, true);
+      assert.ok(odooSync.count! >= 1);
+
+      const wcSync = await IntegrationsService.syncConnector('woocommerce');
+      assert.strictEqual(wcSync.success, true);
+      assert.ok(wcSync.count !== undefined);
+
+      const stripeSync = await IntegrationsService.syncConnector('stripe');
+      assert.strictEqual(stripeSync.success, true);
+    });
+
+    it('should process Stripe and Zapier webhook payloads properly', async () => {
+      const stripeRes = await IntegrationsService.processStripeWebhook({
+        type: 'checkout.session.completed',
+        data: { object: { customer_email: 'pago.cliente@ejemplo.es' } },
+      });
+      assert.strictEqual(stripeRes.handled, true);
+
+      const zapierRes = await IntegrationsService.processZapierWebhook({
+        email: 'lead.zapier@ejemplo.com',
+        firstName: 'Lead',
+        lastName: 'Automatizado',
+      });
+      assert.strictEqual(zapierRes.handled, true);
     });
   });
 });
