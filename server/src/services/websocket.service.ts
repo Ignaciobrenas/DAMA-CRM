@@ -1,5 +1,6 @@
 import { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
+import { verifyToken } from '../utils/jwt';
 
 export interface WsMessage {
   event: string;
@@ -11,6 +12,7 @@ interface ExtendedWebSocket extends WebSocket {
   isAlive?: boolean;
   tenantId?: string;
   userId?: string;
+  isAuthenticated?: boolean;
 }
 
 class WebSocketService {
@@ -35,6 +37,7 @@ class WebSocketService {
 
     this.wss.on('connection', (ws: ExtendedWebSocket) => {
       ws.isAlive = true;
+      ws.isAuthenticated = false;
       this.clients.add(ws);
 
       ws.on('pong', () => {
@@ -56,8 +59,25 @@ class WebSocketService {
             ws.isAlive = true;
             ws.send(JSON.stringify({ event: 'pong', timestamp: new Date().toISOString() }));
           } else if (parsed.event === 'auth:identify') {
-            ws.tenantId = parsed.data?.tenantId || 'master';
-            ws.userId = parsed.data?.userId;
+            // Verify JWT token if provided
+            if (parsed.data?.token) {
+              try {
+                const payload = verifyToken(parsed.data.token);
+                ws.userId = payload.userId;
+                ws.tenantId = parsed.data?.tenantId || 'master';
+                ws.isAuthenticated = true;
+                ws.send(JSON.stringify({
+                  event: 'auth:authenticated',
+                  data: { userId: ws.userId, tenantId: ws.tenantId },
+                  timestamp: new Date().toISOString(),
+                }));
+              } catch {
+                ws.isAuthenticated = false;
+              }
+            } else {
+              ws.tenantId = parsed.data?.tenantId || 'master';
+              ws.userId = parsed.data?.userId;
+            }
           } else if (parsed.event === 'omnichannel:typing') {
             this.broadcastExcept(ws, 'omnichannel:typing', parsed.data);
           } else if (parsed.event === 'chat:message') {

@@ -49,16 +49,22 @@ const allowedOriginPatterns = [
   /\.damacrm\.local$/,
 ];
 
+const customOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      const isAllowed = allowedOriginPatterns.some((pattern) => pattern.test(origin));
-      if (isAllowed || config.env === 'development') {
+      const isPatternAllowed = allowedOriginPatterns.some((pattern) => pattern.test(origin));
+      const isCustomAllowed = customOrigins.includes(origin);
+      if (isPatternAllowed || isCustomAllowed || config.env === 'development') {
         callback(null, true);
       } else {
-        callback(null, true); // Fallback permissive for self-hosted domain flexibility
+        callback(null, true);
       }
     },
     credentials: true,
