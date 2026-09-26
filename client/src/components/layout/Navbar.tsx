@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
 import {
   Search,
   Sun,
@@ -8,22 +7,16 @@ import {
   LogOut,
   Menu,
   Shield,
-  Bell,
-  Check,
-  MessageSquare,
-  TrendingUp,
-  AlertTriangle,
   Volume2,
   VolumeX,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
-import { wsClient } from '../../services/websocket';
 import { soundService } from '../../services/sound';
-import { AnimatedIcon } from '../ui/AnimatedIcon';
 import { SUPPORTED_LANGUAGES, Language } from '../../i18n';
 import { GodModeModal } from '../modals/GodModeModal';
+import { NotificationCenter } from '../notifications/NotificationCenter';
 
 interface NavbarProps {
   onOpenSearch: () => void;
@@ -34,159 +27,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { user, logout, updatePreferences } = useAuth();
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => soundService.isMuted());
-  const notifRef = useRef<HTMLDivElement>(null);
 
   // God Mode SuperAdmin state
   const [isGodModalOpen, setIsGodModalOpen] = useState(false);
   const [activeTenant, setActiveTenant] = useState<any>({ slug: 'master', name: 'Master Tenant' });
   const isSuperAdmin = user?.role === 'ADMIN' || user?.email === 'ignaciobrenas@gmail.com' || user?.email === 'admin@dama-crm.local';
-
-  const [notifications, setNotifications] = useState([
-    {
-      id: '1',
-      title: 'Nuevo WhatsApp recibido',
-      desc: 'Laura Gómez: "¿Podéis enviarme la propuesta revisada?"',
-      time: 'Hace 5m',
-      type: 'chat',
-      unread: true,
-    },
-    {
-      id: '2',
-      title: 'Fase de Negocio actualizada',
-      desc: 'Acme Corp avanza a "Negociación" (€18.500)',
-      time: 'Hace 25m',
-      type: 'deal',
-      unread: true,
-    },
-    {
-      id: '3',
-      title: 'Alerta de Stock (UnoPIM)',
-      desc: 'Servidor Rack 1U tiene menos de 3 unidades disponibles',
-      time: 'Hace 1h',
-      type: 'stock',
-      unread: false,
-    },
-  ]);
-
-  // Click-outside listener to automatically close notifications dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
-        setIsNotificationsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const unsubNotif = wsClient.on('notification:new', (notif: any) => {
-      setNotifications((prev) => [
-        {
-          id: String(Date.now()),
-          title: notif.title || 'Nueva notificación',
-          desc: notif.desc || '',
-          time: 'Ahora mismo',
-          type: notif.type || 'deal',
-          unread: true,
-        },
-        ...prev,
-      ]);
-      soundService.playMessageChime();
-    });
-
-    const unsubLead = wsClient.on('lead:captured', (data: any) => {
-      setNotifications((prev) => [
-        {
-          id: String(Date.now()),
-          title: '🎯 ¡Nuevo Lead Web Capturado!',
-          desc: `${data.name} (${data.email}) desde ${data.source}`,
-          time: 'Ahora mismo',
-          type: 'deal',
-          unread: true,
-        },
-        ...prev,
-      ]);
-      soundService.playSuccessChime();
-    });
-
-    const unsubCart = wsClient.on('ecommerce:cart_abandoned', (data: any) => {
-      setNotifications((prev) => [
-        {
-          id: String(Date.now()),
-          title: '🛒 Carrito Abandonado Detectado',
-          desc: `${data.customerName || 'Cliente anónimo'} dejó €${data.cartTotal} en el checkout`,
-          time: 'Ahora mismo',
-          type: 'deal',
-          unread: true,
-        },
-        ...prev,
-      ]);
-      soundService.playAlertSound();
-    });
-
-    const unsubSync = wsClient.on('system:data_synced', (data: any) => {
-      setNotifications((prev) => [
-        {
-          id: String(Date.now()),
-          title: '⚡ UnoPIM & ERP Sincronizados',
-          desc: `${data.productsCount || 'Varios'} artículos e inventario actualizados`,
-          time: 'Ahora mismo',
-          type: 'stock',
-          unread: true,
-        },
-        ...prev,
-      ]);
-      soundService.playPopSound();
-    });
-
-    const unsubDeal = wsClient.on('deal:created', (deal: any) => {
-      setNotifications((prev) => [
-        {
-          id: String(Date.now()),
-          title: '💼 Nuevo Negocio Registrado',
-          desc: `${deal.title} (${deal.value} ${deal.currency})`,
-          time: 'Ahora mismo',
-          type: 'deal',
-          unread: true,
-        },
-        ...prev,
-      ]);
-      soundService.playSuccessChime();
-    });
-
-    const unsubQuote = wsClient.on('quote:converted', (data: any) => {
-      setNotifications((prev) => [
-        {
-          id: String(Date.now()),
-          title: '🧾 Presupuesto Convertido a Factura',
-          desc: `Factura ${data.invoiceNumber} emitida desde ${data.quoteNumber}`,
-          time: 'Ahora mismo',
-          type: 'deal',
-          unread: true,
-        },
-        ...prev,
-      ]);
-      soundService.playCompleteSound();
-    });
-
-    return () => {
-      unsubNotif();
-      unsubLead();
-      unsubCart();
-      unsubSync();
-      unsubDeal();
-      unsubQuote();
-    };
-  }, []);
-
-  const unreadCount = notifications.filter((n) => n.unread).length;
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
-  };
 
   const handleToggleSound = () => {
     const nextMuted = !isMuted;
@@ -197,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
     }
     updatePreferences({ soundEnabled: !nextMuted });
   };
+
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800">
@@ -283,82 +130,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
 
-        {/* Notification Center */}
-        <div ref={notifRef} className="relative">
-          <button
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            aria-label={t('notifications')}
-            className="relative p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            title={t('notifications')}
-          >
-            {unreadCount > 0 ? (
-              <AnimatedIcon animation="shake">
-                <Bell className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              </AnimatedIcon>
-            ) : (
-              <Bell className="w-4 h-4" />
-            )}
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
-            )}
-          </button>
-
-          <AnimatePresence>
-            {isNotificationsOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                transition={{ type: 'spring', stiffness: 450, damping: 28 }}
-                className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-3 z-50"
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800">
-                  <div className="flex items-center space-x-1.5">
-                    <span className="text-xs font-bold text-gray-900 dark:text-white">{t('notifications')}</span>
-                    {unreadCount > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                        {unreadCount} {t('newNotificationsCount')}
-                      </span>
-                    )}
-                  </div>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllAsRead}
-                      className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-0.5"
-                    >
-                      <Check className="w-3 h-3" />
-                      <span>{t('markAsRead')}</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-2 space-y-2 max-h-72 overflow-y-auto">
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`p-2 rounded-lg text-xs space-y-0.5 transition-colors ${
-                        n.unread
-                          ? 'bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40'
-                          : 'bg-gray-50/50 dark:bg-slate-800/40 border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-1 font-semibold text-gray-800 dark:text-slate-200">
-                          {n.type === 'chat' && <MessageSquare className="w-3 h-3 text-blue-500" />}
-                          {n.type === 'deal' && <TrendingUp className="w-3 h-3 text-emerald-500" />}
-                          {n.type === 'stock' && <AlertTriangle className="w-3 h-3 text-amber-500" />}
-                          <span className="truncate">{n.title}</span>
-                        </div>
-                        <span className="text-[10px] text-gray-400 dark:text-slate-500 shrink-0">{n.time}</span>
-                      </div>
-                      <p className="text-[11px] text-gray-600 dark:text-slate-400">{n.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Real-time Notification Center with Interactive Navigation */}
+        <NotificationCenter />
 
         {/* User Pill & Logout */}
         {user && (

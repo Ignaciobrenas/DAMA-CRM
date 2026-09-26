@@ -24,6 +24,7 @@ model Tenant {
   settings    String?  @default("{}") // JSON string with active modules and config
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  notifications Notification[]
 
   @@map("tenants")
 }
@@ -49,9 +50,12 @@ model User {
   updatedAt        DateTime         @updatedAt
   assignedTasks    Task[]           @relation("TaskAssignee")
   assignedTickets  Ticket[]         @relation("TicketAssignee")
+  notifications    Notification[]
   auditLogs        AuditLog[]
   twoFactorTokens  TwoFactorToken[]
 
+  @@index([tenantId, isActive])
+  @@index([email])
   @@map("users")
 }
 
@@ -545,3 +549,31 @@ model CustomFieldValue {
   @@unique([customFieldId, entityId])
   @@map("custom_field_values")
 }
+
+// -----------------------------------------------------------------------------
+// Real-Time Notification Engine & Global App Alerts
+// -----------------------------------------------------------------------------
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String?   @default("master")
+  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String    @default("info") // ticket, invoice, quote, deal, stock, lead, system, workflow, chat
+  priority  String    @default("normal") // low, normal, high, urgent
+  actionUrl String?   // Redirect route e.g. /tickets, /invoicing, /inventory, /pipeline
+  metadata  String?   // JSON payload
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([tenantId, read, createdAt])
+  @@index([userId, read, createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+

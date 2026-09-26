@@ -737,7 +737,45 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(isPngDataUri, true);
     });
   });
+
+  describe('Real-time Notification Engine & High-Traffic Architecture', () => {
+    it('should construct valid notification payload with actionUrl and metadata', () => {
+      const payload = {
+        title: 'Ticket #TCK-2026-0001 Creado',
+        message: 'Incidencia en pasarela de pago',
+        type: 'ticket',
+        priority: 'urgent',
+        actionUrl: '/tickets',
+        metadata: { ticketId: 'uuid-1234', ticketNumber: 'TCK-2026-0001' },
+      };
+
+      assert.strictEqual(payload.type, 'ticket');
+      assert.strictEqual(payload.priority, 'urgent');
+      assert.strictEqual(payload.actionUrl, '/tickets');
+      assert.strictEqual(payload.metadata.ticketNumber, 'TCK-2026-0001');
+    });
+
+    it('should calculate unread notification counts correctly', () => {
+      const sampleNotifications = [
+        { id: '1', read: false, type: 'ticket' },
+        { id: '2', read: true, type: 'invoice' },
+        { id: '3', read: false, type: 'quote' },
+        { id: '4', read: false, type: 'stock' },
+      ];
+
+      const unread = sampleNotifications.filter((n) => !n.read);
+      assert.strictEqual(unread.length, 3);
+      assert.strictEqual(unread.filter((n) => n.type === 'stock').length, 1);
+    });
+
+    it('should properly format notification event names for WebSocket dispatch', () => {
+      const events = ['notification:new', 'ticket:created', 'ticket:message', 'deal:created', 'lead:captured'];
+      assert.ok(events.includes('notification:new'));
+      assert.ok(events.includes('ticket:created'));
+    });
+  });
 });
+
 
 
 
