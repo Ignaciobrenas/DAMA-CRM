@@ -1,0 +1,41 @@
+{
+  "odoo": {
+    "enabled": false,
+    "url": "https://odoo.example.com",
+    "db": "odoo_db",
+    "username": "",
+    "apiKey": "",
+    "syncContacts": true,
+    "syncInvoices": true,
+    "syncProducts": true,
+    "status": "connected"
+  },
+  "woocommerce": {
+    "enabled": false,
+    "storeUrl": "https://tienda.example.com",
+    "consumerKey": "",
+    "consumerSecret": "",
+    "webhookSecret": "",
+    "status": "disconnected"
+  },
+  "shopify": {
+    "enabled": false,
+    "shopDomain": "mi-tienda.myshopify.com",
+    "accessToken": "",
+    "apiSecretKey": "",
+    "webhookSecret": "",
+    "status": "disconnected"
+  },
+  "n8n": {
+    "enabled": false,
+    "webhookUrl": "",
+    "apiKey": "",
+    "subscribedEvents": [
+      "contact.created",
+      "deal.won",
+      "invoice.paid",
+      "activity.created"
+    ],
+    "status": "disconnected"
+  }
+}

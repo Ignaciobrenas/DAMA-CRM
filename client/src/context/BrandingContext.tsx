@@ -1,18 +1,22 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '../services/api';
 import { wsClient } from '../services/websocket';
 
 export interface BrandingConfig {
   companyName: string;
   logoUrl: string;
+  logoDarkUrl?: string;
+  logoLightUrl?: string;
   primaryColor: string;
   borderRadius: 'sm' | 'md' | 'lg' | 'full';
 }
 
 const DEFAULT_BRANDING: BrandingConfig = {
   companyName: 'DAMA-CRM',
-  logoUrl: '/assets/logos/dama-symbol-dark.svg',
-  primaryColor: '#2563EB',
+  logoUrl: '', // Empty means using DAMA default placeholder
+  logoDarkUrl: '',
+  logoLightUrl: '',
+  primaryColor: '#072053',
   borderRadius: 'md',
 };
 
@@ -25,8 +29,10 @@ const RADIUS_MAP: Record<string, string> = {
 
 interface BrandingContextType {
   branding: BrandingConfig;
-  updateBranding: (newConfig: Partial<BrandingConfig>) => void;
-  resetBranding: () => void;
+  updateBranding: (newConfig: Partial<BrandingConfig>) => Promise<void>;
+  resetBranding: () => Promise<void>;
+  getLogo: (variant?: 'symbol' | 'full' | 'vertical', forceDark?: boolean) => string;
+  isDarkMode: boolean;
 }
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
@@ -41,20 +47,38 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   });
 
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    // Observe dark class changes on <html>
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setIsDarkMode(isDark);
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     // Apply dynamic CSS variables to root HTML
     const root = document.documentElement;
-    root.style.setProperty('--brand-color', branding.primaryColor);
+    root.style.setProperty('--brand-color', branding.primaryColor || '#072053');
     root.style.setProperty('--custom-radius', RADIUS_MAP[branding.borderRadius] || '0.85rem');
-
-    // Create lighter tint for badges and highlights
-    root.style.setProperty('--brand-tint', `${branding.primaryColor}1A`);
+    root.style.setProperty('--brand-tint', `${branding.primaryColor || '#072053'}1A`);
 
     try {
       localStorage.setItem('dama_crm_branding', JSON.stringify(branding));
-    } catch {
-      // Storage quota or private browsing
-    }
+    } catch {}
   }, [branding]);
 
   useEffect(() => {
@@ -114,8 +138,36 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {}
   };
 
+  const getLogo = useCallback(
+    (variant: 'symbol' | 'full' | 'vertical' = 'symbol', forceDark?: boolean): string => {
+      const dark = forceDark !== undefined ? forceDark : isDarkMode;
+
+      // If user has a custom logo specified, use it
+      const hasCustomLogo =
+        Boolean(branding.logoUrl) &&
+        !branding.logoUrl.includes('dama-symbol') &&
+        !branding.logoUrl.includes('dama-logo');
+
+      if (hasCustomLogo) {
+        if (dark && branding.logoDarkUrl) return branding.logoDarkUrl;
+        if (!dark && branding.logoLightUrl) return branding.logoLightUrl;
+        return branding.logoUrl;
+      }
+
+      // Default DAMA logo placeholders
+      if (variant === 'full') {
+        return dark ? '/assets/logos/dama-logo-white.svg' : '/assets/logos/dama-logo-dark.svg';
+      }
+      if (variant === 'vertical') {
+        return dark ? '/assets/logos/dama-logo-vertical-white.svg' : '/assets/logos/dama-logo-vertical-dark.svg';
+      }
+      return dark ? '/assets/logos/dama-symbol-white.svg' : '/assets/logos/dama-symbol-dark.svg';
+    },
+    [branding, isDarkMode]
+  );
+
   return (
-    <BrandingContext.Provider value={{ branding, updateBranding, resetBranding }}>
+    <BrandingContext.Provider value={{ branding, updateBranding, resetBranding, getLogo, isDarkMode }}>
       {children}
     </BrandingContext.Provider>
   );

@@ -194,6 +194,26 @@ class SoundService {
   public playCompleteSound(): void {
     this.playSuccessChime();
   }
+
+  /**
+   * Unified playback method
+   */
+  public play(type: 'action' | 'success' | 'error' | 'alert' | 'pop'): void {
+    switch (type) {
+      case 'success':
+        this.playSuccessChime();
+        break;
+      case 'error':
+      case 'alert':
+        this.playAlertSound();
+        break;
+      case 'action':
+      case 'pop':
+      default:
+        this.playPopSound();
+        break;
+    }
+  }
 }
 
 export const soundService = new SoundService();

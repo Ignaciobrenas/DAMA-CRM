@@ -12,6 +12,7 @@ import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
 import { PermissionGate, AccessDenied } from './components/common/PermissionGate';
+import { analytics } from './services/analytics';
 
 // Views
 import { Login } from './pages/Login';
@@ -29,6 +30,9 @@ import { ClientPortal } from './pages/ClientPortal';
 import { Reports } from './pages/Reports';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { LeadCapture } from './pages/LeadCapture';
+import { Integrations } from './pages/Integrations';
+import { Onboarding } from './pages/Onboarding';
+import { FAQ } from './pages/FAQ';
 
 const normalizeRoute = (pathname: string): string => {
   const p = pathname.toLowerCase();
@@ -40,6 +44,9 @@ const normalizeRoute = (pathname: string): string => {
   if (p === '/inventory') return '/inventory';
   if (p === '/workflows') return '/workflows';
   if (p === '/omnichannel') return '/omnichannel';
+  if (p === '/integrations') return '/integrations';
+  if (p === '/onboarding') return '/onboarding';
+  if (p === '/faq') return '/faq';
   if (p === '/lead-capture') return '/lead-capture';
   if (p === '/reports') return '/reports';
   if (p === '/settings') return '/settings';
@@ -64,6 +71,10 @@ const AppContent: React.FC = () => {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    analytics.trackPageView(currentRoute);
+  }, [currentRoute]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -105,6 +116,11 @@ const AppContent: React.FC = () => {
         onNavigatePortal={() => navigateTo('/portal')}
       />
     );
+  }
+
+  // First-time onboarding experience guard
+  if (currentRoute === '/onboarding' || (user && user.preferences?.onboardingCompleted === false)) {
+    return <Onboarding onComplete={() => navigateTo('/')} />;
   }
 
   const renderActiveView = () => {
@@ -159,6 +175,12 @@ const AppContent: React.FC = () => {
             <Omnichannel />
           </PermissionGate>
         );
+      case '/integrations':
+        return (
+          <PermissionGate resource="integrations" action="manage" fallback={<AccessDenied resource="integrations" onGoBack={() => navigateTo('/')} />}>
+            <Integrations />
+          </PermissionGate>
+        );
       case '/lead-capture':
         return <LeadCapture />;
       case '/reports':
@@ -173,6 +195,8 @@ const AppContent: React.FC = () => {
             <Settings />
           </PermissionGate>
         );
+      case '/faq':
+        return <FAQ onNavigate={navigateTo} />;
       default:
         return <Dashboard onNavigate={navigateTo} />;
     }
@@ -212,17 +236,27 @@ const AppContent: React.FC = () => {
           </AnimatePresence>
         </main>
 
-        {/* Global Footer with RGPD Privacy Link */}
-        <footer className="py-4 px-6 border-t border-gray-200 dark:border-slate-800/80 text-center text-xs text-gray-400 dark:text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
+        {/* Global Footer with Running Version, FAQ, Integrations and RGPD Privacy Links */}
+        <footer className="py-4 px-6 border-t border-gray-200 dark:border-slate-800/80 text-center text-xs text-gray-400 dark:text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <span>&copy; {new Date().getFullYear()} {branding.companyName}. Todos los derechos reservados.</span>
+            <span className="text-gray-300 dark:text-slate-700 hidden sm:inline">|</span>
+            <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 font-semibold border border-gray-200 dark:border-slate-700">
+              Versión en ejecución: v1.2.0-staging (Build 2026.09.26)
+            </span>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <button
-              onClick={() => navigateTo('/lead-capture')}
+              onClick={() => navigateTo('/faq')}
+              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
+            >
+              Preguntas Frecuentes (FAQ)
+            </button>
+            <button
+              onClick={() => navigateTo('/integrations')}
               className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
-              Conectores & Puntos de Captura
+              Integraciones de Terceros
             </button>
             <button
               onClick={() => navigateTo('/privacy')}
