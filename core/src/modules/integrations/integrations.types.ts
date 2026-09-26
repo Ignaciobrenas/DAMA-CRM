@@ -1,4 +1,13 @@
-export type ConnectorType = 'odoo' | 'woocommerce' | 'shopify' | 'n8n' | 'unopim' | 'whatsapp';
+export type ConnectorType =
+  | 'odoo'
+  | 'woocommerce'
+  | 'shopify'
+  | 'n8n'
+  | 'unopim'
+  | 'whatsapp'
+  | 'stripe'
+  | 'zapier'
+  | 'google_calendar';
 
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error' | 'pending';
 
@@ -7,6 +16,7 @@ export interface OdooConfig {
   url: string;
   db: string;
   username: string;
+  password?: string;
   apiKey?: string;
   hasApiKey?: boolean;
   syncContacts: boolean;
@@ -54,9 +64,44 @@ export interface N8nConfig {
   lastError?: string;
 }
 
+export interface StripeConfig {
+  enabled: boolean;
+  publishableKey?: string;
+  secretKey?: string;
+  hasSecretKey?: boolean;
+  webhookSecret?: string;
+  status: IntegrationStatus;
+  lastSyncAt?: string;
+  lastError?: string;
+}
+
+export interface ZapierConfig {
+  enabled: boolean;
+  webhookUrl?: string;
+  apiKey?: string;
+  hasApiKey?: boolean;
+  status: IntegrationStatus;
+  lastTriggerAt?: string;
+  lastError?: string;
+}
+
+export interface GoogleCalendarConfig {
+  enabled: boolean;
+  email?: string;
+  clientId?: string;
+  clientSecret?: string;
+  hasClientSecret?: boolean;
+  status: IntegrationStatus;
+  lastSyncAt?: string;
+  lastError?: string;
+}
+
 export interface IntegrationsConfig {
   odoo: OdooConfig;
   woocommerce: WooCommerceConfig;
   shopify: ShopifyConfig;
   n8n: N8nConfig;
+  stripe?: StripeConfig;
+  zapier?: ZapierConfig;
+  google_calendar?: GoogleCalendarConfig;
 }

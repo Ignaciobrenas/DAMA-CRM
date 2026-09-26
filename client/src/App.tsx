@@ -177,7 +177,7 @@ const AppContent: React.FC = () => {
         );
       case '/integrations':
         return (
-          <PermissionGate resource="integrations" action="manage" fallback={<AccessDenied resource="integrations" onGoBack={() => navigateTo('/')} />}>
+          <PermissionGate resource="integrations" action="read" fallback={<AccessDenied resource="integrations" onGoBack={() => navigateTo('/')} />}>
             <Integrations />
           </PermissionGate>
         );
