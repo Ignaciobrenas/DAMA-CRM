@@ -1,0 +1,108 @@
+name: Continuous Integration & Verification Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - staging
+      - 'feature/**'
+      - 'fix/**'
+      - 'chore/**'
+  pull_request:
+    branches:
+      - main
+      - master
+      - staging
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-matrix-test:
+    name: Server Backend Tests (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install Server Dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Validate & Generate Prisma Schema
+        working-directory: server
+        run: |
+          npx prisma generate
+          npx prisma validate
+
+      - name: Typecheck Backend (tsc --noEmit)
+        working-directory: server
+        run: npx tsc --noEmit
+
+      - name: Run Backend Unit & Integration Test Suite
+        working-directory: server
+        run: npm test
+
+  frontend-build:
+    name: Client Frontend Build & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Client Dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build Frontend Application (tsc && vite build)
+        working-directory: client
+        run: npm run build
+
+      - name: Verify Distribution Bundle Assets
+        working-directory: client
+        run: |
+          test -f dist/index.html || { echo "❌ Missing dist/index.html"; exit 1; }
+          test -d dist/assets || { echo "❌ Missing dist/assets directory"; exit 1; }
+          echo "✅ Client bundle built successfully with all required assets."
+
+  monorepo-full-build:
+    name: Full Monorepo Build Gate
+    runs-on: ubuntu-latest
+    needs: [backend-matrix-test, frontend-build]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install Root Workspace Dependencies
+        run: npm ci
+
+      - name: Execute Full Monorepo Build
+        run: npm run build
+
+      - name: Run Full Test Suite & i18n Verification
+        run: npm run test:all

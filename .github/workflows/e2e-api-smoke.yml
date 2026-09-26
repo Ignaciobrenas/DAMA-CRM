@@ -1,0 +1,90 @@
+name: E2E API Smoke Tests & Healthcheck
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - staging
+  pull_request:
+    branches:
+      - main
+      - master
+      - staging
+
+jobs:
+  api-smoke-test:
+    name: Live Backend API Health & Contract Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install Server Dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Initialize Database & Build Server
+        working-directory: server
+        run: |
+          npx prisma generate
+          npm run build
+
+      - name: Start Server in Background
+        working-directory: server
+        env:
+          PORT: 4000
+          NODE_ENV: production
+          JWT_SECRET: e2e_test_jwt_secret_key_1234567890
+        run: |
+          node dist/server.js &
+          echo "SERVER_PID=$!" >> $GITHUB_ENV
+
+      - name: Wait for Server Warmup
+        run: |
+          echo "⏳ Waiting for API server to become ready on http://127.0.0.1:4000..."
+          for i in {1..30}; do
+            if curl -s -f http://127.0.0.1:4000/api/health; then
+              echo ""
+              echo "✅ Server is healthy and responding!"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Test /api/health Endpoint
+        run: |
+          RESPONSE=$(curl -s http://127.0.0.1:4000/api/health)
+          echo "Response: $RESPONSE"
+          echo "$RESPONSE" | grep '"status":"ok"' || { echo "❌ /api/health did not return status:ok"; exit 1; }
+          echo "✅ /api/health passed!"
+
+      - name: Test OpenAPI Swagger Documentation (/api/docs/json)
+        run: |
+          SWAGGER=$(curl -s http://127.0.0.1:4000/api/docs/json)
+          echo "$SWAGGER" | grep '"openapi":' || { echo "❌ /api/docs/json did not return valid OpenAPI JSON"; exit 1; }
+          echo "✅ OpenAPI documentation endpoint is valid and accessible!"
+
+      - name: Test Public Quote Inspection Endpoint (404 on non-existent token)
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/api/invoices/public/quotes/invalid_token_test_123)
+          echo "HTTP Response code for invalid token: $HTTP_CODE"
+          if [ "$HTTP_CODE" -ne 404 ]; then
+            echo "❌ Expected 404 for invalid public quote token, got $HTTP_CODE"
+            exit 1
+          fi
+          echo "✅ Public quote error handling verified!"
+
+      - name: Stop Background Server
+        if: always()
+        run: |
+          if [ -n "$SERVER_PID" ]; then
+            kill $SERVER_PID || true
+          fi

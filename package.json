@@ -13,6 +13,8 @@
     "dev:client": "npm --prefix client run dev",
     "dev": "concurrently -n \"API,CLIENT\" -c \"blue,cyan\" \"npm run dev:server\" \"npm run dev:client\"",
     "test": "npm --prefix server test",
+    "test:i18n": "node scripts/verify_i18n_parity.js",
+    "test:all": "npm run test && npm run test:i18n",
     "build:server": "npm --prefix server run build",
     "build:core": "npm --prefix server run build",
     "build:client": "npm --prefix client run build",

@@ -1,18 +1,32 @@
-name: Docker Multi-stage Build Verification
+name: Docker Multi-Stage Container Build & Orchestration
 
 on:
   push:
     branches:
+      - main
+      - master
       - staging
   pull_request:
     branches:
-      - staging
       - main
       - master
+      - staging
 
 jobs:
+  docker-compose-validation:
+    name: Docker Compose Syntax & Config Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml Config
+        run: |
+          docker compose config --quiet
+          echo "✅ docker-compose.yml syntax and variable interpolation are valid."
+
   build-containers:
-    name: Build Multi-stage Alpine Images
+    name: Build Multi-Stage Alpine Images
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -36,3 +50,8 @@ jobs:
           file: ./client/Dockerfile
           push: false
           tags: dama-crm-client:test
+
+      - name: Verify Built Images
+        run: |
+          docker image ls | grep dama-crm
+          echo "✅ Both Server and Client Docker images built successfully with zero errors."
