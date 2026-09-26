@@ -3,6 +3,7 @@ import { prisma } from '../../prisma';
 import { generatePdfBuffer, InvoicePdfData } from './pdf.service';
 import { logAudit } from '../../middlewares/audit.middleware';
 import { getBrandingConfig } from '../branding/branding.controller';
+import { NotificationService } from '../notifications/notifications.service';
 
 export async function listInvoices(req: Request, res: Response): Promise<void> {
   try {
@@ -667,6 +668,15 @@ export async function signPublicQuote(req: Request, res: Response): Promise<void
       req.ip
     );
 
+    // Dispatch real-time notification
+    await NotificationService.notifyQuoteSigned({
+      id: quote.id,
+      quoteNumber: quote.quoteNumber,
+      companyName: quote.company?.name || updatedQuote.signedBy || 'Cliente',
+      total: quote.total,
+      tenantId: quote.tenantId,
+    });
+
     res.json({
       success: true,
       message: 'Presupuesto firmado digitalmente y aceptado con éxito',
@@ -717,6 +727,15 @@ export async function recordInvoicePayment(req: Request, res: Response): Promise
       { amount: payAmount, totalPaid: newPaidAmount, fullyPaid: isFullyPaid },
       req.ip
     );
+
+    // Dispatch real-time notification
+    await NotificationService.notifyInvoicePayment({
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      amount: payAmount,
+      remaining: Math.max(0, invoice.total - newPaidAmount),
+      tenantId: invoice.tenantId,
+    });
 
     res.json({
       success: true,
