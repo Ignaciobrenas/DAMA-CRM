@@ -250,10 +250,12 @@ export async function createQuote(req: Request, res: Response): Promise<void> {
     const year = new Date().getFullYear();
     const count = await prisma.quote.count();
     const quoteNumber = `PRE-${year}-${String(count + 1).padStart(3, '0')}`;
+    const publicToken = `qsign_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     const quote = await prisma.quote.create({
       data: {
         quoteNumber,
+        publicToken,
         contactId: contactId || null,
         companyId: companyId || null,
         issueDate: new Date(),
@@ -537,4 +539,279 @@ export async function deleteQuote(req: Request, res: Response): Promise<void> {
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+// -----------------------------------------------------------------------------
+// SME Suite: Digital Quote Acceptance Canvas & Public Signing Portal
+// -----------------------------------------------------------------------------
+
+export async function getPublicQuoteByToken(req: Request, res: Response): Promise<void> {
+  try {
+    const { token } = req.params;
+
+    const quote = await prisma.quote.findFirst({
+      where: {
+        OR: [{ publicToken: token }, { id: token }],
+      },
+      include: {
+        company: true,
+        contact: true,
+        items: true,
+      },
+    });
+
+    if (!quote) {
+      res.status(404).json({ success: false, message: 'Presupuesto no encontrado o enlace inválido' });
+      return;
+    }
+
+    const branding = getBrandingConfig();
+
+    res.json({
+      success: true,
+      data: {
+        ...quote,
+        branding: {
+          companyName: branding.companyName || 'DAMA-CRM',
+          companyTaxId: branding.companyTaxId,
+          primaryColor: branding.primaryColor || '#2563EB',
+          logoUrl: branding.logoUrl,
+        },
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function signPublicQuote(req: Request, res: Response): Promise<void> {
+  try {
+    const { token } = req.params;
+    const { signatureData, signedBy } = req.body;
+
+    if (!signatureData) {
+      res.status(400).json({ success: false, message: 'El trazo o rúbrica de la firma es requerido' });
+      return;
+    }
+
+    const quote = await prisma.quote.findFirst({
+      where: {
+        OR: [{ publicToken: token }, { id: token }],
+      },
+      include: { items: true, company: true, contact: true },
+    });
+
+    if (!quote) {
+      res.status(404).json({ success: false, message: 'Presupuesto no encontrado' });
+      return;
+    }
+
+    // Update quote with digital signature and status ACCEPTED
+    const updatedQuote = await prisma.quote.update({
+      where: { id: quote.id },
+      data: {
+        signatureData,
+        signedBy: signedBy || quote.contact?.firstName ? `${quote.contact?.firstName} ${quote.contact?.lastName}` : 'Cliente',
+        signedAt: new Date(),
+        status: 'ACCEPTED',
+      },
+    });
+
+    // Auto-create draft invoice upon online acceptance if not already converted
+    const existingInvoice = await prisma.invoice.findFirst({ where: { quoteId: quote.id } });
+    let createdInvoice = null;
+
+    if (!existingInvoice) {
+      const year = new Date().getFullYear();
+      const count = await prisma.invoice.count();
+      const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(3, '0')}`;
+
+      createdInvoice = await prisma.invoice.create({
+        data: {
+          invoiceNumber,
+          quoteId: quote.id,
+          contactId: quote.contactId,
+          companyId: quote.companyId,
+          issueDate: new Date(),
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          status: 'DRAFT',
+          subtotal: quote.subtotal,
+          taxRate: quote.taxRate,
+          taxAmount: quote.taxAmount,
+          total: quote.total,
+          currency: quote.currency,
+          notes: `Generada automáticamente tras firma digital online del presupuesto ${quote.quoteNumber}`,
+          items: {
+            create: quote.items.map((it) => ({
+              description: it.description,
+              quantity: it.quantity,
+              unitPrice: it.unitPrice,
+              amount: it.amount,
+            })),
+          },
+        },
+      });
+    }
+
+    // Audit log
+    await logAudit(
+      null,
+      'SIGN_QUOTE_ONLINE',
+      'Quote',
+      quote.id,
+      {
+        quoteNumber: quote.quoteNumber,
+        signedBy: updatedQuote.signedBy,
+        ipAddress: req.ip,
+        autoCreatedInvoice: createdInvoice?.invoiceNumber,
+      },
+      req.ip
+    );
+
+    res.json({
+      success: true,
+      message: 'Presupuesto firmado digitalmente y aceptado con éxito',
+      data: {
+        quote: updatedQuote,
+        invoice: createdInvoice || existingInvoice,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// -----------------------------------------------------------------------------
+// SME Suite: Dunning & Debt Aging Report (Antigüedad de Deuda)
+// -----------------------------------------------------------------------------
+
+export async function recordInvoicePayment(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { amount, notes } = req.body;
+
+    const invoice = await prisma.invoice.findUnique({ where: { id } });
+    if (!invoice) {
+      res.status(404).json({ success: false, message: 'Factura no encontrada' });
+      return;
+    }
+
+    const payAmount = Number(amount) || (invoice.total - (invoice.paidAmount || 0));
+    const newPaidAmount = Number(((invoice.paidAmount || 0) + payAmount).toFixed(2));
+    const isFullyPaid = newPaidAmount >= invoice.total;
+
+    const updated = await prisma.invoice.update({
+      where: { id },
+      data: {
+        paidAmount: newPaidAmount,
+        status: isFullyPaid ? 'PAID' : 'PARTIAL',
+        paidAt: isFullyPaid ? new Date() : invoice.paidAt,
+        notes: notes ? `${invoice.notes || ''}\n[Pago ${new Date().toLocaleDateString('es-ES')}]: +${payAmount}€ (${notes})` : invoice.notes,
+      },
+    });
+
+    await logAudit(
+      (req as any).user?.id || null,
+      'RECORD_PAYMENT',
+      'Invoice',
+      id,
+      { amount: payAmount, totalPaid: newPaidAmount, fullyPaid: isFullyPaid },
+      req.ip
+    );
+
+    res.json({
+      success: true,
+      data: updated,
+      message: isFullyPaid ? 'Factura pagada en su totalidad' : `Abono parcial de ${payAmount}€ registrado`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function getAgingReport(req: Request, res: Response): Promise<void> {
+  try {
+    const pendingInvoices = await prisma.invoice.findMany({
+      where: {
+        status: { in: ['SENT', 'OVERDUE', 'PARTIAL', 'DRAFT'] },
+      },
+      include: {
+        company: true,
+        contact: true,
+      },
+    });
+
+    const now = new Date();
+    const buckets = {
+      current: 0,      // Not overdue yet
+      days1_30: 0,     // 1 to 30 days overdue
+      days31_60: 0,    // 31 to 60 days overdue
+      days61_90: 0,    // 61 to 90 days overdue
+      days90Plus: 0,   // >90 days overdue
+    };
+
+    const details: any[] = [];
+
+    for (const inv of pendingInvoices) {
+      const remainingBalance = Number((inv.total - (inv.paidAmount || 0)).toFixed(2));
+      if (remainingBalance <= 0) continue;
+
+      const due = inv.dueDate ? new Date(inv.dueDate) : new Date(inv.issueDate);
+      const diffDays = Math.floor((now.getTime() - due.getTime()) / (1000 * 3600 * 24));
+
+      let bucketKey = 'current';
+      if (diffDays > 90) {
+        bucketKey = 'days90Plus';
+        buckets.days90Plus += remainingBalance;
+      } else if (diffDays > 60) {
+        bucketKey = 'days61_90';
+        buckets.days61_90 += remainingBalance;
+      } else if (diffDays > 30) {
+        bucketKey = 'days31_60';
+        buckets.days31_60 += remainingBalance;
+      } else if (diffDays > 0) {
+        bucketKey = 'days1_30';
+        buckets.days1_30 += remainingBalance;
+      } else {
+        buckets.current += remainingBalance;
+      }
+
+      details.push({
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        clientName: inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim() || 'Cliente',
+        total: inv.total,
+        paidAmount: inv.paidAmount || 0,
+        remainingBalance,
+        dueDate: inv.dueDate,
+        daysOverdue: Math.max(0, diffDays),
+        bucket: bucketKey,
+        status: inv.status,
+      });
+    }
+
+    const totalOverdue = Number(
+      (buckets.days1_30 + buckets.days31_60 + buckets.days61_90 + buckets.days90Plus).toFixed(2)
+    );
+    const totalPending = Number((buckets.current + totalOverdue).toFixed(2));
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalPending,
+          totalOverdue,
+          current: Number(buckets.current.toFixed(2)),
+          days1_30: Number(buckets.days1_30.toFixed(2)),
+          days31_60: Number(buckets.days31_60.toFixed(2)),
+          days61_90: Number(buckets.days61_90.toFixed(2)),
+          days90Plus: Number(buckets.days90Plus.toFixed(2)),
+        },
+        invoices: details.sort((a, b) => b.daysOverdue - a.daysOverdue),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 

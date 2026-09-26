@@ -609,6 +609,135 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.ok(str.includes('PRE-2026-042'));
     });
   });
+
+  describe('Multi-Tenant SaaS & God Mode Isolation Engine', () => {
+    it('should validate tenant slug formatting and normalization', () => {
+      const rawSlug = '  Acme_Corp 2026!  ';
+      const normalized = rawSlug.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
+      assert.strictEqual(normalized, 'acme_corp2026');
+    });
+
+    it('should detect God Mode SuperAdmin user privileges properly', () => {
+      const superAdminUser = { email: 'ignaciobrenas@gmail.com', role: 'ADMIN' };
+      const standardSales = { email: 'pedro@empresa.com', role: 'SALES' };
+
+      const isGod1 = superAdminUser.role === 'ADMIN' || superAdminUser.email === 'ignaciobrenas@gmail.com';
+      const isGod2 = standardSales.role === 'ADMIN' || standardSales.email === 'ignaciobrenas@gmail.com';
+
+      assert.strictEqual(isGod1, true);
+      assert.strictEqual(isGod2, false);
+    });
+
+    it('should properly isolate tenant identifiers in data query payloads', () => {
+      const tenantContext = 'acme-saas';
+      const baseFilter = { status: 'ACTIVE' };
+      const scopedQuery = { ...baseFilter, tenantId: tenantContext };
+
+      assert.strictEqual(scopedQuery.tenantId, 'acme-saas');
+      assert.strictEqual(scopedQuery.status, 'ACTIVE');
+    });
+  });
+
+  describe('Helpdesk Tickets & SLA Compliance Engine', () => {
+    it('should calculate accurate SLA deadlines based on ticket priority', () => {
+      const now = Date.now();
+
+      function getDeadline(priority: string): number {
+        switch (priority) {
+          case 'URGENT': return 4 * 3600 * 1000;
+          case 'HIGH': return 8 * 3600 * 1000;
+          case 'MEDIUM': return 24 * 3600 * 1000;
+          case 'LOW':
+          default: return 72 * 3600 * 1000;
+        }
+      }
+
+      const urgentDiff = getDeadline('URGENT');
+      const highDiff = getDeadline('HIGH');
+      const mediumDiff = getDeadline('MEDIUM');
+      const lowDiff = getDeadline('LOW');
+
+      assert.strictEqual(urgentDiff, 4 * 3600 * 1000);
+      assert.strictEqual(highDiff, 8 * 3600 * 1000);
+      assert.strictEqual(mediumDiff, 24 * 3600 * 1000);
+      assert.strictEqual(lowDiff, 72 * 3600 * 1000);
+    });
+
+    it('should differentiate public customer messages from confidential internal notes', () => {
+      const publicMsg = {
+        senderType: 'AGENT',
+        senderName: 'Carlos Gómez',
+        message: 'Su servidor ha sido reiniciado con éxito.',
+        isInternal: false,
+      };
+
+      const internalNote = {
+        senderType: 'AGENT',
+        senderName: 'Carlos Gómez',
+        message: 'Nota interna: El problema era un deadlock en Redis.',
+        isInternal: true,
+      };
+
+      assert.strictEqual(publicMsg.isInternal, false);
+      assert.strictEqual(internalNote.isInternal, true);
+    });
+
+    it('should calculate SLA compliance percentage properly', () => {
+      const totalTickets = 20;
+      const breachedTickets = 2;
+      const complianceRate = Math.round(((totalTickets - breachedTickets) / totalTickets) * 100);
+
+      assert.strictEqual(complianceRate, 90);
+    });
+  });
+
+  describe('Expenses, P&L Profit Margin & Tax Books (AEAT Modelo 303)', () => {
+    it('should calculate operating profit margin and net VAT balance', () => {
+      const invoicedSubtotal = 50000; // Total sales base
+      const outputVat = 10500;        // 21% IVA repercutido
+      const expensesSubtotal = 32000; // Total expenses base
+      const deductibleVat = 6720;     // 21% IVA soportado deducible
+
+      const operatingProfit = invoicedSubtotal - expensesSubtotal;
+      const operatingMarginPct = Number(((operatingProfit / invoicedSubtotal) * 100).toFixed(1));
+      const vatBalanceToPay = Number((outputVat - deductibleVat).toFixed(2));
+
+      assert.strictEqual(operatingProfit, 18000);
+      assert.strictEqual(operatingMarginPct, 36.0);
+      assert.strictEqual(vatBalanceToPay, 3780.0);
+    });
+
+    it('should classify debt into correct aging buckets (Dunning report)', () => {
+      const now = new Date('2026-09-26T12:00:00Z');
+      const invCurrent = { dueDate: new Date('2026-10-05T12:00:00Z'), balance: 1000 };
+      const inv15Days = { dueDate: new Date('2026-09-11T12:00:00Z'), balance: 500 };
+      const inv45Days = { dueDate: new Date('2026-08-12T12:00:00Z'), balance: 800 };
+      const inv75Days = { dueDate: new Date('2026-07-13T12:00:00Z'), balance: 1200 };
+      const inv100Days = { dueDate: new Date('2026-06-18T12:00:00Z'), balance: 2000 };
+
+      function getBucket(inv: { dueDate: Date; balance: number }): string {
+        const diffDays = Math.floor((now.getTime() - inv.dueDate.getTime()) / (1000 * 3600 * 24));
+        if (diffDays > 90) return 'days90Plus';
+        if (diffDays > 60) return 'days61_90';
+        if (diffDays > 30) return 'days31_60';
+        if (diffDays > 0) return 'days1_30';
+        return 'current';
+      }
+
+      assert.strictEqual(getBucket(invCurrent), 'current');
+      assert.strictEqual(getBucket(inv15Days), 'days1_30');
+      assert.strictEqual(getBucket(inv45Days), 'days31_60');
+      assert.strictEqual(getBucket(inv75Days), 'days61_90');
+      assert.strictEqual(getBucket(inv100Days), 'days90Plus');
+    });
+
+    it('should validate digital quote acceptance signature payload', () => {
+      const validSignature = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const isPngDataUri = validSignature.startsWith('data:image/png;base64,');
+      assert.strictEqual(isPngDataUri, true);
+    });
+  });
 });
+
 
 

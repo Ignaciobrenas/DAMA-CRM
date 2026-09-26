@@ -15,9 +15,15 @@ export interface ApiResponse<T = any> {
   [key: string]: any;
 }
 
+export interface ApiOptions extends RequestInit {
+  params?: Record<string, string | number | boolean | undefined>;
+  suppressToast?: boolean;
+  responseType?: string;
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiOptions = {}
 ): Promise<ApiResponse<T>> {
   const token = localStorage.getItem('dama_token');
   const headers = new Headers(options.headers || {});
@@ -30,8 +36,22 @@ export async function apiRequest<T = any>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  let fullUrl = `${API_BASE}${endpoint}`;
+  if (options.params) {
+    const searchParams = new URLSearchParams();
+    for (const [k, v] of Object.entries(options.params)) {
+      if (v !== undefined && v !== null && v !== '') {
+        searchParams.append(k, String(v));
+      }
+    }
+    const qs = searchParams.toString();
+    if (qs) {
+      fullUrl += (fullUrl.includes('?') ? '&' : '?') + qs;
+    }
+  }
+
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(fullUrl, {
       ...options,
       headers,
     });
@@ -115,3 +135,16 @@ export async function apiRequest<T = any>(
     };
   }
 }
+
+export const api = {
+  get: (url: string, options?: ApiOptions) => apiRequest(url, { ...options, method: 'GET' }),
+  post: (url: string, data?: any, options?: ApiOptions) =>
+    apiRequest(url, { ...options, method: 'POST', body: data ? JSON.stringify(data) : undefined }),
+  put: (url: string, data?: any, options?: ApiOptions) =>
+    apiRequest(url, { ...options, method: 'PUT', body: data ? JSON.stringify(data) : undefined }),
+  patch: (url: string, data?: any, options?: ApiOptions) =>
+    apiRequest(url, { ...options, method: 'PATCH', body: data ? JSON.stringify(data) : undefined }),
+  delete: (url: string, options?: ApiOptions) => apiRequest(url, { ...options, method: 'DELETE' }),
+};
+
+

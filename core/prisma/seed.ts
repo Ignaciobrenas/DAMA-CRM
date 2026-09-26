@@ -6,6 +6,9 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting DAMA-CRM database seed...');
 
+  await prisma.ticketMessage.deleteMany();
+  await prisma.ticket.deleteMany();
+  await prisma.expense.deleteMany();
   await prisma.customFieldValue.deleteMany();
   await prisma.customField.deleteMany();
   await prisma.activity.deleteMany();
@@ -28,6 +31,47 @@ async function main() {
   await prisma.permission.deleteMany();
   await prisma.user.deleteMany();
   await prisma.role.deleteMany();
+  await prisma.tenant.deleteMany();
+
+  // 0. Create Tenants (Multi-Tenant SaaS Foundation)
+  const masterTenant = await prisma.tenant.create({
+    data: {
+      slug: 'master',
+      name: 'DAMA Cloud Solutions (God Tenant)',
+      domain: 'app.damacrm.com',
+      isGodTenant: true,
+      status: 'ACTIVE',
+      plan: 'ENTERPRISE',
+      maxUsers: 999,
+      branding: JSON.stringify({ primaryColor: '#2563EB', companyName: 'DAMA Cloud Solutions' }),
+    },
+  });
+
+  const acmeTenant = await prisma.tenant.create({
+    data: {
+      slug: 'acme',
+      name: 'ACME Corporation Inc.',
+      domain: 'acme.damacrm.com',
+      isGodTenant: false,
+      status: 'ACTIVE',
+      plan: 'PRO',
+      maxUsers: 25,
+      branding: JSON.stringify({ primaryColor: '#059669', companyName: 'ACME Corp' }),
+    },
+  });
+
+  const innovaTenant = await prisma.tenant.create({
+    data: {
+      slug: 'innovatech',
+      name: 'InnovaTech Solutions SL',
+      domain: 'innovatech.damacrm.com',
+      isGodTenant: false,
+      status: 'ACTIVE',
+      plan: 'ENTERPRISE',
+      maxUsers: 50,
+      branding: JSON.stringify({ primaryColor: '#7C3AED', companyName: 'InnovaTech SL' }),
+    },
+  });
 
   // 1. Create Roles
   const adminRole = await prisma.role.create({
@@ -699,6 +743,164 @@ async function main() {
       contactId: contact3.id,
       dealId: deal3.id,
       userId: pmUser.id,
+    },
+  });
+
+  // 15. Create Helpdesk Support Tickets with SLA & Messages
+  const ticket1 = await prisma.ticket.create({
+    data: {
+      ticketNumber: 'TCK-2026-0001',
+      title: 'Incidencia con sincronización de inventario UnoPIM en tiempo real',
+      description: 'Los productos actualizados en UnoPIM tardan más de 10 minutos en reflejarse en el catálogo del CRM.',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      category: 'TECHNICAL',
+      channel: 'PORTAL',
+      contactId: contact1.id,
+      companyId: company1.id,
+      assignedToId: pmUser.id,
+      slaDueAt: new Date(Date.now() + 6 * 3600 * 1000), // SLA 8h
+      firstResponseAt: new Date(Date.now() - 30 * 60 * 1000),
+      tenantId: 'master',
+      messages: {
+        create: [
+          {
+            senderType: 'CUSTOMER',
+            senderName: 'Elena Martínez',
+            message: 'Hola equipo, hemos detectado retrasos en el webhook de stock desde ayer.',
+            isInternal: false,
+          },
+          {
+            senderType: 'AGENT',
+            senderId: pmUser.id,
+            senderName: 'Carlos Gómez',
+            message: 'Hola Elena, estamos revisando la cola de procesamiento en Redis. Procedemos con un flush y recarga.',
+            isInternal: false,
+          },
+          {
+            senderType: 'AGENT',
+            senderId: adminUser.id,
+            senderName: 'Ignacio Admin',
+            message: 'Nota interna: El payload del webhook contenía 500 items en batch. Ajustar tamaño de chunk a 50.',
+            isInternal: true, // Confidential internal note
+          },
+        ],
+      },
+    },
+  });
+
+  const ticket2 = await prisma.ticket.create({
+    data: {
+      ticketNumber: 'TCK-2026-0002',
+      title: 'Solicitud de factura rectificativa con NIF intracomunitario (VIES)',
+      description: 'El cliente solicita aplicar exención de IVA por operador intracomunitario en Alemania.',
+      status: 'OPEN',
+      priority: 'MEDIUM',
+      category: 'BILLING',
+      channel: 'EMAIL',
+      contactId: contact2.id,
+      companyId: company2.id,
+      assignedToId: salesUser.id,
+      slaDueAt: new Date(Date.now() + 20 * 3600 * 1000), // SLA 24h
+      tenantId: 'master',
+      messages: {
+        create: [
+          {
+            senderType: 'CUSTOMER',
+            senderName: 'Marc Weber',
+            message: 'Please update our billing details to include our DE VAT number: DE987654321.',
+            isInternal: false,
+          },
+        ],
+      },
+    },
+  });
+
+  const ticket3 = await prisma.ticket.create({
+    data: {
+      ticketNumber: 'TCK-2026-0003',
+      title: 'Error 500 en endpoint de Webhook WhatsApp Meta Handshake',
+      description: 'El token de verificación retornado no coincidía con el hash esperado.',
+      status: 'RESOLVED',
+      priority: 'URGENT',
+      category: 'TECHNICAL',
+      channel: 'WHATSAPP',
+      contactId: contact1.id,
+      companyId: company1.id,
+      assignedToId: adminUser.id,
+      slaDueAt: new Date(Date.now() - 2 * 3600 * 1000),
+      firstResponseAt: new Date(Date.now() - 4 * 3600 * 1000),
+      resolvedAt: new Date(),
+      tenantId: 'master',
+      messages: {
+        create: [
+          {
+            senderType: 'AGENT',
+            senderId: adminUser.id,
+            senderName: 'Ignacio Admin',
+            message: 'Verificación corregida en auth.middleware con timingSafeEqual.',
+            isInternal: false,
+          },
+        ],
+      },
+    },
+  });
+
+  // 16. Create Expenses (PYME Suite P&L & Tax Books)
+  await prisma.expense.create({
+    data: {
+      expenseNumber: 'EXP-2026-0001',
+      supplierName: 'Hetzner Cloud GmbH',
+      supplierTaxId: 'DE814670600',
+      category: 'SOFTWARE',
+      issueDate: new Date(Date.now() - 15 * 24 * 3600 * 1000),
+      dueDate: new Date(Date.now() + 15 * 24 * 3600 * 1000),
+      subtotal: 450.0,
+      taxRate: 21.0,
+      taxAmount: 94.5,
+      total: 544.5,
+      status: 'PAID',
+      paymentMethod: 'CREDIT_CARD',
+      notes: 'Servidores dedicados de staging y clúster PostgreSQL 15',
+      tenantId: 'master',
+    },
+  });
+
+  await prisma.expense.create({
+    data: {
+      expenseNumber: 'EXP-2026-0002',
+      supplierName: 'Twilio Ireland Ltd',
+      supplierTaxId: 'IE3382756H',
+      category: 'OPERATIONAL',
+      issueDate: new Date(Date.now() - 5 * 24 * 3600 * 1000),
+      dueDate: new Date(Date.now() + 25 * 24 * 3600 * 1000),
+      subtotal: 180.0,
+      taxRate: 21.0,
+      taxAmount: 37.8,
+      total: 217.8,
+      status: 'PAID',
+      paymentMethod: 'CREDIT_CARD',
+      notes: 'Consumo WhatsApp Business API & SMS OTP',
+      tenantId: 'master',
+    },
+  });
+
+  await prisma.expense.create({
+    data: {
+      expenseNumber: 'EXP-2026-0003',
+      supplierName: 'Asesoría Fiscal Brenas & Asociados SL',
+      supplierTaxId: 'B-12398745',
+      category: 'LEGAL',
+      issueDate: new Date(Date.now() - 2 * 24 * 3600 * 1000),
+      dueDate: new Date(Date.now() + 28 * 24 * 3600 * 1000),
+      subtotal: 350.0,
+      taxRate: 21.0,
+      taxAmount: 73.5,
+      total: 423.5,
+      status: 'PENDING',
+      paymentMethod: 'BANK_TRANSFER',
+      notes: 'Presentación trimestral Modelo 303 de IVA y asesoramiento RGPD',
+      tenantId: 'master',
     },
   });
 
