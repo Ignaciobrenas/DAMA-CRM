@@ -358,7 +358,7 @@ export const LeadCapture: React.FC = () => {
               <button
                 onClick={() =>
                   handleCopy(
-                    `<form action="http://localhost:3000/api/lead-capture/contact" method="POST">\n  <input type="text" name="firstName" placeholder="Nombre" required />\n  <input type="email" name="email" placeholder="Email" required />\n  <input type="hidden" name="utmSource" value="landing_page" />\n  <label><input type="checkbox" name="marketingConsent" value="true" /> Acepto comunicaciones</label>\n  <button type="submit">Contactar</button>\n</form>`,
+                    `<form action="${window.location.origin.includes('5173') ? 'http://localhost:4000' : window.location.origin}/api/lead-capture/contact" method="POST">\n  <input type="text" name="firstName" placeholder="Nombre" required />\n  <input type="email" name="email" placeholder="Email" required />\n  <input type="hidden" name="utmSource" value="landing_page" />\n  <label><input type="checkbox" name="marketingConsent" value="true" /> Acepto comunicaciones</label>\n  <button type="submit">Contactar</button>\n</form>`,
                     'formSnippet'
                   )
                 }
@@ -866,7 +866,7 @@ export const LeadCapture: React.FC = () => {
               <button
                 onClick={() =>
                   handleCopy(
-                    `<script src="http://localhost:3000/api/lead-capture/pixel.js" async></script>`,
+                    `<script src="${window.location.origin.includes('5173') ? 'http://localhost:4000' : window.location.origin}/api/lead-capture/pixel.js" async></script>`,
                     'pixelScript'
                   )
                 }
