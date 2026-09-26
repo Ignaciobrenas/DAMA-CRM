@@ -24,7 +24,6 @@ model Tenant {
   settings    String?  @default("{}") // JSON string with active modules and config
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  notifications Notification[]
 
   @@map("tenants")
 }
@@ -51,6 +50,7 @@ model User {
   assignedTasks    Task[]           @relation("TaskAssignee")
   assignedTickets  Ticket[]         @relation("TicketAssignee")
   notifications    Notification[]
+  employee         Employee?
   auditLogs        AuditLog[]
   twoFactorTokens  TwoFactorToken[]
 
@@ -559,7 +559,6 @@ model Notification {
   userId    String?
   user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenantId  String?   @default("master")
-  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   title     String
   message   String
   type      String    @default("info") // ticket, invoice, quote, deal, stock, lead, system, workflow, chat
@@ -576,4 +575,83 @@ model Notification {
   @@index([type])
   @@map("notifications")
 }
+
+// -----------------------------------------------------------------------------
+// Human Resources & Attendance: Employees, Payrolls (Nóminas) & Time Records
+// -----------------------------------------------------------------------------
+
+model Employee {
+  id             String          @id @default(uuid())
+  userId         String?         @unique
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenantId       String?         @default("master")
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  jobTitle       String?
+  department     String?         // SALES, ENGINEERING, HR, FINANCE, OPERATIONS, SUPPORT
+  hireDate       DateTime?       @default(now())
+  contractType   String?         @default("INDEFINIDO") // INDEFINIDO, TEMPORAL, PRACTICAS, AUTONOMO
+  baseSalary     Float           @default(0.0)
+  iban           String?
+  status         String          @default("ACTIVE") // ACTIVE, ON_LEAVE, TERMINATED
+  odooEmployeeId Int?            // Linked Odoo HR Employee ID
+  payrolls       Payroll[]
+  timeRecords    TimeRecord[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([tenantId, status])
+  @@index([email])
+  @@map("employees")
+}
+
+model Payroll {
+  id          String    @id @default(uuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenantId    String?   @default("master")
+  month       Int       // 1 - 12
+  year        Int       // e.g. 2026
+  baseSalary  Float     @default(0.0)
+  bonuses     Float     @default(0.0)
+  deductions  Float     @default(0.0)
+  netSalary   Float     @default(0.0)
+  status      String    @default("DRAFT") // DRAFT, ISSUED, PAID
+  paidAt      DateTime?
+  pdfUrl      String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([employeeId, month, year])
+  @@index([tenantId, year, month])
+  @@map("payrolls")
+}
+
+model TimeRecord {
+  id               String    @id @default(uuid())
+  employeeId       String
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  userId           String?
+  tenantId         String?   @default("master")
+  clockIn          DateTime  @default(now())
+  clockOut         DateTime?
+  durationMinutes  Int?      @default(0)
+  type             String    @default("WORK") // WORK, BREAK, REMOTE, TRAVEL, MEDICAL
+  reason           String?   // Justificación e.g. "Oficina Central", "Teletrabajo", "Visita comercial", "Pausa médica"
+  notes            String?
+  ipAddress        String?
+  location         String?
+  odooAttendanceId Int?      // Linked Odoo attendance record ID
+  status           String    @default("VALID") // VALID, PENDING_APPROVAL, REJECTED
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([tenantId, clockIn])
+  @@index([employeeId, clockIn])
+  @@map("time_records")
+}
+
 
