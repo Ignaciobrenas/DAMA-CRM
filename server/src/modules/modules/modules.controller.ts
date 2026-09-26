@@ -217,6 +217,10 @@ export async function exportCompanyBackup(req: Request, res: Response): Promise<
       return;
     }
 
+    const isSuperAdmin = user?.role === 'ADMIN' || user?.email === 'ignaciobrenas@gmail.com' || user?.email === 'admin@dama-crm.local';
+    const tenantSlug = resolveTenant(req);
+    const tenantFilter: any = isSuperAdmin && !req.query.tenantId ? {} : { tenantId: tenantSlug };
+
     const [
       contacts,
       companies,
@@ -227,20 +231,21 @@ export async function exportCompanyBackup(req: Request, res: Response): Promise<
       tickets,
       timeRecords,
     ] = await Promise.all([
-      prisma.contact.findMany({ take: 1000 }).catch(() => []),
-      prisma.company.findMany({ take: 1000 }).catch(() => []),
-      prisma.deal.findMany({ take: 1000 }).catch(() => []),
-      prisma.invoice.findMany({ take: 1000 }).catch(() => []),
-      prisma.project.findMany({ take: 1000 }).catch(() => []),
-      prisma.task.findMany({ take: 1000 }).catch(() => []),
-      prisma.ticket.findMany({ take: 1000 }).catch(() => []),
-      prisma.timeRecord.findMany({ take: 1000 }).catch(() => []),
+      prisma.contact.findMany({ where: tenantFilter, take: 5000 }).catch(() => []),
+      prisma.company.findMany({ where: tenantFilter, take: 5000 }).catch(() => []),
+      prisma.deal.findMany({ where: tenantFilter, take: 5000 }).catch(() => []),
+      prisma.invoice.findMany({ where: tenantFilter, take: 5000 }).catch(() => []),
+      prisma.project.findMany({ where: tenantFilter, take: 5000 }).catch(() => []),
+      prisma.task.findMany({ where: tenantFilter, take: 5000 }).catch(() => []),
+      prisma.ticket.findMany({ where: tenantFilter, take: 5000 }).catch(() => []),
+      prisma.timeRecord.findMany({ where: tenantFilter, take: 5000 }).catch(() => []),
     ]);
 
     const backupData = {
       version: '1.2.0',
       exportedAt: new Date().toISOString(),
       exportedBy: user.email,
+      tenantId: isSuperAdmin && !req.query.tenantId ? 'ALL_TENANTS' : tenantSlug,
       counts: {
         contacts: contacts.length,
         companies: companies.length,
@@ -263,9 +268,9 @@ export async function exportCompanyBackup(req: Request, res: Response): Promise<
       },
     };
 
-    await logAudit(user.id, 'EXPORT_BACKUP', 'System', 'all', { records: backupData.counts }, req.ip);
+    await logAudit(user.id, 'EXPORT_BACKUP', 'System', tenantSlug, { records: backupData.counts, tenantId: tenantSlug }, req.ip);
 
-    res.setHeader('Content-Disposition', `attachment; filename=dama_crm_backup_${Date.now()}.json`);
+    res.setHeader('Content-Disposition', `attachment; filename=dama_crm_backup_${tenantSlug}_${Date.now()}.json`);
     res.setHeader('Content-Type', 'application/json');
     res.json(backupData);
   } catch (error: any) {
