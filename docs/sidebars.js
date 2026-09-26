@@ -4,6 +4,7 @@ const sidebars = {
     'intro',
     'installation',
     'architecture',
+    'multi-tenant-and-pymes-roadmap',
     'api-reference',
     'zero-cost-deployment',
   ],
