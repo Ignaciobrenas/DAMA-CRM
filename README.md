@@ -1,245 +1,289 @@
-# DAMA-CRM: CRM Modular Open-Source y Self-Hosted para PYMES 🚀
+# DAMA-CRM: Plataforma Modular Open-Source y Self-Hosted para PYMES 🚀
+
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="client/public/assets/logos/dama-logo-white.svg">
+  <source media="(prefers-color-scheme: light)" srcset="client/public/assets/logos/dama-logo-dark.svg">
+  <img alt="DAMA-CRM Logo" src="client/public/assets/logos/dama-logo-dark.svg" width="380">
+</picture>
+
+<p align="center">
+  <strong>CRM empresarial de alto rendimiento, gestión comercial ágil, pipeline Kanban, facturación con PDF vectorial, automatizaciones y centro de integraciones de terceros.</strong><br>
+  <em>100% On-Premise y Self-Hosted • Zero Licencias Recurrentes • Compatible con Docker, Traefik y Let's Encrypt SSL</em>
+</p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
-[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![Node.js 20+](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![TypeScript 5+](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL 15+](https://img.shields.io/badge/PostgreSQL-15+-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis 7+](https://img.shields.io/badge/Redis-7+-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![React 18+](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v3-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![WebSockets](https://img.shields.io/badge/WebSockets-Real--Time-success)](core/src/services/websocket.service.ts)
 [![PWA](https://img.shields.io/badge/PWA-Installable-purple)](client/public/manifest.json)
 
-> **DAMA-CRM** es una plataforma completa de gestión de clientes (CRM), proyectos ágiles, facturación, automatizaciones e inventario, diseñada para ser **100% self-hosted**, sin costes de licencias recurrentes y desplegable a coste cero en infraestructuras propias o en la capa Always-Free de Oracle Cloud / Cloudflare.
+</div>
 
 ---
 
-## ⚡ Arranque Inmediato con un Solo Comando
+## 🎨 Nueva Imagen de Marca e Identidad Visual (Light & Dark Mode)
 
-Puedes arrancar simultáneamente el Backend Core (Node/Express/Prisma) y el Frontend SPA (React/Vite/Tailwind) desde la raíz del proyecto:
+DAMA-CRM cuenta con una identidad visual moderna y vectorizada en formato SVG de alta definición, diseñada con adaptabilidad nativa según el tema del sistema operativo o la preferencia del usuario:
+
+| Variante | Modo Claro (Light Mode) | Modo Oscuro (Dark Mode) |
+| :--- | :---: | :---: |
+| **Logotipo Completo** | ![DAMA Logo Dark](client/public/assets/logos/dama-logo-dark.svg) | ![DAMA Logo White](client/public/assets/logos/dama-logo-white.svg) |
+| **Símbolo / Imagotipo** | <img src="client/public/assets/logos/dama-symbol-dark.svg" width="90" alt="DAMA Symbol Dark" /> | <img src="client/public/assets/logos/dama-symbol-white.svg" width="90" alt="DAMA Symbol White" /> |
+| **Uso Principal** | Fondos blancos o claros (`#FFFFFF`, `#F8FAFC`) | Fondos oscuros (`#0F172A`, `#1E293B`) |
+
+> [!TIP]
+> **Comportamiento Placeholder Dinámico:** Si la empresa no sube un logotipo corporativo personalizado en los ajustes de marca blanca, el sistema utiliza automáticamente el imagotipo oficial DAMA con contraste inteligente: tono azul marino corporativo (`#072053`) en modo claro y blanco puro con transparencia en modo oscuro.
+
+---
+
+## 📸 Galería Visual de la Aplicación
+
+### 1. Panel de Control y Métricas BI (Dashboard)
+Visualiza KPIs de facturación, tasa de conversión, actividad del pipeline comercial y gráficos interactivos con transiciones fluidas.
+
+| Modo Claro | Modo Oscuro |
+| :---: | :---: |
+| ![Dashboard Light](docs/screenshots/dama-crm-dashboard-light.png) | ![Dashboard Dark](docs/screenshots/dama-crm-dashboard-dark.png) |
+
+---
+
+### 2. Hub de Integraciones de Terceros (`/integrations`)
+Catálogo integral con filtrado por categorías (ERP, E-Commerce, Automatización, Pasarelas de Pago, Comunicación), buscador en tiempo real, comprobación de conexión en vivo y panel de credenciales con control estricto para administradores.
+
+| Integraciones en Modo Claro | Integraciones en Modo Oscuro |
+| :---: | :---: |
+| ![Integraciones Light](docs/screenshots/dama-crm-integrations-light.png) | ![Integraciones Dark](docs/screenshots/dama-crm-integrations-dark.png) |
+
+---
+
+### 3. Asistente de Onboarding Guiado (`/onboarding`) y Acceso Seguro
+Experiencia de bienvenida en 4 pasos para configurar la identidad corporativa, moneda, perfiles de equipo e integraciones activas.
+
+| Asistente de Onboarding | Pantalla de Acceso & Autenticación |
+| :---: | :---: |
+| ![Onboarding](docs/screenshots/dama-crm-onboarding.png) | ![Login](docs/screenshots/dama-crm-login.png) |
+
+---
+
+## ⚡ Inicio Rápido en Desarrollo Local
+
+### Requisitos Previos
+* **Node.js:** v20.x o superior
+* **npm:** v10.x o superior
+* **Docker Desktop** (para PostgreSQL y Redis) o PostgreSQL 15 local
+
+### Pasos de Instalación y Ejecución
 
 ```bash
-# 1. Instalar dependencias (si no lo has hecho aún)
+# 1. Clonar el repositorio
+git clone https://github.com/Ignaciobrenas/DAMA-CRM.git
+cd DAMA-CRM
+
+# 2. Instalar dependencias globales y de cada paquete
 npm install
 npm --prefix core install
 npm --prefix client install
 
-# 2. Inicializar base de datos local para dev (Zero-Docker SQLite + Seed demo)
-npm run db:setup
+# 3. Configurar variables de entorno iniciales
+cp .env.example .env
 
-# 3. ¡Arrancar todo el sistema!
+# 4. Levantar la base de datos PostgreSQL y Redis con Docker
+docker compose up -d crm-db crm-redis
+
+# 5. Aplicar migraciones y cargar datos demo iniciales (Seed)
+npm run db:setup:pg
+
+# 6. Iniciar entorno de desarrollo concurrente
 npm run dev
 ```
 
-Esto levantará concurrentemente:
-* 🟢 **Frontend Web (Vite SPA + PWA):** [http://localhost:3000](http://localhost:3000)
+Esto levantará automáticamente:
+* 🟢 **Frontend Web (Vite SPA + PWA):** [http://localhost:5173](http://localhost:5173)
 * 🔵 **API Backend Core (Express + WebSockets):** [http://localhost:4000](http://localhost:4000)
-* ⚡ **Canal WebSocket en tiempo real:** `ws://localhost:4000/ws` (o a través del proxy en `ws://localhost:3000/ws`)
+* ⚡ **Canal WebSocket en tiempo real:** `ws://localhost:4000/ws`
 * 📖 **Documentación Swagger OpenAPI 3.0 interactiva:** [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
-
----
-
-## ⚙️ Configuración de Variables de Entorno (`.env`)
-
-El proyecto incluye archivos `.env` preconfigurados para desarrollo local inmediato:
-* **Raíz (`.env`):** Utilizado por Docker Compose, scripts raíz y el proxy de Vite.
-* **Core (`core/.env`):** Utilizado por el backend de Express, Prisma CLI y tests de base de datos.
-
-| Variable | Descripción | Valor por Defecto (Dev) |
-| :--- | :--- | :--- |
-| `NODE_ENV` | Entorno de ejecución (`development` o `production`) | `development` |
-| `PORT` | Puerto HTTP del servidor Express | `4000` |
-| `CLIENT_PORT` | Puerto del servidor de desarrollo Vite | `3000` |
-| `DATABASE_URL` | Conexión BD (SQLite local dev o PostgreSQL) | `"file:./dev.db"` (dev) / `postgresql://...` (prod) |
-| `POSTGRES_USER` | Usuario de PostgreSQL para Docker Compose | `crm_user` |
-| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL para Docker Compose | `crm_password` |
-| `POSTGRES_DB` | Nombre de la base de datos | `dama_crm` |
-| `REDIS_HOST` | Host del broker Redis (localhost o crm-redis) | `localhost` |
-| `REDIS_PORT` | Puerto de conexión Redis | `6379` |
-| `JWT_SECRET` | Clave secreta para firma y verificación de tokens | `super_secret_jwt_key_crm_dama_change_me_in_production` |
-| `JWT_EXPIRES_IN` | Caducidad de sesiones JWT | `7d` |
-| `SMTP_HOST` | Servidor SMTP para envío de correos y 2FA OTP | `smtp.gmail.com` |
-| `SMTP_PORT` | Puerto del servidor SMTP | `587` |
-| `SMTP_SECURE` | Habilitar TLS directo (`true`/`false`) | `false` |
-| `SMTP_USER` | Usuario o email de autenticación SMTP | `notificaciones@tudominio.com` |
-| `SMTP_PASS` | Contraseña o token de aplicación SMTP | `tu_contrasena_de_aplicacion` |
-| `SMTP_FROM` | Remitente de los correos emitidos | `"DAMA-CRM <no-reply@tudominio.com>"` |
-| `UNOPIM_WEBHOOK_SECRET` | Token secreto para validar webhooks de UnoPIM | `unopim_secret_token_123` |
-| `WHATSAPP_WEBHOOK_VERIFY_TOKEN`| Token de verificación handshake Meta WhatsApp | `meta_verify_token_crm_456` |
-| `DOMAIN_NAME` | Dominio de producción para Traefik / SSL | `crm.local` |
-| `ACME_EMAIL` | Email de registro para Let's Encrypt SSL | `admin@dama-crm.local` |
-
----
-
-## 🌟 Módulos y Funcionalidades Implementadas
-
-### 🏢 1. Marca Blanca y Personalización de Empresa (Branding)
-* **Logo Corporativo:** Sube tu propio logo o introduce una URL pública, reflejado al instante en el menú, login y barra superior.
-* **Nombre de la Empresa:** Renombra la plataforma con la identidad de tu negocio.
-* **Paleta de Colores Dinámica:** Selector de color HEX o paletas rápidas (Azul Real, Verde Esmeralda, Púrpura Tech, Naranja Pro, Carmín, Cian) inyectadas dinámicamente en tiempo de ejecución.
-* **Bordes Redondeados Universales:** Ajusta la curvatura de toda la interfaz (8px, 14px, 20px o 28px Soft UI).
-
-### ⚡ 2. Tiempo Real con WebSockets (`/ws`)
-* **Pipeline en Vivo:** Sincronización instantánea de los cambios de fase en el tablero Kanban entre todos los agentes conectados.
-* **Mensajería Omnicanal:** Recepción de mensajes de WhatsApp y correos en tiempo real en la pantalla de chat sin recargar.
-* **Centro de Notificaciones:** Notificaciones emergentes automáticas con contador de no leídas en el Navbar para ventas ganadas, stock crítico y mensajes entrantes.
-
-### 🛡️ 3. Mensajes de Error Amigables y Seguros
-* Errores normalizados en cliente y servidor: sin volcados técnicos de base de datos ni trazas de pila que comprometan la seguridad.
-* Mensajes comprensibles para el usuario con sugerencias claras de acción.
-
-### 📊 4. Embudo Comercial y Pipeline Kanban
-* Tablero visual arrastrar y soltar (*Drag & Drop*) con mutaciones ultraeficientes vía `PATCH`.
-* Efecto de celebración con confeti interactivo al mover una venta a la fase **Ganada**.
-* Drawer de registro para abrir actividades y campos personalizados al hacer clic en cualquier oportunidad.
-
-### ⏱️ 5. Timeline de Actividades y Campos Personalizados Dinámicos
-* Registro de **Llamadas, Reuniones, Notas y Tareas** con fechas, duración y marcas de completado.
-* Motor de **Metadatos y Campos Personalizados** configurables (`TEXT`, `NUMBER`, `DATE`, `SELECT`, `BOOLEAN`) para contactos y oportunidades.
-
-### 📱 6. PWA (Progressive Web App) y Preparación Móvil
-* Aplicación instalable en escritorio, Android e iOS con [manifest.json](client/public/manifest.json) y [sw.js](client/public/sw.js) para soporte offline.
-* Compatible con empaquetado nativo APK Android mediante **Capacitor**.
-
-### 🧾 7. Presupuestos y Facturación con PDF Nativo
-* Generación instantánea de presupuestos y facturas legales con desglose de IVA (21%).
-* Motor vectorial con PDFKit descargable al vuelo sin dependencias externas pesadas.
-
-### 📦 8. Sincronización de Inventario UnoPIM
-* Receptor de webhooks de productos y stock (`product.updated`, `product.created`).
-* Sweep nocturno automático para reconciliación de catálogos y stock bajo.
-
-### 🤖 9. Motor de Automatizaciones en Segundo Plano
-* Reglas configurables con disparadores (`deal.won`, `contact.created`, `invoice.paid`) y acciones automáticas (notificaciones, creación de proyectos, envío de mensajes).
-
-### 📈 10. Business Intelligence & Informes
-* Métricas en tiempo real: MRR, ARR, Win Rate, velocidad de sprints y exportación a CSV.
-
-### 💫 11. Animaciones Fluidas, Notificaciones Toast y Micro-interacciones
-* **Transiciones Reactivas con `framer-motion`:** Transición suave al cambiar de vista, modales elásticos con efecto spring y backdrop blur.
-* **Menú Lateral con Píldora Deslizante:** Indicador activo que acompaña el movimiento del usuario suavemente (`layoutId="activeSidebarIndicator"`).
-* **Contadores Numéricos Dinámicos:** Componente `AnimatedCounter` para transiciones numéricas fluidas en tarjetas KPI.
-* **Sistema Global de Notificaciones Flotantes `useToast()`:** Toasts con barra de progreso, iconos animados por categoría (éxito, error, advertencia e información) y auto-dismiss.
-* **Iconos Animados Interactivos (`AnimatedIcon`):** Micro-interacciones de hover-scale, pulse, bounce y campanilla reactiva (`shake`).
-* **Auditoría Forense Visual:** Panel inmutable de trazabilidad de seguridad en Ajustes sincronizado en tiempo real.
-
-### 🔌 12. Conectores & Endpoint de Integraciones de Terceros (`/api/integraciones-de-terceros`)
-* **Endpoint Centralizado de Aplicaciones:** Catálogo completo expuesto en `GET /api/integraciones-de-terceros` y `/api/integrations/third-party`.
-* **Odoo ERP:** Sincronización bidireccional mediante XML-RPC / JSON-RPC de contactos (`res.partner`), pedidos de venta, facturas (`account.move`) y catálogo de productos.
-* **WooCommerce:** Webhooks en tiempo real (`order.created`, `order.updated`, `customer.created`) con conversión automática a oportunidades de venta y clientes en el CRM.
-* **Shopify Store:** Conexión para comercio de alto volumen con verificación de firma criptográfica **HMAC-SHA256** (`X-Shopify-Hmac-Sha256`), creación de tratos e importación de catálogo.
-* **n8n Workflow Automation:** Disparador de eventos salientes del CRM y receptor de acciones entrantes (`/api/integrations/n8n/action`) para crear contactos, oportunidades, actividades y productos desde cualquier flujo n8n.
-* **UnoPIM & WhatsApp Meta Cloud:** Integraciones nativas de PIM para gestión de inventario y bandeja omnicanal 24/7.
-* **Pasarelas & Webhooks:** Stripe Payments y REST Hooks para Zapier y Make.
-
-### 🚀 13. Asistente de Bienvenida & Onboarding Guiado (`/onboarding`)
-* Wizard en 4 pasos desplegado automáticamente en el primer inicio de sesión del usuario:
-  1. **Organización & Marca:** Definición del nombre de la empresa, divisa base (EUR, USD, GBP, MXN) y paleta de colores.
-  2. **Identidad Adaptativa:** Previsualización en vivo del imagotipo DAMA adaptándose con contraste óptimo en fondos claros y oscuros.
-  3. **Rol & Equipo:** Selección del perfil operativo e invitaciones a compañeros de trabajo mediante chips de correo.
-  4. **Ecosistema & Lanzamiento:** Activación de conectores externos, opción de precarga de datos de demostración interactivos y celebración con fuegos artificiales (`canvas-confetti`).
-
-### 🎨 14. Nueva Identidad de Marca DAMA Vectorial (Light & Dark Mode)
-* **Logotipos Oficiales Vectorizados:** Colección SVG en [`client/public/assets/logos/`](client/public/assets/logos/) procesada sin pérdida de calidad.
-* **Comportamiento Placeholder Dinámico:** Si la empresa no sube un logotipo personalizado, el imagotipo institucional DAMA se renderiza como marcador predeterminado: color azul corporativo navy (`#072053`) en modo claro y blanco puro (`#FFFFFF`) con transparencia perfecta en modo oscuro.
-
-### 📈 15. Seguimiento de Analíticas & Telemetría en Vivo
-* **Privacidad por Diseño (RGPD):** Seguimiento interno de navegación y eventos sin intermediarios publicitarios externos ni cookies de terceros.
-* **Métricas en Tiempo Real:** Monitorización de páginas más visitadas, eventos de interacción de usuario, tasa de conversión y registro en vivo en el módulo de Informes (`/reports`).
-
-### ❓ 16. Centro de Ayuda & Preguntas Frecuentes (FAQ) (`/faq`)
-* Buscador en tiempo real de dudas frecuentes clasificadas en categorías: General & Módulos, Conectores & Webhooks, Seguridad & RGPD, Ventas & Facturación, y Marca Corporativa.
-* Sistema de retroalimentación interactiva ("¿Te ha resultado útil?") y acceso directo a soporte técnico omnicanal.
-
-### 🏷️ 17. Indicador de Versión Activa en Ejecución
-* Visualización en pie de página global y panel lateral de la versión actual: `v1.2.0-staging (Build 2026.09.26)`.
+* 🗄️ **Base de datos PostgreSQL:** `localhost:5433` (mapeada en el contenedor `dama-crm-db`)
+* 🔴 **Broker Redis:** `localhost:6379` (en el contenedor `dama-crm-redis`)
 
 ---
 
 ## 👥 Credenciales de Acceso Demo
 
-| Rol | Correo | Contraseña | Permisos |
+| Perfil / Rol | Correo Electrónico | Contraseña | Permisos y Alcance |
 | :--- | :--- | :--- | :--- |
-| **Super Administrador (Ignacio)** | `ignaciobrenas@gmail.com` | `1` | Acceso total (`*`), RBAC universal, Gobernanza y Marca |
-| **Administrador Demo** | `admin@dama-crm.local` | `Admin1234!` | Acceso universal (`*`), RBAC, Configuración y Marca |
-| **Comercial / Ventas** | `ventas@dama-crm.local` | `Ventas1234!` | Contactos, Pipeline Kanban, Facturas, Chat Omnicanal |
-| **Project Manager** | `pm@dama-crm.local` | `Pm1234!` | Proyectos Ágiles, Sprints, Tareas y SLAs |
+| **Super Administrador** | `ignaciobrenas@gmail.com` | `1` | Acceso universal (`*`), RBAC dinámico, configuración de integraciones y marca |
+| **Administrador Demo** | `admin@dama-crm.local` | `Admin1234!` | Acceso completo (`*`), usuarios, roles y ajustes |
+| **Comercial / Ventas** | `ventas@dama-crm.local` | `Ventas1234!` | Contactos, empresas, pipeline Kanban, presupuestos y chat omnicanal |
+| **Project Manager** | `pm@dama-crm.local` | `Pm1234!` | Proyectos ágiles, sprints, tareas Kanban y reportes de avance |
 
 ---
 
-### 🔒 Motor de Validación Estricta de Campos y Contraseñas
-* **Contraseñas Robustas:** Mínimo 8 caracteres, al menos 1 letra mayúscula (A-Z), 1 letra minúscula (a-z), 1 número (0-9) y 1 carácter especial o símbolo (!@#$%...).
-* **Verificación de Correo Electrónico:** Formato RFC 5322 estandarizado y saneamiento automático a minúsculas y sin espacios.
-* **Validación de Teléfonos:** Formato numérico nacional e internacional (E.164: +34 600 000 000 o 912345678).
-* **Campos Obligatorios:** Middleware de validación con Zod en Express que rechaza datos incompletos con respuestas 400 y mensajes comprensibles.
-* **Medidor Reactivo de Fuerza de Contraseña:** Componente visual interactivo con checklist y porcentaje de seguridad en el alta de usuarios.
+## 🚀 Guía de Despliegue en Producción (Deploy)
 
----
+DAMA-CRM está diseñado para desplegarse mediante **Docker Compose** con arquitectura de microservicios contenerizada y certificado SSL automático gestionado por **Traefik**.
 
-## 🧪 Ejecución de Tests Automatizados
+### Arquitectura del Stack de Producción
 
-La suite de tests unitarios e integración valida la lógica crítica del backend:
-
-```bash
-# Ejecutar tests de Core
-npm test
-# o desde la raíz
-npm --prefix core test
+```mermaid
+flowchart TD
+    Internet([Peticiones HTTPS / WSS]) --> Traefik["Traefik v3 (Reverse Proxy + Auto SSL Let's Encrypt)"]
+    
+    subgraph "Red Interna Docker (dama-network)"
+        Traefik -->|Ruta: /api y /ws| CoreAPI["crm-core (Node.js 20 + Express + Prisma)"]
+        Traefik -->|Ruta: /| ClientApp["crm-client (React SPA + Nginx Alpine)"]
+        
+        CoreAPI --> DB[(crm-db: PostgreSQL 15 Alpine)]
+        CoreAPI --> RedisBroker[(crm-redis: Redis 7 Alpine)]
+        CoreAPI -.-> Webhooks["Conectores Externos (Odoo, Woo, Shopify, n8n)"]
+    end
 ```
 
-Valida:
-- Hasheo de contraseñas con bcrypt y generación de tokens JWT.
-- Matriz dinámica de RBAC con permisos comodín.
-- Cálculos matemáticos y redondeo de facturas e IVA.
-- Validador de tipos de campos personalizados.
-- Parser de webhooks de UnoPIM y Meta WhatsApp Cloud.
-- Motor de disparadores de workflows.
-
 ---
 
-## 🐳 Despliegue con Docker Compose (Producción)
+### Paso a Paso para Desplegar en Servidor (VPS / Cloud)
 
+#### 1. Preparación del Servidor
+En tu servidor Linux (Ubuntu 22.04 / 24.04 o Debian 12):
 ```bash
-# Levantar stack completo con Traefik, PostgreSQL, Redis, Core API y Nginx SPA
+# Actualizar el sistema
+sudo apt update && sudo apt upgrade -y
+
+# Instalar Docker y Docker Compose plugin
+sudo apt install -y docker.io docker-compose-plugin git curl
+sudo systemctl enable --now docker
+```
+
+#### 2. Clonar el Proyecto
+```bash
+git clone https://github.com/Ignaciobrenas/DAMA-CRM.git /opt/dama-crm
+cd /opt/dama-crm
+```
+
+#### 3. Configuración del Archivo `.env` de Producción
+Crea el archivo `.env` a partir de [.env.example](.env.example):
+```bash
+cp .env.example .env
+nano .env
+```
+
+Configura los siguientes parámetros indispensables:
+```env
+# 1. Entorno
+NODE_ENV=production
+PORT=4000
+CLIENT_PORT=3000
+
+# 2. Dominio y Certificados SSL Automáticos (Let's Encrypt)
+DOMAIN_NAME=crm.tudominio.com
+ACME_EMAIL=admin@tudominio.com
+
+# 3. Base de Datos PostgreSQL
+POSTGRES_USER=crm_production_user
+POSTGRES_PASSWORD=GeneraUnaContrasenaSeguraDe32Caracteres!
+POSTGRES_DB=dama_crm_prod
+DATABASE_URL=postgresql://crm_production_user:GeneraUnaContrasenaSeguraDe32Caracteres!@crm-db:5432/dama_crm_prod?schema=public
+
+# 4. Redis Broker
+REDIS_HOST=crm-redis
+REDIS_PORT=6379
+
+# 5. Seguridad JWT
+JWT_SECRET=CadenaAleatoriaMuyLargaYUltraSegura_CambialaObligatoriamente
+
+# 6. Servicio SMTP (Envío de correos y 2FA OTP)
+SMTP_HOST=smtp.tuproveedor.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=notificaciones@tudominio.com
+SMTP_PASS=tu_contrasena_smtp
+SMTP_FROM="DAMA-CRM <no-reply@tudominio.com>"
+```
+
+#### 4. Levantar los Contenedores
+```bash
 docker compose up -d --build
 ```
 
----
-
-## 🌿 Política de Ramas y Despliegue (`staging`)
-
-DAMA-CRM utiliza una estricta política de protección de ramas para asegurar la estabilidad:
-* **Rama `staging` (Integración Principal):** Es la rama activa donde se centraliza y valida todo el desarrollo antes de pasar a producción.
-* **Ramas de trabajo (`feature/*`, `fix/*`, `chore/*`):** Ramas aisladas para cada funcionalidad o corrección, que se fusionan en `staging`.
-* **Ramas de producción (`main` / `master`):**
-  - Los empujes directos (`git push`) están **estrictamente bloqueados** a través de hooks locales ([`.githooks/pre-push`](.githooks/pre-push)) y GitHub Actions ([`.github/workflows/block-main-push.yml`](.github/workflows/block-main-push.yml)).
-  - Todo cambio destinado a producción debe provenir de un Pull Request o merge controlado desde `staging`.
-
+#### 5. Ejecutar Migraciones de Base de Datos
+El contenedor de la API Core aplica automáticamente las migraciones pendientes al iniciar mediante `prisma migrate deploy`. También puedes verificar el estado manualmente:
 ```bash
-# Flujo estándar de desarrollo:
-git checkout staging
-git checkout -b feature/mi-modulo
-# ... realizar cambios y commits ...
-git checkout staging
-git merge feature/mi-modulo --no-ff
-git push origin staging
+docker compose exec crm-core npx prisma migrate status --schema=prisma/schema.prisma
+```
+
+#### 6. (Opcional) Cargar Datos Semilla Iniciales
+```bash
+docker compose exec crm-core npm run db:seed
+```
+
+#### 7. Verificación de Salud del Despliegue
+```bash
+# Comprobar el endpoint de salud
+curl -k https://crm.tudominio.com/api/health
+```
+Respuesta esperada:
+```json
+{
+  "status": "ok",
+  "service": "dama-crm-core",
+  "version": "1.0.0"
+}
 ```
 
 ---
 
-## 🌐 Normas del Repositorio y Política Estricta de i18n
+## ⚙️ Tabla Maestra de Variables de Configuración
 
-> [!IMPORTANT]
-> **Regla de Oro del Proyecto (Cero Textos Hardcodeados):**
-> **Todas las palabras, etiquetas, botones, mensajes de error y textos visibles para el usuario DEBEN ser variables / claves del sistema de internacionalización (`t('clave')`).**
-> 
-> Queda terminantemente prohibido hardcodear textos planos directamente en las vistas o componentes TSX/JSX.
-> - Archivo maestro de traducciones: [`client/src/i18n/index.ts`](client/src/i18n/index.ts) y carpetas de locales JSON ([`client/src/i18n/locales/`](client/src/i18n/locales/))
-> - Hook de consumo: `const { t } = useLanguage();`
-> - Idiomas oficiales soportados: Español (`es`), Inglés (`en`), Francés (`fr`), Alemán (`de`), Italiano (`it`), Portugués (`pt`), Árabe (`ar`), Chino (`zh`), Japonés (`ja`) y Ruso (`ru`).
-> - Cualquier nuevo módulo, modal o botón añadido al proyecto debe registrar sus claves en todos los idiomas soportados.
+| Variable | Tipo | Requerida | Propósito y Descripción |
+| :--- | :---: | :---: | :--- |
+| `NODE_ENV` | `string` | Sí | `production` o `development`. Activa logs limpios y caché optimizada. |
+| `PORT` | `number` | Sí | Puerto interno de escucha de la API Core (predeterminado: `4000`). |
+| `DATABASE_URL` | `string` | Sí | Cadena de conexión PostgreSQL con usuario, contraseña, host y base de datos. |
+| `REDIS_HOST` | `string` | Sí | Host de Redis (`crm-redis` en Docker o `localhost` en local). |
+| `REDIS_PORT` | `number` | Sí | Puerto de Redis (predeterminado: `6379`). |
+| `JWT_SECRET` | `string` | Sí | Clave de firmado criptográfico de los tokens de sesión de usuario. |
+| `JWT_EXPIRES_IN` | `string` | No | Duración de la sesión (predeterminado: `7d`). |
+| `DOMAIN_NAME` | `string` | Sí (Prod) | Dominio FQDN para enrutamiento Traefik y emisión de certificados SSL. |
+| `ACME_EMAIL` | `string` | Sí (Prod) | Correo de registro ante Let's Encrypt para renovaciones de certificados. |
+| `SMTP_HOST` | `string` | No | Servidor de correo saliente para alertas, facturas y códigos 2FA. |
+| `SMTP_USER` / `SMTP_PASS` | `string` | No | Credenciales de autenticación del servidor SMTP. |
+| `UNOPIM_WEBHOOK_SECRET` | `string` | No | Secreto de verificación para sincronización de inventario con UnoPIM. |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | `string` | No | Token de verificación para webhooks de Meta WhatsApp Cloud API. |
+| `SHOPIFY_WEBHOOK_SECRET` | `string` | No | Secreto HMAC-SHA256 para verificar eventos entrantes de Shopify. |
+| `STRIPE_SECRET_KEY` | `string` | No | Clave secreta API de Stripe para cobros y pasarela de pago. |
+
+---
+
+## 💾 Automatización de Copias de Seguridad (Backups)
+
+Para garantizar la integridad y cero pérdida de datos en entornos de producción, se recomienda configurar un cron diario de volcado de PostgreSQL:
+
+```bash
+# Editar crontab del servidor
+sudo crontab -e
+
+# Añadir volcado automático diario a las 03:00 AM con rotación de 14 días:
+0 3 * * * docker compose -f /opt/dama-crm/docker-compose.yml exec -T crm-db pg_dump -U crm_production_user dama_crm_prod | gzip > /opt/backups/dama_crm_$(date +\%F).sql.gz && find /opt/backups -name "dama_crm_*.sql.gz" -mtime +14 -delete
+```
+
+---
+
+## 🌿 Política de Ramas y Flujo Git
+
+El repositorio opera bajo un estricto modelo de estabilidad:
+* **Rama `staging`:** Rama principal de integración continua donde se consolidan y prueban todas las mejoras.
+* **Ramas de trabajo (`feature/*`, `fix/*`):** Ramas de ciclo corto creadas desde `staging` y mergeadas nuevamente a `staging`.
+* **Rama `master` / `main`:** Rama de producción protegida. Los empujes directos están bloqueados mediante hooks locales y GitHub Actions; las actualizaciones se efectúan exclusivamente mediante Pull Request controlado desde `staging`.
+* **Protección de Secretos:** El archivo `.env` está estrictamente ignorado en [.gitignore](.gitignore) (`.env`, `**/.env`, `**/.env.*`) y validado para prevenir fugas accidentales al repositorio remoto.
 
 ---
 
 ## 📄 Licencia
 
-Desarrollado bajo licencia **MIT** por [Ignacio](https://github.com/).
+Este proyecto está distribuido bajo la licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más información. Desarrollado por [Ignacio](https://github.com/Ignaciobrenas).
