@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { generatePdfBuffer, InvoicePdfData } from './pdf.service';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { getBrandingConfig } from '../branding/branding.controller';
 
 export async function listInvoices(req: Request, res: Response): Promise<void> {
   try {
@@ -152,19 +153,29 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       return;
     }
 
+    const branding = getBrandingConfig();
+
     const pdfData: InvoicePdfData = {
       invoiceNumber: invoice.invoiceNumber,
       type: 'FACTURA',
       issueDate: invoice.issueDate.toISOString().split('T')[0],
       dueDate: invoice.dueDate ? invoice.dueDate.toISOString().split('T')[0] : undefined,
       status: invoice.status,
-      companyName: 'DAMA CRM Soluciones S.L.',
-      companyTaxId: 'B-12345678',
-      companyAddress: 'Avenida Tecnológica 42, Madrid, España',
-      clientName: invoice.company?.name || `${invoice.contact?.firstName} ${invoice.contact?.lastName}`,
+      companyName: branding.companyName || 'DAMA CRM Soluciones S.L.',
+      companyTaxId: branding.companyTaxId || 'B-12345678',
+      companyAddress: branding.companyAddress || 'Avenida Tecnológica 42, 28046 Madrid, España',
+      companyEmail: branding.companyEmail || 'contacto@dama-crm.com',
+      companyPhone: branding.companyPhone || '+34 910 000 000',
+      companyWebsite: branding.companyWebsite || 'https://damacrm.com',
+      logoUrl: branding.logoUrl || undefined,
+      primaryColor: branding.primaryColor || '#072053',
+      paymentTerms: branding.paymentTerms || 'Transferencia bancaria a 30 días',
+      bankAccount: branding.bankAccount || undefined,
+      clientName: invoice.company?.name || `${invoice.contact?.firstName || ''} ${invoice.contact?.lastName || ''}`.trim() || 'Cliente General',
       clientEmail: invoice.contact?.email,
       clientTaxId: invoice.company?.taxId || undefined,
       clientAddress: invoice.company?.address || undefined,
+      clientPhone: invoice.contact?.phone || invoice.contact?.mobile || undefined,
       items: invoice.items.map((it) => ({
         description: it.description,
         quantity: it.quantity,
@@ -283,19 +294,29 @@ export async function downloadQuotePdf(req: Request, res: Response): Promise<voi
       return;
     }
 
+    const branding = getBrandingConfig();
+
     const pdfData: InvoicePdfData = {
       invoiceNumber: quote.quoteNumber,
       type: 'PRESUPUESTO',
       issueDate: quote.issueDate.toISOString().split('T')[0],
       dueDate: quote.expiryDate ? quote.expiryDate.toISOString().split('T')[0] : undefined,
       status: quote.status,
-      companyName: 'DAMA CRM Soluciones S.L.',
-      companyTaxId: 'B-12345678',
-      companyAddress: 'Avenida Tecnológica 42, Madrid, España',
-      clientName: quote.company?.name || `${quote.contact?.firstName} ${quote.contact?.lastName}`,
+      companyName: branding.companyName || 'DAMA CRM Soluciones S.L.',
+      companyTaxId: branding.companyTaxId || 'B-12345678',
+      companyAddress: branding.companyAddress || 'Avenida Tecnológica 42, 28046 Madrid, España',
+      companyEmail: branding.companyEmail || 'contacto@dama-crm.com',
+      companyPhone: branding.companyPhone || '+34 910 000 000',
+      companyWebsite: branding.companyWebsite || 'https://damacrm.com',
+      logoUrl: branding.logoUrl || undefined,
+      primaryColor: branding.primaryColor || '#072053',
+      paymentTerms: branding.paymentTerms || 'Validez 30 días naturales',
+      bankAccount: branding.bankAccount || undefined,
+      clientName: quote.company?.name || `${quote.contact?.firstName || ''} ${quote.contact?.lastName || ''}`.trim() || 'Cliente General',
       clientEmail: quote.contact?.email,
       clientTaxId: quote.company?.taxId || undefined,
       clientAddress: quote.company?.address || undefined,
+      clientPhone: quote.contact?.phone || quote.contact?.mobile || undefined,
       items: quote.items.map((it) => ({
         description: it.description,
         quantity: it.quantity,
@@ -337,17 +358,29 @@ export async function publicPortalDownload(req: Request, res: Response): Promise
       return;
     }
 
+    const branding = getBrandingConfig();
+
     const pdfData: InvoicePdfData = {
       invoiceNumber: invoice.invoiceNumber,
       type: 'FACTURA',
       issueDate: invoice.issueDate.toISOString().split('T')[0],
       dueDate: invoice.dueDate ? invoice.dueDate.toISOString().split('T')[0] : undefined,
       status: invoice.status,
-      companyName: 'DAMA CRM Soluciones S.L.',
-      companyTaxId: 'B-12345678',
-      companyAddress: 'Avenida Tecnológica 42, Madrid, España',
-      clientName: invoice.company?.name || `${invoice.contact?.firstName} ${invoice.contact?.lastName}`,
+      companyName: branding.companyName || 'DAMA CRM Soluciones S.L.',
+      companyTaxId: branding.companyTaxId || 'B-12345678',
+      companyAddress: branding.companyAddress || 'Avenida Tecnológica 42, 28046 Madrid, España',
+      companyEmail: branding.companyEmail || 'contacto@dama-crm.com',
+      companyPhone: branding.companyPhone || '+34 910 000 000',
+      companyWebsite: branding.companyWebsite || 'https://damacrm.com',
+      logoUrl: branding.logoUrl || undefined,
+      primaryColor: branding.primaryColor || '#072053',
+      paymentTerms: branding.paymentTerms || 'Transferencia bancaria a 30 días',
+      bankAccount: branding.bankAccount || undefined,
+      clientName: invoice.company?.name || `${invoice.contact?.firstName || ''} ${invoice.contact?.lastName || ''}`.trim() || 'Cliente General',
       clientEmail: invoice.contact?.email,
+      clientTaxId: invoice.company?.taxId || undefined,
+      clientAddress: invoice.company?.address || undefined,
+      clientPhone: invoice.contact?.phone || invoice.contact?.mobile || undefined,
       items: invoice.items.map((it) => ({
         description: it.description,
         quantity: it.quantity,

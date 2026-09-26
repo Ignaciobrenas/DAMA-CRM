@@ -5,44 +5,56 @@ import { wsService } from '../../services/websocket.service';
 
 const BRANDING_FILE = path.join(__dirname, '..', '..', '..', 'branding.json');
 
-const DEFAULT_BRANDING = {
-  companyName: 'DAMA-CRM',
+export interface BrandingConfig {
+  companyName: string;
+  logoUrl: string;
+  primaryColor: string;
+  borderRadius: string;
+  companyTaxId?: string;
+  companyAddress?: string;
+  companyEmail?: string;
+  companyPhone?: string;
+  companyWebsite?: string;
+  paymentTerms?: string;
+  bankAccount?: string;
+}
+
+export const DEFAULT_BRANDING: BrandingConfig = {
+  companyName: 'DAMA CRM Soluciones S.L.',
   logoUrl: '',
-  primaryColor: '#2563EB',
+  primaryColor: '#072053',
   borderRadius: 'md',
+  companyTaxId: 'B-12345678',
+  companyAddress: 'Avenida Tecnológica 42, 28046 Madrid, España',
+  companyEmail: 'contacto@dama-crm.com',
+  companyPhone: '+34 910 000 000',
+  companyWebsite: 'https://damacrm.com',
+  paymentTerms: 'Transferencia bancaria a 30 días',
+  bankAccount: 'ES91 2100 0418 4502 0005 1332',
 };
 
-export function getBranding(req: Request, res: Response): void {
+export function getBrandingConfig(): BrandingConfig {
   try {
     if (fs.existsSync(BRANDING_FILE)) {
       const data = JSON.parse(fs.readFileSync(BRANDING_FILE, 'utf-8'));
-      res.json({ success: true, data: { ...DEFAULT_BRANDING, ...data } });
-      return;
+      return { ...DEFAULT_BRANDING, ...data };
     }
   } catch {
     // fallback to defaults on read error
   }
-  res.json({ success: true, data: DEFAULT_BRANDING });
+  return { ...DEFAULT_BRANDING };
+}
+
+export function getBranding(req: Request, res: Response): void {
+  res.json({ success: true, data: getBrandingConfig() });
 }
 
 export function updateBranding(req: Request, res: Response): void {
   try {
-    const { companyName, logoUrl, primaryColor, borderRadius } = req.body;
-    let current = { ...DEFAULT_BRANDING };
-    if (fs.existsSync(BRANDING_FILE)) {
-      try {
-        current = { ...current, ...JSON.parse(fs.readFileSync(BRANDING_FILE, 'utf-8')) };
-      } catch {
-        // continue with defaults
-      }
-    }
-
-    const updated = {
+    const current = getBrandingConfig();
+    const updated: BrandingConfig = {
       ...current,
-      ...(companyName !== undefined ? { companyName: String(companyName).trim() } : {}),
-      ...(logoUrl !== undefined ? { logoUrl: String(logoUrl).trim() } : {}),
-      ...(primaryColor !== undefined ? { primaryColor: String(primaryColor).trim() } : {}),
-      ...(borderRadius !== undefined ? { borderRadius } : {}),
+      ...req.body,
     };
 
     fs.writeFileSync(BRANDING_FILE, JSON.stringify(updated, null, 2), 'utf-8');
@@ -54,3 +66,4 @@ export function updateBranding(req: Request, res: Response): void {
     res.status(500).json({ success: false, message: error.message });
   }
 }
+

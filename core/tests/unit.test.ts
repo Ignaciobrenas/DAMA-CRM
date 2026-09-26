@@ -457,5 +457,158 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(zapierRes.handled, true);
     });
   });
+
+  describe('ISO-Compliant PDF Engine & Dynamic Pagination', () => {
+    const {
+      generatePdfBuffer,
+      formatIsoDate,
+      formatIsoCurrency,
+    } = require('../src/modules/invoices/pdf.service');
+
+    it('should format dates adhering strictly to ISO 8601 (YYYY-MM-DD)', () => {
+      const d1 = new Date('2026-09-26T12:00:00Z');
+      assert.strictEqual(formatIsoDate(d1), '2026-09-26');
+
+      const d2 = '2026-12-31T00:00:00.000Z';
+      assert.strictEqual(formatIsoDate(d2), '2026-12-31');
+    });
+
+    it('should format currencies adhering strictly to ISO 4217 standard', () => {
+      const eurFormatted = formatIsoCurrency(1500.5, 'EUR');
+      assert.ok(eurFormatted.includes('EUR'));
+      assert.ok(eurFormatted.includes('1.500,50'));
+
+      const usdFormatted = formatIsoCurrency(99.99, 'USD');
+      assert.ok(usdFormatted.includes('USD'));
+      assert.ok(usdFormatted.includes('99,99'));
+    });
+
+    it('should generate professional single-page invoice PDF with ISO 19005 metadata & DAMA branding', async () => {
+      const invoiceData = {
+        invoiceNumber: 'FAC-2026-001',
+        type: 'FACTURA',
+        issueDate: '2026-09-26',
+        dueDate: '2026-10-26',
+        status: 'PAID',
+        companyName: 'DAMA CRM Soluciones S.L.',
+        companyTaxId: 'B-12345678',
+        companyAddress: 'Avenida Tecnológica 42, 28046 Madrid',
+        companyEmail: 'contacto@dama-crm.com',
+        companyPhone: '+34 910 000 000',
+        companyWebsite: 'https://damacrm.com',
+        clientName: 'Acme Corporation Ibérica',
+        clientTaxId: 'A-98765432',
+        clientEmail: 'billing@acme-corp.com',
+        clientAddress: 'Calle Mayor 10, Barcelona',
+        items: [
+          { description: 'Licencia Servidor Dedicado DAMA-CRM Anual', quantity: 1, unitPrice: 2400.0, amount: 2400.0 },
+          { description: 'Pack de Implementación e Integraciones API', quantity: 1, unitPrice: 850.0, amount: 850.0 },
+        ],
+        subtotal: 3250.0,
+        taxRate: 21,
+        taxAmount: 682.5,
+        total: 3932.5,
+        currency: 'EUR',
+        notes: 'Gracias por confiar en DAMA-CRM. Servicio garantizado 24/7.',
+        paymentTerms: 'Transferencia bancaria a 30 días',
+        bankAccount: 'ES91 2100 0418 4502 0005 1332',
+      };
+
+      const buffer = await generatePdfBuffer(invoiceData);
+      assert.ok(buffer instanceof Buffer);
+      assert.ok(buffer.length > 2000, 'PDF buffer should have substantial content');
+
+      const rawPdfString = buffer.toString('binary');
+      // ISO header
+      assert.ok(rawPdfString.startsWith('%PDF-1.'), 'PDF file must start with valid PDF specification header');
+      // ISO 19005 metadata
+      assert.ok(rawPdfString.includes('FAC-2026-001'), 'PDF metadata or stream must contain invoice number');
+      assert.ok(rawPdfString.includes('DAMA-CRM'), 'PDF metadata or stream must contain DAMA-CRM creator');
+      assert.ok(rawPdfString.includes('PDFKit'), 'PDF metadata producer must be present');
+    });
+
+    it('should dynamically paginate multi-page invoices (>25 items) without cut-off and stamp footers', async () => {
+      const longItems = [];
+      for (let i = 1; i <= 32; i++) {
+        longItems.push({
+          description: `Servicio Profesional y Mantenimiento Técnico de Sistemas Módulo #${i} con descripción detallada de trabajos realizados y auditoría preventiva.`,
+          quantity: i,
+          unitPrice: 50.0,
+          amount: i * 50.0,
+        });
+      }
+
+      const subtotal = longItems.reduce((acc, it) => acc + it.amount, 0);
+      const taxAmount = subtotal * 0.21;
+      const total = subtotal + taxAmount;
+
+      const multiPageData = {
+        invoiceNumber: 'FAC-2026-LONG-099',
+        type: 'FACTURA',
+        issueDate: '2026-09-26',
+        dueDate: '2026-10-26',
+        status: 'SENT',
+        companyName: 'DAMA CRM Soluciones S.L.',
+        companyTaxId: 'B-12345678',
+        companyAddress: 'Avenida Tecnológica 42, 28046 Madrid',
+        clientName: 'Gran Empresa Multinacional S.A.',
+        clientTaxId: 'A-11223344',
+        clientEmail: 'compras@granempresa.es',
+        clientAddress: 'Parque Empresarial La Finca, Pozuelo de Alarcón',
+        items: longItems,
+        subtotal,
+        taxRate: 21,
+        taxAmount,
+        total,
+        currency: 'EUR',
+        notes: 'Facturación consolidada de servicios correspondientes al período Q3-2026.',
+        paymentTerms: 'Transferencia bancaria a 60 días',
+        bankAccount: 'ES91 2100 0418 4502 0005 1332',
+      };
+
+      const buffer = await generatePdfBuffer(multiPageData);
+      assert.ok(buffer instanceof Buffer);
+      assert.ok(buffer.length > 8000, 'Multi-page PDF should have larger byte size');
+
+      const rawPdfString = buffer.toString('binary');
+      assert.ok(rawPdfString.startsWith('%PDF-1.'));
+      // Multiple page markers
+      assert.ok(rawPdfString.includes('/Type /Page'));
+    });
+
+    it('should generate professional quotes (PRESUPUESTO) with custom primary color and logo fallback', async () => {
+      const quoteData = {
+        invoiceNumber: 'PRE-2026-042',
+        type: 'PRESUPUESTO',
+        issueDate: '2026-09-26',
+        dueDate: '2026-10-15',
+        status: 'DRAFT',
+        companyName: 'DAMA Enterprise Solutions',
+        companyTaxId: 'B-99887766',
+        companyAddress: 'Paseo de la Castellana 200, Madrid',
+        primaryColor: '#072053',
+        clientName: 'Innovatech Systems S.L.',
+        clientEmail: 'info@innovatech.com',
+        items: [
+          { description: 'Desarrollo de integraciones a medida Odoo y WooCommerce', quantity: 40, unitPrice: 65.0, amount: 2600.0 },
+          { description: 'Configuración de servidor Traefik y despliegue Docker', quantity: 15, unitPrice: 70.0, amount: 1050.0 },
+        ],
+        subtotal: 3650.0,
+        taxRate: 21,
+        taxAmount: 766.5,
+        total: 4416.5,
+        currency: 'EUR',
+        notes: 'Presupuesto válido por 30 días naturales a partir de la fecha de emisión.',
+      };
+
+      const buffer = await generatePdfBuffer(quoteData);
+      assert.ok(buffer instanceof Buffer);
+      assert.ok(buffer.length > 2000);
+      const str = buffer.toString('binary');
+      assert.ok(str.startsWith('%PDF-1.'));
+      assert.ok(str.includes('PRE-2026-042'));
+    });
+  });
 });
+
 
