@@ -1286,5 +1286,8 @@
   "settings.tabProfile": "个人资料与偏好",
   "settings.tabBranding": "白标定制与企业风格",
   "settings.tabSecurity": "安全与 RBAC 权限",
-  "settings.tabUsers": "企业成员与账户"
+  "settings.tabUsers": "企业成员与账户",
+  "settings.tabCompany": "企业身份与开票设置",
+  "settings.tabIntegrations": "连接器与系统集成",
+  "settings.tabSystem": "系统状态与数据备份"
 }

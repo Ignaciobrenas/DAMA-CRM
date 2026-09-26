@@ -1286,5 +1286,8 @@
   "settings.tabProfile": "الملف الشخصي والتفضيلات",
   "settings.tabBranding": "الهوية البصرية والتصميم",
   "settings.tabSecurity": "الأمان وصلاحيات RBAC",
-  "settings.tabUsers": "حسابات المستخدمين"
+  "settings.tabUsers": "حسابات المستخدمين",
+  "settings.tabCompany": "الهوية والفواتير",
+  "settings.tabIntegrations": "الموصلات والتكاملات",
+  "settings.tabSystem": "النظام والنسخ الاحتياطي"
 }

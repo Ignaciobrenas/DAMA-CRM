@@ -1286,5 +1286,8 @@
   "settings.tabProfile": "Meu Perfil & Preferências",
   "settings.tabBranding": "Marca Própria & Estilos",
   "settings.tabSecurity": "Segurança & Permissões RBAC",
-  "settings.tabUsers": "Contas de Utilizadores"
+  "settings.tabUsers": "Contas de Utilizadores",
+  "settings.tabCompany": "Identidade & Faturação",
+  "settings.tabIntegrations": "Conetores & Integrações",
+  "settings.tabSystem": "Sistema & Cópias de Segurança"
 }
