@@ -8,6 +8,27 @@ datasource db {
 }
 
 // -----------------------------------------------------------------------------
+// Multi-Tenant SaaS Architecture & God Mode
+// -----------------------------------------------------------------------------
+
+model Tenant {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  domain      String?  @unique
+  isGodTenant Boolean  @default(false)
+  status      String   @default("ACTIVE") // ACTIVE, SUSPENDED, TRIAL
+  plan        String   @default("ENTERPRISE") // STARTER, PRO, ENTERPRISE
+  maxUsers    Int      @default(50)
+  branding    String?  @default("{}") // JSON string with custom primaryColor, logo, companyName
+  settings    String?  @default("{}") // JSON string with active modules and config
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("tenants")
+}
+
+// -----------------------------------------------------------------------------
 // Core: Users, Roles, Dynamic RBAC & Authentication
 // -----------------------------------------------------------------------------
 
@@ -23,9 +44,11 @@ model User {
   twoFactorEnabled Boolean          @default(false)
   preferences      String?          @default("{}")
   isActive         Boolean          @default(true)
+  tenantId         String?          @default("master")
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   assignedTasks    Task[]           @relation("TaskAssignee")
+  assignedTickets  Ticket[]         @relation("TicketAssignee")
   auditLogs        AuditLog[]
   twoFactorTokens  TwoFactorToken[]
 
@@ -49,7 +72,7 @@ model Permission {
   id        String   @id @default(uuid())
   roleId    String
   role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  resource  String   // e.g. "companies", "contacts", "deals", "invoices", "projects", "inventory", "workflows"
+  resource  String   // e.g. "companies", "contacts", "deals", "invoices", "projects", "inventory", "workflows", "tickets", "expenses", "tenants"
   action    String   // e.g. "create", "read", "update", "delete", "manage"
   createdAt DateTime @default(now())
 
@@ -73,11 +96,12 @@ model AuditLog {
   id        String   @id @default(uuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action    String   // e.g. "CREATE", "UPDATE", "DELETE", "LOGIN", "2FA_VERIFY"
-  entity    String   // e.g. "Contact", "Deal", "Invoice"
+  action    String   // e.g. "CREATE", "UPDATE", "DELETE", "LOGIN", "2FA_VERIFY", "SWITCH_TENANT"
+  entity    String   // e.g. "Contact", "Deal", "Invoice", "Tenant", "Ticket", "Expense"
   entityId  String?
   details   String?  // JSON string
   ipAddress String?
+  tenantId  String?  @default("master")
   createdAt DateTime @default(now())
 
   @@map("audit_logs")
@@ -101,10 +125,12 @@ model Company {
   annualRevenue  Float?
   employeesCount Int?
   notes          String?
+  tenantId       String?   @default("master")
   contacts       Contact[]
   deals          Deal[]
   quotes         Quote[]
   invoices       Invoice[]
+  tickets        Ticket[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -124,9 +150,11 @@ model Contact {
   department   String?
   isLead       Boolean       @default(false)
   notes        String?
+  tenantId     String?       @default("master")
   deals        Deal[]
   quotes       Quote[]
   invoices     Invoice[]
+  tickets      Ticket[]
   omniMessages OmniMessage[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -165,6 +193,7 @@ model Deal {
   expectedCloseDate DateTime?
   status            String    @default("OPEN") // OPEN, WON, LOST
   notes             String?
+  tenantId          String?   @default("master")
   projects          Project[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -187,6 +216,7 @@ model Project {
   startDate   DateTime?
   endDate     DateTime?
   budget      Float?
+  tenantId    String?   @default("master")
   sprints     Sprint[]
   tasks       Task[]
   createdAt   DateTime  @default(now())
@@ -234,29 +264,34 @@ model Task {
 }
 
 // -----------------------------------------------------------------------------
-// Billing Module: Quotes & Invoices
+// Billing & PYME Value Suite: Quotes, Invoices, Signatures & Expenses
 // -----------------------------------------------------------------------------
 
 model Quote {
-  id          String        @id @default(uuid())
-  quoteNumber String        @unique
-  contactId   String?
-  contact     Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  companyId   String?
-  company     Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  issueDate   DateTime      @default(now())
-  expiryDate  DateTime?
-  status      String        @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED
-  subtotal    Float         @default(0.0)
-  taxRate     Float         @default(21.0)
-  taxAmount   Float         @default(0.0)
-  total       Float         @default(0.0)
-  currency    String        @default("EUR")
-  notes       String?
-  items       InvoiceItem[]
-  invoices    Invoice[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String        @id @default(uuid())
+  quoteNumber   String        @unique
+  contactId     String?
+  contact       Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId     String?
+  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  issueDate     DateTime      @default(now())
+  expiryDate    DateTime?
+  status        String        @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED
+  subtotal      Float         @default(0.0)
+  taxRate       Float         @default(21.0)
+  taxAmount     Float         @default(0.0)
+  total         Float         @default(0.0)
+  currency      String        @default("EUR")
+  notes         String?
+  signatureData String?       // Base64 PNG signature from digital acceptance canvas
+  signedAt      DateTime?
+  signedBy      String?       // Signer's full name or email
+  publicToken   String?       @unique // Unique secure token for customer self-service portal / quote view
+  tenantId      String?       @default("master")
+  items         InvoiceItem[]
+  invoices      Invoice[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@map("quotes")
 }
@@ -272,14 +307,16 @@ model Invoice {
   company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
   issueDate     DateTime      @default(now())
   dueDate       DateTime?
-  status        String        @default("DRAFT") // DRAFT, SENT, PAID, OVERDUE, CANCELLED
+  status        String        @default("DRAFT") // DRAFT, SENT, PAID, PARTIAL, OVERDUE, CANCELLED
   subtotal      Float         @default(0.0)
   taxRate       Float         @default(21.0)
   taxAmount     Float         @default(0.0)
   total         Float         @default(0.0)
+  paidAmount    Float         @default(0.0) // For partial payment / dunning tracking
   currency      String        @default("EUR")
   notes         String?
   paidAt        DateTime?
+  tenantId      String?       @default("master")
   items         InvoiceItem[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -301,6 +338,74 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
+model Expense {
+  id            String    @id @default(uuid())
+  expenseNumber String    @unique // e.g. EXP-2026-0001
+  supplierName  String
+  supplierTaxId String?
+  category      String    @default("OPERATIONAL") // OPERATIONAL, SOFTWARE, MARKETING, TRAVEL, OFFICE, UTILITIES, LEGAL, OTHER
+  issueDate     DateTime  @default(now())
+  dueDate       DateTime?
+  subtotal      Float     @default(0.0)
+  taxRate       Float     @default(21.0)
+  taxAmount     Float     @default(0.0)
+  total         Float     @default(0.0)
+  status        String    @default("PAID") // PENDING, PAID, CANCELLED
+  paymentMethod String?   @default("BANK_TRANSFER") // BANK_TRANSFER, CREDIT_CARD, DIRECT_DEBIT, CASH
+  notes         String?
+  receiptUrl    String?
+  tenantId      String?   @default("master")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("expenses")
+}
+
+// -----------------------------------------------------------------------------
+// Helpdesk & Support Tickets Module
+// -----------------------------------------------------------------------------
+
+model Ticket {
+  id              String          @id @default(uuid())
+  ticketNumber    String          @unique // e.g. TCK-2026-0001
+  title           String
+  description     String
+  status          String          @default("OPEN") // OPEN, IN_PROGRESS, WAITING_CUSTOMER, RESOLVED, CLOSED
+  priority        String          @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  category        String          @default("GENERAL") // TECHNICAL, BILLING, SALES, GENERAL
+  channel         String          @default("PORTAL") // PORTAL, EMAIL, WHATSAPP, PHONE, INTERNAL
+  contactId       String?
+  contact         Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId       String?
+  company         Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  assignedToId    String?
+  assignedTo      User?           @relation("TicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  slaDueAt        DateTime?
+  firstResponseAt DateTime?
+  resolvedAt      DateTime?
+  tenantId        String?         @default("master")
+  messages        TicketMessage[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id          String   @id @default(uuid())
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderType  String   // AGENT, CUSTOMER, SYSTEM
+  senderId    String?
+  senderName  String
+  message     String
+  isInternal  Boolean  @default(false) // Yellow confidential internal note for agents
+  attachments String?  // JSON array of URLs
+  createdAt   DateTime @default(now())
+
+  @@map("ticket_messages")
+}
+
 // -----------------------------------------------------------------------------
 // Inventory Module: Products & UnoPIM Catalog Integration
 // -----------------------------------------------------------------------------
@@ -318,6 +423,7 @@ model Product {
   barcode      String?
   isSync       Boolean   @default(false)
   lastSyncedAt DateTime?
+  tenantId     String?   @default("master")
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -339,6 +445,7 @@ model Workflow {
   isActive       Boolean       @default(true)
   executionCount Int           @default(0)
   lastExecutedAt DateTime?
+  tenantId       String?       @default("master")
   logs           WorkflowLog[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -376,6 +483,7 @@ model OmniMessage {
   rawPayload String?  // JSON string
   timestamp  DateTime @default(now())
   isRead     Boolean  @default(false)
+  tenantId   String?  @default("master")
 
   @@map("omni_messages")
 }
@@ -396,6 +504,7 @@ model Activity {
   contactId       String?
   dealId          String?
   userId          String?
+  tenantId        String?   @default("master")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -415,6 +524,7 @@ model CustomField {
   optionsJson  String?            // JSON options for SELECT
   isRequired   Boolean            @default(false)
   defaultValue String?
+  tenantId     String?            @default("master")
   values       CustomFieldValue[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt

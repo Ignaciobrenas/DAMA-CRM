@@ -106,3 +106,5 @@ class WebSocketClient {
 }
 
 export const wsClient = new WebSocketClient();
+export const wsService = wsClient;
+

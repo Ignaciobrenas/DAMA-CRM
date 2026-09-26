@@ -12,6 +12,10 @@ import {
   convertQuoteToInvoice,
   deleteQuote,
   publicPortalDownload,
+  getPublicQuoteByToken,
+  signPublicQuote,
+  recordInvoicePayment,
+  getAgingReport,
 } from './invoices.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -20,17 +24,21 @@ import { createInvoiceSchema } from '../../utils/validators';
 
 const router = Router();
 
-// Public route for B2B Client Portal PDF download
+// Public routes for B2B Client Portal & Online Digital Quote Acceptance
 router.get('/portal/:id/pdf', publicPortalDownload);
+router.get('/quotes/public/:token', getPublicQuoteByToken);
+router.post('/quotes/public/:token/sign', signPublicQuote);
 
 // Protected routes
 router.use(authMiddleware);
 
-// Invoices
+// Invoices & Dunning
+router.get('/aging/report', requirePermission('invoices', 'read'), getAgingReport);
 router.get('/', requirePermission('invoices', 'read'), listInvoices);
 router.get('/:id', requirePermission('invoices', 'read'), getInvoice);
 router.post('/', requirePermission('invoices', 'create'), validate(createInvoiceSchema), createInvoice);
 router.patch('/:id/status', requirePermission('invoices', 'update'), updateInvoiceStatus);
+router.post('/:id/payments', requirePermission('invoices', 'update'), recordInvoicePayment);
 router.get('/:id/pdf', requirePermission('invoices', 'read'), downloadInvoicePdf);
 router.delete('/:id', requirePermission('invoices', 'delete'), deleteInvoice);
 
