@@ -1,13 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sun, Moon, Globe, LogOut, Menu, Shield, Bell, Check, MessageSquare, TrendingUp, AlertTriangle, Radio, Volume2, VolumeX } from 'lucide-react';
+import {
+  Search,
+  Sun,
+  Moon,
+  Globe,
+  LogOut,
+  Menu,
+  Shield,
+  Bell,
+  Check,
+  MessageSquare,
+  TrendingUp,
+  AlertTriangle,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { wsClient } from '../../services/websocket';
 import { soundService } from '../../services/sound';
-import { SUPPORTED_LANGUAGES, Language } from '../../i18n';
 import { AnimatedIcon } from '../ui/AnimatedIcon';
+import { SUPPORTED_LANGUAGES, Language } from '../../i18n';
 
 interface NavbarProps {
   onOpenSearch: () => void;
@@ -17,27 +32,11 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar }) => {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { user, logout } = useAuth();
+  const { user, logout, updatePreferences } = useAuth();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => soundService.isMuted());
   const notifRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
-        setIsNotificationsOpen(false);
-      }
-    };
-
-    if (isNotificationsOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('touchstart', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, [isNotificationsOpen]);
-  const [isMuted, setIsMuted] = useState(soundService.isMuted());
   const [notifications, setNotifications] = useState([
     {
       id: '1',
@@ -65,17 +64,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
     },
   ]);
 
+  // Click-outside listener to automatically close notifications dropdown
   useEffect(() => {
-    const unsub = wsClient.on('notification:new', (notif: any) => {
-      // Play warm, friendly sound matching notification type
-      if (notif.type === 'chat') {
-        soundService.playMessageChime();
-      } else if (notif.type === 'stock' || notif.type === 'alert') {
-        soundService.playAlertSound();
-      } else {
-        soundService.playSuccessChime();
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
       }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
+  useEffect(() => {
+    const unsubNotif = wsClient.on('notification:new', (notif: any) => {
       setNotifications((prev) => [
         {
           id: String(Date.now()),
@@ -87,8 +88,92 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         },
         ...prev,
       ]);
+      soundService.playMessageChime();
     });
-    return unsub;
+
+    const unsubLead = wsClient.on('lead:captured', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: '🎯 ¡Nuevo Lead Web Capturado!',
+          desc: `${data.name} (${data.email}) desde ${data.source}`,
+          time: 'Ahora mismo',
+          type: 'deal',
+          unread: true,
+        },
+        ...prev,
+      ]);
+      soundService.playSuccessChime();
+    });
+
+    const unsubCart = wsClient.on('ecommerce:cart_abandoned', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: '🛒 Carrito Abandonado Detectado',
+          desc: `${data.customerName || 'Cliente anónimo'} dejó €${data.cartTotal} en el checkout`,
+          time: 'Ahora mismo',
+          type: 'deal',
+          unread: true,
+        },
+        ...prev,
+      ]);
+      soundService.playAlertSound();
+    });
+
+    const unsubSync = wsClient.on('system:data_synced', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: '⚡ UnoPIM & ERP Sincronizados',
+          desc: `${data.productsCount || 'Varios'} artículos e inventario actualizados`,
+          time: 'Ahora mismo',
+          type: 'stock',
+          unread: true,
+        },
+        ...prev,
+      ]);
+      soundService.playPopSound();
+    });
+
+    const unsubDeal = wsClient.on('deal:created', (deal: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: '💼 Nuevo Negocio Registrado',
+          desc: `${deal.title} (${deal.value} ${deal.currency})`,
+          time: 'Ahora mismo',
+          type: 'deal',
+          unread: true,
+        },
+        ...prev,
+      ]);
+      soundService.playSuccessChime();
+    });
+
+    const unsubQuote = wsClient.on('quote:converted', (data: any) => {
+      setNotifications((prev) => [
+        {
+          id: String(Date.now()),
+          title: '🧾 Presupuesto Convertido a Factura',
+          desc: `Factura ${data.invoiceNumber} emitida desde ${data.quoteNumber}`,
+          time: 'Ahora mismo',
+          type: 'deal',
+          unread: true,
+        },
+        ...prev,
+      ]);
+      soundService.playCompleteSound();
+    });
+
+    return () => {
+      unsubNotif();
+      unsubLead();
+      unsubCart();
+      unsubSync();
+      unsubDeal();
+      unsubQuote();
+    };
   }, []);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -98,11 +183,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
   };
 
   const handleToggleSound = () => {
-    const nextMuted = soundService.toggleMute();
+    const nextMuted = !isMuted;
     setIsMuted(nextMuted);
+    soundService.setMuted(nextMuted);
     if (!nextMuted) {
-      soundService.playMessageChime();
+      soundService.playPopSound();
     }
+    updatePreferences({ soundEnabled: !nextMuted });
   };
 
   return (
@@ -129,8 +216,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         </button>
       </div>
 
-      {/* Right: Language, Theme & User Profile */}
+      {/* Right: Real-time status, Sound, Language, Theme & User Profile */}
       <div className="flex items-center space-x-2">
+        {/* Real-time sync indicator */}
+        <div className="hidden sm:flex items-center space-x-1.5 px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span>{t('liveSync') || 'En vivo'}</span>
+        </div>
+
+        {/* Audio Mute/Unmute toggle */}
+        <button
+          onClick={handleToggleSound}
+          aria-label={isMuted ? 'Activar sonido' : 'Silenciar sonido'}
+          className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+          title={isMuted ? 'Activar sonido de notificaciones' : 'Silenciar notificaciones'}
+        >
+          {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-500" />}
+        </button>
+
         {/* Language selector */}
         <div className="relative flex items-center">
           <Globe className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 mr-1.5 hidden sm:inline" />
@@ -157,15 +263,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         >
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
-
-        {/* Real-time sync indicator */}
-        <div className="hidden sm:flex items-center space-x-1.5 px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span>En vivo</span>
-        </div>
 
         {/* Notification Center */}
         <div ref={notifRef} className="relative">
@@ -205,28 +302,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center space-x-2">
+                  {unreadCount > 0 && (
                     <button
-                      onClick={handleToggleSound}
-                      className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 rounded transition-colors"
-                      title={isMuted ? 'Activar sonido de notificaciones' : 'Silenciar notificaciones'}
+                      onClick={markAllAsRead}
+                      className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-0.5"
                     >
-                      {isMuted ? (
-                        <VolumeX className="w-3.5 h-3.5 text-rose-500" />
-                      ) : (
-                        <Volume2 className="w-3.5 h-3.5 text-emerald-500" />
-                      )}
+                      <Check className="w-3 h-3" />
+                      <span>Marcar leídas</span>
                     </button>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-0.5"
-                      >
-                        <Check className="w-3 h-3" />
-                        <span>Marcar leídas</span>
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
 
                 <div className="mt-2 space-y-2 max-h-72 overflow-y-auto">

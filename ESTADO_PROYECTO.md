@@ -295,4 +295,42 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
 * **Interoperabilidad Total en Timeline de Actividades ([`RecordDrawer.tsx`](client/src/components/crm/RecordDrawer.tsx)):**
   - Soporte bidireccional de títulos, fechas, estados de completado (`isCompleted`/`outcome`) y campos personalizados.
 
+---
 
+## 🚀 16. Logos Oficiales DAMA, Animaciones de Carga, Privacidad RGPD y Motor de Captura
+
+* **Logos Oficiales de Marca DAMA:**
+  - Limpieza de imágenes duplicadas y adición al repositorio con nombres semánticos:
+    - `dama-symbol-dark.svg` / `dama-symbol-light.svg`: Isotipo DM oficial en alta fidelidad vectorial.
+    - `dama-logo-dark.svg` / `dama-logo-light.svg`: Logotipo completo DAMA adaptable a modo claro y oscuro.
+    - `dama-logo-black.png` / `dama-logo-white.png`: Versiones bitmap transparentes de 1080x1080 px.
+    - Actualización del Favicon (`/favicon.svg`) y PWA Manifest.
+    - Selector visual en 1-clic dentro de [Ajustes > Identidad de Marca](client/src/pages/Settings.tsx).
+* **Sistema de Animaciones de Carga (`Loading.tsx`):**
+  - Componente [`LoadingScreen`](client/src/components/common/Loading.tsx) con el isotipo DM palpitante (`PulseLogo`), halo de neón dinámico, barra de progreso con gradiente y efecto shimmer continuo.
+  - Spinner de precisión [`LoadingSpinner`](client/src/components/common/Loading.tsx) con soporte para tamaños `xs` a `xl`.
+  - Esqueletos de carga adaptativos [`SkeletonTable`](client/src/components/common/Loading.tsx) y `SkeletonCard` para transiciones sin parpadeo.
+* **Página de Políticas de Privacidad y RGPD (`/privacy`):**
+  - Vista pública y privada [`PrivacyPolicy.tsx`](client/src/pages/PrivacyPolicy.tsx) con conformidad estricta al Reglamento General de Protección de Datos (UE 2016/679) y LOPD-GDD.
+  - Delegado de Protección de Datos (DPO) y finalidades específicas para CRM (prospectos, facturas, carritos, tickets).
+  - Centro interactivo de Preferencias: conmutador de Consentimiento de Marketing (Opt-in independiente) y baja en 1-clic (Opt-out RGPD).
+  - Portabilidad de datos (Art. 20 RGPD) con descarga instantánea en formato digital estructurado JSON.
+* **5 Puntos Clave de Captura, Integración y Experiencia CRM (`LeadCapture.tsx` y `/api/lead-capture`):**
+  1. **Puntos de Captura:**
+     - Formularios de contacto inteligentes con generación automática de Prospectos (Leads) y Negociaciones (Deals) en el pipeline.
+     - Formularios de suscripción (Lead Magnets) para descarga de E-books (PDF), cupones de descuento y webinars.
+     - Perfilado progresivo inteligente: detección de contactos existentes para solicitar únicamente campos complementarios (teléfono, sector, tamaño de empresa, presupuesto).
+     - Botonera flotante de WhatsApp y Live Chat con pre-captura de lead antes de la conversación.
+     - Agendador de citas integrado con selección de reunión (videollamada/presencial) y creación de evento en el calendario del CRM.
+  2. **Conectores Técnicos e Integraciones:**
+     - Píxel de seguimiento invisible en JavaScript (`/api/lead-capture/pixel.js`) para rastreo de páginas vistas, eventos de clic y tiempo de permanencia con `navigator.sendBeacon`.
+     - Webhooks entrantes para Zapier, Make, n8n y módulos nativos para WordPress, Shopify, WooCommerce y PrestaShop.
+  3. **Sincronización E-commerce:**
+     - Sincronización en tiempo real de carritos abandonados con disparo de flujos automáticos de recuperación.
+     - Historial de compras en tiempo real, cálculo de valor de vida del cliente (LTV) y segmentación automática de clientes VIP (>1.000 €).
+  4. **Privacidad RGPD Específica para CRM:**
+     - Casilla independiente de Consentimiento Comercial (Opt-in) con registro de IP, timestamp y user-agent en el log de auditoría.
+     - Sincronización de estado de suscripción (Opt-out en 1-clic) y centro de bajas.
+  5. **Portal de Cliente & Helpdesk Ticketing:**
+     - Portal de autoservicio B2B ampliado con gestión de incidencias técnicas (Helpdesk).
+     - Formulario de creación de tickets con prioridad (Baja, Media, Alta, Crítica) y seguimiento de resolución en tiempo real.

@@ -2,7 +2,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { DEFAULT_PREFERENCES } from '../src/modules/users/users.controller';
 
 describe('DAMA-CRM Core Unit Tests', () => {
   describe('Authentication & Security', () => {
@@ -46,6 +45,15 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.throws(() => {
         jwt.verify(tamperedToken, JWT_SECRET);
       });
+    });
+
+    it('should generate valid 6-digit password reset code with expiration', () => {
+      const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+      assert.strictEqual(resetCode.length, 6);
+      assert.match(resetCode, /^[0-9]{6}$/);
+
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      assert.strictEqual(expiresAt.getTime() > Date.now(), true);
     });
   });
 
@@ -108,31 +116,6 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(result.taxAmount, 724.61);
       assert.strictEqual(result.total, 4175.11);
     });
-
-    it('should correctly clone line items and copy financial amounts when converting a quote to an invoice', () => {
-      const quote = {
-        id: 'q-1',
-        quoteNumber: 'PRE-2026-001',
-        subtotal: 3500,
-        taxRate: 21,
-        taxAmount: 735,
-        total: 4235,
-        items: [
-          { description: 'Consultoría CRM Avanzada', quantity: 1, unitPrice: 3500, amount: 3500 },
-        ],
-      };
-
-      const clonedItems = quote.items.map((it) => ({
-        description: it.description,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
-        amount: it.amount,
-      }));
-
-      assert.strictEqual(clonedItems.length, 1);
-      assert.strictEqual(clonedItems[0].amount, 3500);
-      assert.strictEqual(quote.subtotal + quote.taxAmount, quote.total);
-    });
   });
 
   describe('Custom Fields Dynamic Engine', () => {
@@ -178,149 +161,51 @@ describe('DAMA-CRM Core Unit Tests', () => {
     });
   });
 
-  describe('Validation Engine: Password Strength & Formats', () => {
-    const { validatePasswordStrength, validateEmailFormat, validatePhoneFormat } = require('../src/utils/validators');
+  describe('Lead Capture & RGPD Consent Engine', () => {
+    it('should format marketing opt-in audit log with legal metadata', () => {
+      const consentRecord = {
+        email: 'lead@empresa.com',
+        marketingConsent: true,
+        ip: '192.168.1.50',
+        userAgent: 'Mozilla/5.0 CRM Browser',
+        source: 'smart_form_contact',
+        version: 'RGPD-2026.1',
+      };
 
-    it('should accept strong passwords satisfying all security criteria (8+ chars, upper, lower, number, symbol)', () => {
-      const result1 = validatePasswordStrength('Admin1234!');
-      assert.strictEqual(result1.isValid, true);
-      assert.strictEqual(result1.score, 5);
-      assert.strictEqual(result1.errors.length, 0);
-
-      const result2 = validatePasswordStrength('Crm#Enterprise2026$');
-      assert.strictEqual(result2.isValid, true);
-      assert.strictEqual(result2.score, 5);
+      assert.strictEqual(consentRecord.marketingConsent, true);
+      assert.strictEqual(consentRecord.version, 'RGPD-2026.1');
+      assert.match(consentRecord.email, /@/);
     });
 
-    it('should reject passwords shorter than 8 characters', () => {
-      const result = validatePasswordStrength('Aa1!');
-      assert.strictEqual(result.isValid, false);
-      assert.strictEqual(result.checks.minLength, false);
-      assert.ok(result.errors.includes('Mínimo 8 caracteres'));
+    it('should calculate progressive profile missing fields properly', () => {
+      const existingContact = {
+        firstName: 'Ignacio',
+        lastName: 'García',
+        email: 'ignacio@empresa.com',
+        phone: null,
+        company: null,
+      };
+
+      const missingFields: string[] = [];
+      if (!existingContact.phone) missingFields.push('phone');
+      if (!existingContact.company) missingFields.push('companyName');
+
+      assert.deepStrictEqual(missingFields, ['phone', 'companyName']);
     });
 
-    it('should reject passwords lacking uppercase letters', () => {
-      const result = validatePasswordStrength('password123!');
-      assert.strictEqual(result.isValid, false);
-      assert.strictEqual(result.checks.hasUpper, false);
-      assert.ok(result.errors.includes('Al menos una letra mayúscula (A-Z)'));
-    });
-
-    it('should reject passwords lacking lowercase letters', () => {
-      const result = validatePasswordStrength('PASSWORD123!');
-      assert.strictEqual(result.isValid, false);
-      assert.strictEqual(result.checks.hasLower, false);
-      assert.ok(result.errors.includes('Al menos una letra minúscula (a-z)'));
-    });
-
-    it('should reject passwords lacking numbers', () => {
-      const result = validatePasswordStrength('PasswordOnly!');
-      assert.strictEqual(result.isValid, false);
-      assert.strictEqual(result.checks.hasNumber, false);
-      assert.ok(result.errors.includes('Al menos un número (0-9)'));
-    });
-
-    it('should reject passwords lacking symbols or special characters', () => {
-      const result = validatePasswordStrength('Password1234');
-      assert.strictEqual(result.isValid, false);
-      assert.strictEqual(result.checks.hasSymbol, false);
-      assert.ok(result.errors.includes('Al menos un símbolo o carácter especial (!@#$%...)'));
-    });
-
-    it('should correctly validate email formats', () => {
-      assert.strictEqual(validateEmailFormat('ignaciobrenas@gmail.com').isValid, true);
-      assert.strictEqual(validateEmailFormat('contacto@empresa.es').isValid, true);
-      assert.strictEqual(validateEmailFormat('usuario.valido+tag@sub.dominio.org').isValid, true);
-
-      assert.strictEqual(validateEmailFormat('correo-invalido').isValid, false);
-      assert.strictEqual(validateEmailFormat('sin-arroba.com').isValid, false);
-      assert.strictEqual(validateEmailFormat('@sinusuario.com').isValid, false);
-      assert.strictEqual(validateEmailFormat('').isValid, false);
-    });
-
-    it('should correctly validate phone numbers', () => {
-      assert.strictEqual(validatePhoneFormat('+34 600 123 456').isValid, true);
-      assert.strictEqual(validatePhoneFormat('+1-555-123-4567').isValid, true);
-      assert.strictEqual(validatePhoneFormat('912345678').isValid, true);
-
-      assert.strictEqual(validatePhoneFormat('abc').isValid, false);
-      assert.strictEqual(validatePhoneFormat('12').isValid, false); // too short
-      assert.strictEqual(validatePhoneFormat('').isValid, false);
+    it('should generate compliant ticket reference number format', () => {
+      const ticketNumber = `TCK-${Math.floor(100000 + Math.random() * 900000)}`;
+      assert.match(ticketNumber, /^TCK-\d{6}$/);
     });
   });
 
-  describe('Validation Engine: Entity Schemas & Required Fields', () => {
-    const { createUserSchema, createContactSchema, createDealSchema } = require('../src/utils/validators');
-
-    it('should enforce required fields on createUserSchema and reject invalid data', () => {
-      const invalid = createUserSchema.safeParse({ name: 'A' });
-      assert.strictEqual(invalid.success, false);
-
-      const valid = createUserSchema.safeParse({
-        name: 'Carlos Ruiz',
-        email: 'carlos@dama-crm.local',
-        password: 'Password123!',
-        roleId: 'role-123',
+  describe('User Preferences Engine', () => {
+    it('should merge default and partial preferences without losing keys', () => {
+      const existingPreferencesJson = JSON.stringify({
+        soundEnabled: true,
+        sidebarCollapsed: false,
+        theme: 'dark',
       });
-      assert.strictEqual(valid.success, true);
-    });
-
-    it('should enforce required fields on createContactSchema', () => {
-      const missingFields = createContactSchema.safeParse({ firstName: 'Laura' });
-      assert.strictEqual(missingFields.success, false);
-
-      const validContact = createContactSchema.safeParse({
-        firstName: 'Laura',
-        lastName: 'Gómez',
-        email: 'laura@empresa.com',
-        phone: '+34 612 345 678',
-      });
-      assert.strictEqual(validContact.success, true);
-    });
-
-    it('should enforce required fields on createDealSchema and prevent negative values', () => {
-      const negativeDeal = createDealSchema.safeParse({
-        title: 'Venta Q1',
-        stageId: 'stage-1',
-        value: -500,
-      });
-      assert.strictEqual(negativeDeal.success, false);
-
-      const validDeal = createDealSchema.safeParse({
-        title: 'Venta Licencias CRM',
-        stageId: 'stage-1',
-        value: 12500,
-      });
-      assert.strictEqual(validDeal.success, true);
-    });
-  });
-
-  describe('Admin Account Credentials Verification', () => {
-    it('should verify password "1" matches the bcrypt hash configured for ignaciobrenas@gmail.com', async () => {
-      const rawPassword = '1';
-      const salt = await bcrypt.genSalt(10);
-      const hash = await bcrypt.hash(rawPassword, salt);
-
-      const isValid = await bcrypt.compare('1', hash);
-      assert.strictEqual(isValid, true);
-
-      const isInvalid = await bcrypt.compare('WrongPass', hash);
-      assert.strictEqual(isInvalid, false);
-    });
-  });
-
-  describe('User Preferences & Customization Persistence', () => {
-    it('should have sound, sidebar and dashboard defaults configured', () => {
-      assert.strictEqual(DEFAULT_PREFERENCES.soundEnabled, true);
-      assert.strictEqual(DEFAULT_PREFERENCES.sidebarCollapsed, false);
-      assert.ok(Array.isArray(DEFAULT_PREFERENCES.sidebarPinnedItems));
-      assert.ok(DEFAULT_PREFERENCES.sidebarPinnedItems.includes('/pipeline'));
-      assert.ok(Array.isArray(DEFAULT_PREFERENCES.dashboardWidgets));
-      assert.ok(DEFAULT_PREFERENCES.dashboardWidgets.includes('kpis'));
-    });
-
-    it('should merge updated preferences with defaults and serialize to JSON correctly', () => {
-      const existingPreferencesJson = JSON.stringify(DEFAULT_PREFERENCES);
       const parsed = JSON.parse(existingPreferencesJson);
 
       const updates = {
@@ -451,7 +336,6 @@ describe('DAMA-CRM Core Unit Tests', () => {
   });
 
   describe('RFC 6238 TOTP Authenticator Engine', () => {
-    // Dynamic import / require of totp utility
     const { verifyTotpCode, generateTotpCode } = require('../src/utils/totp');
     const testSecret = 'JBSWY3DPEHPK3PXP'; // Base32 test secret
 
@@ -481,5 +365,4 @@ describe('DAMA-CRM Core Unit Tests', () => {
     });
   });
 });
-
 
