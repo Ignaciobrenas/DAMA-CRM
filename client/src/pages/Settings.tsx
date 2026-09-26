@@ -38,7 +38,11 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useBranding } from '../context/BrandingContext';
 import { useToast } from '../context/ToastContext';
+import { useModules } from '../context/ModulesContext';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import { ModulesSettings } from '../components/settings/ModulesSettings';
+import { AccessibilitySettings } from '../components/settings/AccessibilitySettings';
+import { Blocks } from 'lucide-react';
 
 const ALL_SIDEBAR_ITEMS = [
   { route: '/', label: 'Panel de Control (Dashboard)' },
@@ -122,6 +126,21 @@ export const Settings: React.FC = () => {
   // Delete User Confirmation Modal
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+
+  // Settings Tabs
+  const { isCompanyAdmin } = useModules();
+  const isSuperAdmin = user?.role === 'ADMIN' || user?.email === 'ignaciobrenas@gmail.com' || user?.email === 'admin@dama-crm.local';
+  const canManageModules = isCompanyAdmin || isSuperAdmin;
+  const [activeTab, setActiveTab] = useState<'accessibility' | 'modules' | 'profile' | 'branding' | 'security' | 'users'>('accessibility');
+
+  const settingsTabs = [
+    { id: 'accessibility', label: t('settings.tabAccessibility', 'Personalización & Accesibilidad'), icon: Sliders },
+    ...(canManageModules ? [{ id: 'modules', label: t('settings.tabModules', 'Módulos & Funcionalidades'), icon: Blocks }] : []),
+    { id: 'profile', label: t('settings.tabProfile', 'Mi Perfil & Preferencias'), icon: UserIcon },
+    { id: 'branding', label: t('settings.tabBranding', 'Marca Blanca & Estilos'), icon: Paintbrush },
+    { id: 'security', label: t('settings.tabSecurity', 'Seguridad & Permisos RBAC'), icon: ShieldCheck },
+    { id: 'users', label: t('settings.tabUsers', 'Cuentas de Usuarios'), icon: Users },
+  ];
 
   const resources = [
     { id: 'companies', label: 'Empresas' },
@@ -473,9 +492,44 @@ export const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* User Profile & Personal Preferences Card */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-slate-800">
+      {/* Settings Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-slate-800 pb-2">
+        {settingsTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`relative px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+                isActive
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-xs'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+              {isActive && (
+                <motion.div
+                  layoutId="activeSettingsTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full"
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab 1: Accessibility & UI Scale */}
+      {activeTab === 'accessibility' && <AccessibilitySettings />}
+
+      {/* Tab 2: Modules & Features (Admin Only) */}
+      {activeTab === 'modules' && canManageModules && <ModulesSettings />}
+
+      {/* Tab 3: Profile & Personal Preferences */}
+      {activeTab === 'profile' && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
               <Sliders className="w-5 h-5" />
@@ -749,15 +803,17 @@ export const Settings: React.FC = () => {
           </div>
         </div>
       </div>
+    )}
 
-      {/* White-label Branding & Customization Card */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-slate-800">
-          <div className="flex items-center space-x-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-xs shrink-0"
-              style={{ backgroundColor: brandForm.primaryColor }}
-            >
+      {/* Tab 4: White-label Branding & Customization Card */}
+      {activeTab === 'branding' && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex items-center space-x-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-xs shrink-0"
+                style={{ backgroundColor: brandForm.primaryColor }}
+              >
               <Paintbrush className="w-5 h-5" />
             </div>
             <div>
@@ -970,368 +1026,375 @@ export const Settings: React.FC = () => {
           </div>
         </div>
       </div>
+    )}
 
-      {/* Security: 2FA Toggle Card */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-            <Lock className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.twoFactorOtp')}</h3>
-            <p className="text-[11px] text-gray-500 dark:text-slate-400">
-              Envía un código de 6 dígitos mediante Nodemailer a tu correo electrónico en cada inicio de sesión
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleToggle2FA}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            twoFactorEnabled
-              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-              : 'bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300'
-          }`}
-        >
-          {twoFactorEnabled ? '2FA Activado (Protegido)' : 'Activar 2FA'}
-        </button>
-      </div>
-
-      {/* Dynamic RBAC Matrix Editor */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
-          <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-5 h-5 text-blue-600" />
-            <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('settings.dynamicRbacMatrix')}</h2>
-              <p className="text-[11px] text-gray-500">{t('settings.dynamicRbacDesc')}</p>
+      {/* Tab 5: Security: 2FA Toggle, Dynamic RBAC & Audit Logs */}
+      {activeTab === 'security' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.twoFactorOtp')}</h3>
+                <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                  Envía un código de 6 dígitos mediante Nodemailer a tu correo electrónico en cada inicio de sesión
+                </p>
+              </div>
             </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <select
-              value={selectedRoleId}
-              onChange={(e) => handleSelectRole(e.target.value)}
-              className="px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white font-semibold"
-            >
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  Rol: {r.name}
-                </option>
-              ))}
-            </select>
 
             <button
-              onClick={handleSaveMatrix}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+              onClick={handleToggle2FA}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                twoFactorEnabled
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300'
+              }`}
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>{t('settings.saveMatrix')}</span>
+              {twoFactorEnabled ? '2FA Activado (Protegido)' : 'Activar 2FA'}
             </button>
           </div>
-        </div>
 
-        {/* Matrix Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
-            <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
-              <tr>
-                <th className="px-4 py-2.5">{t('settings.moduleResource')}</th>
-                {actions.map((act) => (
-                  <th key={act.id} className="px-4 py-2.5 text-center">
-                    {act.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-              {resources.map((res) => (
-                <tr key={res.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-2.5 font-semibold text-gray-900 dark:text-white">
-                    {res.label}
-                  </td>
-                  {actions.map((act) => {
-                    const isChecked = rolePermissions.some(
-                      (p) => p.resource === res.id && p.action === act.id
-                    );
-                    const isAdmin = selectedRole?.name === 'ADMIN';
+          {/* Dynamic RBAC Matrix Editor */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('settings.dynamicRbacMatrix')}</h2>
+                  <p className="text-[11px] text-gray-500">{t('settings.dynamicRbacDesc')}</p>
+                </div>
+              </div>
 
-                    return (
-                      <td key={act.id} className="px-4 py-2.5 text-center">
-                        <input
-                          type="checkbox"
-                          disabled={isAdmin}
-                          checked={isAdmin || isChecked}
-                          onChange={() => togglePermission(res.id, act.id)}
-                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              <div className="flex items-center space-x-2">
+                <select
+                  value={selectedRoleId}
+                  onChange={(e) => handleSelectRole(e.target.value)}
+                  className="px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white font-semibold"
+                >
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      Rol: {r.name}
+                    </option>
+                  ))}
+                </select>
 
-      {/* Users Management */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs space-y-3 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
-          <div className="flex items-center space-x-2">
-            <Users className="w-4 h-4 text-gray-500" />
-            <div>
-              <h2 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.corporateAccounts')}</h2>
-              <p className="text-[10px] text-gray-500">{t('settings.corporateAccountsDesc')}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
-              setUserModalError('');
-              setIsUserModalOpen(true);
-            }}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>{t('settings.newUserBtn')}</span>
-          </button>
-        </div>
-
-        {/* Filter and Sorting Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-2">
-          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[160px] max-w-xs">
-              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
-              <input
-                type="text"
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                placeholder={t('settings.searchUserPlaceholder')}
-                className="w-full pl-8 pr-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-              />
+                <button
+                  onClick={handleSaveMatrix}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{t('settings.saveMatrix')}</span>
+                </button>
+              </div>
             </div>
 
-            {/* Filter by Role */}
-            <select
-              value={userRoleFilter}
-              onChange={(e) => setUserRoleFilter(e.target.value)}
-              className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
-            >
-              <option value="">{t('settings.allRoles')}</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.name}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
+            {/* Matrix Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+                <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
+                  <tr>
+                    <th className="px-4 py-2.5">{t('settings.moduleResource')}</th>
+                    {actions.map((act) => (
+                      <th key={act.id} className="px-4 py-2.5 text-center">
+                        {act.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                  {resources.map((res) => (
+                    <tr key={res.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
+                      <td className="px-4 py-2.5 font-semibold text-gray-900 dark:text-white">
+                        {res.label}
+                      </td>
+                      {actions.map((act) => {
+                        const isChecked = rolePermissions.some(
+                          (p) => p.resource === res.id && p.action === act.id
+                        );
+                        const isAdmin = selectedRole?.name === 'ADMIN';
 
-            {/* Filter by Status */}
-            <select
-              value={userStatusFilter}
-              onChange={(e) => setUserStatusFilter(e.target.value)}
-              className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
-            >
-              <option value="">{t('settings.allStatuses')}</option>
-              <option value="active">{t('settings.onlyActiveUsers')}</option>
-              <option value="inactive">{t('settings.onlyDisabledUsers')}</option>
-            </select>
+                        return (
+                          <td key={act.id} className="px-4 py-2.5 text-center">
+                            <input
+                              type="checkbox"
+                              disabled={isAdmin}
+                              checked={isAdmin || isChecked}
+                              onChange={() => togglePermission(res.id, act.id)}
+                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer disabled:opacity-50"
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {/* Sort Dropdown */}
-          <div className="flex items-center space-x-1.5 shrink-0">
-            <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-            <select
-              value={userSort}
-              onChange={(e) => setUserSort(e.target.value as any)}
-              className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
-            >
-              <option value="name_asc">{t('settings.sortNameAsc')}</option>
-              <option value="name_desc">{t('settings.sortNameDesc')}</option>
-              <option value="email_asc">{t('settings.sortEmailAsc')}</option>
-              <option value="role">{t('settings.sortRole')}</option>
-              <option value="recent">{t('settings.sortRecent')}</option>
-            </select>
-          </div>
-        </div>
+          {/* Registro de Auditoría y Trazabilidad de Seguridad */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <History className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h2 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.securityAuditLog')}</h2>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
+                {auditLogs.length} eventos registrados
+              </span>
+            </div>
 
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-800">
-          <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
-            <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
-              <tr>
-                <th className="px-4 py-2.5">{t('settings.userNameCol')}</th>
-                <th className="px-4 py-2.5">{t('settings.userEmailCol')}</th>
-                <th className="px-4 py-2.5">{t('settings.userRoleCol')}</th>
-                <th className="px-4 py-2.5">2FA</th>
-                <th className="px-4 py-2.5">{t('settings.userStatusCol')}</th>
-                <th className="px-4 py-2.5 text-right">{t('settings.userActionsCol')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-              {users
-                .filter((u) => {
-                  const matchSearch =
-                    !userSearch ||
-                    u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-                    u.email.toLowerCase().includes(userSearch.toLowerCase());
-                  const matchRole = !userRoleFilter || u.role === userRoleFilter;
-                  const matchStatus =
-                    !userStatusFilter ||
-                    (userStatusFilter === 'active' && u.isActive) ||
-                    (userStatusFilter === 'inactive' && !u.isActive);
-                  return matchSearch && matchRole && matchStatus;
-                })
-                .sort((a, b) => {
-                  if (userSort === 'name_asc') return a.name.localeCompare(b.name);
-                  if (userSort === 'name_desc') return b.name.localeCompare(a.name);
-                  if (userSort === 'email_asc') return a.email.localeCompare(b.email);
-                  if (userSort === 'role') return a.role.localeCompare(b.role);
-                  if (userSort === 'recent')
-                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                  return 0;
-                })
-                .map((u) => {
-                  const hasCustom = u.customPermissions && u.customPermissions.length > 0;
-                  const isCurrent = user?.id === u.id;
-
-                  return (
-                    <tr key={u.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
-                      <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
-                        <div className="flex items-center space-x-1.5">
-                          <span>{u.name}</span>
-                          {isCurrent && (
-                            <span className="text-[9px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded font-normal">
-                              Tú
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-gray-600 dark:text-slate-300">{u.email}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center space-x-1.5">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                            {u.role}
-                          </span>
-                          {hasCustom && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                              +{u.customPermissions.length} custom
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {u.twoFactorEnabled ? (
-                          <span className="text-emerald-600 font-semibold text-[11px]">{t('settings.userStatusActive')}</span>
-                        ) : (
-                          <span className="text-gray-400 text-[11px]">{t('settings.userStatusDisabled')}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {u.isActive ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-                            Activo
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400">
-                            Desactivado
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <div className="flex items-center justify-end space-x-1.5">
-                          <button
-                            type="button"
-                            onClick={() => openEditUserModal(u)}
-                            title="Editar usuario y personalizar permisos"
-                            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded text-[11px] font-semibold transition-colors"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            <span>Editar</span>
-                          </button>
-                          {!isCurrent && (
-                            <button
-                              type="button"
-                              onClick={() => setUserToDelete(u)}
-                              title="Eliminar usuario"
-                              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
+            <div className="overflow-x-auto max-h-80 overflow-y-auto">
+              <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+                <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2.5">{t('settings.auditActionCol')}</th>
+                    <th className="px-4 py-2.5">{t('settings.auditResourceCol')}</th>
+                    <th className="px-4 py-2.5">{t('settings.auditUserCol')}</th>
+                    <th className="px-4 py-2.5">{t('settings.auditIpCol')}</th>
+                    <th className="px-4 py-2.5 text-right">{t('settings.auditDateCol')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                  {auditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-6 text-center text-gray-400 dark:text-slate-500">
+                        No hay registros de auditoría aún.
                       </td>
                     </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Registro de Auditoría y Trazabilidad de Seguridad */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <History className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.securityAuditLog')}</h2>
+                  ) : (
+                    auditLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
+                        <td className="px-4 py-2.5">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            log.action === 'LOGIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
+                            log.action === '2FA_VERIFIED' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300' :
+                            log.action === 'CREATE' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' :
+                            log.action === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
+                            'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                          }`}>
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">
+                          {log.resource || 'SYSTEM'} {log.resourceId ? `(#${log.resourceId.slice(0, 8)})` : ''}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {log.user ? `${log.user.name} (${log.user.email})` : 'Sistema Automático'}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-[10px] text-gray-500 dark:text-slate-400">
+                          {log.ipAddress || '127.0.0.1'}
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-[11px] text-gray-400 dark:text-slate-500">
+                          {new Date(log.createdAt).toLocaleString('es-ES')}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
-            {auditLogs.length} eventos registrados
-          </span>
         </div>
+      )}
 
-        <div className="overflow-x-auto max-h-80 overflow-y-auto">
-          <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
-            <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800 sticky top-0">
-              <tr>
-                <th className="px-4 py-2.5">{t('settings.auditActionCol')}</th>
-                <th className="px-4 py-2.5">{t('settings.auditResourceCol')}</th>
-                <th className="px-4 py-2.5">{t('settings.auditUserCol')}</th>
-                <th className="px-4 py-2.5">{t('settings.auditIpCol')}</th>
-                <th className="px-4 py-2.5 text-right">{t('settings.auditDateCol')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-              {auditLogs.length === 0 ? (
+      {/* Tab 6: Users Management */}
+      {activeTab === 'users' && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs space-y-3 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
+            <div className="flex items-center space-x-2">
+              <Users className="w-4 h-4 text-gray-500" />
+              <div>
+                <h2 className="text-xs font-bold text-gray-900 dark:text-white">{t('settings.corporateAccounts')}</h2>
+                <p className="text-[10px] text-gray-500">{t('settings.corporateAccountsDesc')}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
+                setUserModalError('');
+                setIsUserModalOpen(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>{t('settings.newUserBtn')}</span>
+            </button>
+          </div>
+
+          {/* Filter and Sorting Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-2">
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[160px] max-w-xs">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder={t('settings.searchUserPlaceholder')}
+                  className="w-full pl-8 pr-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Filter by Role */}
+              <select
+                value={userRoleFilter}
+                onChange={(e) => setUserRoleFilter(e.target.value)}
+                className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
+              >
+                <option value="">{t('settings.allRoles')}</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Filter by Status */}
+              <select
+                value={userStatusFilter}
+                onChange={(e) => setUserStatusFilter(e.target.value)}
+                className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
+              >
+                <option value="">{t('settings.allStatuses')}</option>
+                <option value="active">{t('settings.onlyActiveUsers')}</option>
+                <option value="inactive">{t('settings.onlyDisabledUsers')}</option>
+              </select>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="flex items-center space-x-1.5 shrink-0">
+              <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+              <select
+                value={userSort}
+                onChange={(e) => setUserSort(e.target.value as any)}
+                className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none focus:border-blue-500"
+              >
+                <option value="name_asc">{t('settings.sortNameAsc')}</option>
+                <option value="name_desc">{t('settings.sortNameDesc')}</option>
+                <option value="email_asc">{t('settings.sortEmailAsc')}</option>
+                <option value="role">{t('settings.sortRole')}</option>
+                <option value="recent">{t('settings.sortRecent')}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-800">
+            <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+              <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400 dark:text-slate-500">
-                    No hay registros de auditoría aún.
-                  </td>
+                  <th className="px-4 py-2.5">{t('settings.userNameCol')}</th>
+                  <th className="px-4 py-2.5">{t('settings.userEmailCol')}</th>
+                  <th className="px-4 py-2.5">{t('settings.userRoleCol')}</th>
+                  <th className="px-4 py-2.5">2FA</th>
+                  <th className="px-4 py-2.5">{t('settings.userStatusCol')}</th>
+                  <th className="px-4 py-2.5 text-right">{t('settings.userActionsCol')}</th>
                 </tr>
-              ) : (
-                auditLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
-                    <td className="px-4 py-2.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        log.action === 'LOGIN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
-                        log.action === '2FA_VERIFIED' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300' :
-                        log.action === 'CREATE' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' :
-                        log.action === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
-                        'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
-                      }`}>
-                        {log.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">
-                      {log.resource || 'SYSTEM'} {log.resourceId ? `(#${log.resourceId.slice(0, 8)})` : ''}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {log.user ? `${log.user.name} (${log.user.email})` : 'Sistema Automático'}
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-[10px] text-gray-500 dark:text-slate-400">
-                      {log.ipAddress || '127.0.0.1'}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-[11px] text-gray-400 dark:text-slate-500">
-                      {new Date(log.createdAt).toLocaleString('es-ES')}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                {users
+                  .filter((u) => {
+                    const matchSearch =
+                      !userSearch ||
+                      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                      u.email.toLowerCase().includes(userSearch.toLowerCase());
+                    const matchRole = !userRoleFilter || u.role === userRoleFilter;
+                    const matchStatus =
+                      !userStatusFilter ||
+                      (userStatusFilter === 'active' && u.isActive) ||
+                      (userStatusFilter === 'inactive' && !u.isActive);
+                    return matchSearch && matchRole && matchStatus;
+                  })
+                  .sort((a, b) => {
+                    if (userSort === 'name_asc') return a.name.localeCompare(b.name);
+                    if (userSort === 'name_desc') return b.name.localeCompare(a.name);
+                    if (userSort === 'email_asc') return a.email.localeCompare(b.email);
+                    if (userSort === 'role') return a.role.localeCompare(b.role);
+                    if (userSort === 'recent')
+                      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                    return 0;
+                  })
+                  .map((u) => {
+                    const hasCustom = u.customPermissions && u.customPermissions.length > 0;
+                    const isCurrent = user?.id === u.id;
+
+                    return (
+                      <tr key={u.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
+                        <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
+                          <div className="flex items-center space-x-1.5">
+                            <span>{u.name}</span>
+                            {isCurrent && (
+                              <span className="text-[9px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded font-normal">
+                                Tú
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-600 dark:text-slate-300">{u.email}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center space-x-1.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                              {u.role}
+                            </span>
+                            {hasCustom && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                +{u.customPermissions.length} custom
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {u.twoFactorEnabled ? (
+                            <span className="text-emerald-600 font-semibold text-[11px]">{t('settings.userStatusActive')}</span>
+                          ) : (
+                            <span className="text-gray-400 text-[11px]">{t('settings.userStatusDisabled')}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {u.isActive ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                              Activo
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400">
+                              Desactivado
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openEditUserModal(u)}
+                              title="Editar usuario y personalizar permisos"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded text-[11px] font-semibold transition-colors"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Editar</span>
+                            </button>
+                            {!isCurrent && (
+                              <button
+                                type="button"
+                                onClick={() => setUserToDelete(u)}
+                                title="Eliminar usuario"
+                                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Modal: Alta de Nuevo Usuario con Validación Estricta */}
       <AnimatePresence>

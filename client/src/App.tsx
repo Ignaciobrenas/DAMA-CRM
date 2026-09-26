@@ -5,13 +5,15 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { BrandingProvider, useBranding } from './context/BrandingContext';
 import { ToastProvider } from './context/ToastContext';
+import { ModulesProvider, useModules } from './context/ModulesContext';
+import { AppearanceProvider } from './context/AppearanceContext';
 import { wsClient } from './services/websocket';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
-import { PermissionGate, AccessDenied } from './components/common/PermissionGate';
+import { PermissionGate, AccessDenied, ModuleDisabled } from './components/common/PermissionGate';
 import { analytics } from './services/analytics';
 
 // Views
@@ -67,6 +69,7 @@ const AppContent: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { branding } = useBranding();
   const { t } = useLanguage();
+  const { isModuleEnabled } = useModules();
   const [currentRoute, setCurrentRoute] = useState<string>(() => {
     return normalizeRoute(window.location.pathname);
   });
@@ -118,7 +121,11 @@ const AppContent: React.FC = () => {
   }
 
   if (currentRoute === '/portal') {
-    return <ClientPortal />;
+    return isModuleEnabled('clientPortal') ? (
+      <ClientPortal />
+    ) : (
+      <ModuleDisabled moduleKey="clientPortal" onGoBack={() => navigateTo('/')} />
+    );
   }
 
   // Mandatory authentication guard for all protected workspace routes
@@ -141,79 +148,83 @@ const AppContent: React.FC = () => {
       case '/':
         return <Dashboard onNavigate={navigateTo} />;
       case '/portal-empleado':
-        return <EmployeePortal />;
+        return isModuleEnabled('portalEmpleado') ? (
+          <EmployeePortal />
+        ) : (
+          <ModuleDisabled moduleKey="portalEmpleado" onGoBack={() => navigateTo('/')} />
+        );
       case '/tickets':
         return (
           <PermissionGate resource="tickets" action="read" fallback={<AccessDenied resource="tickets" onGoBack={() => navigateTo('/')} />}>
-            <Tickets />
+            {isModuleEnabled('tickets') ? <Tickets /> : <ModuleDisabled moduleKey="tickets" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/expenses':
         return (
           <PermissionGate resource="expenses" action="read" fallback={<AccessDenied resource="expenses" onGoBack={() => navigateTo('/')} />}>
-            <Expenses />
+            {isModuleEnabled('expenses') ? <Expenses /> : <ModuleDisabled moduleKey="expenses" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/pipeline':
         return (
           <PermissionGate resource="deals" action="read" fallback={<AccessDenied resource="deals" onGoBack={() => navigateTo('/')} />}>
-            <Pipeline />
+            {isModuleEnabled('pipeline') ? <Pipeline /> : <ModuleDisabled moduleKey="pipeline" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/agile':
         return (
           <PermissionGate resource="projects" action="read" fallback={<AccessDenied resource="projects" onGoBack={() => navigateTo('/')} />}>
-            <AgilePlanner />
+            {isModuleEnabled('agile') ? <AgilePlanner /> : <ModuleDisabled moduleKey="agile" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/contacts':
         return (
           <PermissionGate resource="contacts" action="read" fallback={<AccessDenied resource="contacts" onGoBack={() => navigateTo('/')} />}>
-            <Contacts />
+            {isModuleEnabled('contacts') ? <Contacts /> : <ModuleDisabled moduleKey="contacts" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/companies':
         return (
           <PermissionGate resource="companies" action="read" fallback={<AccessDenied resource="companies" onGoBack={() => navigateTo('/')} />}>
-            <Companies />
+            {isModuleEnabled('companies') ? <Companies /> : <ModuleDisabled moduleKey="companies" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/invoicing':
         return (
           <PermissionGate resource="invoices" action="read" fallback={<AccessDenied resource="invoices" onGoBack={() => navigateTo('/')} />}>
-            <Invoicing />
+            {isModuleEnabled('invoicing') ? <Invoicing /> : <ModuleDisabled moduleKey="invoicing" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/inventory':
         return (
           <PermissionGate resource="inventory" action="read" fallback={<AccessDenied resource="inventory" onGoBack={() => navigateTo('/')} />}>
-            <Inventory />
+            {isModuleEnabled('inventory') ? <Inventory /> : <ModuleDisabled moduleKey="inventory" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/workflows':
         return (
           <PermissionGate resource="workflows" action="read" fallback={<AccessDenied resource="workflows" onGoBack={() => navigateTo('/')} />}>
-            <Workflows />
+            {isModuleEnabled('workflows') ? <Workflows /> : <ModuleDisabled moduleKey="workflows" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/omnichannel':
         return (
           <PermissionGate resource="omnichannel" action="read" fallback={<AccessDenied resource="omnichannel" onGoBack={() => navigateTo('/')} />}>
-            <Omnichannel />
+            {isModuleEnabled('omnichannel') ? <Omnichannel /> : <ModuleDisabled moduleKey="omnichannel" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/integrations':
         return (
           <PermissionGate resource="integrations" action="read" fallback={<AccessDenied resource="integrations" onGoBack={() => navigateTo('/')} />}>
-            <Integrations />
+            {isModuleEnabled('integrations') ? <Integrations /> : <ModuleDisabled moduleKey="integrations" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/lead-capture':
-        return <LeadCapture />;
+        return isModuleEnabled('leadCapture') ? <LeadCapture /> : <ModuleDisabled moduleKey="leadCapture" onGoBack={() => navigateTo('/')} />;
       case '/reports':
         return (
           <PermissionGate resource="reports" action="read" fallback={<AccessDenied resource="reports" onGoBack={() => navigateTo('/')} />}>
-            <Reports />
+            {isModuleEnabled('reports') ? <Reports /> : <ModuleDisabled moduleKey="reports" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
       case '/settings':
@@ -314,9 +325,13 @@ export const App: React.FC = () => {
       <LanguageProvider>
         <BrandingProvider>
           <AuthProvider>
-            <ToastProvider>
-              <AppContent />
-            </ToastProvider>
+            <AppearanceProvider>
+              <ModulesProvider>
+                <ToastProvider>
+                  <AppContent />
+                </ToastProvider>
+              </ModulesProvider>
+            </AppearanceProvider>
           </AuthProvider>
         </BrandingProvider>
       </LanguageProvider>

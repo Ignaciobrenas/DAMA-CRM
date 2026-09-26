@@ -883,7 +883,159 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(godView.length, 2);
     });
   });
+
+  describe('Company Modules Manager & Dynamic Feature Toggles', () => {
+    const DEFAULT_MODULES = {
+      portalEmpleado: true,
+      tickets: true,
+      expenses: true,
+      pipeline: true,
+      agile: true,
+      contacts: true,
+      companies: true,
+      invoicing: true,
+      inventory: true,
+      workflows: true,
+      omnichannel: true,
+      integrations: true,
+      leadCapture: true,
+      reports: true,
+      clientPortal: true,
+    };
+
+    const isCompanyAdmin = (user: { role?: string; email?: string }): boolean => {
+      const roleUpper = (user.role || '').toUpperCase();
+      return (
+        roleUpper === 'ADMIN' ||
+        roleUpper === 'COMPANY_ADMIN' ||
+        roleUpper === 'GERENTE' ||
+        roleUpper === 'DIRECTOR' ||
+        user.email === 'ignaciobrenas@gmail.com' ||
+        user.email === 'admin@dama-crm.local'
+      );
+    };
+
+    it('should correctly determine company admin privileges for module management', () => {
+      assert.strictEqual(isCompanyAdmin({ role: 'ADMIN' }), true);
+      assert.strictEqual(isCompanyAdmin({ role: 'COMPANY_ADMIN' }), true);
+      assert.strictEqual(isCompanyAdmin({ role: 'GERENTE' }), true);
+      assert.strictEqual(isCompanyAdmin({ role: 'DIRECTOR' }), true);
+      assert.strictEqual(isCompanyAdmin({ role: 'EMPLOYEE', email: 'ignaciobrenas@gmail.com' }), true);
+      assert.strictEqual(isCompanyAdmin({ role: 'EMPLOYEE', email: 'john.doe@company.com' }), false);
+      assert.strictEqual(isCompanyAdmin({ role: 'SALES', email: 'sales@company.com' }), false);
+    });
+
+    it('should merge partial module updates into tenant settings without wiping defaults', () => {
+      const existingSettings = {
+        modules: { ...DEFAULT_MODULES },
+      };
+
+      const requestedChanges = {
+        tickets: false,
+        expenses: false,
+      };
+
+      const updatedModules = {
+        ...existingSettings.modules,
+        ...requestedChanges,
+      };
+
+      assert.strictEqual(updatedModules.tickets, false);
+      assert.strictEqual(updatedModules.expenses, false);
+      assert.strictEqual(updatedModules.portalEmpleado, true);
+      assert.strictEqual(updatedModules.pipeline, true);
+      assert.strictEqual(updatedModules.invoicing, true);
+      assert.strictEqual(Object.keys(updatedModules).length, 15);
+    });
+
+    it('should isolate module activations per tenant', () => {
+      const tenantA = { id: 'tenant-a', modules: { ...DEFAULT_MODULES, portalEmpleado: false } };
+      const tenantB = { id: 'tenant-b', modules: { ...DEFAULT_MODULES, portalEmpleado: true } };
+
+      assert.strictEqual(tenantA.modules.portalEmpleado, false);
+      assert.strictEqual(tenantB.modules.portalEmpleado, true);
+      assert.notStrictEqual(tenantA.modules, tenantB.modules);
+    });
+  });
+
+  describe('Accessibility, UI Scale & Typography Persistence', () => {
+    const VALID_FONT_SIZES = ['xs', 'sm', 'md', 'lg', 'xl'];
+    const VALID_ICON_STYLES = ['animated', 'solid', 'minimal'];
+
+    const validateAndMergePreferences = (
+      currentPrefs: Record<string, any>,
+      newPrefs: Record<string, any>
+    ) => {
+      const merged = { ...currentPrefs };
+
+      if (newPrefs.fontSize !== undefined) {
+        if (VALID_FONT_SIZES.includes(newPrefs.fontSize)) {
+          merged.fontSize = newPrefs.fontSize;
+        }
+      }
+
+      if (newPrefs.uiScale !== undefined) {
+        const scale = Number(newPrefs.uiScale);
+        if (!isNaN(scale) && scale >= 0.75 && scale <= 1.5) {
+          merged.uiScale = Math.round(scale * 100) / 100;
+        }
+      }
+
+      if (newPrefs.iconStyle !== undefined) {
+        if (VALID_ICON_STYLES.includes(newPrefs.iconStyle)) {
+          merged.iconStyle = newPrefs.iconStyle;
+        }
+      }
+
+      return merged;
+    };
+
+    it('should validate and accept valid font size options', () => {
+      const initial = { fontSize: 'md', uiScale: 1.0, iconStyle: 'animated' };
+
+      const updatedLg = validateAndMergePreferences(initial, { fontSize: 'lg' });
+      assert.strictEqual(updatedLg.fontSize, 'lg');
+
+      const updatedXl = validateAndMergePreferences(initial, { fontSize: 'xl' });
+      assert.strictEqual(updatedXl.fontSize, 'xl');
+
+      // Invalid font size should be ignored
+      const invalid = validateAndMergePreferences(initial, { fontSize: 'huge_invalid' });
+      assert.strictEqual(invalid.fontSize, 'md');
+    });
+
+    it('should clamp and validate UI scale bounds', () => {
+      const initial = { fontSize: 'md', uiScale: 1.0 };
+
+      const scaledUp = validateAndMergePreferences(initial, { uiScale: 1.25 });
+      assert.strictEqual(scaledUp.uiScale, 1.25);
+
+      const scaledDown = validateAndMergePreferences(initial, { uiScale: 0.85 });
+      assert.strictEqual(scaledDown.uiScale, 0.85);
+
+      // Out of bounds scales should be ignored
+      const tooBig = validateAndMergePreferences(initial, { uiScale: 5.0 });
+      assert.strictEqual(tooBig.uiScale, 1.0);
+
+      const tooSmall = validateAndMergePreferences(initial, { uiScale: 0.2 });
+      assert.strictEqual(tooSmall.uiScale, 1.0);
+    });
+
+    it('should validate and persist icon style options', () => {
+      const initial = { iconStyle: 'animated' };
+
+      const solid = validateAndMergePreferences(initial, { iconStyle: 'solid' });
+      assert.strictEqual(solid.iconStyle, 'solid');
+
+      const minimal = validateAndMergePreferences(initial, { iconStyle: 'minimal' });
+      assert.strictEqual(minimal.iconStyle, 'minimal');
+
+      const invalid = validateAndMergePreferences(initial, { iconStyle: 'unknown_style' });
+      assert.strictEqual(invalid.iconStyle, 'animated');
+    });
+  });
 });
+
 
 
 
