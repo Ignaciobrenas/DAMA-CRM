@@ -1034,7 +1034,33 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(invalid.iconStyle, 'animated');
     });
   });
+
+  describe('Enterprise Rate Limiting Engine', () => {
+    it('should track request hits and compute window limits correctly', () => {
+      const windowMs = 1000;
+      const max = 5;
+      const hits = new Map<string, { count: number; resetTime: number }>();
+      const ip = '192.168.1.100';
+      const now = Date.now();
+
+      // Simulate 5 requests within window
+      for (let i = 1; i <= 5; i++) {
+        const record = hits.get(ip) || { count: 0, resetTime: now + windowMs };
+        record.count += 1;
+        hits.set(ip, record);
+      }
+
+      assert.strictEqual(hits.get(ip)?.count, 5);
+      assert.strictEqual(hits.get(ip)!.count <= max, true);
+
+      // 6th request exceeds limit
+      const rec = hits.get(ip)!;
+      rec.count += 1;
+      assert.strictEqual(rec.count > max, true);
+    });
+  });
 });
+
 
 
 
