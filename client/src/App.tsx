@@ -15,6 +15,7 @@ import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
 import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
 import { PermissionGate, AccessDenied, ModuleDisabled } from './components/common/PermissionGate';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { analytics } from './services/analytics';
 
 // Views
@@ -325,21 +326,23 @@ const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <BrandingProvider>
-          <AuthProvider>
-            <AppearanceProvider>
-              <ModulesProvider>
-                <ToastProvider>
-                  <AppContent />
-                </ToastProvider>
-              </ModulesProvider>
-            </AppearanceProvider>
-          </AuthProvider>
-        </BrandingProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <LanguageProvider>
+          <BrandingProvider>
+            <ToastProvider>
+              <AuthProvider>
+                <AppearanceProvider>
+                  <ModulesProvider>
+                    <AppContent />
+                  </ModulesProvider>
+                </AppearanceProvider>
+              </AuthProvider>
+            </ToastProvider>
+          </BrandingProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 
