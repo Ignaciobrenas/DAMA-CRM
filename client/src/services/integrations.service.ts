@@ -58,6 +58,7 @@ export interface IntegrationsEndpoints {
   n8nActionEndpoint: string;
   unopimWebhook: string;
   whatsappWebhook: string;
+  stripeWebhook?: string;
   zapierWebhook?: string;
 }
 

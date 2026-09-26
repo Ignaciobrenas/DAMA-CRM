@@ -315,6 +315,8 @@ export const Integrations: React.FC = () => {
       supported: ['Checkout Sessions', 'Payment Intents', 'Suscripciones', 'SEPA'],
       docsUrl: 'https://stripe.com/docs/api',
       config: integrations?.stripe,
+      endpointUrl: endpoints?.stripeWebhook,
+      canSync: true,
     },
     {
       id: 'zapier',
@@ -348,6 +350,7 @@ export const Integrations: React.FC = () => {
       supported: ['Reuniones', 'Eventos en tiempo real', 'Recordatorios', 'Google Meet'],
       docsUrl: 'https://developers.google.com/calendar/api',
       config: integrations?.google_calendar,
+      canSync: true,
     },
     {
       id: 'unopim',
