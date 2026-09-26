@@ -31,10 +31,10 @@ interface LoginProps {
   onNavigatePortal?: () => void;
 }
 
-type AuthMode = 'login' | 'register' | 'forgot-password' | 'reset-password' | '2fa';
+type AuthMode = 'login' | 'forgot-password' | 'reset-password' | '2fa';
 
 export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePortal }) => {
-  const { login, register, verify2FA } = useAuth();
+  const { login, verify2FA } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { branding, getLogo } = useBranding();
@@ -43,11 +43,9 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
   const [mode, setMode] = useState<AuthMode>('login');
 
   // Form states
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [companyName, setCompanyName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -103,30 +101,6 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
       setMode('2fa');
     } else if (!res.success) {
       setErrorMessage(res.message || 'Error en las credenciales');
-    }
-  };
-
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    if (password !== confirmPassword) {
-      setErrorMessage(t('passwordMismatch'));
-      return;
-    }
-
-    if (password.length < 6) {
-      setErrorMessage(t('passwordTooShort'));
-      return;
-    }
-
-    setIsLoading(true);
-    const res = await register(name, email, password, companyName);
-    setIsLoading(false);
-
-    if (!res.success) {
-      setErrorMessage(res.message || 'Error al crear la cuenta');
     }
   };
 
@@ -268,7 +242,6 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
           <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
             {mode === 'login' && t('login')}
-            {mode === 'register' && t('register')}
             {mode === 'forgot-password' && t('forgotPassword')}
             {mode === 'reset-password' && t('resetPassword')}
             {mode === '2fa' && t('twoFactorAuth')}
@@ -277,34 +250,6 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
             {t('platformSubtitle')}
           </p>
         </div>
-
-        {/* Mode Switcher Tabs for Login / Register */}
-        {(mode === 'login' || mode === 'register') && (
-          <div className="grid grid-cols-2 p-1 mb-5 bg-gray-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => switchMode('login')}
-              className={`py-1.5 rounded-lg transition-all ${
-                mode === 'login'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-900'
-              }`}
-            >
-              {t('login')}
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode('register')}
-              className={`py-1.5 rounded-lg transition-all ${
-                mode === 'register'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-900'
-              }`}
-            >
-              {t('register')}
-            </button>
-          </div>
-        )}
 
         {/* Feedback Alerts */}
         {errorMessage && (
@@ -395,144 +340,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
           </form>
         )}
 
-        {/* Form 2: Register */}
-        {mode === 'register' && (
-          <form onSubmit={handleRegisterSubmit} className="space-y-3 animate-in fade-in duration-200">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                {t('fullName')}
-              </label>
-              <div className="relative">
-                <User className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Carlos Mendoza"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                {t('email')}
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type="email"
-                  required
-                  placeholder="carlos@empresa.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                {t('companyName')} (Opcional)
-              </label>
-              <div className="relative">
-                <Building2 className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Mi Empresa S.L."
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                {t('password')}
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-9 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-
-              {/* Password strength meter */}
-              {password && (
-                <div className="mt-1.5 space-y-1">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-gray-500 dark:text-slate-400">Fortaleza:</span>
-                    <span className="font-semibold text-gray-700 dark:text-slate-300">{strength.label}</span>
-                  </div>
-                  <div className="h-1 w-full bg-gray-200 dark:bg-slate-800 rounded-full overflow-hidden flex space-x-1">
-                    <div className={`h-full flex-1 rounded-full ${strength.score >= 1 ? strength.color : 'bg-transparent'}`} />
-                    <div className={`h-full flex-1 rounded-full ${strength.score >= 2 ? strength.color : 'bg-transparent'}`} />
-                    <div className={`h-full flex-1 rounded-full ${strength.score >= 3 ? strength.color : 'bg-transparent'}`} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                {t('confirmPassword')}
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-9 pr-9 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-2 py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
-              style={{ backgroundColor: branding.primaryColor }}
-            >
-              {isLoading ? (
-                <>
-                  <LoadingSpinner size="sm" color="white" />
-                  <span>{t('login.creatingAccount')}</span>
-                </>
-              ) : (
-                <>
-                  <span>{t('register')}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* Form 3: Forgot Password */}
+        {/* Form 2: Forgot Password */}
         {mode === 'forgot-password' && (
           <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 animate-in fade-in duration-200">
             <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300">
