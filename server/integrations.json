@@ -1,0 +1,65 @@
+{
+  "odoo": {
+    "enabled": false,
+    "url": "https://odoo.example.com",
+    "db": "odoo_db",
+    "username": "admin@example.com",
+    "apiKey": "",
+    "syncContacts": true,
+    "syncInvoices": true,
+    "syncProducts": true,
+    "status": "connected",
+    "lastSyncAt": "2026-09-26T18:23:07.134Z"
+  },
+  "woocommerce": {
+    "enabled": false,
+    "storeUrl": "https://tienda.example.com",
+    "consumerKey": "",
+    "consumerSecret": "",
+    "webhookSecret": "",
+    "status": "connected",
+    "lastSyncAt": "2026-09-26T18:23:07.145Z"
+  },
+  "shopify": {
+    "enabled": false,
+    "shopDomain": "mi-tienda.myshopify.com",
+    "accessToken": "",
+    "apiSecretKey": "",
+    "webhookSecret": "",
+    "status": "disconnected"
+  },
+  "n8n": {
+    "enabled": false,
+    "webhookUrl": "https://n8n.example.com/webhook/crm-trigger",
+    "apiKey": "",
+    "subscribedEvents": [
+      "contact.created",
+      "deal.won",
+      "invoice.paid",
+      "activity.created"
+    ],
+    "status": "connected",
+    "lastTriggerAt": "2026-09-26T13:26:38.814Z"
+  },
+  "stripe": {
+    "enabled": false,
+    "status": "connected",
+    "publishableKey": "pk_test_sample",
+    "secretKey": "sk_test_sample",
+    "webhookSecret": "whsec_sample",
+    "lastSyncAt": "2026-09-26T18:23:07.147Z"
+  },
+  "zapier": {
+    "enabled": false,
+    "status": "disconnected",
+    "webhookUrl": "https://hooks.zapier.com/hooks/catch/sample/sample/",
+    "apiKey": ""
+  },
+  "google_calendar": {
+    "enabled": false,
+    "status": "disconnected",
+    "email": "agenda@example.com",
+    "clientId": "",
+    "clientSecret": ""
+  }
+}

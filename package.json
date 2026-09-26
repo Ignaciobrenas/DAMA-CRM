@@ -4,21 +4,27 @@
   "private": true,
   "description": "CRM Modular Open-Source y Self-Hosted para PYMES",
   "workspaces": [
-    "core",
+    "server",
     "client"
   ],
   "scripts": {
-    "dev:core": "npm --prefix core run dev",
+    "dev:server": "npm --prefix server run dev",
+    "dev:core": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
-    "dev": "concurrently -n \"API,CLIENT\" -c \"blue,cyan\" \"npm run dev:core\" \"npm run dev:client\"",
-    "test": "npm --prefix core test",
-    "build:core": "npm --prefix core run build",
+    "dev": "concurrently -n \"API,CLIENT\" -c \"blue,cyan\" \"npm run dev:server\" \"npm run dev:client\"",
+    "test": "npm --prefix server test",
+    "build:server": "npm --prefix server run build",
+    "build:core": "npm --prefix server run build",
     "build:client": "npm --prefix client run build",
-    "build": "npm run build:core && npm run build:client",
-    "db:migrate": "npm --prefix core run db:migrate",
-    "db:seed": "npm --prefix core run db:seed",
+    "build": "npm run build:server && npm run build:client",
+    "db:setup": "npm --prefix server run db:setup",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "db:migrate:status": "npm --prefix server run db:migrate:status",
+    "db:migrate:dev": "npm --prefix server run db:migrate:dev",
+    "db:seed": "npm --prefix server run db:seed",
     "docker:up": "docker compose up -d --build",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "keywords": [
     "crm",

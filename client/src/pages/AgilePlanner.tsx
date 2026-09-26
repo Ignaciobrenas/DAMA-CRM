@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckSquare, Clock, Zap, User, Folder, CheckCircle, Smartphone, X } from 'lucide-react';
+import { Plus, CheckSquare, Clock, Zap, User, Folder, CheckCircle, Smartphone, X, Trash2 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { Modal } from '../components/common/Modal';
+import { PermissionGate } from '../components/common/PermissionGate';
 
 export const AgilePlanner: React.FC = () => {
   const { t } = useLanguage();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'board' | 'my-tasks' | 'projects'>('board');
   const [tasks, setTasks] = useState<any[]>([]);
   const [myTasks, setMyTasks] = useState<any[]>([]);
@@ -12,13 +16,20 @@ export const AgilePlanner: React.FC = () => {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal
+  // Task Creation Modal
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskProjectId, setTaskProjectId] = useState('');
   const [taskPriority, setTaskPriority] = useState('MEDIUM');
   const [taskPoints, setTaskPoints] = useState('3');
   const [taskHours, setTaskHours] = useState('6');
+
+  // Project Creation Modal
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [projectPriority, setProjectPriority] = useState('MEDIUM');
+  const [projectBudget, setProjectBudget] = useState('10000');
 
   const loadData = async () => {
     setIsLoading(true);
@@ -44,10 +55,10 @@ export const AgilePlanner: React.FC = () => {
   }, []);
 
   const columns = [
-    { id: 'TODO', label: 'Por Hacer', color: '#94A3B8' },
-    { id: 'IN_PROGRESS', label: 'En Progreso', color: '#3B82F6' },
-    { id: 'REVIEW', label: 'En Revisión', color: '#F59E0B' },
-    { id: 'DONE', label: 'Completado', color: '#10B981' },
+    { id: 'TODO', label: t('todo'), color: '#94A3B8' },
+    { id: 'IN_PROGRESS', label: t('inProgress'), color: '#3B82F6' },
+    { id: 'REVIEW', label: t('review'), color: '#F59E0B' },
+    { id: 'DONE', label: t('done'), color: '#10B981' },
   ];
 
   const handleDragStart = (taskId: string) => {
@@ -58,26 +69,28 @@ export const AgilePlanner: React.FC = () => {
     e.preventDefault();
   };
 
-  const handleDrop = async (targetStatus: string) => {
+  const handleDrop = async (status: string) => {
     if (!draggedTaskId) return;
 
-    // Optimistic UI update
+    // Optimistic UI Update
     setTasks((prev) =>
-      prev.map((t) => (t.id === draggedTaskId ? { ...t, status: targetStatus } : t))
+      prev.map((t) => (t.id === draggedTaskId ? { ...t, status } : t))
     );
 
-    await apiRequest(`/projects/tasks/${draggedTaskId}`, {
+    const taskId = draggedTaskId;
+    setDraggedTaskId(null);
+
+    await apiRequest(`/projects/tasks/${taskId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ status: targetStatus }),
+      body: JSON.stringify({ status }),
     });
 
-    setDraggedTaskId(null);
     loadData();
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskTitle || !taskProjectId) return;
+    if (!taskProjectId) return;
 
     const res = await apiRequest('/projects/tasks', {
       method: 'POST',
@@ -85,141 +98,203 @@ export const AgilePlanner: React.FC = () => {
         projectId: taskProjectId,
         title: taskTitle,
         priority: taskPriority,
-        storyPoints: parseInt(taskPoints, 10) || 1,
-        estimatedHours: parseFloat(taskHours) || 0,
+        storyPoints: parseInt(taskPoints, 10),
+        estimatedHours: parseFloat(taskHours),
       }),
     });
 
     if (res.success) {
+      toast.success(t('success'), 'Tarea técnica creada');
       setIsTaskModalOpen(false);
       setTaskTitle('');
       loadData();
+    } else {
+      toast.error(t('error'), res.message || 'Error al crear tarea');
+    }
+  };
+
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await apiRequest('/projects', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: projectName,
+        description: projectDescription,
+        priority: projectPriority,
+        budget: parseFloat(projectBudget) || 0,
+      }),
+    });
+
+    if (res.success) {
+      toast.success(t('success'), 'Proyecto creado correctamente');
+      setIsProjectModalOpen(false);
+      setProjectName('');
+      setProjectDescription('');
+      loadData();
+    } else {
+      toast.error(t('error'), res.message || 'Error al crear proyecto');
+    }
+  };
+
+  const handleDeleteProject = async (id: string, name: string) => {
+    if (!window.confirm(`${t('confirmDeleteProject')} (${name})`)) return;
+    const res = await apiRequest(`/projects/${id}`, { method: 'DELETE' });
+    if (res.success) {
+      toast.success(t('success'), res.message || 'Proyecto eliminado');
+      loadData();
+    } else {
+      toast.error(t('error'), res.message || 'Error al eliminar');
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* Header & Tabs */}
+      {/* Top Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
             {t('agile')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Gestión técnica y ejecución tras el cierre de ventas
+            {t('agileSubtitle')}
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Tab selector */}
-          <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+          {/* Tab Navigation Pill */}
+          <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
             <button
               onClick={() => setActiveTab('board')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                 activeTab === 'board'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
               }`}
             >
-              Tablero
+              Kanban
             </button>
             <button
               onClick={() => setActiveTab('my-tasks')}
-              className={`px-3 py-1.5 rounded-md flex items-center space-x-1 transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
                 activeTab === 'my-tasks'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
               }`}
             >
-              <Smartphone className="w-3 h-3 mr-1" />
-              <span>Mis Tareas</span>
+              <Smartphone className="w-3 h-3 text-emerald-500" />
+              <span>{t('myTasks')} ({myTasks.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('projects')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                 activeTab === 'projects'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
               }`}
             >
-              Proyectos
+              Proyectos ({projects.length})
             </button>
           </div>
 
-          <button
-            onClick={() => setIsTaskModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Nueva Tarea</span>
-          </button>
+          <PermissionGate resource="projects" action="create">
+            <button
+              onClick={() => setIsProjectModalOpen(true)}
+              className="inline-flex items-center space-x-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newProject')}</span>
+            </button>
+          </PermissionGate>
+
+          <PermissionGate resource="tasks" action="create">
+            <button
+              onClick={() => setIsTaskModalOpen(true)}
+              className="inline-flex items-center space-x-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newTask')}</span>
+            </button>
+          </PermissionGate>
         </div>
       </div>
 
-      {/* Tab 1: Agile Kanban Board */}
+      {/* Tab: Kanban Board */}
       {activeTab === 'board' && (
-        <div className="flex space-x-3 overflow-x-auto pb-4 pt-1 snap-x scrollbar-thin">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
           {columns.map((col) => {
             const colTasks = tasks.filter((t) => t.status === col.id);
-
             return (
               <div
                 key={col.id}
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(col.id)}
-                className="w-72 shrink-0 bg-gray-100/70 dark:bg-slate-900/60 rounded-xl p-3 border border-gray-200 dark:border-slate-800 flex flex-col max-h-[calc(100vh-180px)]"
+                className="bg-gray-100/70 dark:bg-slate-900/60 rounded-xl p-3 border border-gray-200 dark:border-slate-800 min-h-[460px] flex flex-col"
               >
-                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-gray-200/80 dark:border-slate-800">
+                {/* Column Header */}
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-200 dark:border-slate-800">
                   <div className="flex items-center space-x-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color }} />
-                    <span className="text-xs font-bold text-gray-900 dark:text-white">{col.label}</span>
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: col.color }}
+                    />
+                    <h3 className="text-xs font-bold text-gray-800 dark:text-slate-200">
+                      {col.label}
+                    </h3>
                   </div>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700">
+                  <span className="text-[11px] font-bold px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-400">
                     {colTasks.length}
                   </span>
                 </div>
 
-                <div className="flex-1 space-y-2.5 overflow-y-auto pr-1">
+                {/* Tasks List */}
+                <div className="space-y-2 flex-1">
                   {colTasks.map((task) => (
                     <div
                       key={task.id}
                       draggable
                       onDragStart={() => handleDragStart(task.id)}
-                      className={`p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200/80 dark:border-slate-700 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing ${
-                        draggedTaskId === task.id ? 'opacity-40 scale-95' : 'opacity-100'
-                      }`}
+                      className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700/80 shadow-xs hover:shadow-md cursor-grab active:cursor-grabbing transition-all space-y-2 group"
                     >
-                      <div className="text-xs font-bold text-gray-900 dark:text-white leading-tight">
-                        {task.title}
-                      </div>
-
-                      <div className="text-[10px] text-gray-500 dark:text-slate-400 mt-1">
-                        {task.project?.name}
-                      </div>
-
-                      <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-700/60 flex items-center justify-between text-[10px]">
-                        <span className="inline-flex items-center text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded">
-                          <Zap className="w-2.5 h-2.5 mr-0.5 inline" /> {task.storyPoints || 1} pts
+                      <div className="flex items-start justify-between gap-1">
+                        <span className="text-xs font-semibold text-gray-900 dark:text-white line-clamp-2">
+                          {task.title}
                         </span>
-
-                        <span className="text-gray-500 dark:text-slate-400 flex items-center">
-                          <Clock className="w-2.5 h-2.5 mr-0.5 inline" /> {task.loggedHours || 0}/{task.estimatedHours || 0}h
-                        </span>
-
                         <span
-                          className={`px-1.5 py-0.5 rounded font-semibold ${
+                          className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase shrink-0 ${
                             task.priority === 'URGENT'
-                              ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400'
+                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400'
                               : task.priority === 'HIGH'
                               ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
-                              : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-300'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'
                           }`}
                         >
                           {task.priority}
                         </span>
                       </div>
+
+                      <div className="text-[10px] text-gray-500 dark:text-slate-400 flex items-center space-x-1">
+                        <Folder className="w-3 h-3 text-gray-400" />
+                        <span className="truncate">{task.project?.name || 'Proyecto'}</span>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-100 dark:border-slate-700/60 flex items-center justify-between text-[10px] text-gray-400">
+                        <div className="flex items-center space-x-1 font-mono font-medium text-slate-500 dark:text-slate-400">
+                          <Zap className="w-3 h-3 text-amber-500" />
+                          <span>{task.storyPoints || 1} pts</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{task.estimatedHours || 0}h</span>
+                        </div>
+                      </div>
                     </div>
                   ))}
+
+                  {colTasks.length === 0 && (
+                    <div className="h-28 border border-dashed border-gray-300 dark:border-slate-800 rounded-lg flex items-center justify-center text-[11px] text-gray-400">
+                      Arrastrar aquí
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -227,33 +302,36 @@ export const AgilePlanner: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 2: Mobile-Optimized "Mis Tareas Pendientes" View */}
+      {/* Tab: My Tasks (Touch / Mobile Friendly) */}
       {activeTab === 'my-tasks' && (
-        <div className="max-w-xl mx-auto space-y-3">
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 rounded-xl text-xs text-blue-700 dark:text-blue-300 flex items-center space-x-2">
-            <Smartphone className="w-4 h-4 shrink-0" />
-            <span>Vista adaptada para pantalla táctil y app móvil Capacitor. Toca para completar.</span>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800">
+            <div>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-1.5">
+                <CheckSquare className="w-4 h-4 text-emerald-500" />
+                <span>{t('agile.myPendingTasks')}</span>
+              </h2>
+              <p className="text-[11px] text-gray-500">
+                Optimizada para interacción táctil y reporte rápido desde móvil
+              </p>
+            </div>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
+              {myTasks.length} activas
+            </span>
           </div>
 
-          {myTasks.length === 0 ? (
-            <div className="text-center py-12 text-sm text-gray-400">
-              🎉 ¡Felicidades! No tienes tareas pendientes asignadas.
-            </div>
-          ) : (
-            myTasks.map((t) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {myTasks.map((t) => (
               <div
                 key={t.id}
-                className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xs flex items-center justify-between space-x-3"
+                className="p-3.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40 hover:bg-gray-100/60 dark:hover:bg-slate-800/80 transition-colors flex items-center justify-between"
               >
                 <div className="space-y-1">
-                  <div className="text-xs font-bold text-gray-900 dark:text-white leading-tight">
-                    {t.title}
-                  </div>
-                  <div className="text-[11px] text-gray-500 dark:text-slate-400">
-                    {t.project?.name} • Prioridad: {t.priority}
-                  </div>
-                  <div className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">
-                    Estimación: {t.estimatedHours}h
+                  <div className="text-xs font-bold text-gray-900 dark:text-white">{t.title}</div>
+                  <div className="text-[10px] text-gray-500 flex items-center space-x-2">
+                    <span>{t.project?.name}</span>
+                    <span>•</span>
+                    <span className="font-mono">{t.storyPoints} pts</span>
                   </div>
                 </div>
 
@@ -263,44 +341,58 @@ export const AgilePlanner: React.FC = () => {
                       method: 'PATCH',
                       body: JSON.stringify({ status: 'DONE' }),
                     });
+                    toast.success('¡Completada!', `Tarea "${t.title}" finalizada`);
                     loadData();
                   }}
-                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 shrink-0 shadow-xs"
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center space-x-1 shadow-xs transition-colors shrink-0"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  <span>Hecha</span>
+                  <span>{t('agile.completeTaskBtn')}</span>
                 </button>
               </div>
-            ))
+            ))}
+          </div>
+
+          {myTasks.length === 0 && (
+            <div className="text-center py-10 text-xs text-gray-400">
+              🎉 ¡Enhorabuena! No tienes tareas pendientes asignadas actualmente.
+            </div>
           )}
         </div>
       )}
 
-      {/* Tab 3: Projects & Sprints */}
+      {/* Tab: Projects List */}
       {activeTab === 'projects' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {projects.map((p) => (
             <div
               key={p.id}
-              className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xs space-y-3"
+              className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-3"
             >
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-xs font-bold text-gray-900 dark:text-white">{p.name}</h3>
-                  <p className="text-[11px] text-gray-500 dark:text-slate-400 line-clamp-2 mt-0.5">
-                    {p.description}
-                  </p>
+                  <p className="text-[11px] text-gray-500 line-clamp-1">{p.description || 'Sin descripción'}</p>
                 </div>
-                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
-                  {p.status}
-                </span>
+                <div className="flex items-center space-x-1">
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                    {p.status}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteProject(p.id, p.name)}
+                    className="p-1 text-gray-400 hover:text-red-500 rounded"
+                    title={t('deleteProject')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Progress bar */}
               <div>
                 <div className="flex justify-between text-[11px] text-gray-500 dark:text-slate-400 mb-1">
-                  <span>Progreso: {p.metrics?.completedTasks}/{p.metrics?.totalTasks} tareas</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{p.metrics?.progressPercent}%</span>
+                  <span>Progreso: {p.metrics?.completedTasks || 0}/{p.metrics?.totalTasks || 0} tareas</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{p.metrics?.progressPercent || 0}%</span>
                 </div>
                 <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
                   <div
@@ -311,8 +403,8 @@ export const AgilePlanner: React.FC = () => {
               </div>
 
               <div className="pt-2 border-t border-gray-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400">
-                <span>Horas: {p.metrics?.totalLoggedHours}h / {p.metrics?.totalEstimatedHours}h</span>
-                <span>Puntos: {p.metrics?.totalStoryPoints} pts</span>
+                <span>Horas: {p.metrics?.totalLoggedHours || 0}h / {p.metrics?.totalEstimatedHours || 0}h</span>
+                <span>Puntos: {p.metrics?.totalStoryPoints || 0} pts</span>
               </div>
             </div>
           ))}
@@ -320,108 +412,185 @@ export const AgilePlanner: React.FC = () => {
       )}
 
       {/* Task Creation Modal */}
-      {isTaskModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Nueva Tarea Ágil</h2>
-              <button onClick={() => setIsTaskModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateTask} className="mt-4 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Título de la Tarea
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="Ej: Implementar conector webhook UnoPIM"
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Proyecto
-                </label>
-                <select
-                  value={taskProjectId}
-                  onChange={(e) => setTaskProjectId(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                >
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Story Points
-                  </label>
-                  <input
-                    type="number"
-                    value={taskPoints}
-                    onChange={(e) => setTaskPoints(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Horas Estimadas
-                  </label>
-                  <input
-                    type="number"
-                    value={taskHours}
-                    onChange={(e) => setTaskHours(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Prioridad
-                </label>
-                <select
-                  value={taskPriority}
-                  onChange={(e) => setTaskPriority(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                >
-                  <option value="LOW">Baja (LOW)</option>
-                  <option value="MEDIUM">Media (MEDIUM)</option>
-                  <option value="HIGH">Alta (HIGH)</option>
-                  <option value="URGENT">Urgente (URGENT)</option>
-                </select>
-              </div>
-
-              <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsTaskModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
-                >
-                  {t('save')}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        title={t('newTask')}
+        size="md"
+      >
+        <form onSubmit={handleCreateTask} className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              {t('taskTitle')}
+            </label>
+            <input
+              type="text"
+              required
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              placeholder={t('agile.taskTitlePlaceholder')}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              Proyecto
+            </label>
+            <select
+              value={taskProjectId}
+              onChange={(e) => setTaskProjectId(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                Story Points
+              </label>
+              <input
+                type="number"
+                value={taskPoints}
+                onChange={(e) => setTaskPoints(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                Horas Estimadas
+              </label>
+              <input
+                type="number"
+                value={taskHours}
+                onChange={(e) => setTaskHours(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              {t('priority')}
+            </label>
+            <select
+              value={taskPriority}
+              onChange={(e) => setTaskPriority(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+            >
+              <option value="LOW">{t('low')}</option>
+              <option value="MEDIUM">{t('medium')}</option>
+              <option value="HIGH">{t('high')}</option>
+              <option value="URGENT">{t('urgent')}</option>
+            </select>
+          </div>
+
+          <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsTaskModalOpen(false)}
+              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
+            >
+              {t('save')}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Project Creation Modal */}
+      <Modal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        title={t('newProject')}
+        size="md"
+      >
+        <form onSubmit={handleCreateProject} className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              {t('projectName')}
+            </label>
+            <input
+              type="text"
+              required
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              placeholder={t('agile.projectTitlePlaceholder')}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              Descripción
+            </label>
+            <textarea
+              rows={2}
+              value={projectDescription}
+              onChange={(e) => setProjectDescription(e.target.value)}
+              placeholder={t('agile.projectScopePlaceholder')}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                {t('priority')}
+              </label>
+              <select
+                value={projectPriority}
+                onChange={(e) => setProjectPriority(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="LOW">{t('low')}</option>
+                <option value="MEDIUM">{t('medium')}</option>
+                <option value="HIGH">{t('high')}</option>
+                <option value="URGENT">{t('urgent')}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                {t('budget')}
+              </label>
+              <input
+                type="number"
+                value={projectBudget}
+                onChange={(e) => setProjectBudget(e.target.value)}
+                placeholder="10000"
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsProjectModalOpen(false)}
+              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs"
+            >
+              {t('create')}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

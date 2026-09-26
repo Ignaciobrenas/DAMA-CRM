@@ -1,25 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Download, FileText, CheckCircle, Clock, AlertCircle, X, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Download, CheckCircle, Clock, AlertCircle, Trash2, Bell, FileSpreadsheet } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { Modal } from '../components/common/Modal';
+import { PermissionGate } from '../components/common/PermissionGate';
+import { AgingReportModal } from '../components/invoicing/AgingReportModal';
+import { QuoteSignModal } from '../components/invoicing/QuoteSignModal';
+import { exportToCSV } from '../utils/exportUtils';
 
 export const Invoicing: React.FC = () => {
   const { t } = useLanguage();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'invoices' | 'quotes'>('invoices');
   const [invoices, setInvoices] = useState<any[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isConverting, setIsConverting] = useState(false);
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<'ALL' | 'PAID' | 'SENT' | 'DRAFT'>('ALL');
+
+  // SME Suite Modals
+  const [isAgingModalOpen, setIsAgingModalOpen] = useState(false);
+  const [signingQuote, setSigningQuote] = useState<any>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'invoice' | 'quote'>('invoice');
   const [companyId, setCompanyId] = useState('');
   const [contactId, setContactId] = useState('');
   const [taxRate, setTaxRate] = useState('21');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<Array<{ description: string; quantity: number; unitPrice: number }>>([
-    { description: 'Licencia / Servicio CRM', quantity: 1, unitPrice: 1500 },
+    { description: '', quantity: 1, unitPrice: 0 },
   ]);
 
   const loadData = async () => {
@@ -75,7 +89,45 @@ export const Invoicing: React.FC = () => {
       method: 'PATCH',
       body: JSON.stringify({ status: 'PAID' }),
     });
+    toast.success(t('success'), 'Factura marcada como pagada');
     loadData();
+  };
+
+  const handleSendReminder = async (invoice: any) => {
+    const clientName = invoice.company?.name || `${invoice.contact?.firstName || ''} ${invoice.contact?.lastName || ''}`.trim() || 'Cliente';
+    toast.success(t('invoicing.reminderSent'), `${invoice.invoiceNumber} - ${clientName}`);
+  };
+
+  const handleConvertQuote = async (quoteId: string) => {
+    setIsConverting(true);
+    try {
+      const res = await apiRequest(`/invoices/quotes/${quoteId}/convert`, { method: 'POST' });
+      if (res.success) {
+        toast.success(t('success'), t('convertedToInvoiceSuccess'));
+        await loadData();
+        setActiveTab('invoices');
+      } else {
+        toast.error(t('error'), res.message || 'Error al convertir presupuesto');
+      }
+    } catch {
+      toast.error(t('error'), 'Error de conexión');
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const handleDeleteDocument = async (id: string, type: 'invoice' | 'quote', number: string) => {
+    const confirmMsg = type === 'invoice' ? t('confirmDeleteInvoice') : t('confirmDeleteQuote');
+    if (!window.confirm(`${confirmMsg} (${number})`)) return;
+
+    const endpoint = type === 'invoice' ? `/invoices/${id}` : `/invoices/quotes/${id}`;
+    const res = await apiRequest(endpoint, { method: 'DELETE' });
+    if (res.success) {
+      toast.success(t('success'), res.message || 'Documento eliminado');
+      loadData();
+    } else {
+      toast.error(t('error'), res.message || 'Error al eliminar');
+    }
   };
 
   const addItemRow = () => {
@@ -83,174 +135,338 @@ export const Invoicing: React.FC = () => {
   };
 
   const removeItemRow = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+    if (items.length > 1) {
+      setItems(items.filter((_, idx) => idx !== index));
+    }
   };
 
-  const updateItem = (index: number, field: string, val: any) => {
-    const newItems = [...items];
-    (newItems[index] as any)[field] = val;
-    setItems(newItems);
+  const updateItem = (index: number, field: string, value: any) => {
+    const updated = [...items];
+    (updated[index] as any)[field] = value;
+    setItems(updated);
   };
 
-  const handleCreateInvoice = async (e: React.FormEvent) => {
+  // Live modal math
+  const calculatedSubtotal = useMemo(() => {
+    return items.reduce((acc, it) => acc + (Number(it.quantity) || 0) * (parseFloat(it.unitPrice as any) || 0), 0);
+  }, [items]);
+
+  const calculatedTaxAmount = useMemo(() => {
+    const rate = parseFloat(taxRate) || 0;
+    return calculatedSubtotal * (rate / 100);
+  }, [calculatedSubtotal, taxRate]);
+
+  const calculatedTotal = useMemo(() => {
+    return calculatedSubtotal + calculatedTaxAmount;
+  }, [calculatedSubtotal, calculatedTaxAmount]);
+
+  const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (items.length === 0) return;
+    const endpoint = modalType === 'invoice' ? '/invoices' : '/invoices/quotes';
+    const numPrefix = modalType === 'invoice' ? 'FAC' : 'PRE';
+    const number = `${numPrefix}-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
 
-    const res = await apiRequest('/invoices', {
+    const body: any = {
+      contactId: contactId || null,
+      companyId: companyId || null,
+      taxRate: parseFloat(taxRate),
+      currency: 'EUR',
+      notes,
+      items: items.map((it) => ({
+        description: it.description,
+        quantity: Number(it.quantity),
+        unitPrice: parseFloat(it.unitPrice as any),
+      })),
+    };
+
+    if (modalType === 'invoice') {
+      body.invoiceNumber = number;
+    } else {
+      body.quoteNumber = number;
+    }
+
+    const res = await apiRequest(endpoint, {
       method: 'POST',
-      body: JSON.stringify({
-        companyId: companyId || null,
-        contactId: contactId || null,
-        taxRate: parseFloat(taxRate) || 21,
-        notes,
-        items,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (res.success) {
+      toast.success(t('success'), modalType === 'invoice' ? 'Factura generada' : 'Presupuesto creado');
       setIsModalOpen(false);
       setNotes('');
       setItems([{ description: '', quantity: 1, unitPrice: 0 }]);
       loadData();
+    } else {
+      toast.error(t('error'), res.message || 'Error al crear documento');
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'PAID':
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-            <CheckCircle className="w-2.5 h-2.5 mr-1" /> Cobrada
-          </span>
-        );
-      case 'SENT':
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
-            <Clock className="w-2.5 h-2.5 mr-1" /> Enviada
-          </span>
-        );
-      case 'OVERDUE':
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400">
-            <AlertCircle className="w-2.5 h-2.5 mr-1" /> Vencida
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-300">
-            Borrador
-          </span>
-        );
-    }
+  const filteredInvoices = useMemo(() => {
+    if (invoiceStatusFilter === 'ALL') return invoices;
+    return invoices.filter((inv) => inv.status === invoiceStatusFilter);
+  }, [invoices, invoiceStatusFilter]);
+
+  const handleExportInvoicesCsv = () => {
+    const headers = [
+      'Número Factura',
+      'Cliente / Empresa',
+      'Fecha Emisión',
+      'Fecha Vencimiento',
+      'Estado',
+      'Base Imponible (€)',
+      'IVA (%)',
+      'Cuota IVA (€)',
+      'Total (€)',
+      'Moneda',
+    ];
+    const rows = filteredInvoices.map((inv) => [
+      inv.invoiceNumber,
+      inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim() || 'N/A',
+      new Date(inv.issueDate).toLocaleDateString(),
+      inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'N/A',
+      inv.status,
+      inv.subtotal || (inv.total / (1 + (inv.taxRate || 21) / 100)),
+      `${inv.taxRate || 21}%`,
+      inv.taxAmount || 0,
+      inv.total,
+      inv.currency || 'EUR',
+    ]);
+
+    exportToCSV(`facturas_export_${new Date().toISOString().split('T')[0]}`, headers, rows);
+    toast.success(t('success'), `${filteredInvoices.length} facturas exportadas a CSV`);
+  };
+
+  const handleExportQuotesCsv = () => {
+    const headers = ['Número Presupuesto', 'Cliente / Empresa', 'Fecha Emisión', 'Estado', 'Total (€)', 'Moneda'];
+    const rows = quotes.map((q) => [
+      q.quoteNumber,
+      q.company?.name || `${q.contact?.firstName || ''} ${q.contact?.lastName || ''}`.trim() || 'N/A',
+      new Date(q.issueDate).toLocaleDateString(),
+      q.status,
+      q.total,
+      q.currency || 'EUR',
+    ]);
+
+    exportToCSV(`presupuestos_export_${new Date().toISOString().split('T')[0]}`, headers, rows);
+    toast.success(t('success'), `${quotes.length} presupuestos exportados a CSV`);
   };
 
   return (
     <div className="space-y-4">
-      {/* Header & Switcher */}
+      {/* Header & Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
             {t('invoicing')}
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Generación de presupuestos y facturas mercantiles con exportación PDF nativa
+            {t('invoicingSubtitle')}
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
             <button
               onClick={() => setActiveTab('invoices')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                 activeTab === 'invoices'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
               }`}
             >
               Facturas ({invoices.length})
             </button>
             <button
               onClick={() => setActiveTab('quotes')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                 activeTab === 'quotes'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
               }`}
             >
-              Presupuestos ({quotes.length})
+              {t('quotes')} ({quotes.length})
             </button>
           </div>
 
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            onClick={() => setIsAgingModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            title="Informe de Antigüedad de Deuda y Control de Morosidad"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t('newInvoice')}</span>
+            <span>📊 {t('dunning.agingButton')}</span>
           </button>
+
+          <button
+            onClick={activeTab === 'invoices' ? handleExportInvoicesCsv : handleExportQuotesCsv}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            title="Exportar listado a archivo CSV compatible con Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden sm:inline">{t('exportCsv')}</span>
+          </button>
+
+          <PermissionGate resource="invoices" action="create">
+            <button
+              onClick={() => {
+                setModalType('invoice');
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newInvoice')}</span>
+            </button>
+          </PermissionGate>
+          <PermissionGate resource="invoices" action="create">
+            <button
+              onClick={() => {
+                setModalType('quote');
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newQuote')}</span>
+            </button>
+          </PermissionGate>
         </div>
       </div>
 
       {/* Tab: Invoices List */}
       {activeTab === 'invoices' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
-              <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
-                <tr>
-                  <th className="px-4 py-3">Número</th>
-                  <th className="px-4 py-3">Cliente / Empresa</th>
-                  <th className="px-4 py-3">Fecha Emisión</th>
-                  <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-                {invoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
-                      {inv.invoiceNumber}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-gray-900 dark:text-white">
-                        {inv.company?.name || `${inv.contact?.firstName} ${inv.contact?.lastName}`}
-                      </div>
-                      {inv.contact?.email && (
-                        <div className="text-[10px] text-gray-400">{inv.contact.email}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {new Date(inv.issueDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      {getStatusBadge(inv.status)}
-                    </td>
-                    <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
-                      {inv.total.toLocaleString('es-ES', { style: 'currency', currency: inv.currency })}
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-1.5">
-                      {inv.status !== 'PAID' && (
-                        <button
-                          onClick={() => handleMarkPaid(inv.id)}
-                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 rounded text-xs font-semibold"
-                        >
-                          Marcar Cobrada
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)}
-                        className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 rounded text-xs font-semibold"
-                        title="Descargar PDF"
-                      >
-                        <Download className="w-3 h-3" />
-                        <span>PDF</span>
-                      </button>
-                    </td>
+        <div className="space-y-3">
+          {/* Status filter bar */}
+          <div className="flex items-center space-x-2">
+            {[
+              { id: 'ALL', label: t('invoicing.filterAll') },
+              { id: 'PAID', label: t('invoicing.filterPaid') },
+              { id: 'SENT', label: t('invoicing.filterPending') },
+              { id: 'DRAFT', label: t('invoicing.filterDraft') },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setInvoiceStatusFilter(f.id as any)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  invoiceStatusFilter === f.id
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+                <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
+                  <tr>
+                    <th className="px-4 py-3">{t('invoiceNumber')}</th>
+                    <th className="px-4 py-3">{t('client')}</th>
+                    <th className="px-4 py-3">{t('issueDate')}</th>
+                    <th className="px-4 py-3">{t('dueDate')}</th>
+                    <th className="px-4 py-3">{t('status')}</th>
+                    <th className="px-4 py-3">{t('total')}</th>
+                    <th className="px-4 py-3 text-right">{t('actions')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          <span>{t('loading')}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredInvoices.length > 0 ? (
+                    filteredInvoices.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
+                          {inv.invoiceNumber}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim() || '—'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{new Date(inv.issueDate).toLocaleDateString()}</td>
+                        <td className="px-4 py-3">
+                          {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          {inv.status === 'PAID' ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400">
+                              <CheckCircle className="w-3 h-3" />
+                              <span>{t('statusPaid')}</span>
+                            </span>
+                          ) : inv.status === 'SENT' ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400">
+                              <Clock className="w-3 h-3" />
+                              <span>{t('statusPending')}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300">
+                              <AlertCircle className="w-3 h-3" />
+                              <span>{t('statusDraft')}</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                          {inv.total.toLocaleString('es-ES', { style: 'currency', currency: inv.currency || 'EUR' })}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex items-center space-x-1">
+                            {inv.status !== 'PAID' && (
+                              <>
+                                <button
+                                  onClick={() => handleMarkPaid(inv.id)}
+                                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 rounded text-xs font-semibold"
+                                >
+                                  Marcar Cobrado
+                                </button>
+                                <button
+                                  onClick={() => handleSendReminder(inv)}
+                                  className="inline-flex items-center space-x-1 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 rounded text-xs font-semibold"
+                                  title={t('invoicing.sendReminder')}
+                                >
+                                  <Bell className="w-3 h-3" />
+                                  <span className="hidden md:inline">{t('invoicing.sendReminder')}</span>
+                                </button>
+                              </>
+                            )}
+                            <button
+                              onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)}
+                              className="inline-flex items-center space-x-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded text-xs font-semibold"
+                              title="Descargar PDF"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>PDF</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDocument(inv.id, 'invoice', inv.invoiceNumber)}
+                              className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
+                              title={t('deleteInvoice')}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                        Sin facturas en este estado.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -262,178 +478,286 @@ export const Invoicing: React.FC = () => {
             <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
               <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
                 <tr>
-                  <th className="px-4 py-3">Número</th>
-                  <th className="px-4 py-3">Cliente / Empresa</th>
-                  <th className="px-4 py-3">Fecha</th>
-                  <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
+                  <th className="px-4 py-3">{t('invoicing.invoiceNumberCol')}</th>
+                  <th className="px-4 py-3">{t('client')}</th>
+                  <th className="px-4 py-3">{t('issueDate')}</th>
+                  <th className="px-4 py-3">{t('status')}</th>
+                  <th className="px-4 py-3">{t('total')}</th>
+                  <th className="px-4 py-3 text-right">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-                {quotes.map((q) => (
-                  <tr key={q.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
-                      {q.quoteNumber}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-gray-900 dark:text-white">
-                        {q.company?.name || `${q.contact?.firstName} ${q.contact?.lastName}`}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">{new Date(q.issueDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
-                        {q.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
-                      {q.total.toLocaleString('es-ES', { style: 'currency', currency: q.currency })}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDownloadQuotePdf(q.id, q.quoteNumber)}
-                        className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 rounded text-xs font-semibold"
-                      >
-                        <Download className="w-3 h-3" />
-                        <span>PDF</span>
-                      </button>
+                {quotes.length > 0 ? (
+                  quotes.map((q) => (
+                    <tr key={q.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
+                        {q.quoteNumber}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-gray-900 dark:text-white">
+                          {q.company?.name || `${q.contact?.firstName || ''} ${q.contact?.lastName || ''}`.trim() || '—'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">{new Date(q.issueDate).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+                          {q.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                        {q.total.toLocaleString('es-ES', { style: 'currency', currency: q.currency || 'EUR' })}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex items-center space-x-1.5">
+                          {q.status === 'ACCEPTED' || q.signatureData ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded text-[11px] font-bold">
+                              ✍️ {t('quotes.signed')}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setSigningQuote(q)}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 rounded text-xs font-semibold"
+                              title="Firmar presupuesto en pantalla"
+                            >
+                              <span>✍️ {t('quotes.sign')}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              const signUrl = `${window.location.origin}/quote/sign/${q.publicToken || q.id}`;
+                              navigator.clipboard.writeText(signUrl);
+                              toast.success(t('quotes.linkCopied'), signUrl);
+                            }}
+                            className="inline-flex items-center space-x-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold"
+                            title="Copiar enlace público de firma para el cliente"
+                          >
+                            <span>🔗</span>
+                          </button>
+                          {q.status !== 'ACCEPTED' && (
+                            <button
+                              onClick={() => handleConvertQuote(q.id)}
+                              disabled={isConverting}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 rounded text-xs font-semibold"
+                            >
+                              <CheckCircle className="w-3 h-3" />
+                              <span>{t('convertToInvoice')}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDownloadQuotePdf(q.id, q.quoteNumber)}
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded text-xs font-semibold"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>PDF</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDocument(q.id, 'quote', q.quoteNumber)}
+                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
+                            title={t('deleteQuote')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-xs text-gray-400">
+                      Sin presupuestos creados todavía.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Create Invoice Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('newInvoice')}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
+      {/* Create Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={modalType === 'invoice' ? t('newInvoice') : t('newQuote')}
+        size="lg"
+      >
+        <form onSubmit={handleCreateDocument} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies')}</label>
+              <select
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="">{t('invoicing.selectCompanyPrompt')}</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts')}</label>
+              <select
+                value={contactId}
+                onChange={(e) => setContactId(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="">{t('invoicing.selectContactPrompt')}</option>
+                {contacts.map((ct) => (
+                  <option key={ct.id} value={ct.id}>
+                    {ct.firstName} {ct.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('invoicing.taxSelect')}</label>
+              <select
+                value={taxRate}
+                onChange={(e) => setTaxRate(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="21">{t('invoicing.taxGeneral')}</option>
+                <option value="10">{t('invoicing.taxReduced')}</option>
+                <option value="4">{t('invoicing.taxSuperReduced')}</option>
+                <option value="0">{t('invoicing.taxExempt')}</option>
+                <option value="7">{t('invoicing.taxCanary')}</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Items Table in Modal */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-900 dark:text-white">{t('lineItems')}</label>
+              <button
+                type="button"
+                onClick={addItemRow}
+                className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+              >
+                + {t('addLine')}
               </button>
             </div>
 
-            <form onSubmit={handleCreateInvoice} className="mt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Empresa</label>
-                  <select
-                    value={companyId}
-                    onChange={(e) => setCompanyId(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                  >
-                    <option value="">-- Seleccionar Empresa --</option>
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Contacto</label>
-                  <select
-                    value={contactId}
-                    onChange={(e) => setContactId(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                  >
-                    <option value="">-- Seleccionar Contacto --</option>
-                    {contacts.map((ct) => (
-                      <option key={ct.id} value={ct.id}>
-                        {ct.firstName} {ct.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Items Table in Modal */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-gray-900 dark:text-white">Líneas de Factura</label>
+            {items.map((it, idx) => (
+              <div key={idx} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  placeholder={t('conceptDescription')}
+                  required
+                  value={it.description}
+                  onChange={(e) => updateItem(idx, 'description', e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                />
+                <input
+                  type="number"
+                  placeholder={t('quantity')}
+                  required
+                  min="1"
+                  value={it.quantity}
+                  onChange={(e) => updateItem(idx, 'quantity', parseFloat(e.target.value) || 1)}
+                  className="w-20 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
+                />
+                <input
+                  type="number"
+                  placeholder={t('invoicing.pricePlaceholder')}
+                  required
+                  step="0.01"
+                  value={it.unitPrice}
+                  onChange={(e) => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                  className="w-24 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-right"
+                />
+                {items.length > 1 && (
                   <button
                     type="button"
-                    onClick={addItemRow}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                    onClick={() => removeItemRow(idx)}
+                    className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
                   >
-                    + Añadir Línea
+                    <Trash2 className="w-4 h-4" />
                   </button>
-                </div>
-
-                {items.map((it, idx) => (
-                  <div key={idx} className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      placeholder="Descripción del concepto"
-                      required
-                      value={it.description}
-                      onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                      className="flex-1 px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Cant."
-                      required
-                      value={it.quantity}
-                      onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                      className="w-16 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Precio €"
-                      required
-                      value={it.unitPrice}
-                      onChange={(e) => updateItem(idx, 'unitPrice', e.target.value)}
-                      className="w-24 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-right"
-                    />
-                    {items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItemRow(idx)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                )}
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Notas u Observaciones</label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Plazos de pago, datos bancarios..."
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
-                >
-                  Generar Factura
-                </button>
-              </div>
-            </form>
+            ))}
           </div>
-        </div>
+
+          {/* Live Breakdown Box */}
+          <div className="p-3 bg-gray-50 dark:bg-slate-800/60 rounded-xl border border-gray-200 dark:border-slate-700/80 space-y-1.5 text-xs">
+            <div className="flex justify-between text-gray-600 dark:text-slate-400">
+              <span>{t('invoicing.subtotal')}:</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {calculatedSubtotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
+            <div className="flex justify-between text-gray-600 dark:text-slate-400">
+              <span>{t('invoicing.taxAmount')} ({taxRate}%):</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {calculatedTaxAmount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white pt-1.5 border-t border-gray-200 dark:border-slate-700">
+              <span>{t('invoicing.totalAmount')}:</span>
+              <span className="text-blue-600 dark:text-blue-400">
+                {calculatedTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('notes')}</label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t('invoicing.paymentTermsPlaceholder')}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+            />
+          </div>
+
+          <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
+            >
+              {modalType === 'invoice' ? t('newInvoice') : t('newQuote')}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Aging Debt Report Modal */}
+      <AgingReportModal
+        isOpen={isAgingModalOpen}
+        onClose={() => setIsAgingModalOpen(false)}
+        onPaymentRecorded={() => {
+          loadData();
+        }}
+      />
+
+      {/* Quote Digital Signing Modal */}
+      {signingQuote && (
+        <QuoteSignModal
+          isOpen={Boolean(signingQuote)}
+          onClose={() => setSigningQuote(null)}
+          quoteId={signingQuote.id}
+          quoteNumber={signingQuote.quoteNumber}
+          total={signingQuote.total}
+          publicToken={signingQuote.publicToken}
+          onSignedSuccess={() => {
+            loadData();
+          }}
+        />
       )}
     </div>
   );
 };
+

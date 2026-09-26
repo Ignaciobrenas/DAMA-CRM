@@ -3,17 +3,19 @@ name: CI Lint & Typecheck Quality Gate
 on:
   push:
     branches:
+      - staging
       - 'feature/**'
       - 'fix/**'
       - 'chore/**'
   pull_request:
     branches:
+      - staging
       - main
       - master
 
 jobs:
   backend-quality:
-    name: Core Backend (TypeScript & Prisma Check)
+    name: Server Backend (TypeScript & Prisma Check)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -24,22 +26,22 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: core/package-lock.json
+          cache-dependency-path: server/package-lock.json
 
-      - name: Install Core Dependencies
-        working-directory: core
+      - name: Install Server Dependencies
+        working-directory: server
         run: npm ci
 
       - name: Generate Prisma Types
-        working-directory: core
+        working-directory: server
         run: npx prisma generate
 
       - name: Typecheck Backend (tsc --noEmit)
-        working-directory: core
+        working-directory: server
         run: npx tsc --noEmit
 
       - name: Run Backend Unit & Integration Tests
-        working-directory: core
+        working-directory: server
         run: npm test
 
   frontend-quality:

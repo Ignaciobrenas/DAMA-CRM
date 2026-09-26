@@ -47,8 +47,8 @@ echo "⏳ Esperando a que la base de datos PostgreSQL complete su inicializació
 sleep 10
 
 echo "🌱 Ejecutando migraciones y dataset inicial con Prisma..."
-docker compose exec -T crm-core npx prisma db push || true
-docker compose exec -T crm-core npx ts-node prisma/seed.ts || true
+docker compose exec -T crm-server npx prisma db push || true
+docker compose exec -T crm-server npx ts-node prisma/seed.ts || true
 
 echo ""
 echo "=================================================================="
@@ -57,7 +57,7 @@ echo "=================================================================="
 echo ""
 echo "🌐 Acceso Web:"
 echo "   👉 Frontend SPA:    http://localhost:3000"
-echo "   👉 Backend Core:    http://localhost:4000"
+echo "   👉 Backend Server:  http://localhost:4000"
 echo "   👉 Traefik Gateway: http://localhost:8080"
 echo ""
 echo "🔑 Credenciales de Acceso Demo:"

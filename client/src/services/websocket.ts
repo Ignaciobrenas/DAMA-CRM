@@ -12,8 +12,11 @@ class WebSocketClient {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // If running in development with Vite proxy or direct port
-    const host = window.location.port === '5173' ? `${window.location.hostname}:3000` : window.location.host;
+    // If running in development with Vite port 5173, point to backend on port 4000
+    let host = window.location.host;
+    if (window.location.port === '5173') {
+      host = `${window.location.hostname}:4000`;
+    }
     const wsUrl = `${protocol}//${host}/ws`;
 
     try {
@@ -22,13 +25,14 @@ class WebSocketClient {
       this.ws.onopen = () => {
         this.isConnected = true;
         console.log('⚡ Conectado a WebSockets DAMA-CRM');
+        this.emit('connection:change', { connected: true });
       };
 
       this.ws.onmessage = (event) => {
         try {
           const parsed = JSON.parse(event.data);
-          if (parsed.event && this.listeners.has(parsed.event)) {
-            this.listeners.get(parsed.event)?.forEach((callback) => callback(parsed.data));
+          if (parsed.event) {
+            this.emit(parsed.event, parsed.data);
           }
         } catch {
           // Quietly handle parse failures
@@ -37,14 +41,40 @@ class WebSocketClient {
 
       this.ws.onclose = () => {
         this.isConnected = false;
+        this.emit('connection:change', { connected: false });
         this.scheduleReconnect();
       };
 
       this.ws.onerror = () => {
         this.isConnected = false;
+        this.emit('connection:change', { connected: false });
       };
     } catch {
+      this.isConnected = false;
+      this.emit('connection:change', { connected: false });
       this.scheduleReconnect();
+    }
+  }
+
+  public isWsConnected(): boolean {
+    return this.isConnected && this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  public disconnect(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.isConnected = false;
+  }
+
+  private emit(event: string, data: any): void {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event)?.forEach((callback) => callback(data));
     }
   }
 
@@ -76,3 +106,5 @@ class WebSocketClient {
 }
 
 export const wsClient = new WebSocketClient();
+export const wsService = wsClient;
+

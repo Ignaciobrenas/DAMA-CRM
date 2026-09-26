@@ -1,11 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Download, PieChart, CheckCircle2, DollarSign, Target, Award, ArrowDownToLine } from 'lucide-react';
+import {
+  BarChart3,
+  TrendingUp,
+  Download,
+  PieChart,
+  CheckCircle2,
+  DollarSign,
+  Target,
+  Award,
+  ArrowDownToLine,
+  Layers,
+  ChevronDown,
+  Building2,
+  Users,
+  FileSpreadsheet,
+  Package,
+  CheckSquare,
+  Activity,
+  Radio,
+  Trash2,
+} from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { BarChart, DonutChart } from '../components/ui/Charts';
+import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
+import { analytics, AnalyticsEvent } from '../services/analytics';
 
 export const Reports: React.FC = () => {
+  const { t } = useLanguage();
+  const toast = useToast();
   const [salesData, setSalesData] = useState<any>(null);
   const [agileData, setAgileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<'30d' | '90d' | 'year'>('30d');
 
   useEffect(() => {
     async function loadReports() {
@@ -22,7 +50,9 @@ export const Reports: React.FC = () => {
     loadReports();
   }, []);
 
-  const handleExport = async (type: 'deals' | 'contacts') => {
+  const handleExport = async (type: 'deals' | 'contacts' | 'companies' | 'invoices' | 'products' | 'tasks', label: string) => {
+    setIsExportMenuOpen(false);
+    toast.info('Generando exportación...', `Preparando archivo CSV de ${label}`);
     const res = await apiRequest(`/reports/export?type=${type}`);
     if (res.success && res.data) {
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8;' }));
@@ -33,10 +63,33 @@ export const Reports: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      toast.success('Descarga completada', `Archivo CSV de ${label} descargado con éxito.`);
+    } else {
+      toast.error('Error al exportar', res.message || 'No se pudo generar el archivo.');
     }
   };
 
   const kpis = salesData?.kpis || {};
+
+  const monthlyBarData =
+    salesData?.monthlyRevenue?.map((m: any) => ({
+      label: m.month,
+      value: m.revenue,
+      color: '#3B82F6',
+    })) || [];
+
+  const dealsDonutData = [
+    { label: 'Ganadas', value: kpis.wonDealsCount || 0, color: '#10B981' },
+    { label: 'Perdidas', value: kpis.lostDealsCount || 0, color: '#EF4444' },
+    { label: 'En Curso', value: kpis.openDealsCount || 0, color: '#3B82F6' },
+  ].filter((d) => d.value > 0);
+
+  const agileDonutData = [
+    { label: 'Hechas', value: agileData?.doneTasks || 0, color: '#10B981' },
+    { label: 'En Curso', value: agileData?.inProgressTasks || 0, color: '#3B82F6' },
+    { label: 'Revisión', value: agileData?.reviewTasks || 0, color: '#F59E0B' },
+    { label: 'Por Hacer', value: agileData?.todoTasks || 0, color: '#8B5CF6' },
+  ].filter((d) => d.value > 0);
 
   return (
     <div className="space-y-6">
@@ -47,32 +100,110 @@ export const Reports: React.FC = () => {
             Informes y Business Intelligence (BI)
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Análisis de rendimiento comercial, tasa de conversión y velocidad de entrega ágil
+            Análisis de rendimiento comercial, tasa de conversión y exportación universal de datos
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handleExport('deals')}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold shadow-xs transition-colors"
-          >
-            <ArrowDownToLine className="w-3.5 h-3.5 text-blue-600" />
-            <span>Exportar Ventas (CSV)</span>
-          </button>
-          <button
-            onClick={() => handleExport('contacts')}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold shadow-xs transition-colors"
-          >
-            <ArrowDownToLine className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Exportar Contactos (CSV)</span>
-          </button>
+        <div className="flex items-center space-x-2 relative">
+          {/* Period selector */}
+          <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+            <button
+              onClick={() => setTimePeriod('30d')}
+              className={`px-2.5 py-1 rounded-md transition-colors ${
+                timePeriod === '30d'
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
+              }`}
+            >
+              30 días
+            </button>
+            <button
+              onClick={() => setTimePeriod('90d')}
+              className={`px-2.5 py-1 rounded-md transition-colors ${
+                timePeriod === '90d'
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
+              }`}
+            >
+              Trimestre
+            </button>
+            <button
+              onClick={() => setTimePeriod('year')}
+              className={`px-2.5 py-1 rounded-md transition-colors ${
+                timePeriod === 'year'
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
+              }`}
+            >
+              Año
+            </button>
+          </div>
+
+          {/* Export Dropdown Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            >
+              <ArrowDownToLine className="w-3.5 h-3.5" />
+              <span>{t('reports.exportCsv')}</span>
+              <ChevronDown className="w-3 h-3 ml-0.5" />
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-200 dark:border-slate-800 py-1.5 z-20 animate-in fade-in">
+                <button
+                  onClick={() => handleExport('deals', 'Ventas y Oportunidades')}
+                  className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
+                >
+                  <DollarSign className="w-3.5 h-3.5 text-blue-500" />
+                  <span>{t('reports.dealsAndOpportunities')}</span>
+                </button>
+                <button
+                  onClick={() => handleExport('contacts', 'Contactos y Leads')}
+                  className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
+                >
+                  <Users className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{t('reports.contactsAndLeads')}</span>
+                </button>
+                <button
+                  onClick={() => handleExport('companies', 'Cuentas y Empresas')}
+                  className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>{t('reports.accountsAndCompanies')}</span>
+                </button>
+                <button
+                  onClick={() => handleExport('invoices', 'Facturas Emitidas')}
+                  className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{t('reports.issuedInvoices')}</span>
+                </button>
+                <button
+                  onClick={() => handleExport('products', 'Catálogo de Productos')}
+                  className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
+                >
+                  <Package className="w-3.5 h-3.5 text-cyan-500" />
+                  <span>{t('reports.productsCatalog')}</span>
+                </button>
+                <button
+                  onClick={() => handleExport('tasks', 'Tareas Técnicas')}
+                  className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-purple-500" />
+                  <span>{t('reports.scrumTechnicalTasks')}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Ingresos Ganados</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.revenueWon')}</span>
           <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {(kpis.totalWonRevenue || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
           </div>
@@ -82,7 +213,7 @@ export const Reports: React.FC = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Tasa de Cierre (Win Rate)</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.winRate')}</span>
           <div className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400">
             {kpis.winRate || 0}%
           </div>
@@ -92,7 +223,7 @@ export const Reports: React.FC = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Ticket Medio Ganado</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.avgTicketWon')}</span>
           <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
             {(kpis.averageDealSize || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
           </div>
@@ -102,7 +233,7 @@ export const Reports: React.FC = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Tasa de Entrega Ágil</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.agileDeliveryRate')}</span>
           <div className="mt-2 text-2xl font-bold text-purple-600 dark:text-purple-400">
             {agileData?.completionRate || 0}%
           </div>
@@ -112,70 +243,249 @@ export const Reports: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Analytics Charts */}
+      {/* Main Analytics Visualizations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Revenue Projection Bar Chart */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
               <TrendingUp className="w-4 h-4 text-blue-600" />
-              <span>Evolución Mensual de Facturación</span>
+              <span>{t('reports.monthlyInvoicingEvolution')}</span>
             </h2>
-            <span className="text-[11px] text-gray-400">Últimos 6 Meses</span>
+            <span className="text-[11px] text-gray-400">{t('reports.commercialTrend')}</span>
           </div>
 
-          <div className="h-44 flex items-end justify-between gap-3 pt-6 px-2 border-b border-gray-200 dark:border-slate-800">
-            {salesData?.monthlyRevenue?.map((m: any, idx: number) => {
-              const maxVal = Math.max(...salesData.monthlyRevenue.map((item: any) => item.revenue));
-              const heightPercent = maxVal > 0 ? (m.revenue / maxVal) * 100 : 20;
-
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
-                  <div className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {(m.revenue / 1000).toFixed(0)}k€
-                  </div>
-                  <div
-                    className="w-full bg-blue-600 hover:bg-blue-700 rounded-t-md transition-all duration-300 shadow-xs"
-                    style={{ height: `${Math.max(heightPercent, 12)}%` }}
-                  />
-                  <span className="text-[11px] font-medium text-gray-500 mt-1">{m.month}</span>
-                </div>
-              );
-            })}
+          <div className="pt-2">
+            <BarChart
+              data={monthlyBarData}
+              height={220}
+              valueFormatter={(val: number) => `${(val / 1000).toFixed(0)}k €`}
+            />
           </div>
         </div>
 
-        {/* Top 5 Accounts / Companies by Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-3">
+        {/* Deals Status Distribution Donut Chart */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+              <PieChart className="w-4 h-4 text-indigo-600" />
+              <span>{t('reports.pipelineDistribution')}</span>
+            </h2>
+            <span className="text-[11px] text-gray-400">{t('reports.totalOpportunities')}</span>
+          </div>
+
+          <div className="flex items-center justify-center pt-2">
+            <DonutChart data={dealsDonutData} size={190} strokeWidth={24} />
+          </div>
+        </div>
+      </div>
+
+      {/* Sprint Velocity & Top Customers Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Sprint Velocity Tracking */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+              <Layers className="w-4 h-4 text-purple-600" />
+              <span>{t('reports.scrumSprintVelocity')}</span>
+            </h2>
+            <span className="text-[11px] text-gray-400">{t('reports.storyPoints')}</span>
+          </div>
+
+          <div className="space-y-3">
+            {agileData?.sprintVelocity && agileData.sprintVelocity.length > 0 ? (
+              agileData.sprintVelocity.map((s: any, idx: number) => {
+                const pct = s.totalPoints > 0 ? Math.round((s.completedPoints / s.totalPoints) * 100) : 0;
+                return (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-gray-800 dark:text-slate-200">{s.name}</span>
+                      <span className="text-gray-500 font-mono text-[11px]">
+                        {s.completedPoints} / {s.totalPoints} pts ({pct}%)
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-purple-600 rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-xs text-gray-400">
+                No hay sprints registrados todavía.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Top 5 Clients by Closed Revenue */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
               <Award className="w-4 h-4 text-amber-500" />
-              <span>Top 5 Clientes por Volumen de Negocio</span>
+              <span>{t('reports.topClientsByRevenue')}</span>
             </h2>
+            <span className="text-[11px] text-gray-400">{t('reports.clientRanking')}</span>
           </div>
 
-          <div className="space-y-2.5 pt-2">
-            {salesData?.topCompanies?.map((comp: any, idx: number) => (
-              <div
-                key={idx}
-                className="p-3 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 flex items-center justify-between"
-              >
-                <div className="flex items-center space-x-3">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold text-xs flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <div className="text-xs font-bold text-gray-900 dark:text-white">{comp.name}</div>
-                    <div className="text-[10px] text-gray-500">{comp.dealsCount} tratos asociados</div>
+          <div className="space-y-2">
+            {salesData?.topCompanies && salesData.topCompanies.length > 0 ? (
+              salesData.topCompanies.map((c: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800"
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
+                      {idx + 1}
+                    </span>
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                      {c.name}
+                    </span>
                   </div>
+                  <span className="text-xs font-bold text-gray-900 dark:text-white font-mono">
+                    {c.total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-gray-900 dark:text-white">
-                  {comp.total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                </span>
+              ))
+            ) : (
+              <div className="text-center py-8 text-xs text-gray-400">
+                No hay datos de clientes registrados aún.
               </div>
-            ))}
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Analytics Telemetry & Real-Time Tracking Section */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span>{t('reports.liveTelemetryTracking')}</span>
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                Métricas de navegación, interacción de usuarios y eventos en tiempo real respetando la privacidad RGPD.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                analytics.clearHistory();
+                toast.info('Historial limpiado', 'Se han restablecido los registros de analíticas locales.');
+              }}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800 flex items-center gap-1.5 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{t('reports.clearHistory')}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Analytics KPI summary */}
+        {(() => {
+          const summary = analytics.getMetricsSummary();
+          const recent = analytics.getRecentEvents().slice(0, 8);
+
+          return (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('reports.totalEvents')}</span>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white font-mono mt-1">{summary.totalEvents}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('reports.pageViews')}</span>
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{summary.pageViewsCount}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('reports.interactions')}</span>
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 font-mono mt-1">{summary.interactionsCount}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('reports.activeSession')}</span>
+                  <div className="text-xs font-mono text-gray-700 dark:text-slate-300 truncate mt-2">{summary.activeSessionId}</div>
+                </div>
+              </div>
+
+              {/* Top Pages and Live Event Stream */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Páginas Más Visitadas
+                  </h3>
+                  <div className="space-y-2">
+                    {summary.topPages.length > 0 ? (
+                      summary.topPages.map((tp, idx) => (
+                        <div
+                          key={tp.path}
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-slate-800/40 text-xs border border-gray-100 dark:border-slate-800"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="w-5 h-5 rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold text-[10px] flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                            <span className="font-mono text-gray-800 dark:text-slate-200">{tp.path}</span>
+                          </div>
+                          <span className="font-bold text-gray-600 dark:text-slate-400">{tp.count} visitas</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">{t('reports.notEnoughVisits')}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Registro de Eventos Recientes
+                  </h3>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {recent.length > 0 ? (
+                      recent.map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-slate-800/40 text-[11px] border border-gray-100 dark:border-slate-800 font-mono"
+                        >
+                          <div className="flex items-center space-x-2 truncate">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                ev.category === 'navigation'
+                                  ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                                  : 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                              }`}
+                            >
+                              {ev.category}
+                            </span>
+                            <span className="text-gray-800 dark:text-slate-200 truncate">{ev.name} ({ev.path})</span>
+                          </div>
+                          <span className="text-[10px] text-gray-400 shrink-0 ml-2">
+                            {new Date(ev.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">{t('reports.waitingLiveEvents')}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

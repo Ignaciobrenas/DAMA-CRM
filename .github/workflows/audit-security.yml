@@ -2,11 +2,14 @@ name: Security Audit & Dependency Verification
 
 on:
   push:
-    branches-ignore:
-      - main
-      - master
+    branches:
+      - staging
+      - 'feature/**'
+      - 'fix/**'
+      - 'chore/**'
   pull_request:
     branches:
+      - staging
       - main
       - master
   schedule:
@@ -27,10 +30,10 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Core Security Audit
+      - name: Server Security Audit
         run: |
-          echo "🔍 Auditing Core Backend dependencies..."
-          cd core
+          echo "🔍 Auditing Server Backend dependencies..."
+          cd server
           npm audit --audit-level=critical || true
 
       - name: Client Security Audit
@@ -41,10 +44,10 @@ jobs:
 
       - name: Check for Uncommitted Sensitive Files
         run: |
-          echo "🔒 Verifying no .env or private key files are tracked in git..."
-          if git ls-files | grep -E '(\.env$|\.key$|\.pem$|id_rsa)'; then
-            echo "❌ Error: Se detectaron archivos confidenciales en el repositorio de Git!"
+          echo "🔒 Verifying no production secrets or private key files are tracked in git..."
+          if git ls-files | grep -E '(\.env\.local$|\.env\.production$|\.key$|\.pem$|id_rsa)'; then
+            echo "❌ Error: Se detectaron archivos confidenciales privados en el repositorio de Git!"
             exit 1
           else
-            echo "✅ Repositorio limpio de credenciales o secretos."
+            echo "✅ Repositorio limpio de credenciales o secretos privados."
           fi

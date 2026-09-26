@@ -1,4 +1,7 @@
-const API_BASE = '/api';
+const API_BASE =
+  typeof window !== 'undefined' && window.location.port === '5173'
+    ? 'http://localhost:4000/api'
+    : '/api';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -9,11 +12,18 @@ export interface ApiResponse<T = any> {
   message?: string;
   require2FA?: boolean;
   tempToken?: string;
+  [key: string]: any;
+}
+
+export interface ApiOptions extends RequestInit {
+  params?: Record<string, string | number | boolean | undefined>;
+  suppressToast?: boolean;
+  responseType?: string;
 }
 
 export async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiOptions = {}
 ): Promise<ApiResponse<T>> {
   const token = localStorage.getItem('dama_token');
   const headers = new Headers(options.headers || {});
@@ -26,13 +36,27 @@ export async function apiRequest<T = any>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  let fullUrl = `${API_BASE}${endpoint}`;
+  if (options.params) {
+    const searchParams = new URLSearchParams();
+    for (const [k, v] of Object.entries(options.params)) {
+      if (v !== undefined && v !== null && v !== '') {
+        searchParams.append(k, String(v));
+      }
+    }
+    const qs = searchParams.toString();
+    if (qs) {
+      fullUrl += (fullUrl.includes('?') ? '&' : '?') + qs;
+    }
+  }
+
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(fullUrl, {
       ...options,
       headers,
     });
 
-    if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/verify-2fa')) {
+    if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/verify-2fa') && !endpoint.includes('/branding')) {
       localStorage.removeItem('dama_token');
       localStorage.removeItem('dama_user');
       window.dispatchEvent(new Event('auth:unauthorized'));
@@ -63,6 +87,28 @@ export async function apiRequest<T = any>(
         }
       }
 
+      if (!(options as any).suppressToast) {
+        const errorTitle =
+          res.status === 403
+            ? 'Permiso Denegado'
+            : res.status === 404
+            ? 'Elemento No Encontrado'
+            : res.status === 409
+            ? 'Conflicto de Registro'
+            : res.status >= 500
+            ? 'Error del Servidor'
+            : 'Error en la Solicitud';
+
+        window.dispatchEvent(
+          new CustomEvent('app:toast-error', {
+            detail: {
+              title: errorTitle,
+              message: friendlyMsg,
+            },
+          })
+        );
+      }
+
       return {
         success: false,
         message: friendlyMsg,
@@ -71,9 +117,34 @@ export async function apiRequest<T = any>(
 
     return data;
   } catch {
+    const errorMsg = 'No se pudo conectar con el servidor. Comprueba tu conexión de red.';
+    if (!(options as any).suppressToast) {
+      window.dispatchEvent(
+        new CustomEvent('app:toast-error', {
+          detail: {
+            title: 'Fallo de Red',
+            message: errorMsg,
+          },
+        })
+      );
+    }
+
     return {
       success: false,
-      message: 'No se pudo conectar con el servidor. Comprueba tu conexión de red.',
+      message: errorMsg,
     };
   }
 }
+
+export const api = {
+  get: (url: string, options?: ApiOptions) => apiRequest(url, { ...options, method: 'GET' }),
+  post: (url: string, data?: any, options?: ApiOptions) =>
+    apiRequest(url, { ...options, method: 'POST', body: data ? JSON.stringify(data) : undefined }),
+  put: (url: string, data?: any, options?: ApiOptions) =>
+    apiRequest(url, { ...options, method: 'PUT', body: data ? JSON.stringify(data) : undefined }),
+  patch: (url: string, data?: any, options?: ApiOptions) =>
+    apiRequest(url, { ...options, method: 'PATCH', body: data ? JSON.stringify(data) : undefined }),
+  delete: (url: string, options?: ApiOptions) => apiRequest(url, { ...options, method: 'DELETE' }),
+};
+
+
