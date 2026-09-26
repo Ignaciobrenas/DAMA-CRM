@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { wsService } from '../../services/websocket.service';
+import { NotificationService } from '../notifications/notifications.service';
 
 function calculateSlaDeadline(priority: string): Date {
   const now = Date.now();
@@ -169,8 +170,15 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
       },
     });
 
-    // Broadcast live WebSocket event
+    // Broadcast live WebSocket event and persist real-time notification
     wsService.broadcast('ticket:created', ticket);
+    await NotificationService.notifyTicketCreated({
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      title: ticket.title,
+      priority: ticket.priority,
+      tenantId: ticket.tenantId,
+    });
 
     // Audit log
     await prisma.auditLog.create({
@@ -291,10 +299,17 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
       });
     }
 
-    // Broadcast live WebSocket event
+    // Broadcast live WebSocket event and persist real-time notification
     wsService.broadcast('ticket:message', {
       ticketId: id,
       message: newMessage,
+    });
+    await NotificationService.notifyTicketReply({
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      isInternal,
+      senderName: newMessage.senderName,
+      tenantId: ticket.tenantId,
     });
 
     res.status(201).json({
