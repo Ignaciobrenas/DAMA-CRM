@@ -5,6 +5,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { Modal } from '../components/common/Modal';
 import { PermissionGate } from '../components/common/PermissionGate';
+import { AgingReportModal } from '../components/invoicing/AgingReportModal';
+import { QuoteSignModal } from '../components/invoicing/QuoteSignModal';
 
 export const Invoicing: React.FC = () => {
   const { t } = useLanguage();
@@ -16,6 +18,10 @@ export const Invoicing: React.FC = () => {
   const [contacts, setContacts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConverting, setIsConverting] = useState(false);
+
+  // SME Suite Modals
+  const [isAgingModalOpen, setIsAgingModalOpen] = useState(false);
+  const [signingQuote, setSigningQuote] = useState<any>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -211,6 +217,14 @@ export const Invoicing: React.FC = () => {
             </button>
           </div>
 
+          <button
+            onClick={() => setIsAgingModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            title="Informe de Antigüedad de Deuda y Control de Morosidad"
+          >
+            <span>📊 {t('dunning.agingButton')}</span>
+          </button>
+
           <PermissionGate resource="invoices" action="create">
             <button
               onClick={() => {
@@ -380,6 +394,30 @@ export const Invoicing: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center space-x-1.5">
+                          {q.status === 'ACCEPTED' || q.signatureData ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded text-[11px] font-bold">
+                              ✍️ {t('quotes.signed')}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setSigningQuote(q)}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 rounded text-xs font-semibold"
+                              title="Firmar presupuesto en pantalla"
+                            >
+                              <span>✍️ {t('quotes.sign')}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              const signUrl = `${window.location.origin}/quote/sign/${q.publicToken || q.id}`;
+                              navigator.clipboard.writeText(signUrl);
+                              toast.success(t('quotes.linkCopied'), signUrl);
+                            }}
+                            className="inline-flex items-center space-x-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold"
+                            title="Copiar enlace público de firma para el cliente"
+                          >
+                            <span>🔗</span>
+                          </button>
                           {q.status !== 'ACCEPTED' && (
                             <button
                               onClick={() => handleConvertQuote(q.id)}
@@ -544,6 +582,30 @@ export const Invoicing: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Aging Debt Report Modal */}
+      <AgingReportModal
+        isOpen={isAgingModalOpen}
+        onClose={() => setIsAgingModalOpen(false)}
+        onPaymentRecorded={() => {
+          loadData();
+        }}
+      />
+
+      {/* Quote Digital Signing Modal */}
+      {signingQuote && (
+        <QuoteSignModal
+          isOpen={Boolean(signingQuote)}
+          onClose={() => setSigningQuote(null)}
+          quoteId={signingQuote.id}
+          quoteNumber={signingQuote.quoteNumber}
+          total={signingQuote.total}
+          publicToken={signingQuote.publicToken}
+          onSignedSuccess={() => {
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 };
