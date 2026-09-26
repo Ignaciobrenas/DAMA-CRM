@@ -4,7 +4,7 @@ import { Language, SUPPORTED_LANGUAGES, translations } from '../i18n';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, fallback?: string) => string;
   isRTL: boolean;
 }
 
@@ -28,9 +28,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLanguageState(lang);
   };
 
-  const t = (key: string): string => {
+  const t = (key: string, fallback?: string): string => {
     const langDict = translations[language] || translations.es;
-    return langDict[key] || translations.es[key] || key;
+    return langDict[key] || fallback || translations.es[key] || key;
   };
 
   return (

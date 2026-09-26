@@ -16,10 +16,14 @@ import {
   FileSpreadsheet,
   Package,
   CheckSquare,
+  Activity,
+  Radio,
+  Trash2,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { BarChart, DonutChart } from '../components/ui/Charts';
 import { useToast } from '../context/ToastContext';
+import { analytics, AnalyticsEvent } from '../services/analytics';
 
 export const Reports: React.FC = () => {
   const toast = useToast();
@@ -352,6 +356,134 @@ export const Reports: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Analytics Telemetry & Real-Time Tracking Section */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span>Seguimiento de Analíticas & Telemetría en Vivo</span>
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                Métricas de navegación, interacción de usuarios y eventos en tiempo real respetando la privacidad RGPD.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                analytics.clearHistory();
+                toast.info('Historial limpiado', 'Se han restablecido los registros de analíticas locales.');
+              }}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800 flex items-center gap-1.5 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Limpiar Historial</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Analytics KPI summary */}
+        {(() => {
+          const summary = analytics.getMetricsSummary();
+          const recent = analytics.getRecentEvents().slice(0, 8);
+
+          return (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">Eventos Totales</span>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white font-mono mt-1">{summary.totalEvents}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">Páginas Vistas</span>
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{summary.pageViewsCount}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">Interacciones</span>
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 font-mono mt-1">{summary.interactionsCount}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">Sesión Activa</span>
+                  <div className="text-xs font-mono text-gray-700 dark:text-slate-300 truncate mt-2">{summary.activeSessionId}</div>
+                </div>
+              </div>
+
+              {/* Top Pages and Live Event Stream */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Páginas Más Visitadas
+                  </h3>
+                  <div className="space-y-2">
+                    {summary.topPages.length > 0 ? (
+                      summary.topPages.map((tp, idx) => (
+                        <div
+                          key={tp.path}
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-slate-800/40 text-xs border border-gray-100 dark:border-slate-800"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="w-5 h-5 rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold text-[10px] flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                            <span className="font-mono text-gray-800 dark:text-slate-200">{tp.path}</span>
+                          </div>
+                          <span className="font-bold text-gray-600 dark:text-slate-400">{tp.count} visitas</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">No hay suficientes registros de visitas aún.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Registro de Eventos Recientes
+                  </h3>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {recent.length > 0 ? (
+                      recent.map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-slate-800/40 text-[11px] border border-gray-100 dark:border-slate-800 font-mono"
+                        >
+                          <div className="flex items-center space-x-2 truncate">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                ev.category === 'navigation'
+                                  ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                                  : 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                              }`}
+                            >
+                              {ev.category}
+                            </span>
+                            <span className="text-gray-800 dark:text-slate-200 truncate">{ev.name} ({ev.path})</span>
+                          </div>
+                          <span className="text-[10px] text-gray-400 shrink-0 ml-2">
+                            {new Date(ev.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">Esperando eventos en vivo...</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

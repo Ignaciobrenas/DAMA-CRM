@@ -37,7 +37,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
   const { login, register, verify2FA } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const { branding } = useBranding();
+  const { branding, getLogo } = useBranding();
 
   // Mode state
   const [mode, setMode] = useState<AuthMode>('login');
@@ -261,23 +261,14 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
         {/* Brand Header */}
         <div className="text-center mb-6">
-          {branding.logoUrl ? (
-            <div className="relative inline-block mx-auto mb-3">
-              <div className="absolute inset-0 bg-blue-500/20 rounded-2xl blur-md" />
-              <img
-                src={branding.logoUrl}
-                alt={branding.companyName}
-                className="relative w-16 h-16 rounded-2xl object-contain mx-auto p-1.5 bg-white dark:bg-slate-800 shadow-md border border-gray-100 dark:border-slate-800"
-              />
-            </div>
-          ) : (
-            <div
-              className="inline-flex items-center justify-center w-14 h-14 rounded-2xl text-white mb-3 shadow-md"
-              style={{ backgroundColor: branding.primaryColor }}
-            >
-              <Shield className="w-7 h-7" />
-            </div>
-          )}
+          <div className="relative inline-block mx-auto mb-3">
+            <div className="absolute inset-0 bg-blue-500/20 rounded-2xl blur-md" />
+            <img
+              src={getLogo('vertical')}
+              alt={branding.companyName}
+              className="relative w-20 h-20 rounded-2xl object-contain mx-auto p-1.5 bg-white/90 dark:bg-slate-800/90 shadow-md border border-gray-100 dark:border-slate-800"
+            />
+          </div>
 
           <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
             {mode === 'login' && t('login')}

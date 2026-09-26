@@ -24,6 +24,7 @@ import activitiesRoutes from './modules/activities/activities.routes';
 import customFieldsRoutes from './modules/custom-fields/custom-fields.routes';
 import leadCaptureRoutes from './modules/lead-capture/lead-capture.routes';
 import brandingRoutes from './modules/branding/branding.routes';
+import integrationsRoutes from './modules/integrations/integrations.routes';
 
 const app = express();
 
@@ -105,6 +106,11 @@ app.use('/api/activities', activitiesRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);
 app.use('/api/lead-capture', leadCaptureRoutes);
 app.use('/api/branding', brandingRoutes);
+app.use('/api/integrations', integrationsRoutes);
+
+// Endpoint explícito de integraciones de terceros solicitado
+import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';
+app.get('/api/integraciones-de-terceros', getIntegracionesDeTerceros);
 
 // Centralized error handler
 app.use(errorHandler);
@@ -122,6 +128,9 @@ if (process.env.NODE_ENV !== 'test') {
   🔒 Security: JWT + Dynamic RBAC + 2FA Enabled
   📦 Inventory UnoPIM Webhook: http://localhost:${config.port}/api/inventory/webhooks/unopim
   💬 WhatsApp Meta Webhook: http://localhost:${config.port}/api/omnichannel/webhooks/whatsapp
+  🛍️ WooCommerce Webhook: http://localhost:${config.port}/api/integrations/woocommerce/webhook
+  🛒 Shopify Webhook: http://localhost:${config.port}/api/integrations/shopify/webhook
+  ⚡ n8n Webhook / Action: http://localhost:${config.port}/api/integrations/n8n/action
     `);
   });
 }
