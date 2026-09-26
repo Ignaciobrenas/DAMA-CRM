@@ -28,6 +28,7 @@ import integrationsRoutes from './modules/integrations/integrations.routes';
 import godRoutes from './modules/god/god.routes';
 import ticketsRoutes from './modules/tickets/tickets.routes';
 import expensesRoutes from './modules/expenses/expenses.routes';
+import notificationsRoutes from './modules/notifications/notifications.routes';
 
 const app = express();
 
@@ -146,6 +147,7 @@ app.use('/api/integrations', integrationsRoutes);
 app.use('/api/god', godRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/expenses', expensesRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Explicit third-party integrations catalog endpoint
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';
