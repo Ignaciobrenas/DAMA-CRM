@@ -284,6 +284,22 @@ El repositorio opera bajo un estricto modelo de estabilidad:
 
 ---
 
+## 🏢 Arquitectura Multi-Tenant, God Mode, Sistema de Tickets y Suite PYME
+
+DAMA-CRM evoluciona hacia una arquitectura **Multi-Tenant SaaS** con partición lógica de datos, panel global **God Mode**, resolución dinámica de **CORS** y una suite completa diseñada para la rentabilidad de las PYMEs:
+* **Aislamiento Multi-Tenant:** Cada empresa opera en su propio entorno aislado mediante partición por `tenantId` en Prisma y resolución por subdominio (`https://empresa.damacrm.com`) o cabecera `X-Tenant-ID`.
+* **Tenant de God (SuperAdmin):** Consola para supervisar todos los tenants, aprovisionar cuentas, suspender/reactivar y utilizar la función de soporte delegado (**"Switch Tenant"**).
+* **Helpdesk & Tickets con SLA:** Gestión omnicanal de incidencias, temporizadores de SLA, y distinción de **mensajes públicos** al cliente frente a **notas internas confidenciales** de agentes.
+* **Firma Digital de Presupuestos:** Enlace público para firma online en Canvas HTML5 con conversión automática a factura.
+* **Control de Cobros y Morosidad (Aging Report):** Seguimiento de deuda por antigüedad, registro de pagos parciales y avisos automáticos de recobro.
+* **Libros de Facturas para Gestoría:** Exportación en 1 clic de facturas expedidas y recibidas para el Modelo 303 de la Agencia Tributaria.
+* **Gastos y Margen P&L:** Registro ágil de compras con control del beneficio operativo en tiempo real.
+
+> 📖 Consulta la especificación técnica completa en [`docs/docs/multi-tenant-and-pymes-roadmap.md`](docs/docs/multi-tenant-and-pymes-roadmap.md) y [`ESTADO_PROYECTO.md`](ESTADO_PROYECTO.md).
+
+---
+
 ## 📄 Licencia
 
 Este proyecto está distribuido bajo la licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más información. Desarrollado por [Ignacio](https://github.com/Ignaciobrenas).
+
