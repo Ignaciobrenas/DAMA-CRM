@@ -31,7 +31,10 @@ router.post('/n8n/action', handleN8nAction);
 // -----------------------------------------------------------------------------
 router.use(authMiddleware);
 
-router.get('/', requirePermission('integrations', 'manage'), getIntegrations);
+// Lectura de estado permitida a usuarios autenticados
+router.get('/', getIntegrations);
+
+// Modificaciones y ejecuciones protegidas para administradores
 router.put('/:connector', requirePermission('integrations', 'manage'), updateIntegration);
 router.post('/:connector/test', requirePermission('integrations', 'manage'), testIntegration);
 router.post('/:connector/sync', requirePermission('integrations', 'manage'), syncIntegration);
