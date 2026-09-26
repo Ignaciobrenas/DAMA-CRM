@@ -14,9 +14,11 @@ import {
   Receipt,
   ExternalLink,
   Calendar,
-  X,
-  Check,
   AlertCircle,
+  Download,
+  CheckSquare,
+  Square,
+  X,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
@@ -25,6 +27,7 @@ import { useToast } from '../context/ToastContext';
 import { RecordDrawer } from '../components/crm/RecordDrawer';
 import { Modal } from '../components/common/Modal';
 import { PermissionGate } from '../components/common/PermissionGate';
+import { exportToCSV } from '../utils/exportUtils';
 
 export const Contacts: React.FC = () => {
   const { t } = useLanguage();
@@ -69,6 +72,106 @@ export const Contacts: React.FC = () => {
 
   const canEdit = hasPermission('contacts', 'update');
   const canDelete = hasPermission('contacts', 'delete');
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelectContact = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === contacts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(contacts.map((c) => c.id)));
+    }
+  };
+
+  const handleExportCSV = (selectedOnly = false) => {
+    const dataToExport = selectedOnly
+      ? contacts.filter((c) => selectedIds.has(c.id))
+      : contacts;
+
+    if (dataToExport.length === 0) {
+      toast.error(t('error'), 'No hay contactos para exportar');
+      return;
+    }
+
+    const headers = [
+      'ID',
+      t('firstName'),
+      t('lastName'),
+      t('email'),
+      t('phone'),
+      t('mobile'),
+      t('companies'),
+      t('jobTitle'),
+      t('department'),
+      t('status'),
+      'Fecha Creación',
+    ];
+
+    const rows = dataToExport.map((c) => [
+      c.id,
+      c.firstName,
+      c.lastName,
+      c.email,
+      c.phone || '',
+      c.mobile || '',
+      c.company?.name || '',
+      c.position || '',
+      c.department || '',
+      c.isLead ? 'Lead' : 'Cliente',
+      new Date(c.createdAt).toLocaleDateString(),
+    ]);
+
+    exportToCSV(`contactos_export_${new Date().toISOString().split('T')[0]}`, headers, rows);
+    toast.success(t('success'), `${dataToExport.length} contactos exportados a CSV`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const confirmMsg = t('bulk.confirmDelete').replace('{count}', String(selectedIds.size));
+    if (!window.confirm(confirmMsg)) return;
+
+    const res = await apiRequest('/contacts/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids: Array.from(selectedIds) }),
+    });
+
+    if (res.success) {
+      toast.success(t('success'), t('bulk.deleteSuccess').replace('{count}', String(selectedIds.size)));
+      setSelectedIds(new Set());
+      loadContacts();
+    } else {
+      toast.error(t('error'), res.message || t('bulk.error'));
+    }
+  };
+
+  const handleBulkMarkLead = async (isLead: boolean) => {
+    if (selectedIds.size === 0) return;
+
+    const res = await apiRequest('/contacts/bulk-update', {
+      method: 'POST',
+      body: JSON.stringify({ ids: Array.from(selectedIds), isLead }),
+    });
+
+    if (res.success) {
+      toast.success(t('success'), t('bulk.updateSuccess').replace('{count}', String(selectedIds.size)));
+      setSelectedIds(new Set());
+      loadContacts();
+    } else {
+      toast.error(t('error'), res.message || t('bulk.error'));
+    }
+  };
 
   const loadContacts = async () => {
     setIsLoading(true);
@@ -215,6 +318,15 @@ export const Contacts: React.FC = () => {
             />
           </div>
 
+          <button
+            onClick={() => handleExportCSV(false)}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            title={t('bulk.exportAll')}
+          >
+            <Download className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">{t('bulk.exportCsv')}</span>
+          </button>
+
           <PermissionGate resource="contacts" action="create">
             <button
               onClick={() => setIsModalOpen(true)}
@@ -227,12 +339,74 @@ export const Contacts: React.FC = () => {
         </div>
       </div>
 
+      {/* Floating Enterprise Bulk Operations Toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center space-x-3 text-xs animate-in fade-in slide-in-from-bottom-4">
+          <div className="font-bold flex items-center space-x-1.5 border-r border-slate-700 pr-3 text-blue-400">
+            <CheckSquare className="w-4 h-4" />
+            <span>{t('bulk.selectedCount').replace('{count}', String(selectedIds.size))}</span>
+          </div>
+
+          <button
+            onClick={() => handleExportCSV(true)}
+            className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-semibold transition"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{t('bulk.exportCsv')}</span>
+          </button>
+
+          {canEdit && (
+            <>
+              <button
+                onClick={() => handleBulkMarkLead(false)}
+                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-blue-600/80 hover:bg-blue-600 font-semibold transition"
+              >
+                <span>{t('bulk.markAsClient')}</span>
+              </button>
+
+              <button
+                onClick={() => handleBulkMarkLead(true)}
+                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-amber-600/80 hover:bg-amber-600 font-semibold transition"
+              >
+                <span>{t('bulk.markAsLead')}</span>
+              </button>
+            </>
+          )}
+
+          {canDelete && (
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 font-semibold transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{t('bulk.deleteSelected')}</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-slate-400 hover:text-white underline pl-2 transition"
+          >
+            {t('bulk.deselectAll')}
+          </button>
+        </div>
+      )}
+
       {/* High Density Table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
+                <th className="px-4 py-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={contacts.length > 0 && selectedIds.size === contacts.length}
+                    onChange={toggleSelectAll}
+                    aria-label="Seleccionar todos los contactos"
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3">{t('fullName')}</th>
                 <th className="px-4 py-3">{t('companies')}</th>
                 <th className="px-4 py-3">{t('jobTitle')}</th>
@@ -244,7 +418,7 @@ export const Contacts: React.FC = () => {
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-xs text-gray-400">
+                  <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                       <span>{t('loading')}</span>
@@ -256,9 +430,20 @@ export const Contacts: React.FC = () => {
                   <tr
                     key={contact.id}
                     onClick={() => handleOpenDetailModal(contact.id)}
-                    className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                    className={`hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group ${
+                      selectedIds.has(contact.id) ? 'bg-blue-50/70 dark:bg-blue-950/40' : ''
+                    }`}
                     title={t('view')}
                   >
+                    <td className="px-4 py-2.5 text-center" onClick={(e) => toggleSelectContact(contact.id, e)}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(contact.id)}
+                        onChange={() => {}}
+                        aria-label={`Seleccionar ${contact.firstName} ${contact.lastName}`}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
                       <div className="flex items-center space-x-2.5">
                         <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform">
@@ -325,7 +510,7 @@ export const Contacts: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-xs text-gray-400">
+                  <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
                     {t('noContactsFound')}
                   </td>
                 </tr>

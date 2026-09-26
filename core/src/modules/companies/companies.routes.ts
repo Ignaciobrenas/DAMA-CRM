@@ -5,6 +5,7 @@ import {
   createCompany,
   updateCompany,
   deleteCompany,
+  bulkDeleteCompanies,
 } from './companies.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -16,6 +17,7 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get('/', requirePermission('companies', 'read'), listCompanies);
+router.post('/bulk-delete', requirePermission('companies', 'delete'), bulkDeleteCompanies);
 router.get('/:id', requirePermission('companies', 'read'), getCompany);
 router.post('/', requirePermission('companies', 'create'), validate(createCompanySchema), createCompany);
 router.put('/:id', requirePermission('companies', 'update'), updateCompany);

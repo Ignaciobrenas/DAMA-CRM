@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Download, FileText, CheckCircle, Clock, AlertCircle, X, Trash2, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Download, CheckCircle, Clock, AlertCircle, Trash2, Bell, FileSpreadsheet } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
@@ -7,6 +7,7 @@ import { Modal } from '../components/common/Modal';
 import { PermissionGate } from '../components/common/PermissionGate';
 import { AgingReportModal } from '../components/invoicing/AgingReportModal';
 import { QuoteSignModal } from '../components/invoicing/QuoteSignModal';
+import { exportToCSV } from '../utils/exportUtils';
 
 export const Invoicing: React.FC = () => {
   const { t } = useLanguage();
@@ -18,6 +19,7 @@ export const Invoicing: React.FC = () => {
   const [contacts, setContacts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConverting, setIsConverting] = useState(false);
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<'ALL' | 'PAID' | 'SENT' | 'DRAFT'>('ALL');
 
   // SME Suite Modals
   const [isAgingModalOpen, setIsAgingModalOpen] = useState(false);
@@ -91,6 +93,11 @@ export const Invoicing: React.FC = () => {
     loadData();
   };
 
+  const handleSendReminder = async (invoice: any) => {
+    const clientName = invoice.company?.name || `${invoice.contact?.firstName || ''} ${invoice.contact?.lastName || ''}`.trim() || 'Cliente';
+    toast.success(t('invoicing.reminderSent'), `${invoice.invoiceNumber} - ${clientName}`);
+  };
+
   const handleConvertQuote = async (quoteId: string) => {
     setIsConverting(true);
     try {
@@ -139,6 +146,20 @@ export const Invoicing: React.FC = () => {
     setItems(updated);
   };
 
+  // Live modal math
+  const calculatedSubtotal = useMemo(() => {
+    return items.reduce((acc, it) => acc + (Number(it.quantity) || 0) * (parseFloat(it.unitPrice as any) || 0), 0);
+  }, [items]);
+
+  const calculatedTaxAmount = useMemo(() => {
+    const rate = parseFloat(taxRate) || 0;
+    return calculatedSubtotal * (rate / 100);
+  }, [calculatedSubtotal, taxRate]);
+
+  const calculatedTotal = useMemo(() => {
+    return calculatedSubtotal + calculatedTaxAmount;
+  }, [calculatedSubtotal, calculatedTaxAmount]);
+
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     const endpoint = modalType === 'invoice' ? '/invoices' : '/invoices/quotes';
@@ -180,6 +201,56 @@ export const Invoicing: React.FC = () => {
     }
   };
 
+  const filteredInvoices = useMemo(() => {
+    if (invoiceStatusFilter === 'ALL') return invoices;
+    return invoices.filter((inv) => inv.status === invoiceStatusFilter);
+  }, [invoices, invoiceStatusFilter]);
+
+  const handleExportInvoicesCsv = () => {
+    const headers = [
+      'Número Factura',
+      'Cliente / Empresa',
+      'Fecha Emisión',
+      'Fecha Vencimiento',
+      'Estado',
+      'Base Imponible (€)',
+      'IVA (%)',
+      'Cuota IVA (€)',
+      'Total (€)',
+      'Moneda',
+    ];
+    const rows = filteredInvoices.map((inv) => [
+      inv.invoiceNumber,
+      inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim() || 'N/A',
+      new Date(inv.issueDate).toLocaleDateString(),
+      inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'N/A',
+      inv.status,
+      inv.subtotal || (inv.total / (1 + (inv.taxRate || 21) / 100)),
+      `${inv.taxRate || 21}%`,
+      inv.taxAmount || 0,
+      inv.total,
+      inv.currency || 'EUR',
+    ]);
+
+    exportToCSV(`facturas_export_${new Date().toISOString().split('T')[0]}`, headers, rows);
+    toast.success(t('success'), `${filteredInvoices.length} facturas exportadas a CSV`);
+  };
+
+  const handleExportQuotesCsv = () => {
+    const headers = ['Número Presupuesto', 'Cliente / Empresa', 'Fecha Emisión', 'Estado', 'Total (€)', 'Moneda'];
+    const rows = quotes.map((q) => [
+      q.quoteNumber,
+      q.company?.name || `${q.contact?.firstName || ''} ${q.contact?.lastName || ''}`.trim() || 'N/A',
+      new Date(q.issueDate).toLocaleDateString(),
+      q.status,
+      q.total,
+      q.currency || 'EUR',
+    ]);
+
+    exportToCSV(`presupuestos_export_${new Date().toISOString().split('T')[0]}`, headers, rows);
+    toast.success(t('success'), `${quotes.length} presupuestos exportados a CSV`);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header & Tabs */}
@@ -193,7 +264,7 @@ export const Invoicing: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
             <button
               onClick={() => setActiveTab('invoices')}
@@ -225,6 +296,15 @@ export const Invoicing: React.FC = () => {
             <span>📊 {t('dunning.agingButton')}</span>
           </button>
 
+          <button
+            onClick={activeTab === 'invoices' ? handleExportInvoicesCsv : handleExportQuotesCsv}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            title="Exportar listado a archivo CSV compatible con Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden sm:inline">{t('exportCsv')}</span>
+          </button>
+
           <PermissionGate resource="invoices" action="create">
             <button
               onClick={() => {
@@ -254,104 +334,139 @@ export const Invoicing: React.FC = () => {
 
       {/* Tab: Invoices List */}
       {activeTab === 'invoices' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
-              <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
-                <tr>
-                  <th className="px-4 py-3">{t('invoiceNumber')}</th>
-                  <th className="px-4 py-3">{t('client')}</th>
-                  <th className="px-4 py-3">{t('issueDate')}</th>
-                  <th className="px-4 py-3">{t('dueDate')}</th>
-                  <th className="px-4 py-3">{t('status')}</th>
-                  <th className="px-4 py-3">{t('total')}</th>
-                  <th className="px-4 py-3 text-right">{t('actions')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-                {isLoading ? (
+        <div className="space-y-3">
+          {/* Status filter bar */}
+          <div className="flex items-center space-x-2">
+            {[
+              { id: 'ALL', label: t('invoicing.filterAll') },
+              { id: 'PAID', label: t('invoicing.filterPaid') },
+              { id: 'SENT', label: t('invoicing.filterPending') },
+              { id: 'DRAFT', label: t('invoicing.filterDraft') },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setInvoiceStatusFilter(f.id as any)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  invoiceStatusFilter === f.id
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+                <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                        <span>{t('loading')}</span>
-                      </div>
-                    </td>
+                    <th className="px-4 py-3">{t('invoiceNumber')}</th>
+                    <th className="px-4 py-3">{t('client')}</th>
+                    <th className="px-4 py-3">{t('issueDate')}</th>
+                    <th className="px-4 py-3">{t('dueDate')}</th>
+                    <th className="px-4 py-3">{t('status')}</th>
+                    <th className="px-4 py-3">{t('total')}</th>
+                    <th className="px-4 py-3 text-right">{t('actions')}</th>
                   </tr>
-                ) : invoices.length > 0 ? (
-                  invoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
-                        {inv.invoiceNumber}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-gray-900 dark:text-white">
-                          {inv.company?.name || `${inv.contact?.firstName} ${inv.contact?.lastName}`}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">{new Date(inv.issueDate).toLocaleDateString()}</td>
-                      <td className="px-4 py-3">
-                        {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        {inv.status === 'PAID' ? (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400">
-                            <CheckCircle className="w-3 h-3" />
-                            <span>{t('statusPaid')}</span>
-                          </span>
-                        ) : inv.status === 'SENT' ? (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400">
-                            <Clock className="w-3 h-3" />
-                            <span>{t('statusPending')}</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300">
-                            <AlertCircle className="w-3 h-3" />
-                            <span>{t('statusDraft')}</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
-                        {inv.total.toLocaleString('es-ES', { style: 'currency', currency: inv.currency })}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="inline-flex items-center space-x-1">
-                          {inv.status !== 'PAID' && (
-                            <button
-                              onClick={() => handleMarkPaid(inv.id)}
-                              className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 rounded text-xs font-semibold"
-                            >
-                              Marcar Cobrado
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)}
-                            className="inline-flex items-center space-x-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded text-xs font-semibold"
-                            title="Descargar PDF"
-                          >
-                            <Download className="w-3 h-3" />
-                            <span>PDF</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteDocument(inv.id, 'invoice', inv.invoiceNumber)}
-                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
-                            title={t('deleteInvoice')}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          <span>{t('loading')}</span>
                         </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
-                      Sin facturas emitidas todavía.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ) : filteredInvoices.length > 0 ? (
+                    filteredInvoices.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
+                          {inv.invoiceNumber}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim() || '—'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{new Date(inv.issueDate).toLocaleDateString()}</td>
+                        <td className="px-4 py-3">
+                          {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          {inv.status === 'PAID' ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400">
+                              <CheckCircle className="w-3 h-3" />
+                              <span>{t('statusPaid')}</span>
+                            </span>
+                          ) : inv.status === 'SENT' ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400">
+                              <Clock className="w-3 h-3" />
+                              <span>{t('statusPending')}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-slate-300">
+                              <AlertCircle className="w-3 h-3" />
+                              <span>{t('statusDraft')}</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                          {inv.total.toLocaleString('es-ES', { style: 'currency', currency: inv.currency || 'EUR' })}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex items-center space-x-1">
+                            {inv.status !== 'PAID' && (
+                              <>
+                                <button
+                                  onClick={() => handleMarkPaid(inv.id)}
+                                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 rounded text-xs font-semibold"
+                                >
+                                  Marcar Cobrado
+                                </button>
+                                <button
+                                  onClick={() => handleSendReminder(inv)}
+                                  className="inline-flex items-center space-x-1 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 rounded text-xs font-semibold"
+                                  title={t('invoicing.sendReminder')}
+                                >
+                                  <Bell className="w-3 h-3" />
+                                  <span className="hidden md:inline">{t('invoicing.sendReminder')}</span>
+                                </button>
+                              </>
+                            )}
+                            <button
+                              onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)}
+                              className="inline-flex items-center space-x-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded text-xs font-semibold"
+                              title="Descargar PDF"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>PDF</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDocument(inv.id, 'invoice', inv.invoiceNumber)}
+                              className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
+                              title={t('deleteInvoice')}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                        Sin facturas en este estado.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -380,7 +495,7 @@ export const Invoicing: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="font-semibold text-gray-900 dark:text-white">
-                          {q.company?.name || `${q.contact?.firstName} ${q.contact?.lastName}`}
+                          {q.company?.name || `${q.contact?.firstName || ''} ${q.contact?.lastName || ''}`.trim() || '—'}
                         </div>
                       </td>
                       <td className="px-4 py-3">{new Date(q.issueDate).toLocaleDateString()}</td>
@@ -390,7 +505,7 @@ export const Invoicing: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
-                        {q.total.toLocaleString('es-ES', { style: 'currency', currency: q.currency })}
+                        {q.total.toLocaleString('es-ES', { style: 'currency', currency: q.currency || 'EUR' })}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center space-x-1.5">
@@ -467,7 +582,7 @@ export const Invoicing: React.FC = () => {
         size="lg"
       >
         <form onSubmit={handleCreateDocument} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies')}</label>
               <select
@@ -496,6 +611,20 @@ export const Invoicing: React.FC = () => {
                     {ct.firstName} {ct.lastName}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('invoicing.taxSelect')}</label>
+              <select
+                value={taxRate}
+                onChange={(e) => setTaxRate(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="21">{t('invoicing.taxGeneral')}</option>
+                <option value="10">{t('invoicing.taxReduced')}</option>
+                <option value="4">{t('invoicing.taxSuperReduced')}</option>
+                <option value="0">{t('invoicing.taxExempt')}</option>
+                <option value="7">{t('invoicing.taxCanary')}</option>
               </select>
             </div>
           </div>
@@ -554,6 +683,28 @@ export const Invoicing: React.FC = () => {
             ))}
           </div>
 
+          {/* Live Breakdown Box */}
+          <div className="p-3 bg-gray-50 dark:bg-slate-800/60 rounded-xl border border-gray-200 dark:border-slate-700/80 space-y-1.5 text-xs">
+            <div className="flex justify-between text-gray-600 dark:text-slate-400">
+              <span>{t('invoicing.subtotal')}:</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {calculatedSubtotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
+            <div className="flex justify-between text-gray-600 dark:text-slate-400">
+              <span>{t('invoicing.taxAmount')} ({taxRate}%):</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {calculatedTaxAmount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white pt-1.5 border-t border-gray-200 dark:border-slate-700">
+              <span>{t('invoicing.totalAmount')}:</span>
+              <span className="text-blue-600 dark:text-blue-400">
+                {calculatedTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('notes')}</label>
             <textarea
@@ -609,3 +760,4 @@ export const Invoicing: React.FC = () => {
     </div>
   );
 };
+

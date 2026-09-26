@@ -11,13 +11,17 @@ import {
   AlertCircle,
   Edit2,
   Trash2,
-  ArrowUpDown,
   Filter,
+  Download,
+  CheckSquare,
+  Square,
+  ArrowUpDown,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { isValidEmail, isValidPhone } from '../utils/validators';
+import { exportToCSV } from '../utils/exportUtils';
 
 export const Companies: React.FC = () => {
   const { t } = useLanguage();
@@ -81,6 +85,149 @@ export const Companies: React.FC = () => {
     });
     return Array.from(set).sort();
   }, [companies]);
+
+  // Filter & sort companies
+  const filteredAndSortedCompanies = useMemo(() => {
+    return companies
+      .filter((company) => {
+        // Search
+        if (search.trim()) {
+          const q = search.toLowerCase().trim();
+          const name = (company.name || '').toLowerCase();
+          const city = (company.city || '').toLowerCase();
+          const industry = (company.industry || '').toLowerCase();
+          const website = (company.website || '').toLowerCase();
+          const phone = (company.phone || '').toLowerCase();
+          const email = (company.email || '').toLowerCase();
+          if (
+            !name.includes(q) &&
+            !city.includes(q) &&
+            !industry.includes(q) &&
+            !website.includes(q) &&
+            !phone.includes(q) &&
+            !email.includes(q)
+          ) {
+            return false;
+          }
+        }
+
+        // Industry filter
+        if (industryFilter !== 'ALL') {
+          if ((company.industry || '').trim() !== industryFilter) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'NAME_ASC') {
+          return (a.name || '').localeCompare(b.name || '');
+        }
+        if (sortBy === 'NAME_DESC') {
+          return (b.name || '').localeCompare(a.name || '');
+        }
+        if (sortBy === 'REVENUE_DESC') {
+          return (b.annualRevenue || 0) - (a.annualRevenue || 0);
+        }
+        if (sortBy === 'REVENUE_ASC') {
+          return (a.annualRevenue || 0) - (b.annualRevenue || 0);
+        }
+        if (sortBy === 'CONTACTS_DESC') {
+          return (b._count?.contacts || 0) - (a._count?.contacts || 0);
+        }
+        if (sortBy === 'DEALS_DESC') {
+          return (b._count?.deals || 0) - (a._count?.deals || 0);
+        }
+        if (sortBy === 'NEWEST') {
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        }
+        return 0;
+      });
+  }, [companies, search, industryFilter, sortBy]);
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelectCompany = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredAndSortedCompanies.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredAndSortedCompanies.map((c) => c.id)));
+    }
+  };
+
+  const handleExportCSV = (selectedOnly = false) => {
+    const dataToExport = selectedOnly
+      ? filteredAndSortedCompanies.filter((c) => selectedIds.has(c.id))
+      : filteredAndSortedCompanies;
+
+    if (dataToExport.length === 0) {
+      toast.error(t('error'), 'No hay empresas para exportar');
+      return;
+    }
+
+    const headers = [
+      'ID',
+      'Razón Social',
+      'Sector / Industria',
+      'Ciudad',
+      'País',
+      'Email',
+      'Teléfono',
+      'Sitio Web',
+      'Facturación Anual (€)',
+      'Nº Contactos',
+      'Nº Tratos',
+      'Fecha Creación',
+    ];
+
+    const rows = dataToExport.map((c) => [
+      c.id,
+      c.name,
+      c.industry || '',
+      c.city || '',
+      c.country || '',
+      c.email || '',
+      c.phone || '',
+      c.website || '',
+      c.annualRevenue || 0,
+      c._count?.contacts || 0,
+      c._count?.deals || 0,
+      new Date(c.createdAt).toLocaleDateString(),
+    ]);
+
+    exportToCSV(`empresas_export_${new Date().toISOString().split('T')[0]}`, headers, rows);
+    toast.success(t('success'), `${dataToExport.length} empresas exportadas a CSV`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const confirmMsg = t('bulk.confirmDelete').replace('{count}', String(selectedIds.size));
+    if (!window.confirm(confirmMsg)) return;
+
+    const res = await apiRequest('/companies/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids: Array.from(selectedIds) }),
+    });
+
+    if (res.success) {
+      toast.success(t('success'), t('bulk.deleteSuccess').replace('{count}', String(selectedIds.size)));
+      setSelectedIds(new Set());
+      loadCompanies();
+    } else {
+      toast.error(t('error'), res.message || t('bulk.error'));
+    }
+  };
 
   const handleCreateCompany = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,64 +353,6 @@ export const Companies: React.FC = () => {
     }
   };
 
-  // Filter & sort companies
-  const filteredAndSortedCompanies = useMemo(() => {
-    return companies
-      .filter((company) => {
-        // Search
-        if (search.trim()) {
-          const q = search.toLowerCase().trim();
-          const name = (company.name || '').toLowerCase();
-          const city = (company.city || '').toLowerCase();
-          const industry = (company.industry || '').toLowerCase();
-          const website = (company.website || '').toLowerCase();
-          const phone = (company.phone || '').toLowerCase();
-          const email = (company.email || '').toLowerCase();
-          if (
-            !name.includes(q) &&
-            !city.includes(q) &&
-            !industry.includes(q) &&
-            !website.includes(q) &&
-            !phone.includes(q) &&
-            !email.includes(q)
-          ) {
-            return false;
-          }
-        }
-
-        // Industry filter
-        if (industryFilter !== 'ALL') {
-          if ((company.industry || '').trim() !== industryFilter) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'NAME_ASC') {
-          return (a.name || '').localeCompare(b.name || '');
-        }
-        if (sortBy === 'NAME_DESC') {
-          return (b.name || '').localeCompare(a.name || '');
-        }
-        if (sortBy === 'REVENUE_DESC') {
-          return (b.annualRevenue || 0) - (a.annualRevenue || 0);
-        }
-        if (sortBy === 'REVENUE_ASC') {
-          return (a.annualRevenue || 0) - (b.annualRevenue || 0);
-        }
-        if (sortBy === 'CONTACTS_DESC') {
-          return (b._count?.contacts || 0) - (a._count?.contacts || 0);
-        }
-        if (sortBy === 'DEALS_DESC') {
-          return (b._count?.deals || 0) - (a._count?.deals || 0);
-        }
-        if (sortBy === 'NEWEST') {
-          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-        }
-        return 0;
-      });
-  }, [companies, search, industryFilter, sortBy]);
-
   return (
     <div className="space-y-4">
       {/* Header & Controls */}
@@ -277,17 +366,61 @@ export const Companies: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setFormError('');
-            setIsModalOpen(true);
-          }}
-          className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>{t('newCompany')}</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleExportCSV(false)}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            title={t('bulk.exportAll')}
+          >
+            <Download className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">{t('bulk.exportCsv')}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setFormError('');
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{t('newCompany')}</span>
+          </button>
+        </div>
       </div>
+
+      {/* Floating Enterprise Bulk Operations Toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center space-x-3 text-xs animate-in fade-in slide-in-from-bottom-4">
+          <div className="font-bold flex items-center space-x-1.5 border-r border-slate-700 pr-3 text-blue-400">
+            <CheckSquare className="w-4 h-4" />
+            <span>{t('bulk.selectedCount').replace('{count}', String(selectedIds.size))}</span>
+          </div>
+
+          <button
+            onClick={() => handleExportCSV(true)}
+            className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-semibold transition"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{t('bulk.exportCsv')}</span>
+          </button>
+
+          <button
+            onClick={handleBulkDelete}
+            className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 font-semibold transition"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{t('bulk.deleteSelected')}</span>
+          </button>
+
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-slate-400 hover:text-white underline pl-2 transition"
+          >
+            {t('bulk.deselectAll')}
+          </button>
+        </div>
+      )}
 
       {/* Toolbar / Filters */}
       <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
@@ -356,11 +489,23 @@ export const Companies: React.FC = () => {
           {filteredAndSortedCompanies.map((company) => (
             <div
               key={company.id}
-              className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xs flex flex-col justify-between space-y-3 hover:border-blue-300 dark:hover:border-slate-600 transition-colors"
+              onClick={(e) => toggleSelectCompany(company.id, e)}
+              className={`bg-white dark:bg-slate-800 p-4 rounded-xl border shadow-xs flex flex-col justify-between space-y-3 transition-colors cursor-pointer ${
+                selectedIds.has(company.id)
+                  ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/40 dark:bg-slate-800'
+                  : 'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
+              }`}
             >
               <div>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center space-x-2.5">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(company.id)}
+                      onChange={() => {}}
+                      aria-label={`Seleccionar ${company.name}`}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0"
+                    />
                     <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">
                       <Building2 className="w-4 h-4" />
                     </div>
@@ -374,7 +519,7 @@ export const Companies: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-1 shrink-0">
+                  <div className="flex items-center space-x-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => handleOpenEdit(company)}
                       title="Editar Empresa"

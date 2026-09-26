@@ -159,3 +159,57 @@ export async function deleteContact(req: Request, res: Response): Promise<void> 
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function bulkDeleteContacts(req: Request, res: Response): Promise<void> {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ success: false, message: 'Se requiere una lista de IDs de contactos' });
+      return;
+    }
+
+    const result = await prisma.contact.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    await logAudit(req.user?.id || null, 'BULK_DELETE', 'Contact', undefined, { count: result.count, ids }, req.ip);
+
+    res.json({
+      success: true,
+      message: `${result.count} contactos eliminados correctamente`,
+      deletedCount: result.count,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function bulkUpdateContacts(req: Request, res: Response): Promise<void> {
+  try {
+    const { ids, isLead, companyId } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ success: false, message: 'Se requiere una lista de IDs de contactos' });
+      return;
+    }
+
+    const data: any = {};
+    if (isLead !== undefined) data.isLead = Boolean(isLead);
+    if (companyId !== undefined) data.companyId = companyId || null;
+
+    const result = await prisma.contact.updateMany({
+      where: { id: { in: ids } },
+      data,
+    });
+
+    await logAudit(req.user?.id || null, 'BULK_UPDATE', 'Contact', undefined, { count: result.count, ids, changes: data }, req.ip);
+
+    res.json({
+      success: true,
+      message: `${result.count} contactos actualizados correctamente`,
+      updatedCount: result.count,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
