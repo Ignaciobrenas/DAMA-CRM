@@ -34,7 +34,7 @@ interface LoginProps {
 type AuthMode = 'login' | 'forgot-password' | 'reset-password' | '2fa';
 
 export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePortal }) => {
-  const { login, verify2FA } = useAuth();
+  const { login, loginWithGoogle, verify2FA } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { branding, getLogo } = useBranding();
@@ -87,6 +87,26 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
   const strength = calculatePasswordStrength(mode === 'reset-password' ? newPassword : password);
 
   // Handlers
+  const handleGoogleSignIn = async () => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsLoading(true);
+
+    try {
+      const res = await loginWithGoogle({
+        email: 'ignaciobrenas@gmail.com',
+        name: 'Ignacio (Google Workspace)',
+      });
+      setIsLoading(false);
+      if (!res.success) {
+        setErrorMessage(res.message || 'Error al iniciar sesión con Google');
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err.message || 'Error de autenticación con Google');
+    }
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -231,12 +251,11 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="relative inline-block mx-auto mb-3">
-            <div className="absolute inset-0 bg-blue-500/20 rounded-2xl blur-md" />
+          <div className="flex items-center justify-center mb-4">
             <img
-              src={getLogo('vertical')}
-              alt={branding.companyName}
-              className="relative w-20 h-20 rounded-2xl object-contain mx-auto p-1.5 bg-white/90 dark:bg-slate-800/90 shadow-md border border-gray-100 dark:border-slate-800"
+              src={getLogo('full')}
+              alt={branding.companyName || 'DAMA'}
+              className="h-8 sm:h-9 w-auto max-w-[200px] object-contain transition-all duration-200"
             />
           </div>
 
@@ -268,23 +287,60 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
         {/* Form 1: Login */}
         {mode === 'login' && (
-          <form onSubmit={handleLoginSubmit} className="space-y-3.5 animate-in fade-in duration-200">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                {t('email')}
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type="email"
-                  required
-                  placeholder="admin@dama-crm.local"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Google Sign In Button */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-medium text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750 transition-all duration-200 flex items-center justify-center space-x-2.5 shadow-sm hover:shadow active:scale-[0.99] disabled:opacity-50"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
                 />
-              </div>
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                />
+              </svg>
+              <span>{t('loginWithGoogle')}</span>
+            </button>
+
+            <div className="relative flex items-center justify-center my-3">
+              <div className="border-t border-gray-200 dark:border-slate-700 w-full" />
+              <span className="bg-white dark:bg-slate-900 px-3 text-[11px] text-gray-400 dark:text-slate-400 uppercase tracking-wider font-medium shrink-0">
+                {t('orWithCredentials')}
+              </span>
+              <div className="border-t border-gray-200 dark:border-slate-700 w-full" />
             </div>
+
+            <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  {t('email')}
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="admin@dama-crm.local"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -338,7 +394,8 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               )}
             </button>
           </form>
-        )}
+        </div>
+      )}
 
         {/* Form 2: Forgot Password */}
         {mode === 'forgot-password' && (

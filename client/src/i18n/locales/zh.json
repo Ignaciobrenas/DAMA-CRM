@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "导出发票 (CSV)",
   "invoicing.exportQuotesCsv": "导出报价单 (CSV)",
   "invoicing.reminderSent": "催款通知发送成功",
-  "invoicing.sendReminder": "发送催款"
+  "invoicing.sendReminder": "发送催款",
+  "loginWithGoogle": "使用 Google 继续",
+  "orWithCredentials": "或使用电子邮件继续"
 }

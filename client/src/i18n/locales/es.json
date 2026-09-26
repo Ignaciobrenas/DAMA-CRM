@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "Exportar Facturas (CSV)",
   "invoicing.exportQuotesCsv": "Exportar Presupuestos (CSV)",
   "invoicing.reminderSent": "Recordatorio de cobro enviado con éxito",
-  "invoicing.sendReminder": "Reclamar Pago"
+  "invoicing.sendReminder": "Reclamar Pago",
+  "loginWithGoogle": "Continuar con Google",
+  "orWithCredentials": "o continuar con correo"
 }

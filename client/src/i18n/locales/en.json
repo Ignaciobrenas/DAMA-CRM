@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "Export Invoices (CSV)",
   "invoicing.exportQuotesCsv": "Export Quotes (CSV)",
   "invoicing.reminderSent": "Payment reminder sent successfully",
-  "invoicing.sendReminder": "Send Reminder"
+  "invoicing.sendReminder": "Send Reminder",
+  "loginWithGoogle": "Continue with Google",
+  "orWithCredentials": "or continue with email"
 }

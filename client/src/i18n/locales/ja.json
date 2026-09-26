@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "請求書を出力 (CSV)",
   "invoicing.exportQuotesCsv": "見積書を出力 (CSV)",
   "invoicing.reminderSent": "督促通知を送信しました",
-  "invoicing.sendReminder": "支払督促"
+  "invoicing.sendReminder": "支払督促",
+  "loginWithGoogle": "Google でログイン",
+  "orWithCredentials": "またはメールアドレスでログイン"
 }

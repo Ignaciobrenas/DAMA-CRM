@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "Exportar Factures (CSV)",
   "invoicing.exportQuotesCsv": "Exportar Pressupostos (CSV)",
   "invoicing.reminderSent": "Recordatori de cobrament enviat amb èxit",
-  "invoicing.sendReminder": "Reclamar Pagament"
+  "invoicing.sendReminder": "Reclamar Pagament",
+  "loginWithGoogle": "Continuar amb Google",
+  "orWithCredentials": "o continuar amb correu"
 }

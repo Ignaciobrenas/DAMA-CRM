@@ -1400,5 +1400,7 @@
   "invoicing.exportInvoicesCsv": "Esporta fatture (CSV)",
   "invoicing.exportQuotesCsv": "Esporta preventivi (CSV)",
   "invoicing.reminderSent": "Sollecito di pagamento inviato con successo",
-  "invoicing.sendReminder": "Invia sollecito"
+  "invoicing.sendReminder": "Invia sollecito",
+  "loginWithGoogle": "Continua con Google",
+  "orWithCredentials": "oppure continua con l'email"
 }

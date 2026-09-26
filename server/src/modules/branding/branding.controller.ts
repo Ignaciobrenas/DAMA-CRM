@@ -28,7 +28,7 @@ export interface BrandingConfig {
 }
 
 export const DEFAULT_BRANDING: BrandingConfig = {
-  companyName: 'DAMA CRM Soluciones S.L.',
+  companyName: 'DAMA CRM',
   logoUrl: '',
   logoLightUrl: '',
   logoDarkUrl: '',
