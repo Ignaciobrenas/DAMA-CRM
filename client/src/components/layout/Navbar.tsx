@@ -23,6 +23,7 @@ import { wsClient } from '../../services/websocket';
 import { soundService } from '../../services/sound';
 import { AnimatedIcon } from '../ui/AnimatedIcon';
 import { SUPPORTED_LANGUAGES, Language } from '../../i18n';
+import { GodModeModal } from '../modals/GodModeModal';
 
 interface NavbarProps {
   onOpenSearch: () => void;
@@ -36,6 +37,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => soundService.isMuted());
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // God Mode SuperAdmin state
+  const [isGodModalOpen, setIsGodModalOpen] = useState(false);
+  const [activeTenant, setActiveTenant] = useState<any>({ slug: 'master', name: 'Master Tenant' });
+  const isSuperAdmin = user?.role === 'ADMIN' || user?.email === 'ignaciobrenas@gmail.com' || user?.email === 'admin@dama-crm.local';
 
   const [notifications, setNotifications] = useState([
     {
@@ -217,8 +223,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         </button>
       </div>
 
-      {/* Right: Real-time status, Sound, Language, Theme & User Profile */}
+      {/* Right: Real-time status, God Mode, Sound, Language, Theme & User Profile */}
       <div className="flex items-center space-x-2">
+        {/* God Mode SuperAdmin Tenant Switcher */}
+        {isSuperAdmin && (
+          <button
+            onClick={() => setIsGodModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-800/60 hover:bg-amber-500/20 transition shadow-xs"
+            title="Panel de SuperAdmin God Mode & Multi-Tenant"
+          >
+            <span>👑</span>
+            <span className="hidden md:inline font-mono">{activeTenant?.name || 'God Mode'}</span>
+          </button>
+        )}
+
         {/* Real-time sync indicator */}
         <div className="hidden sm:flex items-center space-x-1.5 px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
           <span className="relative flex h-2 w-2">
@@ -367,6 +385,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
           </div>
         )}
       </div>
+
+      {/* God Mode SuperAdmin Multi-Tenant Modal */}
+      {isSuperAdmin && (
+        <GodModeModal
+          isOpen={isGodModalOpen}
+          onClose={() => setIsGodModalOpen(false)}
+          activeTenantSlug={activeTenant?.slug || 'master'}
+          onSelectTenant={(t) => {
+            setActiveTenant(t);
+          }}
+        />
+      )}
     </header>
   );
 };

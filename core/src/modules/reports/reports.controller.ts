@@ -230,6 +230,43 @@ export async function exportCsv(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    if (type === 'tax-issued' || type === 'tax-books-issued') {
+      const invoices = await prisma.invoice.findMany({
+        include: { company: true, contact: true },
+        orderBy: { issueDate: 'asc' },
+      });
+
+      let csv = 'Fecha_Operacion,Fecha_Expedicion,Numero_Factura,NIF_Cliente,Nombre_Razon_Social,Tipo_Factura,Base_Imponible,Tipo_IVA_Pct,Cuota_IVA_Repercutido,Total_Factura,Estado_Cobro\n';
+      invoices.forEach((inv) => {
+        const clientName = inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim() || 'Cliente Final';
+        const clientTaxId = inv.company?.taxId || '';
+        const issueDate = inv.issueDate.toISOString().split('T')[0];
+        csv += `"${issueDate}","${issueDate}","${inv.invoiceNumber}","${clientTaxId}","${clientName.replace(/"/g, '""')}","F1",${inv.subtotal.toFixed(2)},${inv.taxRate.toFixed(2)},${inv.taxAmount.toFixed(2)},${inv.total.toFixed(2)},"${inv.status}"\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="Libro-Facturas-Expedidas-AEAT-Mod303.csv"');
+      res.send('\uFEFF' + csv);
+      return;
+    }
+
+    if (type === 'tax-received' || type === 'tax-books-received' || type === 'expenses') {
+      const expenses = await prisma.expense.findMany({
+        orderBy: { issueDate: 'asc' },
+      });
+
+      let csv = 'Fecha_Operacion,Fecha_Factura,Numero_Factura_Gasto,NIF_Proveedor,Nombre_Proveedor,Categoria,Base_Imponible,Tipo_IVA_Pct,Cuota_IVA_Soportado_Deducible,Total_Gasto,Estado_Pago\n';
+      expenses.forEach((exp) => {
+        const issueDate = exp.issueDate.toISOString().split('T')[0];
+        csv += `"${issueDate}","${issueDate}","${exp.expenseNumber}","${exp.supplierTaxId || ''}","${exp.supplierName.replace(/"/g, '""')}","${exp.category}",${exp.subtotal.toFixed(2)},${exp.taxRate.toFixed(2)},${exp.taxAmount.toFixed(2)},${exp.total.toFixed(2)},"${exp.status}"\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="Libro-Facturas-Recibidas-AEAT-Mod303.csv"');
+      res.send('\uFEFF' + csv);
+      return;
+    }
+
     res.status(400).json({ success: false, message: 'Tipo de exportación inválido' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

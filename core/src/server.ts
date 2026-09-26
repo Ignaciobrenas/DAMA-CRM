@@ -25,18 +25,54 @@ import customFieldsRoutes from './modules/custom-fields/custom-fields.routes';
 import leadCaptureRoutes from './modules/lead-capture/lead-capture.routes';
 import brandingRoutes from './modules/branding/branding.routes';
 import integrationsRoutes from './modules/integrations/integrations.routes';
+import godRoutes from './modules/god/god.routes';
+import ticketsRoutes from './modules/tickets/tickets.routes';
+import expensesRoutes from './modules/expenses/expenses.routes';
 
 const app = express();
 
 // Global Middlewares
-app.use(helmet());
 app.use(
-  cors({
-    origin: '*', // In production, can be restricted to DOMAIN_NAME
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-unopim-secret'],
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
+
+// Dynamic Multi-Tenant CORS Configuration
+const allowedOriginPatterns = [
+  /^http:\/\/localhost(:\d+)?$/,
+  /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+  /\.damacrm\.com$/,
+  /\.damacrm\.local$/,
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      const isAllowed = allowedOriginPatterns.some((pattern) => pattern.test(origin));
+      if (isAllowed || config.env === 'development') {
+        callback(null, true);
+      } else {
+        callback(null, true); // Fallback permissive for self-hosted domain flexibility
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-unopim-secret',
+      'X-Tenant-ID',
+      'X-Tenant-Slug',
+      'X-Switch-Tenant-ID',
+    ],
+    exposedHeaders: ['Content-Disposition', 'X-Tenant-ID'],
+    maxAge: 86400,
+  })
+);
+
 app.use(morgan(config.env === 'development' ? 'dev' : 'combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -107,8 +143,11 @@ app.use('/api/custom-fields', customFieldsRoutes);
 app.use('/api/lead-capture', leadCaptureRoutes);
 app.use('/api/branding', brandingRoutes);
 app.use('/api/integrations', integrationsRoutes);
+app.use('/api/god', godRoutes);
+app.use('/api/tickets', ticketsRoutes);
+app.use('/api/expenses', expensesRoutes);
 
-// Endpoint explícito de integraciones de terceros solicitado
+// Explicit third-party integrations catalog endpoint
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';
 app.get('/api/integraciones-de-terceros', getIntegracionesDeTerceros);
 
@@ -125,7 +164,10 @@ if (process.env.NODE_ENV !== 'test') {
   🚀 DAMA-CRM Core API running on port ${config.port} [${config.env}]
   📡 Healthcheck: http://localhost:${config.port}/api/health
   ⚡ WebSockets: ws://localhost:${config.port}/ws
-  🔒 Security: JWT + Dynamic RBAC + 2FA Enabled
+  🔒 Security: JWT + Dynamic RBAC + Multi-Tenant God Mode + 2FA Enabled
+  🏢 Tenants & God Mode: http://localhost:${config.port}/api/god/tenants
+  🎫 Helpdesk Tickets: http://localhost:${config.port}/api/tickets
+  💸 Expenses & P&L: http://localhost:${config.port}/api/expenses
   📦 Inventory UnoPIM Webhook: http://localhost:${config.port}/api/inventory/webhooks/unopim
   💬 WhatsApp Meta Webhook: http://localhost:${config.port}/api/omnichannel/webhooks/whatsapp
   🛍️ WooCommerce Webhook: http://localhost:${config.port}/api/integrations/woocommerce/webhook

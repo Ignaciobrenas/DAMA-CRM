@@ -33,9 +33,15 @@ import { LeadCapture } from './pages/LeadCapture';
 import { Integrations } from './pages/Integrations';
 import { Onboarding } from './pages/Onboarding';
 import { FAQ } from './pages/FAQ';
+import { Tickets } from './pages/Tickets';
+import { Expenses } from './pages/Expenses';
+import { PublicQuoteSign } from './pages/PublicQuoteSign';
 
 const normalizeRoute = (pathname: string): string => {
   const p = pathname.toLowerCase();
+  if (p.startsWith('/quote/sign/')) return pathname;
+  if (p === '/tickets') return '/tickets';
+  if (p === '/expenses') return '/expenses';
   if (p === '/pipeline') return '/pipeline';
   if (p === '/agile') return '/agile';
   if (p === '/contacts') return '/contacts';
@@ -100,7 +106,11 @@ const AppContent: React.FC = () => {
     return <LoadingScreen title={branding.companyName} message={t('loadingWorkspace')} />;
   }
 
-  // Allow public access to Privacy Policy & Client Portal
+  // Allow public access to Privacy Policy, Client Portal & Public Quote Signature
+  if (currentRoute.startsWith('/quote/sign/')) {
+    return <PublicQuoteSign />;
+  }
+
   if (currentRoute === '/privacy') {
     return <PrivacyPolicy onBack={() => navigateTo(isAuthenticated ? '/' : '/')} />;
   }
@@ -128,6 +138,18 @@ const AppContent: React.FC = () => {
     switch (currentRoute) {
       case '/':
         return <Dashboard onNavigate={navigateTo} />;
+      case '/tickets':
+        return (
+          <PermissionGate resource="tickets" action="read" fallback={<AccessDenied resource="tickets" onGoBack={() => navigateTo('/')} />}>
+            <Tickets />
+          </PermissionGate>
+        );
+      case '/expenses':
+        return (
+          <PermissionGate resource="expenses" action="read" fallback={<AccessDenied resource="expenses" onGoBack={() => navigateTo('/')} />}>
+            <Expenses />
+          </PermissionGate>
+        );
       case '/pipeline':
         return (
           <PermissionGate resource="deals" action="read" fallback={<AccessDenied resource="deals" onGoBack={() => navigateTo('/')} />}>
