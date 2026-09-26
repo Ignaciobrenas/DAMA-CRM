@@ -160,23 +160,33 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </span>
         </div>
 
-        {/* Step Indicator */}
-        <div className="flex items-center gap-2">
-          {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
-            <div
-              key={s}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                s === step
-                  ? 'w-8 bg-brand-color'
-                  : s < step
-                  ? 'w-2 bg-emerald-500'
-                  : 'w-2 bg-slate-200 dark:bg-slate-800'
-              }`}
-            />
-          ))}
-          <span className="text-xs text-slate-500 font-medium ml-2">
-            Paso {step} de {totalSteps}
-          </span>
+        {/* Step Indicator & Skip Button */}
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={handleFinish}
+            className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 underline transition"
+          >
+            {t('onboarding.skipToDashboard', 'Omitir configuración e ir al Dashboard')}
+          </button>
+
+          <div className="flex items-center gap-2">
+            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
+              <div
+                key={s}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  s === step
+                    ? 'w-8 bg-brand-color'
+                    : s < step
+                    ? 'w-2 bg-emerald-500'
+                    : 'w-2 bg-slate-200 dark:bg-slate-800'
+                }`}
+              />
+            ))}
+            <span className="text-xs text-slate-500 font-medium ml-2">
+              Paso {step} de {totalSteps}
+            </span>
+          </div>
         </div>
       </header>
 

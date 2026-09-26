@@ -9,6 +9,7 @@ import {
   Shield,
   Volume2,
   VolumeX,
+  HelpCircle,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -18,6 +19,7 @@ import { SUPPORTED_LANGUAGES, Language } from '../../i18n';
 import { GodModeModal } from '../modals/GodModeModal';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { ClockWidget } from '../employee-portal/ClockWidget';
+import { OnboardingTourModal } from '../onboarding/OnboardingTourModal';
 
 interface NavbarProps {
   onOpenSearch: () => void;
@@ -32,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
 
   // God Mode SuperAdmin state
   const [isGodModalOpen, setIsGodModalOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
   const [activeTenant, setActiveTenant] = useState<any>({ slug: 'master', name: 'Master Tenant' });
   const isSuperAdmin = user?.role === 'ADMIN' || user?.email === 'ignaciobrenas@gmail.com' || user?.email === 'admin@dama-crm.local';
 
@@ -134,6 +137,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
 
+        {/* Welcome Tour & Role Capabilities Guide */}
+        <button
+          onClick={() => setIsTourOpen(true)}
+          aria-label={t('tour.openTour')}
+          className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+          title={t('tour.openTour')}
+        >
+          <HelpCircle className="w-4 h-4 text-blue-500 hover:text-blue-600 transition" />
+        </button>
+
         {/* Real-time Notification Center with Interactive Navigation */}
         <NotificationCenter />
 
@@ -174,6 +187,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
           }}
         />
       )}
+
+      {/* Interactive Capabilities & Onboarding Tour Modal */}
+      <OnboardingTourModal
+        isOpen={isTourOpen}
+        forceOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+      />
     </header>
   );
 };
