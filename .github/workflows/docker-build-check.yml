@@ -21,13 +21,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Core Docker Image
+      - name: Build Server Docker Image
         uses: docker/build-push-action@v5
         with:
-          context: ./core
-          file: ./core/Dockerfile
+          context: ./server
+          file: ./server/Dockerfile
           push: false
-          tags: dama-crm-core:test
+          tags: dama-crm-server:test
 
       - name: Build Client Docker Image
         uses: docker/build-push-action@v5

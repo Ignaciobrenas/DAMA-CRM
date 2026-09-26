@@ -1,8 +1,8 @@
 {
-  "name": "dama-crm-core",
+  "name": "dama-crm-server",
   "version": "1.0.0",
   "private": true,
-  "description": "Core Backend API for DAMA-CRM",
+  "description": "Server Backend API for DAMA-CRM",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
