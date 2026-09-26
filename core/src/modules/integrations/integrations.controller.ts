@@ -13,6 +13,8 @@ export function getIntegrations(req: Request, res: Response): void {
       woocommerceWebhook: `${baseUrl}/api/integrations/woocommerce/webhook`,
       shopifyWebhook: `${baseUrl}/api/integrations/shopify/webhook`,
       n8nActionEndpoint: `${baseUrl}/api/integrations/n8n/action`,
+      stripeWebhook: `${baseUrl}/api/integrations/stripe/webhook`,
+      zapierWebhook: `${baseUrl}/api/integrations/zapier/webhook`,
       unopimWebhook: `${baseUrl}/api/inventory/webhooks/unopim`,
       whatsappWebhook: `${baseUrl}/api/omnichannel/webhooks/whatsapp`,
     };
@@ -264,13 +266,32 @@ export async function testIntegration(req: Request, res: Response): Promise<void
 export async function syncIntegration(req: Request, res: Response): Promise<void> {
   try {
     const { connector } = req.params;
-    if (connector !== 'odoo' && connector !== 'woocommerce' && connector !== 'shopify') {
-      res.status(400).json({ success: false, message: 'La sincronización manual solo aplica a odoo, woocommerce o shopify' });
+    const allowed = ['odoo', 'woocommerce', 'shopify', 'stripe', 'google_calendar'];
+    if (!allowed.includes(connector)) {
+      res.status(400).json({ success: false, message: `La sincronización manual solo aplica a: ${allowed.join(', ')}` });
       return;
     }
 
-    const result = await IntegrationsService.syncConnector(connector);
+    const result = await IntegrationsService.syncConnector(connector as any);
     res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function handleStripeWebhook(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await IntegrationsService.processStripeWebhook(req.body);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function handleZapierWebhook(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await IntegrationsService.processZapierWebhook(req.body);
+    res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
