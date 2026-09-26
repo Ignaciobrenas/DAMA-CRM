@@ -13,6 +13,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
+import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
 import { PermissionGate, AccessDenied, ModuleDisabled } from './components/common/PermissionGate';
 import { analytics } from './services/analytics';
 
@@ -315,6 +316,9 @@ const AppContent: React.FC = () => {
 
       {/* Floating Lead & WhatsApp Live Capture Widget */}
       <FloatingCaptureWidget />
+
+      {/* Role-based Onboarding & Capabilities Welcome Tour Modal */}
+      <OnboardingTourModal />
     </div>
   );
 };
