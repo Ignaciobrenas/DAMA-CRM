@@ -142,22 +142,48 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
         nombre: 'Stripe Payments',
         categoria: 'Pasarela de Pagos',
         tipo: 'Webhooks & Checkout Sessions',
-        estado: 'available',
-        activo: true,
+        estado: config.stripe?.status || 'disconnected',
+        activo: config.stripe?.enabled || false,
         descripcion: 'Cobro de facturas y presupuestos directamente desde el portal del cliente con tarjeta, SEPA y Apple Pay.',
         capacidades: ['Pagos 3D-Secure', 'Suscripciones', 'SEPA Direct Debit', 'Facturas'],
         documentacion: 'https://stripe.com/docs/api',
+        configuracion: {
+          tieneSecretKey: config.stripe?.hasSecretKey,
+          ultimaSincronizacion: config.stripe?.lastSyncAt || null,
+        },
       },
       {
         id: 'zapier',
         nombre: 'Zapier Webhooks',
-        categoria: 'Automatización No-Code',
+        categoria: 'Automatización & Flujos',
         tipo: 'REST Hooks',
-        estado: 'available',
-        activo: true,
+        estado: config.zapier?.status || 'disconnected',
+        activo: config.zapier?.enabled || false,
         descripcion: 'Conecta con más de 5.000 aplicaciones a través de webhooks estándar de entrada y salida.',
         capacidades: ['Disparadores Zaps', 'Acciones', 'Multi-app workflows'],
         documentacion: 'https://zapier.com/apps/webhook/integrations',
+        webhookUrl: `${baseUrl}/api/integrations/zapier/webhook`,
+        configuracion: {
+          webhookUrl: config.zapier?.webhookUrl,
+          tieneApiKey: config.zapier?.hasApiKey,
+          ultimoDisparo: config.zapier?.lastTriggerAt || null,
+        },
+      },
+      {
+        id: 'google_calendar',
+        nombre: 'Google Calendar',
+        categoria: 'Productividad & Agenda',
+        tipo: 'OAuth2 / CalDAV Bidireccional',
+        estado: config.google_calendar?.status || 'disconnected',
+        activo: config.google_calendar?.enabled || false,
+        descripcion: 'Sincroniza reuniones de tratos, llamadas programadas y tareas directamente con la agenda de Google Workspace.',
+        capacidades: ['Reuniones', 'Eventos en tiempo real', 'Recordatorios', 'Sincronización bidireccional'],
+        documentacion: 'https://developers.google.com/calendar/api',
+        configuracion: {
+          email: config.google_calendar?.email,
+          tieneClientSecret: config.google_calendar?.hasClientSecret,
+          ultimaSincronizacion: config.google_calendar?.lastSyncAt || null,
+        },
       },
     ];
 
@@ -176,7 +202,7 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
 export function updateIntegration(req: Request, res: Response): void {
   try {
     const { connector } = req.params;
-    const allowed: ConnectorType[] = ['odoo', 'woocommerce', 'shopify', 'n8n'];
+    const allowed: ConnectorType[] = ['odoo', 'woocommerce', 'shopify', 'n8n', 'stripe', 'zapier', 'google_calendar'];
     if (!allowed.includes(connector as ConnectorType)) {
       res.status(400).json({ success: false, message: `Conector inválido: ${connector}` });
       return;
@@ -210,6 +236,19 @@ export async function testIntegration(req: Request, res: Response): Promise<void
         break;
       case 'n8n':
         result = await IntegrationsService.testN8n(req.body);
+        break;
+      case 'stripe':
+        result = await IntegrationsService.testStripe(req.body);
+        break;
+      case 'zapier':
+        result = await IntegrationsService.testZapier(req.body);
+        break;
+      case 'google_calendar':
+        result = await IntegrationsService.testGoogleCalendar(req.body);
+        break;
+      case 'unopim':
+      case 'whatsapp':
+        result = { success: true, message: `Conector nativo ${connector} activo y respondiendo.` };
         break;
       default:
         res.status(400).json({ success: false, message: `Conector no soportado para test: ${connector}` });

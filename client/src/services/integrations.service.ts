@@ -36,6 +36,20 @@ export interface IntegrationsResponseData {
     subscribedEvents: string[];
     lastTriggerAt?: string;
   };
+  stripe?: ConnectorPublicConfig & {
+    secretKey?: string;
+    hasSecretKey?: boolean;
+    publishableKey?: string;
+  };
+  zapier?: ConnectorPublicConfig & {
+    webhookUrl?: string;
+    hasApiKey?: boolean;
+    lastTriggerAt?: string;
+  };
+  google_calendar?: ConnectorPublicConfig & {
+    email?: string;
+    hasClientSecret?: boolean;
+  };
 }
 
 export interface IntegrationsEndpoints {
@@ -44,6 +58,32 @@ export interface IntegrationsEndpoints {
   n8nActionEndpoint: string;
   unopimWebhook: string;
   whatsappWebhook: string;
+  zapierWebhook?: string;
+}
+
+export interface ThirdPartyAppItem {
+  id: string;
+  nombre: string;
+  categoria: string;
+  tipo: string;
+  estado: 'connected' | 'disconnected' | 'error' | 'pending';
+  activo: boolean;
+  descripcion: string;
+  capacidades: string[];
+  documentacion: string;
+  webhookUrl?: string;
+  actionEndpointUrl?: string;
+  eventosSoportados?: string[];
+  accionesInboundSoportadas?: string[];
+  configuracion?: Record<string, any>;
+}
+
+export interface ThirdPartyCatalogResponse {
+  success: boolean;
+  endpoint: string;
+  total: number;
+  timestamp: string;
+  aplicaciones: ThirdPartyAppItem[];
 }
 
 export const integrationsService = {
@@ -53,6 +93,11 @@ export const integrationsService = {
       data: res.data as any,
       endpoints: (res as any).endpoints || {},
     };
+  },
+
+  async getThirdPartyIntegrationsCatalog(): Promise<ThirdPartyCatalogResponse> {
+    const res = await apiRequest('/integraciones-de-terceros');
+    return res as unknown as ThirdPartyCatalogResponse;
   },
 
   async updateConfig(connector: string, payload: any): Promise<any> {

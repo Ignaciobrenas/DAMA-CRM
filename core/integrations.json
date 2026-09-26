@@ -37,5 +37,17 @@
       "activity.created"
     ],
     "status": "disconnected"
+  },
+  "stripe": {
+    "enabled": false,
+    "status": "disconnected"
+  },
+  "zapier": {
+    "enabled": false,
+    "status": "disconnected"
+  },
+  "google_calendar": {
+    "enabled": false,
+    "status": "disconnected"
   }
 }
