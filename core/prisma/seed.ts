@@ -132,7 +132,6 @@ async function main() {
   const passwordHashAdmin = await bcrypt.hash('Admin1234!', 10);
   const passwordHashSales = await bcrypt.hash('Ventas1234!', 10);
   const passwordHashPm = await bcrypt.hash('Pm1234!', 10);
-  const passwordHashIgnacio = await bcrypt.hash('1', 10);
 
   const ignacioUser = await prisma.user.create({
     data: {
@@ -152,17 +151,6 @@ async function main() {
       name: 'Ignacio Administrador',
       roleId: adminRole.id,
       twoFactorEnabled: false, // Can be toggled on in settings
-      isActive: true,
-    },
-  });
-
-  await prisma.user.create({
-    data: {
-      email: 'ignaciobrenas@gmail.com',
-      passwordHash: passwordHashIgnacio,
-      name: 'Ignacio Breñas',
-      roleId: adminRole.id,
-      twoFactorEnabled: false,
       isActive: true,
     },
   });
