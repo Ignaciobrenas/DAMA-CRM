@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { MessageCircle, X, Send, CheckCircle2, ChevronUp } from 'lucide-react';
 import { apiRequest } from '../../services/api';
 import { LoadingSpinner } from './Loading';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const FloatingCaptureWidget: React.FC = () => {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
@@ -32,7 +34,7 @@ export const FloatingCaptureWidget: React.FC = () => {
         name,
         email: isEmail ? contactInfo : undefined,
         phone: !isEmail ? contactInfo : undefined,
-        initialMessage: message || 'Consulta desde widget interactivo',
+        initialMessage: message || t('floatingWidget.messagePlaceholder'),
         channel: 'WHATSAPP',
       }),
     });
@@ -62,16 +64,17 @@ export const FloatingCaptureWidget: React.FC = () => {
                 <MessageCircle className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-xs font-bold leading-tight">¿Tienes dudas sobre DAMA-CRM?</div>
+                <div className="text-xs font-bold leading-tight">{t('floatingWidget.title')}</div>
                 <div className="text-[10px] text-emerald-100 flex items-center space-x-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                  <span>Equipo en línea • Respuesta media: 5 min</span>
+                  <span>{t('floatingWidget.onlineStatus')}</span>
                 </div>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
               className="p-1 rounded-full hover:bg-white/20 transition-colors"
+              aria-label={t('close')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -85,23 +88,23 @@ export const FloatingCaptureWidget: React.FC = () => {
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div className="text-xs font-bold text-gray-900 dark:text-white">
-                  ¡Mensaje enviado al CRM!
+                  {t('floatingWidget.successTitle')}
                 </div>
                 <p className="text-[11px] text-gray-500 dark:text-slate-400">
-                  Un especialista se pondrá en contacto contigo de inmediato.
+                  {t('floatingWidget.successDesc')}
                 </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <p className="text-[11px] text-gray-500 dark:text-slate-400">
-                  Déjanos tus datos y te atenderemos por WhatsApp o email al instante:
+                  {t('floatingWidget.subtitle')}
                 </p>
 
                 <div>
                   <input
                     type="text"
                     required
-                    placeholder="Tu nombre completo"
+                    placeholder={t('floatingWidget.namePlaceholder')}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -112,7 +115,7 @@ export const FloatingCaptureWidget: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="Teléfono móvil o Email"
+                    placeholder={t('floatingWidget.contactPlaceholder')}
                     value={contactInfo}
                     onChange={(e) => setContactInfo(e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -122,7 +125,7 @@ export const FloatingCaptureWidget: React.FC = () => {
                 <div>
                   <textarea
                     rows={2}
-                    placeholder="¿En qué podemos ayudarte?"
+                    placeholder={t('floatingWidget.messagePlaceholder')}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -137,12 +140,12 @@ export const FloatingCaptureWidget: React.FC = () => {
                   {isLoading ? (
                     <>
                       <LoadingSpinner size="xs" color="white" />
-                      <span>Conectando...</span>
+                      <span>{t('floatingWidget.connecting')}</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-3.5 h-3.5" />
-                      <span>Iniciar Conversación</span>
+                      <span>{t('floatingWidget.startConversation')}</span>
                     </>
                   )}
                 </button>
@@ -154,13 +157,14 @@ export const FloatingCaptureWidget: React.FC = () => {
         /* Floating Launcher Bubble */
         <button
           onClick={() => setIsOpen(true)}
+          aria-label={t('floatingWidget.launcher')}
           className="group flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
         >
           <div className="relative">
             <MessageCircle className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-300 rounded-full border-2 border-emerald-700 animate-ping" />
           </div>
-          <span className="text-xs font-bold tracking-tight pr-1">¿Hablamos?</span>
+          <span className="text-xs font-bold tracking-tight pr-1">{t('floatingWidget.launcher')}</span>
         </button>
       )}
     </div>

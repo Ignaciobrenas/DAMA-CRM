@@ -8,7 +8,7 @@ import { soundService } from '../services/sound';
 const CANNED_RESPONSES = [
   {
     label: '👋 Saludo cordial',
-    template: 'Hola {{name}}, un placer saludarte desde DAMA CRM. ¿En qué podemos ayudarte hoy?',
+    template: 'Hola {{name}}, un placer saludarte. ¿En qué podemos ayudarte hoy?',
   },
   {
     label: '📅 Confirmar cita',
@@ -27,6 +27,7 @@ const CANNED_RESPONSES = [
     template: '¡Muchas gracias por tu confianza, {{name}}! Nuestro equipo ya está trabajando en tu cuenta.',
   },
 ];
+
 
 export const Omnichannel: React.FC = () => {
   const { t } = useLanguage();
@@ -225,7 +226,7 @@ export const Omnichannel: React.FC = () => {
         <div className="w-1/3 border-r border-gray-200 dark:border-slate-800 flex flex-col">
           <div className="p-3 border-b border-gray-200 dark:border-slate-800 space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-slate-300">
-              <span>Conversaciones</span>
+              <span>{t('omnichannel.conversations')}</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-500">
                 {filteredContacts.length}
               </span>
@@ -234,7 +235,7 @@ export const Omnichannel: React.FC = () => {
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar contacto..."
+                placeholder={t('omnichannel.searchContactPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
@@ -324,7 +325,7 @@ export const Omnichannel: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="p-3 text-xs text-gray-400">Seleccione un contacto</div>
+            <div className="p-3 text-xs text-gray-400">{t('omnichannel.selectContactPrompt')}</div>
           )}
 
           {/* Messages Bubble Area */}
@@ -380,7 +381,7 @@ export const Omnichannel: React.FC = () => {
             <div className="px-3 pt-2 pb-1.5 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex items-center space-x-1.5 overflow-x-auto scrollbar-none">
               <div className="flex items-center space-x-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 shrink-0 mr-1">
                 <Sparkles className="w-3 h-3 text-amber-500" />
-                <span>Rápidas:</span>
+                <span>{t('omnichannel.cannedResponsesLabel')}</span>
               </div>
               {CANNED_RESPONSES.map((item, idx) => (
                 <button

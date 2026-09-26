@@ -299,7 +299,7 @@ export const Companies: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por razón social, ciudad, sector..."
+              placeholder={t('companies.searchPlaceholder')}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
@@ -475,7 +475,7 @@ export const Companies: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Sector / Industria</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.sector')}</label>
                 <input
                   type="text"
                   value={industry}
@@ -487,7 +487,7 @@ export const Companies: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Ciudad</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.city')}</label>
                   <input
                     type="text"
                     value={city}
@@ -497,7 +497,7 @@ export const Companies: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Facturación (€)</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.revenue')}</label>
                   <input
                     type="number"
                     value={annualRevenue}
@@ -510,7 +510,7 @@ export const Companies: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Sitio Web</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.website')}</label>
                   <input
                     type="text"
                     value={website}
@@ -520,7 +520,7 @@ export const Companies: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.phone')}</label>
                   <input
                     type="text"
                     value={phone}
@@ -532,7 +532,7 @@ export const Companies: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Correo Electrónico</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.email')}</label>
                 <input
                   type="email"
                   value={email}
@@ -596,7 +596,7 @@ export const Companies: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Sector / Industria</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.sector')}</label>
                 <input
                   type="text"
                   value={editIndustry}
@@ -607,7 +607,7 @@ export const Companies: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Ciudad</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.city')}</label>
                   <input
                     type="text"
                     value={editCity}
@@ -616,7 +616,7 @@ export const Companies: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Facturación (€)</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.revenue')}</label>
                   <input
                     type="number"
                     value={editAnnualRevenue}
@@ -628,7 +628,7 @@ export const Companies: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Sitio Web</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.website')}</label>
                   <input
                     type="text"
                     value={editWebsite}
@@ -637,7 +637,7 @@ export const Companies: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.phone')}</label>
                   <input
                     type="text"
                     value={editPhone}
@@ -648,7 +648,7 @@ export const Companies: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Correo Electrónico</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.email')}</label>
                 <input
                   type="email"
                   value={editEmail}

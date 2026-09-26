@@ -230,9 +230,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                       onChange={(e) => setCurrency(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-brand-color outline-none"
                     >
-                      <option value="EUR">EUR (€) - Euro Comercial</option>
+                      <option value="EUR">{t('onboarding.currencyEuro')}</option>
                       <option value="USD">USD ($) - Dólar Estadounidense</option>
-                      <option value="GBP">GBP (£) - Libra Esterlina</option>
+                      <option value="GBP">{t('onboarding.currencyGbp')}</option>
                       <option value="MXN">MXN ($) - Peso Mexicano</option>
                     </select>
                   </div>
@@ -382,7 +382,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         className="px-4 py-2.5 bg-brand-color text-white rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Añadir</span>
+                        <span>{t('onboarding.addBtn')}</span>
                       </button>
                     </form>
 

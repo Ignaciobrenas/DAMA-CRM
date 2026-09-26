@@ -23,9 +23,11 @@ import {
 import { apiRequest } from '../services/api';
 import { BarChart, DonutChart } from '../components/ui/Charts';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
 import { analytics, AnalyticsEvent } from '../services/analytics';
 
 export const Reports: React.FC = () => {
+  const { t } = useLanguage();
   const toast = useToast();
   const [salesData, setSalesData] = useState<any>(null);
   const [agileData, setAgileData] = useState<any>(null);
@@ -144,7 +146,7 @@ export const Reports: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <ArrowDownToLine className="w-3.5 h-3.5" />
-              <span>Exportar Datos (CSV)</span>
+              <span>{t('reports.exportCsv')}</span>
               <ChevronDown className="w-3 h-3 ml-0.5" />
             </button>
 
@@ -155,42 +157,42 @@ export const Reports: React.FC = () => {
                   className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
                 >
                   <DollarSign className="w-3.5 h-3.5 text-blue-500" />
-                  <span>Ventas y Oportunidades</span>
+                  <span>{t('reports.dealsAndOpportunities')}</span>
                 </button>
                 <button
                   onClick={() => handleExport('contacts', 'Contactos y Leads')}
                   className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
                 >
                   <Users className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Contactos y Leads</span>
+                  <span>{t('reports.contactsAndLeads')}</span>
                 </button>
                 <button
                   onClick={() => handleExport('companies', 'Cuentas y Empresas')}
                   className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
                 >
                   <Building2 className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Cuentas y Empresas</span>
+                  <span>{t('reports.accountsAndCompanies')}</span>
                 </button>
                 <button
                   onClick={() => handleExport('invoices', 'Facturas Emitidas')}
                   className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Facturas Emitidas</span>
+                  <span>{t('reports.issuedInvoices')}</span>
                 </button>
                 <button
                   onClick={() => handleExport('products', 'Catálogo de Productos')}
                   className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
                 >
                   <Package className="w-3.5 h-3.5 text-cyan-500" />
-                  <span>Catálogo de Productos</span>
+                  <span>{t('reports.productsCatalog')}</span>
                 </button>
                 <button
                   onClick={() => handleExport('tasks', 'Tareas Técnicas')}
                   className="w-full px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center space-x-2"
                 >
                   <CheckSquare className="w-3.5 h-3.5 text-purple-500" />
-                  <span>Tareas Técnicas Scrum</span>
+                  <span>{t('reports.scrumTechnicalTasks')}</span>
                 </button>
               </div>
             )}
@@ -201,7 +203,7 @@ export const Reports: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Ingresos Ganados</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.revenueWon')}</span>
           <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {(kpis.totalWonRevenue || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
           </div>
@@ -211,7 +213,7 @@ export const Reports: React.FC = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Tasa de Cierre (Win Rate)</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.winRate')}</span>
           <div className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400">
             {kpis.winRate || 0}%
           </div>
@@ -221,7 +223,7 @@ export const Reports: React.FC = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Ticket Medio Ganado</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.avgTicketWon')}</span>
           <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
             {(kpis.averageDealSize || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
           </div>
@@ -231,7 +233,7 @@ export const Reports: React.FC = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Tasa de Entrega Ágil</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.agileDeliveryRate')}</span>
           <div className="mt-2 text-2xl font-bold text-purple-600 dark:text-purple-400">
             {agileData?.completionRate || 0}%
           </div>
@@ -248,9 +250,9 @@ export const Reports: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
               <TrendingUp className="w-4 h-4 text-blue-600" />
-              <span>Evolución Mensual de Facturación</span>
+              <span>{t('reports.monthlyInvoicingEvolution')}</span>
             </h2>
-            <span className="text-[11px] text-gray-400">Tendencia Comercial</span>
+            <span className="text-[11px] text-gray-400">{t('reports.commercialTrend')}</span>
           </div>
 
           <div className="pt-2">
@@ -267,9 +269,9 @@ export const Reports: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
               <PieChart className="w-4 h-4 text-indigo-600" />
-              <span>Distribución del Pipeline</span>
+              <span>{t('reports.pipelineDistribution')}</span>
             </h2>
-            <span className="text-[11px] text-gray-400">Total Oportunidades</span>
+            <span className="text-[11px] text-gray-400">{t('reports.totalOpportunities')}</span>
           </div>
 
           <div className="flex items-center justify-center pt-2">
@@ -285,9 +287,9 @@ export const Reports: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
               <Layers className="w-4 h-4 text-purple-600" />
-              <span>Velocidad de Sprints Técnicos</span>
+              <span>{t('reports.scrumSprintVelocity')}</span>
             </h2>
-            <span className="text-[11px] text-gray-400">Story Points</span>
+            <span className="text-[11px] text-gray-400">{t('reports.storyPoints')}</span>
           </div>
 
           <div className="space-y-3">
@@ -324,9 +326,9 @@ export const Reports: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
               <Award className="w-4 h-4 text-amber-500" />
-              <span>Top Clientes por Facturación</span>
+              <span>{t('reports.topClientsByRevenue')}</span>
             </h2>
-            <span className="text-[11px] text-gray-400">Ranking Cartera</span>
+            <span className="text-[11px] text-gray-400">{t('reports.clientRanking')}</span>
           </div>
 
           <div className="space-y-2">
@@ -367,7 +369,7 @@ export const Reports: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Seguimiento de Analíticas & Telemetría en Vivo</span>
+                <span>{t('reports.liveTelemetryTracking')}</span>
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -388,7 +390,7 @@ export const Reports: React.FC = () => {
               className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800 flex items-center gap-1.5 transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Limpiar Historial</span>
+              <span>{t('reports.clearHistory')}</span>
             </button>
           </div>
         </div>
@@ -402,19 +404,19 @@ export const Reports: React.FC = () => {
             <div className="space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
-                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">Eventos Totales</span>
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('reports.totalEvents')}</span>
                   <div className="text-2xl font-bold text-gray-900 dark:text-white font-mono mt-1">{summary.totalEvents}</div>
                 </div>
                 <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
-                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">Páginas Vistas</span>
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('reports.pageViews')}</span>
                   <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{summary.pageViewsCount}</div>
                 </div>
                 <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
-                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">Interacciones</span>
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('reports.interactions')}</span>
                   <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 font-mono mt-1">{summary.interactionsCount}</div>
                 </div>
                 <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800">
-                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">Sesión Activa</span>
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('reports.activeSession')}</span>
                   <div className="text-xs font-mono text-gray-700 dark:text-slate-300 truncate mt-2">{summary.activeSessionId}</div>
                 </div>
               </div>
@@ -442,7 +444,7 @@ export const Reports: React.FC = () => {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400 italic">No hay suficientes registros de visitas aún.</p>
+                      <p className="text-xs text-gray-400 italic">{t('reports.notEnoughVisits')}</p>
                     )}
                   </div>
                 </div>
@@ -476,7 +478,7 @@ export const Reports: React.FC = () => {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-gray-400 italic">Esperando eventos en vivo...</p>
+                      <p className="text-xs text-gray-400 italic">{t('reports.waitingLiveEvents')}</p>
                     )}
                   </div>
                 </div>

@@ -293,7 +293,7 @@ export const Inventory: React.FC = () => {
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Nuevo Producto</span>
+            <span>{t('inventory.newProduct')}</span>
           </button>
 
           <button
@@ -302,7 +302,7 @@ export const Inventory: React.FC = () => {
             title="Simular POST entrante de UnoPIM"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Simular Webhook UnoPIM</span>
+            <span>{t('inventory.simulateUnoPimWebhook')}</span>
           </button>
 
           <button
@@ -310,7 +310,7 @@ export const Inventory: React.FC = () => {
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Barrido Nocturno</span>
+            <span>{t('inventory.nightlySweep')}</span>
           </button>
         </div>
       </div>
@@ -332,7 +332,7 @@ export const Inventory: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por SKU, producto, categoría..."
+              placeholder={t('inventory.searchPlaceholder')}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
@@ -345,7 +345,7 @@ export const Inventory: React.FC = () => {
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600 max-w-[170px] truncate"
             >
-              <option value="ALL">Todas las categorías</option>
+              <option value="ALL">{t('inventory.allCategories')}</option>
               {uniqueCategories.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -360,7 +360,7 @@ export const Inventory: React.FC = () => {
             onChange={(e) => setStockFilter(e.target.value as any)}
             className="px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
           >
-            <option value="ALL">Todo el Stock</option>
+            <option value="ALL">{t('inventory.allStock')}</option>
             <option value="IN_STOCK">En Stock (&gt; 10 uds)</option>
             <option value="LOW_STOCK">Stock Bajo (1 - 10 uds)</option>
             <option value="OUT_OF_STOCK">Agotado (0 uds)</option>
@@ -370,19 +370,19 @@ export const Inventory: React.FC = () => {
         {/* Sorting Dropdown */}
         <div className="flex items-center space-x-2 shrink-0">
           <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs text-gray-500 hidden sm:inline">Ordenar:</span>
+          <span className="text-xs text-gray-500 hidden sm:inline">{t('inventory.sortBy')}</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600 font-medium"
           >
-            <option value="NAME_ASC">Nombre (A - Z)</option>
-            <option value="NAME_DESC">Nombre (Z - A)</option>
-            <option value="SKU_ASC">SKU (A - Z)</option>
-            <option value="PRICE_DESC">Precio (Mayor a Menor)</option>
-            <option value="PRICE_ASC">Precio (Menor a Mayor)</option>
-            <option value="STOCK_DESC">Stock (Mayor a Menor)</option>
-            <option value="STOCK_ASC">Stock (Menor a Mayor)</option>
+            <option value="NAME_ASC">{t('inventory.sortNameAsc')}</option>
+            <option value="NAME_DESC">{t('inventory.sortNameDesc')}</option>
+            <option value="SKU_ASC">{t('inventory.sortSkuAsc')}</option>
+            <option value="PRICE_DESC">{t('inventory.sortPriceDesc')}</option>
+            <option value="PRICE_ASC">{t('inventory.sortPriceAsc')}</option>
+            <option value="STOCK_DESC">{t('inventory.sortStockDesc')}</option>
+            <option value="STOCK_ASC">{t('inventory.sortStockAsc')}</option>
           </select>
         </div>
       </div>
@@ -393,14 +393,14 @@ export const Inventory: React.FC = () => {
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-3">SKU</th>
-                <th className="px-4 py-3">ID UnoPIM Externo</th>
-                <th className="px-4 py-3">Nombre del Producto</th>
-                <th className="px-4 py-3">Categoría</th>
-                <th className="px-4 py-3">Stock</th>
-                <th className="px-4 py-3">Precio PVP</th>
-                <th className="px-4 py-3">Sincronización</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
+                <th className="px-4 py-3">{t('inventory.skuCol')}</th>
+                <th className="px-4 py-3">{t('inventory.unopimIdCol')}</th>
+                <th className="px-4 py-3">{t('inventory.productNameCol')}</th>
+                <th className="px-4 py-3">{t('inventory.categoryCol')}</th>
+                <th className="px-4 py-3">{t('inventory.stockCol')}</th>
+                <th className="px-4 py-3">{t('inventory.pricePvpCol')}</th>
+                <th className="px-4 py-3">{t('inventory.syncCol')}</th>
+                <th className="px-4 py-3 text-right">{t('inventory.actionsCol')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
@@ -487,7 +487,7 @@ export const Inventory: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Añadir Producto a Catálogo</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('inventory.addProductModalTitle')}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
@@ -516,7 +516,7 @@ export const Inventory: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Categoría</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.categoryCol')}</label>
                   <input
                     type="text"
                     value={category}
@@ -543,7 +543,7 @@ export const Inventory: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">PVP (€)</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.pricePvp')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -554,7 +554,7 @@ export const Inventory: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Coste (€)</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.costPrice')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -565,7 +565,7 @@ export const Inventory: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Stock</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.stockCol')}</label>
                   <input
                     type="number"
                     value={stock}
@@ -577,12 +577,12 @@ export const Inventory: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Descripción</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.description')}</label>
                 <textarea
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Detalles técnicos y especificaciones..."
+                  placeholder={t('inventory.descriptionPlaceholder')}
                   className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
                 />
               </div>
@@ -613,7 +613,7 @@ export const Inventory: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Editar Producto</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('inventory.editProductModalTitle')}</h2>
               <button onClick={() => setEditingProduct(null)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
@@ -641,7 +641,7 @@ export const Inventory: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Categoría</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.categoryCol')}</label>
                   <input
                     type="text"
                     value={editCategory}
@@ -666,7 +666,7 @@ export const Inventory: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">PVP (€)</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.pricePvp')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -676,7 +676,7 @@ export const Inventory: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Coste (€)</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.costPrice')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -686,7 +686,7 @@ export const Inventory: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Stock</label>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.stockCol')}</label>
                   <input
                     type="number"
                     value={editStock}
@@ -697,7 +697,7 @@ export const Inventory: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Descripción</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('inventory.description')}</label>
                 <textarea
                   rows={2}
                   value={editDescription}
@@ -731,7 +731,7 @@ export const Inventory: React.FC = () => {
       {deletingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-2">Eliminar Producto</h2>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-2">{t('inventory.deleteProductModalTitle')}</h2>
             <p className="text-xs text-gray-600 dark:text-slate-400 mb-5">
               ¿Estás seguro de que deseas eliminar el producto{' '}
               <strong className="text-gray-900 dark:text-white">{deletingProduct.name}</strong> ({deletingProduct.sku})?

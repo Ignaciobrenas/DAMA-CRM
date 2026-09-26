@@ -132,7 +132,7 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
       <div className="text-center space-y-3 pt-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-color/10 text-brand-color text-xs font-semibold">
           <HelpCircle className="w-3.5 h-3.5" />
-          <span>Centro de Ayuda & Documentación</span>
+          <span>{t('faq.helpCenterTitle')}</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           Preguntas Frecuentes (FAQ)
@@ -149,7 +149,7 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por palabra clave (ej. webhooks, odoo, 2fa, facturas)..."
+              placeholder={t('faq.searchPlaceholder')}
               className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color shadow-sm outline-none transition-all"
             />
           </div>
@@ -241,7 +241,7 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
 
                           {/* Helpful feedback */}
                           <div className="flex items-center gap-2 text-slate-400">
-                            <span>¿Te ha resultado útil?</span>
+                            <span>{t('faq.wasHelpful')}</span>
                             <button
                               type="button"
                               onClick={() => handleFeedback(faq.id, true)}
@@ -279,7 +279,7 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
             <MessageCircle className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white">¿Tienes dudas adicionales o necesitas soporte técnico?</h3>
+            <h3 className="font-bold text-slate-900 dark:text-white">{t('faq.additionalQuestions')}</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Nuestro equipo de ingeniería y soporte comercial está a tu disposición en la bandeja omnicanal.
             </p>

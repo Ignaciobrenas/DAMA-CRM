@@ -335,7 +335,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('integrations')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">Odoo, WooCommerce, Shopify, n8n</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('commandMenu.integrationsDesc')}</div>
                   </div>
                 </button>
 
@@ -349,7 +349,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('onboarding.setupWizard', 'Asistente de Bienvenida')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">Configuración guiada inicial</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('commandMenu.guidedSetup')}</div>
                   </div>
                 </button>
               </div>

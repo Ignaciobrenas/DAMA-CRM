@@ -309,7 +309,7 @@ export const AgilePlanner: React.FC = () => {
             <div>
               <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-1.5">
                 <CheckSquare className="w-4 h-4 text-emerald-500" />
-                <span>Mis Tareas Pendientes en Curso</span>
+                <span>{t('agile.myPendingTasks')}</span>
               </h2>
               <p className="text-[11px] text-gray-500">
                 Optimizada para interacción táctil y reporte rápido desde móvil
@@ -347,7 +347,7 @@ export const AgilePlanner: React.FC = () => {
                   className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center space-x-1 shadow-xs transition-colors shrink-0"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  <span>Completar</span>
+                  <span>{t('agile.completeTaskBtn')}</span>
                 </button>
               </div>
             ))}
@@ -428,7 +428,7 @@ export const AgilePlanner: React.FC = () => {
               required
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
-              placeholder="Ej: Integración Webhooks"
+              placeholder={t('agile.taskTitlePlaceholder')}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
@@ -526,7 +526,7 @@ export const AgilePlanner: React.FC = () => {
               required
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              placeholder="Ej: Despliegue CRM + Migración"
+              placeholder={t('agile.projectTitlePlaceholder')}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
@@ -539,7 +539,7 @@ export const AgilePlanner: React.FC = () => {
               rows={2}
               value={projectDescription}
               onChange={(e) => setProjectDescription(e.target.value)}
-              placeholder="Alcance y entregables del proyecto..."
+              placeholder={t('agile.projectScopePlaceholder')}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             />
           </div>

@@ -228,7 +228,7 @@ export const Workflows: React.FC = () => {
           className="inline-flex items-center space-x-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Nueva Regla Automática</span>
+          <span>{t('workflows.newAutoRule')}</span>
         </button>
       </div>
 
@@ -242,7 +242,7 @@ export const Workflows: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar regla por nombre, disparador o acción..."
+              placeholder={t('workflows.searchPlaceholder')}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
             />
           </div>
@@ -255,11 +255,11 @@ export const Workflows: React.FC = () => {
               onChange={(e) => setTriggerFilter(e.target.value)}
               className="px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
             >
-              <option value="ALL">Todos los disparadores</option>
-              <option value="deal.won">deal.won (Venta Ganada)</option>
-              <option value="deal.created">deal.created (Nueva Venta)</option>
-              <option value="contact.created">contact.created (Nuevo Contacto)</option>
-              <option value="invoice.paid">invoice.paid (Factura Pagada)</option>
+              <option value="ALL">{t('workflows.allTriggers')}</option>
+              <option value="deal.won">{t('workflows.triggerDealWon')}</option>
+              <option value="deal.created">{t('workflows.triggerDealCreated')}</option>
+              <option value="contact.created">{t('workflows.triggerContactCreated')}</option>
+              <option value="invoice.paid">{t('workflows.triggerInvoicePaid')}</option>
             </select>
           </div>
 
@@ -269,9 +269,9 @@ export const Workflows: React.FC = () => {
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
           >
-            <option value="ALL">Todos los estados</option>
-            <option value="ACTIVE">Activas</option>
-            <option value="INACTIVE">Pausadas</option>
+            <option value="ALL">{t('workflows.allStatuses')}</option>
+            <option value="ACTIVE">{t('workflows.activeRules')}</option>
+            <option value="INACTIVE">{t('workflows.pausedRules')}</option>
           </select>
         </div>
       </div>
@@ -342,11 +342,11 @@ export const Workflows: React.FC = () => {
 
                 <div className="mt-3 p-2.5 rounded-lg bg-gray-50 dark:bg-slate-900/60 border border-gray-100 dark:border-slate-800 text-[11px] font-mono space-y-1">
                   <div>
-                    <span className="text-gray-400">Acción:</span>{' '}
+                    <span className="text-gray-400">{t('workflows.actionLabel')}</span>{' '}
                     <span className="text-blue-600 dark:text-blue-400 font-semibold">{wf.action}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400">Ejecuciones totales:</span>{' '}
+                    <span className="text-gray-400">{t('workflows.totalExecutions')}</span>{' '}
                     <span className="text-gray-800 dark:text-slate-200 font-semibold">{wf.executionCount || 0}</span>
                   </div>
                 </div>
@@ -361,7 +361,7 @@ export const Workflows: React.FC = () => {
                   className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 hover:bg-purple-100 transition-colors"
                 >
                   <Play className="w-3 h-3" />
-                  <span>Probar Ahora</span>
+                  <span>{t('workflows.testNow')}</span>
                 </button>
               </div>
             </div>
@@ -372,18 +372,18 @@ export const Workflows: React.FC = () => {
       {/* Execution Logs Section */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
-          <h2 className="text-xs font-bold text-gray-900 dark:text-white">Registro de Ejecuciones en Segundo Plano</h2>
-          <button onClick={loadData} className="text-[11px] text-purple-600 hover:underline">Actualizar</button>
+          <h2 className="text-xs font-bold text-gray-900 dark:text-white">{t('workflows.backgroundExecutionLogs')}</h2>
+          <button onClick={loadData} className="text-[11px] text-purple-600 hover:underline">{t('workflows.refreshLogs')}</button>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
             <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-2.5">Workflow</th>
-                <th className="px-4 py-2.5">Estado</th>
-                <th className="px-4 py-2.5">Resultado</th>
-                <th className="px-4 py-2.5 text-right">Hora</th>
+                <th className="px-4 py-2.5">{t('workflows.workflowColumn')}</th>
+                <th className="px-4 py-2.5">{t('workflows.statusColumn')}</th>
+                <th className="px-4 py-2.5">{t('workflows.resultColumn')}</th>
+                <th className="px-4 py-2.5 text-right">{t('workflows.timeColumn')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
@@ -438,7 +438,7 @@ export const Workflows: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Nueva Regla de Automatización</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('workflows.newRuleModalTitle')}</h2>
               <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
@@ -461,7 +461,7 @@ export const Workflows: React.FC = () => {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej. Crear Proyecto al Ganar Venta"
+                  placeholder={t('workflows.ruleNamePlaceholder')}
                   className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
                 />
               </div>
@@ -474,7 +474,7 @@ export const Workflows: React.FC = () => {
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Objetivo o comportamiento de la regla..."
+                  placeholder={t('workflows.ruleDescPlaceholder')}
                   className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
                 />
               </div>
@@ -504,10 +504,10 @@ export const Workflows: React.FC = () => {
                     onChange={(e) => setAction(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
                   >
-                    <option value="create_project">Crear Proyecto</option>
-                    <option value="send_email">Enviar Notificación Email</option>
-                    <option value="create_task">Crear Tarea Técnica</option>
-                    <option value="webhook_dispatch">Disparar Webhook</option>
+                    <option value="create_project">{t('workflows.actionCreateProject')}</option>
+                    <option value="send_email">{t('workflows.actionSendEmailNotif')}</option>
+                    <option value="create_task">{t('workflows.actionCreateTechTask')}</option>
+                    <option value="webhook_dispatch">{t('workflows.actionTriggerWebhook')}</option>
                   </select>
                 </div>
               </div>
@@ -538,7 +538,7 @@ export const Workflows: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Editar Regla</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('workflows.editRuleModalTitle')}</h2>
               <button onClick={() => setEditingWorkflow(null)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
@@ -602,10 +602,10 @@ export const Workflows: React.FC = () => {
                     onChange={(e) => setEditAction(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
                   >
-                    <option value="create_project">Crear Proyecto</option>
-                    <option value="send_email">Enviar Notificación Email</option>
-                    <option value="create_task">Crear Tarea Técnica</option>
-                    <option value="webhook_dispatch">Disparar Webhook</option>
+                    <option value="create_project">{t('workflows.actionCreateProject')}</option>
+                    <option value="send_email">{t('workflows.actionSendEmailNotif')}</option>
+                    <option value="create_task">{t('workflows.actionCreateTechTask')}</option>
+                    <option value="webhook_dispatch">{t('workflows.actionTriggerWebhook')}</option>
                   </select>
                 </div>
               </div>
@@ -648,7 +648,7 @@ export const Workflows: React.FC = () => {
       {deletingWorkflow && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-2">Eliminar Regla</h2>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white mb-2">{t('workflows.deleteRuleModalTitle')}</h2>
             <p className="text-xs text-gray-600 dark:text-slate-400 mb-5">
               ¿Estás seguro de que deseas eliminar el workflow{' '}
               <strong className="text-gray-900 dark:text-white">{deletingWorkflow.name}</strong>?

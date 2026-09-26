@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { BrandingProvider, useBranding } from './context/BrandingContext';
 import { ToastProvider } from './context/ToastContext';
 import { wsClient } from './services/websocket';
@@ -58,6 +58,7 @@ const normalizeRoute = (pathname: string): string => {
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { branding } = useBranding();
+  const { t } = useLanguage();
   const [currentRoute, setCurrentRoute] = useState<string>(() => {
     return normalizeRoute(window.location.pathname);
   });
@@ -96,7 +97,7 @@ const AppContent: React.FC = () => {
   };
 
   if (isLoading) {
-    return <LoadingScreen title={branding.companyName} message="Cargando espacio de trabajo modular..." />;
+    return <LoadingScreen title={branding.companyName} message={t('loadingWorkspace')} />;
   }
 
   // Allow public access to Privacy Policy & Client Portal
@@ -239,10 +240,10 @@ const AppContent: React.FC = () => {
         {/* Global Footer with Running Version, FAQ, Integrations and RGPD Privacy Links */}
         <footer className="py-4 px-6 border-t border-gray-200 dark:border-slate-800/80 text-center text-xs text-gray-400 dark:text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-            <span>&copy; {new Date().getFullYear()} {branding.companyName}. Todos los derechos reservados.</span>
+            <span>&copy; {new Date().getFullYear()} {branding.companyName}. {t('allRightsReserved')}</span>
             <span className="text-gray-300 dark:text-slate-700 hidden sm:inline">|</span>
             <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 font-semibold border border-gray-200 dark:border-slate-700">
-              Versión en ejecución: v1.2.0-staging (Build 2026.09.26)
+              {t('runningVersion')}: v1.2.0-staging (Build 2026.09.26)
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4">
@@ -250,19 +251,19 @@ const AppContent: React.FC = () => {
               onClick={() => navigateTo('/faq')}
               className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
             >
-              Preguntas Frecuentes (FAQ)
+              {t('faq')}
             </button>
             <button
               onClick={() => navigateTo('/integrations')}
               className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
-              Integraciones de Terceros
+              {t('thirdPartyIntegrations')}
             </button>
             <button
               onClick={() => navigateTo('/privacy')}
               className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline font-medium"
             >
-              Políticas de Privacidad & RGPD
+              {t('privacyAndGdpr')}
             </button>
           </div>
         </footer>

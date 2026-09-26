@@ -505,32 +505,32 @@ export const Integrations: React.FC = () => {
         {/* Stats Row inside banner */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/15">
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-white/75 font-medium block">Total Conectores</span>
+            <span className="text-xs text-white/75 font-medium block">{t('integrations.totalConnectors')}</span>
             <span className="text-xl font-bold text-white">{stats.total} servicios</span>
           </div>
           <div className="bg-emerald-500/20 backdrop-blur-sm rounded-xl p-3 border border-emerald-400/30">
-            <span className="text-xs text-emerald-100 font-medium block">Conectados / Activos</span>
+            <span className="text-xs text-emerald-100 font-medium block">{t('integrations.connectedActive')}</span>
             <span className="text-xl font-bold text-emerald-200 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               {stats.connected}
             </span>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-white/75 font-medium block">Listos para conectar</span>
+            <span className="text-xs text-white/75 font-medium block">{t('integrations.readyToConnect')}</span>
             <span className="text-xl font-bold text-white">{stats.available}</span>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-white/75 font-medium block">Nivel de Acceso</span>
+            <span className="text-xs text-white/75 font-medium block">{t('integrations.accessLevel')}</span>
             <span className="text-sm font-bold text-white flex items-center gap-1 mt-1">
               {isAdmin ? (
                 <>
                   <ShieldCheck className="w-4 h-4 text-emerald-300" />
-                  <span>Admin (Gestión Total)</span>
+                  <span>{t('integrations.adminFullAccess')}</span>
                 </>
               ) : (
                 <>
                   <Lock className="w-4 h-4 text-amber-300" />
-                  <span>Lectura Protegida</span>
+                  <span>{t('integrations.protectedRead')}</span>
                 </>
               )}
             </span>
@@ -548,7 +548,7 @@ export const Integrations: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por nombre, protocolo o capacidad (ej: WooCommerce, REST, Facturas)..."
+              placeholder={t('integrations.searchPlaceholder')}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-color"
             />
             {searchQuery && (
@@ -571,9 +571,9 @@ export const Integrations: React.FC = () => {
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-color cursor-pointer"
               >
-                <option value="all">Todos los estados</option>
-                <option value="connected">🟢 Solo Conectados</option>
-                <option value="disconnected">⚪ Solo Inactivos / Sin configurar</option>
+                <option value="all">{t('integrations.allStatuses')}</option>
+                <option value="connected">{t('integrations.onlyConnected')}</option>
+                <option value="disconnected">{t('integrations.onlyInactive')}</option>
               </select>
             </div>
 
@@ -713,16 +713,16 @@ export const Integrations: React.FC = () => {
                   {/* Architecture & Protocol Pills */}
                   <div className="space-y-2 mb-4 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px]">
                     <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                      <span className="font-medium text-slate-500">Arquitectura:</span>
+                      <span className="font-medium text-slate-500">{t('integrations.architecture')}</span>
                       <span className="font-mono text-slate-800 dark:text-slate-200">{item.protocol}</span>
                     </div>
                     <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                      <span className="font-medium text-slate-500">Sincronización:</span>
+                      <span className="font-medium text-slate-500">{t('integrations.synchronization')}</span>
                       <span className="font-semibold text-brand-color">{item.syncMode}</span>
                     </div>
                     {item.config?.lastSyncAt && (
                       <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                        <span className="font-medium text-slate-500">Último contacto:</span>
+                        <span className="font-medium text-slate-500">{t('integrations.lastContact')}</span>
                         <span className="font-mono text-[10px]">
                           {new Date(item.config.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -859,7 +859,7 @@ export const Integrations: React.FC = () => {
                   <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
                     <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                     <div>
-                      <p className="font-semibold">Acceso de Configuración Protegido</p>
+                      <p className="font-semibold">{t('integrations.protectedConfigAccess')}</p>
                       <p className="opacity-90">
                         Solo los usuarios con rol de Administrador o permisos de gestión de integraciones
                         pueden visualizar o alterar las credenciales confidenciales de este servicio.
@@ -960,7 +960,7 @@ export const Integrations: React.FC = () => {
                       />
                     </div>
                     <div className="pt-2 space-y-2">
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Entidades a Sincronizar</span>
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('integrations.entitiesToSync')}</span>
                       <div className="flex gap-4">
                         <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
                           <input
@@ -970,7 +970,7 @@ export const Integrations: React.FC = () => {
                             onChange={(e) => setEditingConfig({ ...editingConfig, syncContacts: e.target.checked })}
                             className="rounded text-brand-color"
                           />
-                          <span>Contactos</span>
+                          <span>{t('integrations.entityContacts')}</span>
                         </label>
                         <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
                           <input
@@ -980,7 +980,7 @@ export const Integrations: React.FC = () => {
                             onChange={(e) => setEditingConfig({ ...editingConfig, syncInvoices: e.target.checked })}
                             className="rounded text-brand-color"
                           />
-                          <span>Facturas</span>
+                          <span>{t('integrations.entityInvoices')}</span>
                         </label>
                         <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
                           <input
@@ -990,7 +990,7 @@ export const Integrations: React.FC = () => {
                             onChange={(e) => setEditingConfig({ ...editingConfig, syncProducts: e.target.checked })}
                             className="rounded text-brand-color"
                           />
-                          <span>Productos</span>
+                          <span>{t('integrations.entityProducts')}</span>
                         </label>
                       </div>
                     </div>

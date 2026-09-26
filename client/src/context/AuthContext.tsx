@@ -118,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     }
 
-    return { success: false, message: res.message || 'Error al iniciar sesión' };
+    return { success: false, message: res.message || 'auth.loginError' };
   };
 
   const register = async (name: string, email: string, password: string, companyName?: string) => {
@@ -134,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     }
 
-    return { success: false, message: res.message || 'Error al crear la cuenta' };
+    return { success: false, message: res.message || 'auth.registerError' };
   };
 
   const verify2FA = async (tempToken: string, code: string) => {
@@ -153,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     }
 
-    return { success: false, message: res.message || 'Código 2FA incorrecto' };
+    return { success: false, message: res.message || 'auth.twoFactorError' };
   };
 
   const logout = () => {

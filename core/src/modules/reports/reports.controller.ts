@@ -34,15 +34,31 @@ export async function getSalesPerformance(req: Request, res: Response): Promise<
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
 
-    // Monthly revenue trend (last 6 months)
-    const monthlyRevenue = [
-      { month: 'Ago', revenue: totalWonRevenue * 0.4 },
-      { month: 'Sep', revenue: totalWonRevenue * 0.6 },
-      { month: 'Oct', revenue: totalWonRevenue * 0.75 },
-      { month: 'Nov', revenue: totalWonRevenue * 0.9 },
-      { month: 'Dic', revenue: totalWonRevenue * 1.1 },
-      { month: 'Ene', revenue: totalWonRevenue },
-    ];
+    // Monthly revenue from real PAID invoices (last 12 months)
+    const MONTH_NAMES_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const now = new Date();
+    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+
+    const paidInvoices = await prisma.invoice.findMany({
+      where: { status: 'PAID', issueDate: { gte: twelveMonthsAgo } },
+      select: { issueDate: true, total: true },
+    });
+
+    // Build a map: "YYYY-M" → total revenue for that month
+    const revenueByMonthKey: Record<string, number> = {};
+    paidInvoices.forEach((inv) => {
+      const key = `${inv.issueDate.getFullYear()}-${inv.issueDate.getMonth()}`;
+      revenueByMonthKey[key] = (revenueByMonthKey[key] || 0) + inv.total;
+    });
+
+    // Generate ordered array for the last 12 months
+    const monthlyRevenue: { month: string; revenue: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      monthlyRevenue.push({ month: MONTH_NAMES_ES[d.getMonth()], revenue: revenueByMonthKey[key] || 0 });
+    }
+
 
     res.json({
       success: true,

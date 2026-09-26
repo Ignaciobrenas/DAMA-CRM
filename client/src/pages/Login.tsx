@@ -203,11 +203,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
     }
   };
 
-  const setDemoCredentials = (userEmail: string, userPass: string) => {
-    setEmail(userEmail);
-    setPassword(userPass);
-    switchMode('login');
-  };
+
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
@@ -387,7 +383,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" color="white" />
-                  <span>Verificando credenciales...</span>
+                  <span>{t('login.verifyingCredentials')}</span>
                 </>
               ) : (
                 <>
@@ -524,7 +520,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" color="white" />
-                  <span>Creando tu cuenta...</span>
+                  <span>{t('login.creatingAccount')}</span>
                 </>
               ) : (
                 <>
@@ -572,7 +568,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" color="white" />
-                  <span>Enviando código...</span>
+                  <span>{t('login.sendingCode')}</span>
                 </>
               ) : (
                 <>
@@ -711,7 +707,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" color="white" />
-                  <span>Actualizando contraseña...</span>
+                  <span>{t('login.updatingPassword')}</span>
                 </>
               ) : (
                 <>
@@ -765,7 +761,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" color="white" />
-                  <span>Validando 2FA...</span>
+                  <span>{t('login.validating2FA')}</span>
                 </>
               ) : (
                 <>
@@ -785,42 +781,6 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
           </form>
         )}
 
-        {/* Quick Demo Access Pills */}
-        <div className="mt-6 pt-5 border-t border-gray-100 dark:border-slate-800">
-          <div className="text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2 text-center">
-            {t('quickDemoAccess')}
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            <button
-              type="button"
-              onClick={() => setDemoCredentials('ignaciobrenas@gmail.com', '1')}
-              className="px-2 py-1.5 text-[11px] font-medium bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-800/60 rounded-xl text-blue-700 dark:text-blue-300 transition-colors text-center truncate font-semibold"
-            >
-              Ignacio
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoCredentials('admin@dama-crm.local', 'Admin1234!')}
-              className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 rounded-xl text-gray-700 dark:text-slate-300 transition-colors text-center truncate"
-            >
-              Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoCredentials('ventas@dama-crm.local', 'Ventas1234!')}
-              className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 rounded-xl text-gray-700 dark:text-slate-300 transition-colors text-center truncate"
-            >
-              Ventas
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoCredentials('pm@dama-crm.local', 'Pm1234!')}
-              className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-slate-700 rounded-xl text-gray-700 dark:text-slate-300 transition-colors text-center truncate"
-            >
-              PM
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* External Footer Links */}

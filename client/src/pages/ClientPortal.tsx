@@ -115,7 +115,7 @@ export const ClientPortal: React.FC = () => {
           <div className="space-y-1.5">
             <div className="flex items-center space-x-2 text-blue-200 text-xs font-semibold uppercase tracking-wider">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Portal de Autoservicio B2B & Helpdesk</span>
+              <span>{t('portal.serviceHeader')}</span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Área Privada de Clientes</h1>
             <p className="text-xs text-blue-100 max-w-xl">
@@ -197,7 +197,10 @@ export const ClientPortal: React.FC = () => {
                 {portalData.company.name}
               </div>
               <div className="text-xs text-gray-500">
-                CIF: {portalData.company.taxId || 'B-99887766'} • {portalData.company.email || 'contacto@empresa.com'}
+                {[
+                  portalData.company.taxId ? `CIF: ${portalData.company.taxId}` : null,
+                  portalData.company.email,
+                ].filter(Boolean).join(' • ')}
               </div>
             </div>
             <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
@@ -216,11 +219,11 @@ export const ClientPortal: React.FC = () => {
               <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
                 <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
                   <tr>
-                    <th className="px-4 py-3">Número Factura</th>
-                    <th className="px-4 py-3">Fecha de Emisión</th>
-                    <th className="px-4 py-3">Estado</th>
-                    <th className="px-4 py-3">Importe Total</th>
-                    <th className="px-4 py-3 text-right">Descarga</th>
+                    <th className="px-4 py-3">{t('portal.invoiceNumber')}</th>
+                    <th className="px-4 py-3">{t('portal.issueDate')}</th>
+                    <th className="px-4 py-3">{t('status')}</th>
+                    <th className="px-4 py-3">{t('portal.totalAmount')}</th>
+                    <th className="px-4 py-3 text-right">{t('portal.download')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
@@ -251,7 +254,7 @@ export const ClientPortal: React.FC = () => {
                             className="inline-flex items-center space-x-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
                           >
                             <Download className="w-3.5 h-3.5" />
-                            <span>Descargar PDF</span>
+                            <span>{t('portal.downloadPdf')}</span>
                           </button>
                         </td>
                       </tr>
@@ -308,10 +311,10 @@ export const ClientPortal: React.FC = () => {
                     onChange={(e) => setTicketPriority(e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
                   >
-                    <option value="LOW">Baja (Consulta general)</option>
-                    <option value="MEDIUM">Media (Incidencia no crítica)</option>
-                    <option value="HIGH">Alta (Afecta operaciones)</option>
-                    <option value="URGENT">Urgente (Servicio interrumpido)</option>
+                    <option value="LOW">{t('portal.priorityLow')}</option>
+                    <option value="MEDIUM">{t('portal.priorityMedium')}</option>
+                    <option value="HIGH">{t('portal.priorityHigh')}</option>
+                    <option value="URGENT">{t('portal.priorityUrgent')}</option>
                   </select>
                 </div>
               </div>
@@ -335,7 +338,7 @@ export const ClientPortal: React.FC = () => {
                 className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
               >
                 <Send className="w-4 h-4" />
-                <span>Enviar Ticket de Soporte</span>
+                <span>{t('portal.sendSupportTicket')}</span>
               </button>
             </form>
 
@@ -415,7 +418,7 @@ export const ClientPortal: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Descargar mis datos completos (JSON)</span>
+              <span>{t('portal.downloadFullDataJson')}</span>
             </a>
           </div>
 
@@ -426,7 +429,7 @@ export const ClientPortal: React.FC = () => {
               rel="noreferrer"
               className="inline-flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
             >
-              <span>Consultar la Política de Privacidad íntegra del CRM</span>
+              <span>{t('portal.viewFullPrivacyPolicy')}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>

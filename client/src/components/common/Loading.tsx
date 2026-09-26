@@ -8,12 +8,22 @@ interface LoadingSpinnerProps {
   label?: string;
 }
 
+import { useLanguage } from '../../context/LanguageContext';
+
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 'md',
   className = '',
   color = 'currentColor',
   label,
 }) => {
+  let loadingText = 'Cargando';
+  try {
+    const lang = useLanguage();
+    if (lang && lang.t) loadingText = lang.t('loading', 'Cargando');
+  } catch {
+    // LanguageProvider not available yet
+  }
+
   const sizeClasses = {
     xs: 'w-3 h-3 border-[1.5px]',
     sm: 'w-4 h-4 border-2',
@@ -31,7 +41,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         )}
         style={{ borderColor: `${color} transparent transparent transparent`, borderTopColor: color }}
         role="status"
-        aria-label="Cargando"
+        aria-label={loadingText}
       />
       {label && <span className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</span>}
     </div>
@@ -80,9 +90,21 @@ export const LoadingScreen: React.FC<{
   progress?: number;
 }> = ({
   title = 'DAMA-CRM',
-  message = 'Cargando espacio de trabajo empresarial...',
+  message,
   progress,
 }) => {
+  let displayMessage = message;
+  let syncLabel = 'Sincronizando Sistema Modular';
+  try {
+    const lang = useLanguage();
+    if (lang && lang.t) {
+      if (!displayMessage) displayMessage = lang.t('loading.workspaceDefault', 'Cargando espacio de trabajo empresarial...');
+      syncLabel = lang.t('loading.syncModularSystem', 'Sincronizando Sistema Modular');
+    }
+  } catch {
+    if (!displayMessage) displayMessage = 'Cargando espacio de trabajo empresarial...';
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-50/95 dark:bg-slate-950/95 backdrop-blur-md transition-all">
       <div className="flex flex-col items-center max-w-sm px-6 text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
@@ -93,7 +115,7 @@ export const LoadingScreen: React.FC<{
             {title}
           </h2>
           <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">
-            {message}
+            {displayMessage}
           </p>
         </div>
 
@@ -111,7 +133,7 @@ export const LoadingScreen: React.FC<{
 
         <div className="text-[10px] tracking-wider uppercase text-blue-600 dark:text-blue-400 font-semibold flex items-center space-x-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
-          <span>Sincronizando Sistema Modular</span>
+          <span>{syncLabel}</span>
         </div>
       </div>
     </div>
