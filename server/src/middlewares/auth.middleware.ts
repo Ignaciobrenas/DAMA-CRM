@@ -6,6 +6,7 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   name: string;
+  tenantId?: string | null;
   roleId: string;
   role: string;
   permissions: Array<{ resource: string; action: string }>;
@@ -73,6 +74,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       id: user.id,
       email: user.email,
       name: user.name,
+      tenantId: user.tenantId || (req.headers['x-tenant-id'] as string) || 'master',
       roleId: user.roleId,
       role: user.role.name,
       permissions: Array.from(permissionsMap.values()),
