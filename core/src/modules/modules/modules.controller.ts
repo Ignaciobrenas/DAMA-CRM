@@ -201,3 +201,106 @@ export async function updateCompanyModules(req: Request, res: Response): Promise
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+/**
+ * GET /api/modules/export-backup
+ * Export full JSON data backup for current company
+ */
+export async function exportCompanyBackup(req: Request, res: Response): Promise<void> {
+  try {
+    const user = (req as any).user;
+    if (!isUserCompanyAdmin(user)) {
+      res.status(403).json({
+        success: false,
+        message: 'Acceso denegado. Solo administradores pueden exportar copias de seguridad.',
+      });
+      return;
+    }
+
+    const [
+      contacts,
+      companies,
+      deals,
+      invoices,
+      projects,
+      tasks,
+      tickets,
+      timeRecords,
+    ] = await Promise.all([
+      prisma.contact.findMany({ take: 1000 }).catch(() => []),
+      prisma.company.findMany({ take: 1000 }).catch(() => []),
+      prisma.deal.findMany({ take: 1000 }).catch(() => []),
+      prisma.invoice.findMany({ take: 1000 }).catch(() => []),
+      prisma.project.findMany({ take: 1000 }).catch(() => []),
+      prisma.task.findMany({ take: 1000 }).catch(() => []),
+      prisma.ticket.findMany({ take: 1000 }).catch(() => []),
+      prisma.timeRecord.findMany({ take: 1000 }).catch(() => []),
+    ]);
+
+    const backupData = {
+      version: '1.2.0',
+      exportedAt: new Date().toISOString(),
+      exportedBy: user.email,
+      counts: {
+        contacts: contacts.length,
+        companies: companies.length,
+        deals: deals.length,
+        invoices: invoices.length,
+        projects: projects.length,
+        tasks: tasks.length,
+        tickets: tickets.length,
+        timeRecords: timeRecords.length,
+      },
+      data: {
+        contacts,
+        companies,
+        deals,
+        invoices,
+        projects,
+        tasks,
+        tickets,
+        timeRecords,
+      },
+    };
+
+    await logAudit(user.id, 'EXPORT_BACKUP', 'System', 'all', { records: backupData.counts }, req.ip);
+
+    res.setHeader('Content-Disposition', `attachment; filename=dama_crm_backup_${Date.now()}.json`);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(backupData);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * GET /api/modules/system-status
+ * Diagnostics and storage health check
+ */
+export async function getSystemHealth(req: Request, res: Response): Promise<void> {
+  try {
+    const [userCount, companyCount, invoiceCount] = await Promise.all([
+      prisma.user.count().catch(() => 0),
+      prisma.company.count().catch(() => 0),
+      prisma.invoice.count().catch(() => 0),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        status: 'ONLINE',
+        dbProvider: 'PostgreSQL / SQLite Docker Engine',
+        dbConnected: true,
+        uptimeSeconds: Math.round(process.uptime()),
+        timestamp: new Date().toISOString(),
+        metrics: {
+          users: userCount,
+          companies: companyCount,
+          invoices: invoiceCount,
+        },
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}

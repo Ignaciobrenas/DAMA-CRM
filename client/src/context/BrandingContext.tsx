@@ -9,15 +9,37 @@ export interface BrandingConfig {
   logoLightUrl?: string;
   primaryColor: string;
   borderRadius: 'sm' | 'md' | 'lg' | 'full';
+  companyTaxId?: string;
+  companyAddress?: string;
+  companyEmail?: string;
+  companyPhone?: string;
+  companyWebsite?: string;
+  currency?: string;
+  defaultTaxRate?: number;
+  invoicePrefix?: string;
+  quotePrefix?: string;
+  paymentTerms?: string;
+  bankAccount?: string;
 }
 
 const DEFAULT_BRANDING: BrandingConfig = {
-  companyName: 'DAMA-CRM',
-  logoUrl: '', // Empty means using DAMA default placeholder
+  companyName: 'DAMA CRM Soluciones S.L.',
+  logoUrl: '',
   logoDarkUrl: '',
   logoLightUrl: '',
   primaryColor: '#072053',
   borderRadius: 'md',
+  companyTaxId: 'B-12345678',
+  companyAddress: 'Avenida Tecnológica 42, 28046 Madrid, España',
+  companyEmail: 'contacto@dama-crm.com',
+  companyPhone: '+34 910 000 000',
+  companyWebsite: 'https://damacrm.com',
+  currency: 'EUR',
+  defaultTaxRate: 21,
+  invoicePrefix: 'FAC-2026-',
+  quotePrefix: 'PRE-2026-',
+  paymentTerms: 'Transferencia bancaria a 30 días',
+  bankAccount: 'ES91 2100 0418 4502 0005 1332',
 };
 
 const RADIUS_MAP: Record<string, string> = {

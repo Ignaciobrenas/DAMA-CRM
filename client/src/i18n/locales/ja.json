@@ -1286,5 +1286,8 @@
   "settings.tabProfile": "マイプロフィール＆基本設定",
   "settings.tabBranding": "ホワイトレーベル＆デザイン",
   "settings.tabSecurity": "セキュリティ＆RBAC権限",
-  "settings.tabUsers": "ユーザーアカウント管理"
+  "settings.tabUsers": "ユーザーアカウント管理",
+  "settings.tabCompany": "企業情報＆請求設定",
+  "settings.tabIntegrations": "コネクタ＆外部連携",
+  "settings.tabSystem": "システム＆バックアップ"
 }

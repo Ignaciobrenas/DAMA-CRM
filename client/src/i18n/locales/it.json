@@ -1286,5 +1286,8 @@
   "settings.tabProfile": "Il Mio Profilo & Preferenze",
   "settings.tabBranding": "White-Label & Stile",
   "settings.tabSecurity": "Sicurezza & Permessi RBAC",
-  "settings.tabUsers": "Account Utente"
+  "settings.tabUsers": "Account Utente",
+  "settings.tabCompany": "Identità & Fatturazione",
+  "settings.tabIntegrations": "Connettori & Integrazioni",
+  "settings.tabSystem": "Sistema & Backup Dati"
 }
