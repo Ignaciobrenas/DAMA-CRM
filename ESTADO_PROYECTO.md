@@ -342,3 +342,32 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
   5. **Portal de Cliente & Helpdesk Ticketing:**
      - Portal de autoservicio B2B ampliado con gestión de incidencias técnicas (Helpdesk).
      - Formulario de creación de tickets con prioridad (Baja, Media, Alta, Crítica) y seguimiento de resolución en tiempo real.
+
+
+---
+
+## 🏢 17. Hoja de Ruta: Arquitectura Multi-Tenant, God Mode, Tickets y Suite PYME
+
+> Especificación arquitectónica documentada en detalle en [`docs/docs/multi-tenant-and-pymes-roadmap.md`](docs/docs/multi-tenant-and-pymes-roadmap.md).
+
+* **Aislamiento Multi-Tenant por Aplicación:**
+  - Partición de datos mediante entidad `Tenant` (`id`, `slug`, `domain`, `status`, `plan`, `maxUsers`, `branding`).
+  - Extensión en el cliente de Prisma para inyección automática de `where: { tenantId }` y asignación de `data: { tenantId }` con estanqueidad absoluta entre empresas clientes.
+  - Resolución dinámica de tenant en 3 niveles: subdominio (`https://empresa.damacrm.com`), cabecera HTTP `X-Tenant-ID` / `X-Tenant-Slug` o claim JWT.
+* **Tenant de God ("God Mode" / SuperAdmin):**
+  - Tenant maestro (`slug: 'master'`, `isGodTenant: true`) con rol `SUPER_ADMIN`.
+  - Consola central para aprovisionar tenants, suspender/reactivar cuentas por impago y conmutar de tenant en tiempo real (**"Switch Tenant"**) para soporte técnico de nivel 3 con auditoría.
+* **Blindaje y Dinamización de CORS:**
+  - Sustitución de wildcard estático por validador de subdominios (`*.damacrm.com`, subdominios locales) con `credentials: true`.
+  - Autorización explícita de cabeceras de tenant (`X-Tenant-ID`, `X-Tenant-Slug`, `X-Switch-Tenant-ID`) y exposición de `Content-Disposition`.
+* **Sistema Integral de Tickets de Soporte (Helpdesk):**
+  - Entidades `Ticket` (`TCK-YYYY-SEQ`) y `TicketMessage` vinculadas a contactos y empresas del CRM.
+  - Temporizadores y cálculo de vencimiento según Acuerdos de Nivel de Servicio (SLA: 4h urgente, 8h alta, 24h media).
+  - Hilo conversacional con **mensajes públicos** al cliente y **notas internas confidenciales** (en amarillo) para comunicación privada de agentes.
+  - Vistas alternables en Tabla interactiva y Tablero Kanban por estados con WebSocket en vivo.
+* **Suite de Alto Valor para PYMEs:**
+  - **Firma Digital y Aceptación Online de Presupuestos:** Enlace público tokenizado donde el cliente firma con el dedo/ratón (Canvas HTML5), con paso automático a `ACCEPTED` y generación instantánea de factura en borrador.
+  - **Control de Cobros, Morosidad y Recobro (Dunning):** Panel de antigüedad de deuda (*Aging Report*), registro de cobros parciales y plantillas de recordatorio.
+  - **Gestión de Gastos y Margen P&L:** Registro ágil de compras con proveedor, categoría, IVA soportado y gráfico de beneficio operativo en tiempo real.
+  - **Libros Oficiales para Gestoría / Asesor Fiscal:** Exportación en 1 clic de los Libros Registro de Facturas Expedidas y Recibidas en Excel/CSV listos para la declaración trimestral (Modelo 303 de IVA).
+  - **Partes de Trabajo Facturables:** Registro de horas trabajadas por proyecto/tarea con volcado directo a líneas de factura.
