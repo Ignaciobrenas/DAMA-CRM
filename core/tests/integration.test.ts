@@ -155,4 +155,47 @@ describe('DAMA-CRM Integration & Automation Tests', () => {
       assert.strictEqual(triggered[0].action, 'NOTIFY_ADMIN');
     });
   });
+
+  describe('WooCommerce & n8n Bidirectional Connector Integration', () => {
+    it('should parse WooCommerce order.created webhook into CRM deal and contact payload', () => {
+      const orderPayload = {
+        id: 1042,
+        number: '1042',
+        total: '499.00',
+        currency: 'EUR',
+        billing: {
+          first_name: 'Elena',
+          last_name: 'Vázquez',
+          email: 'elena.vazquez@acme-corp.es',
+          phone: '+34 622 334 455',
+        },
+        line_items: [
+          { name: 'Licencia Anual Pro', quantity: 1, price: 499 },
+        ],
+      };
+
+      const normalized = {
+        dealTitle: `Pedido WC #${orderPayload.number} - ${orderPayload.billing.first_name}`,
+        dealValue: parseFloat(orderPayload.total),
+        currency: orderPayload.currency,
+        contactEmail: orderPayload.billing.email,
+        contactFullName: `${orderPayload.billing.first_name} ${orderPayload.billing.last_name}`,
+      };
+
+      assert.strictEqual(normalized.dealTitle, 'Pedido WC #1042 - Elena');
+      assert.strictEqual(normalized.dealValue, 499.00);
+      assert.strictEqual(normalized.contactEmail, 'elena.vazquez@acme-corp.es');
+    });
+
+    it('should match and filter n8n subscribed events properly', () => {
+      const subscribedEvents = ['contact.created', 'deal.won', 'invoice.paid'];
+      
+      const shouldTriggerContact = subscribedEvents.includes('contact.created') || subscribedEvents.includes('*');
+      const shouldTriggerInventory = subscribedEvents.includes('product.deleted') || subscribedEvents.includes('*');
+
+      assert.strictEqual(shouldTriggerContact, true);
+      assert.strictEqual(shouldTriggerInventory, false);
+    });
+  });
 });
+

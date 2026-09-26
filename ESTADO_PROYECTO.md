@@ -128,6 +128,16 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
   - `GET /api/users/roles` (Listado de roles y matriz de permisos RBAC)
   - `PUT /api/users/roles/:roleId/permissions` (Actualización de matriz de permisos)
   - `GET /api/users/audit-logs` (Trazabilidad forense inmutable de eventos de seguridad y actividad del sistema)
+* **Conectores & Integraciones de Terceros:**
+  - `GET /api/integraciones-de-terceros` (Catálogo completo de aplicaciones conectables con estado, capacidades y documentación)
+  - `GET /api/integrations` (Configuración pública protegida de conectores)
+  - `PUT /api/integrations/:connector` (Actualización de credenciales y parámetros de Odoo, WooCommerce, Shopify y n8n)
+  - `POST /api/integrations/:connector/test` (Comprobación en vivo de conectividad con servidores remotos)
+  - `POST /api/integrations/:connector/sync` (Lanzamiento de sincronización manual de catálogos y pedidos)
+  - `POST /api/integrations/woocommerce/webhook` (Recepción de pedidos y clientes de tiendas WooCommerce)
+  - `POST /api/integrations/shopify/webhook` (Recepción de webhooks Shopify con verificación criptográfica HMAC-SHA256)
+  - `POST /api/integrations/n8n/action` (Ejecución de acciones entrantes desde flujos n8n: crear tratos, contactos, actividades o productos)
+  - `POST /api/integrations/n8n/test` (Disparo de evento de prueba hacia webhook n8n configurado)
 * **Documentación & Salud:**
   - `GET /api/health` (Healthcheck para Traefik y Docker)
   - `GET /api/docs` (Swagger UI interactivo OpenAPI 3.0)
@@ -142,21 +152,19 @@ Todos los endpoints están protegidos por middleware JWT y control dinámico RBA
   - Tarjetas, botones, inputs, diálogos, selectores y tablas con bordes redondeados modernos.
 * **Sistema de Personalización de Marca (White-label Branding):**
   - Configuración en la vista de Ajustes (`Settings.tsx`).
-  - Sube tu logo corporativo (URL o archivo de imagen local) o usa el isotipo por defecto.
-  - Elige el nombre de la empresa y el color primario corporativo (HEX o paleta predefinida).
-  - Selecciona la curvatura de bordes (8px, 14px, 20px, 28px).
-  - Vista previa en tiempo real y persistencia en `localStorage`.
-* **Tiempo Real con WebSockets (`wsClient`):**
-  - Conexión persistente y reconexión automática en segundo plano.
-  - Actualizaciones en vivo del pipeline Kanban al mover o crear oportunidades.
-  - Actualizaciones en vivo del chat omnicanal de WhatsApp.
-  - Notificaciones en vivo con contador pulsante en el Navbar.
-* **Manejo de Errores Amigable:**
-  - En `client/src/services/api.ts`, los errores técnicos o de base de datos se traducen a mensajes sencillos y seguros para el usuario final.
-* **10 Idiomas con Soporte RTL:**
-  - Español, Inglés, Francés, Alemán, Portugués, Italiano, Chino, Japonés, Ruso y Árabe (con layout dinámico `dir="rtl"`).
-* **Paleta de Comandos Global (`Cmd+K` / `Ctrl+K`):**
-  - Navegación instantánea por teclado y búsqueda de entidades.
+* **Conectores & Integraciones de Terceros (`Integrations.tsx`):**
+  - Tarjetas interactivas para Odoo ERP, WooCommerce, Shopify, n8n, UnoPIM y WhatsApp Cloud.
+  - Modales de credenciales seguras, comprobación en vivo de conexión con spinners, copia rápida de webhooks y disparador de sincronización manual.
+* **Asistente de Onboarding Guiado (`Onboarding.tsx`):**
+  - Despliegue interactivo en 4 fases para nuevos usuarios o primera sesión: Organización & Moneda, Rol & Invitación de Equipo, Ecosistema de Software y Carga de Datos Demo con celebración de confeti animado.
+* **Centro de Ayuda & Preguntas Frecuentes (`FAQ.tsx`):**
+  - Acordeón categorizado por áreas temáticas con buscador en vivo en tiempo real, etiquetas y botones de feedback útil.
+* **Seguimiento de Analíticas & Telemetría en Vivo (`analytics.ts` / `Reports.tsx`):**
+  - Rastreo privacy-first de páginas vistas, eventos e interacciones de usuario con panel de métricas en tiempo real.
+* **Identidad de Marca Adaptativa DAMA:**
+  - Colección de logotipos vectoriales SVG optimizados que actúan como placeholder institucional si la empresa no sube un logo propio, garantizando contraste navy corporativo (`#072053`) en tema claro y blanco puro (`#FFFFFF`) en tema oscuro.
+* **Indicador de Versión Activa en Ejecución:**
+  - Etiqueta permanente en pie de página global y panel lateral con la versión actual: `v1.2.0-staging (Build 2026.09.26)`.
 * **Modo Oscuro / Claro:**
   - Detección automática del sistema operativo y alternancia manual persistente.
 

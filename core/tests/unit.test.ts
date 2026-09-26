@@ -364,5 +364,67 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(verifyTotpCode('', '123456'), false);
     });
   });
+
+  describe('Integrations & Connectors Security Engine', () => {
+    const { IntegrationsService } = require('../src/modules/integrations/integrations.service');
+    const crypto = require('crypto');
+
+    it('should mask sensitive API keys and secrets in public config', () => {
+      const publicConfig = IntegrationsService.getPublicConfig();
+      assert.ok(publicConfig.odoo);
+      assert.ok(publicConfig.woocommerce);
+      assert.ok(publicConfig.shopify);
+      assert.ok(publicConfig.n8n);
+
+      if (publicConfig.odoo.hasApiKey) {
+        assert.strictEqual(publicConfig.odoo.apiKey, '••••••••');
+      }
+      if (publicConfig.shopify.hasAccessToken) {
+        assert.strictEqual(publicConfig.shopify.accessToken, '••••••••');
+      }
+    });
+
+    it('should verify Shopify HMAC SHA256 webhook signatures correctly', () => {
+      const secret = 'shpss_test_secret_key_8848';
+      const rawPayload = JSON.stringify({ id: 987654, total_price: '199.00', currency: 'EUR' });
+      const validHmac = crypto.createHmac('sha256', secret).update(rawPayload, 'utf8').digest('base64');
+
+      const isValid = IntegrationsService.verifyShopifyHmac(rawPayload, validHmac, secret);
+      assert.strictEqual(isValid, true);
+
+      const isInvalid = IntegrationsService.verifyShopifyHmac(rawPayload, 'invalid_hmac_signature', secret);
+      assert.strictEqual(isInvalid, false);
+    });
+
+    it('should validate connector URL structures for Odoo and WooCommerce', async () => {
+      const badOdoo = await IntegrationsService.testOdoo({ url: 'not-a-valid-url', db: 'test', username: 'admin' });
+      assert.strictEqual(badOdoo.success, false);
+
+      const goodOdoo = await IntegrationsService.testOdoo({ url: 'https://demo.odoo.com', db: 'odoo_demo', username: 'admin' });
+      assert.strictEqual(goodOdoo.success, true);
+    });
+
+    it('should provide full third party integrations catalog structure for /api/integraciones-de-terceros', () => {
+      const { getIntegracionesDeTerceros } = require('../src/modules/integrations/integrations.controller');
+      let responseData: any = null;
+      const mockReq: any = { get: () => 'localhost:3000', protocol: 'http' };
+      const mockRes: any = {
+        json: (data: any) => { responseData = data; },
+        status: () => mockRes,
+      };
+
+      getIntegracionesDeTerceros(mockReq, mockRes);
+      assert.ok(responseData);
+      assert.strictEqual(responseData.success, true);
+      assert.strictEqual(responseData.endpoint, '/api/integraciones-de-terceros');
+      assert.ok(responseData.total >= 6);
+      
+      const appIds = responseData.aplicaciones.map((a: any) => a.id);
+      assert.ok(appIds.includes('odoo'));
+      assert.ok(appIds.includes('woocommerce'));
+      assert.ok(appIds.includes('shopify'));
+      assert.ok(appIds.includes('n8n'));
+    });
+  });
 });
 

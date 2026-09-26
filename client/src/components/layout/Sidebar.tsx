@@ -18,6 +18,8 @@ import {
   Lock,
   PanelLeftClose,
   PanelLeftOpen,
+  Blocks,
+  HelpCircle,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -38,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { t } = useLanguage();
   const { user, hasPermission, updatePreferences } = useAuth();
-  const { branding } = useBranding();
+  const { branding, getLogo } = useBranding();
 
   const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
   const pinnedRoutes = user?.preferences?.sidebarPinnedItems;
@@ -53,10 +55,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'inventory', label: t('inventory'), icon: Package, route: '/inventory', resource: 'inventory' },
     { id: 'workflows', label: t('workflows'), icon: Cpu, route: '/workflows', resource: 'workflows' },
     { id: 'omnichannel', label: t('omnichannel'), icon: MessageSquare, route: '/omnichannel', resource: 'omnichannel' },
+    { id: 'integrations', label: t('integrations'), icon: Blocks, route: '/integrations' },
     { id: 'lead-capture', label: t('leadCapture'), icon: Zap, route: '/lead-capture' },
     { id: 'reports', label: t('reportsBI'), icon: BarChart3, route: '/reports', resource: 'reports' },
     { id: 'settings', label: t('settings'), icon: ShieldCheck, route: '/settings', resource: 'users' },
     { id: 'portal', label: t('clientPortal'), icon: ExternalLink, route: '/portal', resource: 'invoices' },
+    { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq' },
     { id: 'privacy', label: t('privacyPolicy'), icon: Lock, route: '/privacy' },
   ];
 
@@ -79,22 +83,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} h-14 border-b border-gray-200 dark:border-slate-800`}>
           <div className="flex items-center space-x-2.5 truncate">
-            {branding.logoUrl ? (
-              <img
-                src={branding.logoUrl}
-                alt={branding.companyName}
-                className="w-8 h-8 rounded-lg object-contain bg-white dark:bg-slate-800 p-0.5 border border-gray-200 dark:border-slate-700 shrink-0"
-              />
-            ) : (
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-xs shrink-0"
-                style={{ backgroundColor: branding.primaryColor }}
-              >
-                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-            )}
+            <img
+              src={getLogo('symbol')}
+              alt={branding.companyName}
+              className="w-8 h-8 rounded-lg object-contain bg-white/90 dark:bg-slate-800/90 p-1 border border-gray-200 dark:border-slate-700 shrink-0 shadow-xs"
+            />
             {!isCollapsed && (
               <div className="truncate">
                 <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white truncate block">
@@ -176,9 +169,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-2.5 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between text-[10px] text-gray-400 dark:text-slate-500">
           {!isCollapsed && (
             <div className="flex items-center space-x-1.5 truncate">
-              <span>v1.0.0</span>
+              <span className="font-mono font-semibold">v1.2.0-staging</span>
               <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-mono text-[9px]">
-                Self-Hosted
+                Activa
               </span>
             </div>
           )}
