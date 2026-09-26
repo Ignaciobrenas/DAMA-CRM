@@ -9,10 +9,12 @@ import {
   AlertTriangle,
   Search,
   Filter,
+  Download,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { apiRequest } from '../../services/api';
+import { exportToCSV } from '../../utils/exportUtils';
 
 interface Role {
   id: string;
@@ -152,6 +154,38 @@ export const SecuritySettings: React.FC = () => {
     } else {
       toast.error('Error al actualizar 2FA', res.message || 'Operación no permitida');
     }
+  };
+
+  const handleExportAuditLogs = () => {
+    if (filteredLogs.length === 0) {
+      toast.error('Sin registros', 'No hay registros de auditoría para exportar.');
+      return;
+    }
+
+    const headers = [
+      t('audit.colTimestamp'),
+      t('audit.colAction'),
+      t('audit.colEntity'),
+      'Entity ID',
+      t('audit.colUser'),
+      'User Email',
+      t('audit.colIp'),
+      t('audit.colDetails'),
+    ];
+
+    const rows = filteredLogs.map((log) => [
+      new Date(log.createdAt).toISOString(),
+      log.action,
+      log.resource || 'SYSTEM',
+      log.resourceId || '',
+      log.user?.name || 'Automated System',
+      log.user?.email || 'system@crm',
+      log.ipAddress || '127.0.0.1',
+      log.details || '',
+    ]);
+
+    exportToCSV(`dama_crm_audit_logs_${new Date().toISOString().split('T')[0]}`, headers, rows);
+    toast.success('Auditoría Exportada', `${filteredLogs.length} registros exportados a CSV con codificación UTF-8.`);
   };
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId);
@@ -317,6 +351,16 @@ export const SecuritySettings: React.FC = () => {
               <option value="UPDATE_MODULES">UPDATE_MODULES</option>
               <option value="UPDATE_BRANDING">UPDATE_BRANDING</option>
             </select>
+
+            <button
+              type="button"
+              onClick={handleExportAuditLogs}
+              className="inline-flex items-center space-x-1.5 px-3 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-semibold shadow-xs transition shrink-0"
+              title={t('audit.exportAuditLogs', 'Exportar Auditoría (CSV)')}
+            >
+              <Download className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden sm:inline">{t('audit.exportAuditLogs', 'Exportar Auditoría')}</span>
+            </button>
 
             <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 shrink-0">
               {filteredLogs.length} eventos

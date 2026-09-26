@@ -147,3 +147,28 @@ export async function deleteCompany(req: Request, res: Response): Promise<void> 
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function bulkDeleteCompanies(req: Request, res: Response): Promise<void> {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ success: false, message: 'Se requiere una lista de IDs de empresas' });
+      return;
+    }
+
+    const result = await prisma.company.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    await logAudit((req as any).user?.id || null, 'BULK_DELETE', 'Company', undefined, { count: result.count, ids }, req.ip);
+
+    res.json({
+      success: true,
+      message: `${result.count} empresas eliminadas correctamente`,
+      deletedCount: result.count,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+

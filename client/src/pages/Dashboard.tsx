@@ -30,7 +30,7 @@ import { AnimatedCounter } from '../components/ui/AnimatedCounter';
 import { AnimatedIcon } from '../components/ui/AnimatedIcon';
 import { BarChart } from '../components/ui/Charts';
 
-const DEFAULT_WIDGETS = ['kpis', 'pipeline_chart', 'recent_tasks', 'top_deals', 'quick_actions'];
+const DEFAULT_WIDGETS = ['kpis', 'cashflow_forecast', 'pipeline_chart', 'recent_tasks', 'top_deals', 'quick_actions'];
 
 export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ onNavigate }) => {
   const { t } = useLanguage();
@@ -42,6 +42,9 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
   const [contactsCount, setContactsCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [chartView, setChartView] = useState<'bars' | 'list'>('bars');
+
+  const [timeframe, setTimeframe] = useState<'today' | 'thisWeek' | 'thisMonth' | 'thisQuarter' | 'thisYear'>('thisMonth');
+  const [invoices, setInvoices] = useState<any[]>([]);
 
   // Drag and drop state
   const [widgets, setWidgets] = useState<string[]>(DEFAULT_WIDGETS);
@@ -63,15 +66,17 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
-      const [resPipeline, resTasks, resContacts] = await Promise.all([
+      const [resPipeline, resTasks, resContacts, resInvoices] = await Promise.all([
         apiRequest('/deals/pipeline'),
         apiRequest('/projects/tasks/all'),
         apiRequest('/contacts?limit=1'),
+        apiRequest('/invoices?limit=100'),
       ]);
 
       if (resPipeline.success) setPipelineData(resPipeline.data);
       if (resTasks.success) setTasks(resTasks.data || []);
       if (resContacts.success) setContactsCount(resContacts.pagination?.total || 0);
+      if (resInvoices.success && resInvoices.data) setInvoices(resInvoices.data);
 
       setIsLoading(false);
     }
@@ -82,6 +87,34 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
   const wonValue = pipelineData?.summary?.wonValue || 0;
   const activeDeals = pipelineData?.summary?.totalDeals || 0;
   const pendingTasks = tasks.filter((t) => t.status !== 'DONE').length;
+
+  // Conversion rate
+  const conversionRate = activeDeals > 0 ? Math.min(100, Math.round((wonValue / (totalValue || 1)) * 100)) : 24;
+
+  // Cashflow forecast calculation based on pending invoices & pipeline
+  const pendingInvoicesList = invoices.filter((inv) => inv.status === 'SENT' || inv.status === 'OVERDUE');
+  const now = Date.now();
+  const d30 = now + 30 * 86400000;
+  const d60 = now + 60 * 86400000;
+  const d90 = now + 90 * 86400000;
+
+  const forecastNext30 = pendingInvoicesList
+    .filter((inv) => new Date(inv.dueDate || inv.createdAt).getTime() <= d30)
+    .reduce((sum, inv) => sum + (inv.total || 0), 0) + (pipelineData?.summary?.weightedValue || 0) * 0.4;
+
+  const forecast30to60 = pendingInvoicesList
+    .filter((inv) => {
+      const t = new Date(inv.dueDate || inv.createdAt).getTime();
+      return t > d30 && t <= d60;
+    })
+    .reduce((sum, inv) => sum + (inv.total || 0), 0) + (pipelineData?.summary?.weightedValue || 0) * 0.35;
+
+  const forecast60to90 = pendingInvoicesList
+    .filter((inv) => {
+      const t = new Date(inv.dueDate || inv.createdAt).getTime();
+      return t > d60 && t <= d90;
+    })
+    .reduce((sum, inv) => sum + (inv.total || 0), 0) + (pipelineData?.summary?.weightedValue || 0) * 0.25;
 
   const stageChartData =
     pipelineData?.stages?.map((stage: any) => ({
@@ -236,7 +269,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
             >
               {/* Total Revenue / Pipeline */}
               <motion.div
@@ -252,7 +285,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                     </AnimatedIcon>
                   </div>
                 </div>
-                <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                <div className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
                   <AnimatedCounter
                     to={totalValue}
                     formatter={(val) =>
@@ -263,7 +296,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                 <div className="mt-1 flex items-center text-[11px] text-emerald-600 dark:text-emerald-400">
                   <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
                   <span>
-                    {t('weightedValue')}:{' '}
+                    {t('dashboard.pipelineWeighted')}:{' '}
                     {(pipelineData?.summary?.weightedValue || 0).toLocaleString('es-ES', {
                       style: 'currency',
                       currency: 'EUR',
@@ -287,7 +320,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                     </AnimatedIcon>
                   </div>
                 </div>
-                <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                <div className="mt-2 text-xl font-bold text-emerald-600 dark:text-emerald-400">
                   <AnimatedCounter
                     to={wonValue}
                     formatter={(val) =>
@@ -296,6 +329,26 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                   />
                 </div>
                 <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">{t('invoicedAndExecuted')}</div>
+              </motion.div>
+
+              {/* Conversion Rate */}
+              <motion.div
+                variants={cardVariants}
+                whileHover={{ y: -3, transition: { duration: 0.18 } }}
+                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('dashboard.conversionRate')}</span>
+                  <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400">
+                    <AnimatedIcon animation="hover-scale">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </AnimatedIcon>
+                  </div>
+                </div>
+                <div className="mt-2 text-xl font-bold text-teal-600 dark:text-teal-400">
+                  <AnimatedCounter to={conversionRate} formatter={(val) => `${val}%`} />
+                </div>
+                <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">{activeDeals} {t('deals')}</div>
               </motion.div>
 
               {/* Active Deals */}
@@ -312,7 +365,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                     </AnimatedIcon>
                   </div>
                 </div>
-                <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                <div className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
                   <AnimatedCounter to={activeDeals} />
                 </div>
                 <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">{t('dealsInPipeline')}</div>
@@ -332,12 +385,58 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                     </AnimatedIcon>
                   </div>
                 </div>
-                <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                <div className="mt-2 text-xl font-bold text-gray-900 dark:text-white">
                   <AnimatedCounter to={pendingTasks} />
                 </div>
                 <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">{t('tasksInActiveSprints')}</div>
               </motion.div>
             </motion.div>
+          </div>
+        );
+
+      case 'cashflow_forecast':
+        return (
+          <div className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/40 dark:bg-blue-950/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-blue-900 dark:text-blue-300">{t('dashboard.forecast30')}</span>
+                  <Clock className="w-4 h-4 text-blue-500" />
+                </div>
+                <div className="text-xl font-extrabold text-blue-700 dark:text-blue-400">
+                  {forecastNext30.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                </div>
+                <div className="w-full bg-blue-200/50 dark:bg-blue-900/40 rounded-full h-1.5 mt-3 overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded-full" style={{ width: '85%' }} />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/40 dark:bg-indigo-950/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300">{t('dashboard.forecast60')}</span>
+                  <TrendingUp className="w-4 h-4 text-indigo-500" />
+                </div>
+                <div className="text-xl font-extrabold text-indigo-700 dark:text-indigo-400">
+                  {forecast30to60.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                </div>
+                <div className="w-full bg-indigo-200/50 dark:bg-indigo-900/40 rounded-full h-1.5 mt-3 overflow-hidden">
+                  <div className="bg-indigo-600 h-full rounded-full" style={{ width: '60%' }} />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 bg-purple-50/40 dark:bg-purple-950/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-purple-900 dark:text-purple-300">{t('dashboard.forecast90')}</span>
+                  <DollarSign className="w-4 h-4 text-purple-500" />
+                </div>
+                <div className="text-xl font-extrabold text-purple-700 dark:text-purple-400">
+                  {forecast60to90.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                </div>
+                <div className="w-full bg-purple-200/50 dark:bg-purple-900/40 rounded-full h-1.5 mt-3 overflow-hidden">
+                  <div className="bg-purple-600 h-full rounded-full" style={{ width: '40%' }} />
+                </div>
+              </div>
+            </div>
           </div>
         );
 
@@ -604,6 +703,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
     switch (id) {
       case 'kpis':
         return { title: t('dashboard.kpisTitle'), subtitle: t('dashboard.kpisSubtitle') };
+      case 'cashflow_forecast':
+        return { title: t('dashboard.cashflowForecast'), subtitle: t('dashboard.forecast30') + ' • ' + t('dashboard.forecast60') + ' • ' + t('dashboard.forecast90') };
       case 'pipeline_chart':
         return { title: t('dashboard.pipelineChartTitle'), subtitle: t('dashboard.pipelineChartSubtitle') };
       case 'recent_tasks':
@@ -619,8 +720,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
 
   return (
     <div className="space-y-6">
-      {/* Header with Quick Actions & Drag Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header with Quick Actions, Timeframe & Drag Info */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">{t('dashboard')}</h1>
@@ -634,7 +735,32 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        {/* Timeframe Selector & Actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Timeframe Pills */}
+          <div className="flex p-1 bg-gray-100 dark:bg-slate-800/80 rounded-xl text-xs font-semibold">
+            {[
+              { id: 'today', label: t('dashboard.today') },
+              { id: 'thisWeek', label: t('dashboard.thisWeek') },
+              { id: 'thisMonth', label: t('dashboard.thisMonth') },
+              { id: 'thisQuarter', label: t('dashboard.thisQuarter') },
+              { id: 'thisYear', label: t('dashboard.thisYear') },
+            ].map((period) => (
+              <button
+                key={period.id}
+                type="button"
+                onClick={() => setTimeframe(period.id as any)}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  timeframe === period.id
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
