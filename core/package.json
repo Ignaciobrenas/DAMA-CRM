@@ -5,7 +5,8 @@
   "description": "Core Backend API for DAMA-CRM",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "prisma migrate deploy --schema=prisma/schema.prisma && ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev:migrate": "prisma migrate deploy --schema=prisma/schema.prisma && ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "prisma migrate deploy --schema=prisma/schema.prisma && node dist/server.js",
     "test": "ts-node tests/unit.test.ts && ts-node tests/integration.test.ts",

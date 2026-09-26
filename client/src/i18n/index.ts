@@ -1,4 +1,5 @@
 import es from './locales/es.json';
+import ca from './locales/ca.json';
 import en from './locales/en.json';
 import fr from './locales/fr.json';
 import de from './locales/de.json';
@@ -9,7 +10,7 @@ import zh from './locales/zh.json';
 import ja from './locales/ja.json';
 import ru from './locales/ru.json';
 
-export type Language = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt' | 'ar' | 'zh' | 'ja' | 'ru';
+export type Language = 'es' | 'ca' | 'en' | 'fr' | 'de' | 'it' | 'pt' | 'ar' | 'zh' | 'ja' | 'ru';
 
 export interface LanguageOption {
   code: Language;
@@ -20,6 +21,7 @@ export interface LanguageOption {
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'es', name: 'Spanish', nativeName: 'Español', dir: 'ltr' },
+  { code: 'ca', name: 'Catalan', nativeName: 'Català', dir: 'ltr' },
   { code: 'en', name: 'English', nativeName: 'English', dir: 'ltr' },
   { code: 'fr', name: 'French', nativeName: 'Français', dir: 'ltr' },
   { code: 'de', name: 'German', nativeName: 'Deutsch', dir: 'ltr' },
@@ -33,6 +35,7 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
 
 export const translations: Record<Language, Record<string, string>> = {
   es,
+  ca,
   en,
   fr,
   de,

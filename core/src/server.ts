@@ -91,9 +91,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Interactive Swagger OpenAPI Documentation (Zero extra dependencies)
 app.get('/api/docs/json', (req, res) => {
-  res.sendFile(require('path').join(__dirname, 'docs', 'swagger.json'));
+  const fs = require('fs');
+  const path = require('path');
+  const candidates = [
+    path.join(__dirname, 'docs', 'swagger.json'),
+    path.join(__dirname, '..', 'src', 'docs', 'swagger.json'),
+    path.join(process.cwd(), 'src', 'docs', 'swagger.json'),
+  ];
+  const found = candidates.find((p) => fs.existsSync(p));
+  if (found) {
+    res.sendFile(found);
+  } else {
+    res.json({ openapi: '3.0.3', info: { title: 'DAMA-CRM API', version: '1.0.0' } });
+  }
 });
 
 app.get('/api/docs', (req, res) => {
