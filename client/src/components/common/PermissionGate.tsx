@@ -66,3 +66,39 @@ export const AccessDenied: React.FC<{
     </div>
   );
 };
+
+export const ModuleDisabled: React.FC<{
+  moduleKey: string;
+  onGoBack?: () => void;
+}> = ({ moduleKey, onGoBack }) => {
+  const { t } = useLanguage();
+
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4 shadow-sm">
+        <Lock className="w-8 h-8" />
+      </div>
+
+      <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-100/70 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-semibold mb-3">
+        <span>{t('modules.moduleDisabledBadge', 'Módulo Desactivado')}</span>
+      </div>
+
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+        {t('modules.moduleDisabledTitle', 'Funcionalidad No Disponible')}
+      </h2>
+
+      <p className="text-xs text-gray-500 dark:text-slate-400 max-w-md mb-6 leading-relaxed">
+        {t('modules.moduleDisabledDesc', 'Este módulo ha sido desactivado por el Administrador de su empresa o no está contratado actualmente.')}
+      </p>
+
+      <button
+        onClick={onGoBack || (() => window.history.back())}
+        className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-semibold shadow-xs transition-colors"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        <span>{t('returnToDashboard')}</span>
+      </button>
+    </div>
+  );
+};
+
