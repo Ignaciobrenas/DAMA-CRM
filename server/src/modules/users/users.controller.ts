@@ -46,14 +46,25 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
 
 export async function createUser(req: Request, res: Response): Promise<void> {
   try {
-    const { email, password, name, roleId } = req.body;
+    const currentUser = (req as any).user;
+    const isSuperAdmin =
+      currentUser?.role === 'ADMIN' &&
+      (currentUser?.email === 'ignaciobrenas@gmail.com' ||
+        currentUser?.email === 'admin@dama-crm.local' ||
+        currentUser?.tenantId === 'master');
+
+    const { email, password, name, roleId, tenantId: targetTenantId } = req.body;
 
     if (!email || !password || !name || !roleId) {
       res.status(400).json({ success: false, message: 'Faltan campos obligatorios' });
       return;
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const assignedTenantId = isSuperAdmin
+      ? targetTenantId || currentUser?.tenantId || 'master'
+      : currentUser?.tenantId || 'master';
+
+    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (existing) {
       res.status(400).json({ success: false, message: 'El correo electrónico ya está registrado' });
       return;
@@ -66,12 +77,13 @@ export async function createUser(req: Request, res: Response): Promise<void> {
         passwordHash,
         name,
         roleId,
+        tenantId: assignedTenantId,
         isActive: true,
       },
       include: { role: true },
     });
 
-    await logAudit((req as any).user?.id || null, 'CREATE', 'User', user.id, { email: user.email }, req.ip);
+    await logAudit(currentUser?.id || null, 'CREATE', 'User', user.id, { email: user.email, tenantId: assignedTenantId }, req.ip);
 
     res.status(201).json({
       success: true,
@@ -80,6 +92,7 @@ export async function createUser(req: Request, res: Response): Promise<void> {
         name: user.name,
         email: user.email,
         role: user.role.name,
+        tenantId: user.tenantId,
         isActive: user.isActive,
       },
     });
