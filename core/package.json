@@ -5,17 +5,19 @@
   "description": "Core Backend API for DAMA-CRM",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "prisma migrate deploy --schema=prisma/schema.prisma && ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "prisma migrate deploy --schema=prisma/schema.prisma && node dist/server.js",
     "test": "ts-node tests/unit.test.ts && ts-node tests/integration.test.ts",
     "prisma:generate": "prisma generate --schema=prisma/schema.sqlite.prisma",
     "prisma:generate:pg": "prisma generate --schema=prisma/schema.prisma",
     "prisma:push": "prisma db push --schema=prisma/schema.sqlite.prisma",
     "prisma:push:pg": "prisma db push --schema=prisma/schema.prisma",
     "db:setup": "prisma db push --schema=prisma/schema.sqlite.prisma && ts-node prisma/seed.ts",
-    "db:setup:pg": "prisma db push --schema=prisma/schema.prisma && ts-node prisma/seed.ts",
-    "db:migrate": "prisma migrate dev",
+    "db:setup:pg": "prisma migrate deploy --schema=prisma/schema.prisma && ts-node prisma/seed.ts",
+    "db:migrate": "prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:migrate:status": "prisma migrate status --schema=prisma/schema.prisma",
     "db:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
