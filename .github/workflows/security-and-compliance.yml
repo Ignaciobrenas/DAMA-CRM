@@ -1,0 +1,61 @@
+name: DevSecOps, Security Audit & Secret Leak Scanner
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - staging
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+      - master
+      - staging
+  schedule:
+    # Run weekly security audit every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+
+jobs:
+  secret-scanner:
+    name: Repository Secret Leak & Credential Scanner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check for Leaked Private Keys & Production Credentials
+        run: |
+          echo "🔒 Scanning repository for untracked secret patterns..."
+          if git ls-files | grep -E '(\.env\.local$|\.env\.production$|\.key$|\.pem$|id_rsa|\.pfx$)'; then
+            echo "❌ CRITICAL SECURITY ERROR: Private keys or environment credential files were committed to git!"
+            exit 1
+          else
+            echo "✅ No private certificates or production credential files detected in git tree."
+          fi
+
+  dependency-audit:
+    name: NPM Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Audit Server Backend Dependencies
+        working-directory: server
+        run: |
+          echo "🔍 Scanning server dependencies..."
+          npm audit --audit-level=critical || true
+
+      - name: Audit Client Frontend Dependencies
+        working-directory: client
+        run: |
+          echo "🔍 Scanning client dependencies..."
+          npm audit --audit-level=critical || true

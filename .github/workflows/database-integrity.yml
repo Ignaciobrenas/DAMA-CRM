@@ -1,0 +1,52 @@
+name: Database Schema Integrity & Migration Idempotency
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - staging
+  pull_request:
+    branches:
+      - main
+      - master
+      - staging
+
+jobs:
+  verify-schema-and-migrations:
+    name: Validate Prisma Schema & SQL Migration Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install Server Dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Validate PostgreSQL Schema
+        working-directory: server
+        run: |
+          npx prisma validate --schema=prisma/schema.prisma
+          npx prisma generate --schema=prisma/schema.prisma
+
+      - name: Validate SQLite Development Schema
+        working-directory: server
+        run: |
+          npx prisma validate --schema=prisma/schema.sqlite.prisma
+          npx prisma generate --schema=prisma/schema.sqlite.prisma
+
+      - name: Verify Idempotent SQL Migrations Exist
+        working-directory: server
+        run: |
+          test -d prisma/migrations || { echo "❌ Missing prisma/migrations directory"; exit 1; }
+          test -f prisma/migrations/20260926_modules_and_accessibility_idempotent.sql || { echo "❌ Missing modules idempotent migration SQL"; exit 1; }
+          test -f prisma/migrations/20260926_portal_empleado_idempotent.sql || { echo "❌ Missing portal empleado idempotent migration SQL"; exit 1; }
+          echo "✅ All required idempotent SQL database migrations are present."
