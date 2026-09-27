@@ -77,6 +77,22 @@ async function main() {
     },
   });
 
+  const ignacioCorpTenant = await prisma.tenant.create({
+    data: {
+      slug: 'ignacio-corp',
+      name: 'Ignacio Corp',
+      domain: 'ignaciocorp.damacrm.com',
+      isGodTenant: false,
+      status: 'ACTIVE',
+      plan: 'ENTERPRISE',
+      maxUsers: 100,
+      branding: JSON.stringify({ primaryColor: '#1E40AF', companyName: 'Ignacio Corp Global' }),
+      settings: JSON.stringify({
+        activeModules: ['deals', 'invoicing', 'inventory', 'omnichannel', 'workflows', 'tickets', 'expenses', 'employees', 'calendar'],
+      }),
+    },
+  });
+
   // 1. Create Roles
   const adminRole = await prisma.role.create({
     data: {
@@ -94,10 +110,50 @@ async function main() {
     },
   });
 
+  const techRole = await prisma.role.create({
+    data: {
+      name: 'TECH',
+      description: 'Desarrollo, proyectos técnicos, tareas y arquitectura',
+      isSystem: false,
+    },
+  });
+
+  const supportRole = await prisma.role.create({
+    data: {
+      name: 'SUPPORT',
+      description: 'Atención al cliente, tickets de helpdesk y chat omnicanal',
+      isSystem: false,
+    },
+  });
+
+  const hrRole = await prisma.role.create({
+    data: {
+      name: 'HR',
+      description: 'Recursos Humanos, nóminas y control horario del empleado',
+      isSystem: false,
+    },
+  });
+
   const pmRole = await prisma.role.create({
     data: {
       name: 'PROJECT_MANAGER',
       description: 'Planificador ágil, proyectos, sprints y tareas',
+      isSystem: false,
+    },
+  });
+
+  const employeeRole = await prisma.role.create({
+    data: {
+      name: 'EMPLOYEE',
+      description: 'Portal del empleado, fichaje laboral y tareas asignadas',
+      isSystem: false,
+    },
+  });
+
+  const viewerRole = await prisma.role.create({
+    data: {
+      name: 'VIEWER',
+      description: 'Acceso de solo lectura a métricas e informes corporativos',
       isSystem: false,
     },
   });
@@ -124,6 +180,10 @@ async function main() {
     'workflows',
     'omnichannel',
     'reports',
+    'tickets',
+    'expenses',
+    'employees',
+    'calendar',
   ];
   const actions = ['create', 'read', 'update', 'delete', 'manage'];
 
@@ -141,7 +201,7 @@ async function main() {
   }
 
   // Sales permissions
-  const salesResources = ['companies', 'contacts', 'deals', 'quotes', 'invoices', 'omnichannel', 'inventory'];
+  const salesResources = ['companies', 'contacts', 'deals', 'quotes', 'invoices', 'omnichannel', 'inventory', 'calendar'];
   for (const res of salesResources) {
     for (const act of ['create', 'read', 'update']) {
       await prisma.permission.create({
@@ -153,12 +213,39 @@ async function main() {
       });
     }
   }
-  // Allow sales read-only on projects and tasks
   await prisma.permission.create({ data: { roleId: salesRole.id, resource: 'projects', action: 'read' } });
   await prisma.permission.create({ data: { roleId: salesRole.id, resource: 'tasks', action: 'read' } });
+  await prisma.permission.create({ data: { roleId: salesRole.id, resource: 'reports', action: 'read' } });
+
+  // Tech permissions
+  const techResources = ['projects', 'tasks', 'inventory', 'calendar'];
+  for (const res of techResources) {
+    for (const act of ['create', 'read', 'update']) {
+      await prisma.permission.create({ data: { roleId: techRole.id, resource: res, action: act } });
+    }
+  }
+  await prisma.permission.create({ data: { roleId: techRole.id, resource: 'tickets', action: 'read' } });
+  await prisma.permission.create({ data: { roleId: techRole.id, resource: 'tickets', action: 'update' } });
+  await prisma.permission.create({ data: { roleId: techRole.id, resource: 'companies', action: 'read' } });
+
+  // Support permissions
+  const supportResources = ['tickets', 'omnichannel', 'contacts', 'companies', 'calendar'];
+  for (const res of supportResources) {
+    for (const act of ['create', 'read', 'update']) {
+      await prisma.permission.create({ data: { roleId: supportRole.id, resource: res, action: act } });
+    }
+  }
+
+  // HR permissions
+  const hrResources = ['employees', 'users', 'calendar'];
+  for (const res of hrResources) {
+    for (const act of ['create', 'read', 'update']) {
+      await prisma.permission.create({ data: { roleId: hrRole.id, resource: res, action: act } });
+    }
+  }
 
   // Project Manager permissions
-  const pmResources = ['projects', 'tasks', 'companies', 'contacts', 'deals'];
+  const pmResources = ['projects', 'tasks', 'companies', 'contacts', 'deals', 'calendar'];
   for (const res of pmResources) {
     for (const act of ['create', 'read', 'update']) {
       await prisma.permission.create({
@@ -171,11 +258,26 @@ async function main() {
     }
   }
 
+  // Employee permissions
+  await prisma.permission.create({ data: { roleId: employeeRole.id, resource: 'tasks', action: 'read' } });
+  await prisma.permission.create({ data: { roleId: employeeRole.id, resource: 'tasks', action: 'update' } });
+  await prisma.permission.create({ data: { roleId: employeeRole.id, resource: 'calendar', action: 'read' } });
+  await prisma.permission.create({ data: { roleId: employeeRole.id, resource: 'calendar', action: 'create' } });
+
+  // Viewer permissions (Read only)
+  const viewerResources = ['companies', 'contacts', 'deals', 'projects', 'invoices', 'inventory', 'reports'];
+  for (const res of viewerResources) {
+    await prisma.permission.create({ data: { roleId: viewerRole.id, resource: res, action: 'read' } });
+  }
+
   // Client permissions
   await prisma.permission.create({ data: { roleId: clientRole.id, resource: 'quotes', action: 'read' } });
   await prisma.permission.create({ data: { roleId: clientRole.id, resource: 'invoices', action: 'read' } });
+  await prisma.permission.create({ data: { roleId: clientRole.id, resource: 'tickets', action: 'read' } });
+  await prisma.permission.create({ data: { roleId: clientRole.id, resource: 'tickets', action: 'create' } });
 
   // 3. Create Users with encrypted passwords
+  const defaultPasswordHash = await bcrypt.hash('Dama2026!', 10);
   const passwordHashIgnacio = await bcrypt.hash('1', 10);
   const passwordHashAdmin = await bcrypt.hash('Admin1234!', 10);
   const passwordHashSales = await bcrypt.hash('Ventas1234!', 10);
@@ -187,6 +289,7 @@ async function main() {
       passwordHash: passwordHashIgnacio,
       name: 'Ignacio Breñas',
       roleId: adminRole.id,
+      tenantId: 'master',
       twoFactorEnabled: false,
       isActive: true,
     },
@@ -198,7 +301,8 @@ async function main() {
       passwordHash: passwordHashAdmin,
       name: 'Ignacio Administrador',
       roleId: adminRole.id,
-      twoFactorEnabled: false, // Can be toggled on in settings
+      tenantId: 'master',
+      twoFactorEnabled: false,
       isActive: true,
     },
   });
@@ -209,6 +313,7 @@ async function main() {
       passwordHash: passwordHashSales,
       name: 'Laura Gómez (Comercial)',
       roleId: salesRole.id,
+      tenantId: 'master',
       isActive: true,
     },
   });
@@ -219,9 +324,62 @@ async function main() {
       passwordHash: passwordHashPm,
       name: 'Carlos Ruiz (Project Manager)',
       roleId: pmRole.id,
+      tenantId: 'master',
       isActive: true,
     },
   });
+
+  // --- Ignacio Corp Team Members (Fictitious Company with all role types) ---
+  const ignacioCorpUsers = [
+    { name: 'Ignacio Director', email: 'admin@ignaciocorp.com', roleId: adminRole.id, roleName: 'ADMIN' },
+    { name: 'Elena Ventas', email: 'sales@ignaciocorp.com', roleId: salesRole.id, roleName: 'SALES' },
+    { name: 'David Desarrollador', email: 'tech@ignaciocorp.com', roleId: techRole.id, roleName: 'TECH' },
+    { name: 'Sara Soporte', email: 'support@ignaciocorp.com', roleId: supportRole.id, roleName: 'SUPPORT' },
+    { name: 'Marta Recursos Humanos', email: 'hr@ignaciocorp.com', roleId: hrRole.id, roleName: 'HR' },
+    { name: 'Pablo Empleado', email: 'employee@ignaciocorp.com', roleId: employeeRole.id, roleName: 'EMPLOYEE' },
+    { name: 'Valeria Auditora', email: 'viewer@ignaciocorp.com', roleId: viewerRole.id, roleName: 'VIEWER' },
+  ];
+
+  for (const u of ignacioCorpUsers) {
+    const createdUser = await prisma.user.create({
+      data: {
+        email: u.email,
+        passwordHash: defaultPasswordHash,
+        name: u.name,
+        roleId: u.roleId,
+        tenantId: 'ignacio-corp',
+        isActive: true,
+      },
+    });
+
+    // Seed initial Login audit records
+    await prisma.auditLog.create({
+      data: {
+        userId: createdUser.id,
+        action: 'LOGIN',
+        entity: 'User',
+        entityId: createdUser.id,
+        details: JSON.stringify({ email: u.email, authMethod: 'PASSWORD', browser: 'Chrome on Windows 11' }),
+        ipAddress: '192.168.1.105',
+        tenantId: 'ignacio-corp',
+        createdAt: new Date(Date.now() - 3600000 * 4),
+      },
+    });
+
+    // Seed sample Change audit records
+    await prisma.auditLog.create({
+      data: {
+        userId: createdUser.id,
+        action: 'UPDATE_PREFERENCES',
+        entity: 'User',
+        entityId: createdUser.id,
+        details: JSON.stringify({ theme: 'light', language: 'es', compactMode: false }),
+        ipAddress: '192.168.1.105',
+        tenantId: 'ignacio-corp',
+        createdAt: new Date(Date.now() - 3600000 * 2),
+      },
+    });
+  }
 
   // 4. Create Companies
   const company1 = await prisma.company.create({

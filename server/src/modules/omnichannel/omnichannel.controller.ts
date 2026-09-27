@@ -231,3 +231,172 @@ export async function getClientPortalData(req: Request, res: Response): Promise<
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+// -----------------------------------------------------------------------------
+// Internal Team Chat & Direct Messaging
+// -----------------------------------------------------------------------------
+
+const DEFAULT_INTERNAL_CHANNELS = [
+  { id: 'general', name: 'General', icon: 'Hash', description: 'Canal general de la empresa y coordinación del equipo' },
+  { id: 'ventas', name: 'Ventas & Oportunidades', icon: 'TrendingUp', description: 'Pipeline comercial, tratos y prospección' },
+  { id: 'soporte', name: 'Soporte & Helpdesk', icon: 'LifeBuoy', description: 'Atención a incidencias y tickets de clientes' },
+  { id: 'proyectos', name: 'Proyectos & Tech', icon: 'Code', description: 'Desarrollo, entregables técnicos y arquitectura' },
+  { id: 'anuncios', name: 'Anuncios Corporativos', icon: 'Megaphone', description: 'Comunicados y novedades de la dirección' },
+];
+
+export async function listInternalChannelsAndTeam(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = { isActive: true };
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
+    const teamMembers = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        role: { select: { name: true } },
+        tenantId: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    res.json({
+      success: true,
+      channels: DEFAULT_INTERNAL_CHANNELS,
+      teamMembers: teamMembers.map((m) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        avatar: m.avatar,
+        role: m.role.name,
+        tenantId: m.tenantId,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function listInternalMessages(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const currentUserId = req.user!.id;
+    const { channel, recipientId } = req.query;
+
+    let where: any = {
+      type: 'INTERNAL_CHAT',
+      tenantId,
+    };
+
+    if (channel && typeof channel === 'string') {
+      where.subject = channel;
+    } else if (recipientId && typeof recipientId === 'string') {
+      where.OR = [
+        { userId: currentUserId, subject: `dm:${recipientId}` },
+        { userId: recipientId, subject: `dm:${currentUserId}` },
+      ];
+    } else {
+      where.subject = 'general';
+    }
+
+    const rawMessages = await prisma.activity.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+    });
+
+    // Populate sender details
+    const userIds = Array.from(new Set(rawMessages.map((m) => m.userId).filter(Boolean))) as string[];
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, avatar: true, role: { select: { name: true } } },
+    });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const formatted = rawMessages.map((m) => {
+      const sender = m.userId ? userMap.get(m.userId) : null;
+      return {
+        id: m.id,
+        channel: m.subject,
+        content: m.description || '',
+        senderId: m.userId,
+        senderName: sender?.name || 'Compañero/a',
+        senderRole: sender?.role.name || 'USER',
+        senderAvatar: sender?.avatar,
+        isSelf: m.userId === currentUserId,
+        timestamp: m.createdAt,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: formatted,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function sendInternalMessage(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const currentUserId = req.user!.id;
+    const currentUserName = req.user!.name;
+    const currentUserRole = req.user!.role;
+    const { channel, recipientId, content } = req.body;
+
+    if (!content || !content.trim()) {
+      res.status(400).json({ success: false, message: 'El contenido del mensaje es obligatorio' });
+      return;
+    }
+
+    const targetSubject = channel
+      ? String(channel).trim()
+      : recipientId
+      ? `dm:${String(recipientId).trim()}`
+      : 'general';
+
+    const activity = await prisma.activity.create({
+      data: {
+        type: 'INTERNAL_CHAT',
+        subject: targetSubject,
+        description: content.trim(),
+        userId: currentUserId,
+        tenantId,
+      },
+    });
+
+    const payload = {
+      id: activity.id,
+      channel: targetSubject,
+      content: activity.description,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      senderRole: currentUserRole,
+      senderAvatar: (req.user as any)?.avatar,
+      isSelf: false,
+      timestamp: activity.createdAt,
+      tenantId,
+    };
+
+    // Broadcast real-time internal message to all active tenant users
+    wsService.broadcastToTenant(tenantId, 'internal_chat:message', payload);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...payload,
+        isSelf: true,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}

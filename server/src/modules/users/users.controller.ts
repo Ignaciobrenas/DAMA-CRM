@@ -455,3 +455,78 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function getUserAuditTrail(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        role: {
+          include: { permissions: true },
+        },
+      },
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+      return;
+    }
+
+    if (!isSuper && user.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a los registros de este usuario' });
+      return;
+    }
+
+    const [logins, changes] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: {
+          userId: id,
+          action: { in: ['LOGIN', 'LOGIN_GOOGLE', '2FA_VERIFIED', '2FA_ENABLED', '2FA_DISABLED'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      prisma.auditLog.findMany({
+        where: {
+          userId: id,
+          action: { notIn: ['LOGIN', 'LOGIN_GOOGLE', '2FA_VERIFIED', '2FA_ENABLED', '2FA_DISABLED'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+    ]);
+
+    let customPermissions: any[] = [];
+    try {
+      const p = JSON.parse(user.preferences || '{}');
+      if (Array.isArray(p.customPermissions)) customPermissions = p.customPermissions;
+    } catch {}
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          role: user.role.name,
+          rolePermissions: user.role.permissions.map((p) => ({ resource: p.resource, action: p.action })),
+          customPermissions,
+          twoFactorEnabled: user.twoFactorEnabled,
+          isActive: user.isActive,
+          tenantId: user.tenantId,
+          createdAt: user.createdAt,
+        },
+        logins,
+        changes,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
