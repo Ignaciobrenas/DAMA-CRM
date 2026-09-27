@@ -19,6 +19,7 @@ import {
   CheckSquare,
   Square,
   X,
+  Upload,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
@@ -28,6 +29,8 @@ import { RecordDrawer } from '../components/crm/RecordDrawer';
 import { Modal } from '../components/common/Modal';
 import { PermissionGate } from '../components/common/PermissionGate';
 import { exportToCSV } from '../utils/exportUtils';
+import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
+import { LoadingState } from '../components/ui/LoadingState';
 
 export const Contacts: React.FC = () => {
   const { t } = useLanguage();
@@ -38,6 +41,7 @@ export const Contacts: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Detail Modal State
@@ -326,6 +330,17 @@ export const Contacts: React.FC = () => {
             <Download className="w-3.5 h-3.5 text-blue-600" />
             <span className="hidden sm:inline">{t('bulk.exportCsv')}</span>
           </button>
+
+          <PermissionGate resource="contacts" action="create">
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+              title={t('import.importExcelCsv')}
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">{t('import.importBtn')}</span>
+            </button>
+          </PermissionGate>
 
           <PermissionGate resource="contacts" action="create">
             <button
@@ -1034,6 +1049,16 @@ export const Contacts: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Excel/CSV Importer Modal */}
+      <ExcelCsvImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={() => {
+          loadContacts();
+        }}
+        targetType="contacts"
+      />
     </div>
   );
 };

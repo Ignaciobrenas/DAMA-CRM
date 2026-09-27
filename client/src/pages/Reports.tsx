@@ -19,6 +19,8 @@ import {
   Activity,
   Radio,
   Trash2,
+  FileText,
+  Printer,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { BarChart, DonutChart } from '../components/ui/Charts';
@@ -33,6 +35,7 @@ export const Reports: React.FC = () => {
   const [agileData, setAgileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [timePeriod, setTimePeriod] = useState<'30d' | '90d' | 'year'>('30d');
 
   useEffect(() => {
@@ -49,6 +52,31 @@ export const Reports: React.FC = () => {
     }
     loadReports();
   }, []);
+
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true);
+    toast.info('Generando informe ejecutivo...', 'Compilando métricas y tablas en PDF oficial');
+    try {
+      const res = await apiRequest('/reports/executive-pdf');
+      if (res.success && res.data) {
+        const url = window.URL.createObjectURL(res.data as any);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `informe-ejecutivo-bi-${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('Informe PDF Descargado', 'El resumen ejecutivo ha sido generado correctamente.');
+      } else {
+        toast.error('Error al exportar PDF', res.message || 'No se pudo generar el informe.');
+      }
+    } catch (err: any) {
+      toast.error('Error', err.message || 'Error al conectar con el servidor.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   const handleExport = async (type: 'deals' | 'contacts' | 'companies' | 'invoices' | 'products' | 'tasks', label: string) => {
     setIsExportMenuOpen(false);
@@ -138,6 +166,17 @@ export const Reports: React.FC = () => {
               Año
             </button>
           </div>
+
+          {/* Export Executive PDF Button */}
+          <button
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 disabled:opacity-50"
+            title="Generar y descargar informe ejecutivo en PDF"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{isExportingPdf ? 'Generando...' : 'Informe PDF'}</span>
+          </button>
 
           {/* Export Dropdown Menu */}
           <div className="relative">
