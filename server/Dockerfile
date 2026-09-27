@@ -16,8 +16,11 @@ COPY prisma ./prisma/
 # Install dependencies (including devDependencies for build)
 RUN npm install
 
-# Copy application source
+# Copy application source and configurations
 COPY src ./src
+COPY branding*.json ./
+COPY integrations*.json ./
+COPY assets ./assets
 
 # Generate Prisma Client & compile TypeScript
 RUN npx prisma generate
@@ -43,6 +46,9 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/branding*.json ./
+COPY --from=builder /app/integrations*.json ./
+COPY --from=builder /app/assets ./assets
 
 USER node
 

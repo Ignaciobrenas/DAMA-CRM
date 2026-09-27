@@ -196,12 +196,13 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
 
   return (
     <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/50 backdrop-blur-xs animate-in fade-in"
     >
-      <div className="w-full max-w-lg h-full bg-white dark:bg-slate-900 shadow-2xl border-l border-gray-200 dark:border-slate-800 p-6 flex flex-col">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg h-full bg-white dark:bg-slate-900 shadow-2xl border-l border-gray-200 dark:border-slate-800 p-6 flex flex-col"
+      >
         {/* Drawer Header */}
         <div className="flex items-start justify-between pb-4 border-b border-gray-200 dark:border-slate-800">
           <div className="space-y-1">

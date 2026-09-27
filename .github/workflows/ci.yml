@@ -101,6 +101,10 @@ jobs:
       - name: Install Root Workspace Dependencies
         run: npm ci
 
+      - name: Generate Prisma Client for Backend
+        working-directory: server
+        run: npx prisma generate
+
       - name: Execute Full Monorepo Build
         run: npm run build
 
