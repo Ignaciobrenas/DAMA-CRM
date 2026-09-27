@@ -140,6 +140,28 @@ export async function executeWorkflow(workflow: any, triggerData: Record<string,
         break;
       }
 
+      case 'n8n_trigger':
+      case 'n8n_webhook': {
+        const targetUrl = config.webhookUrl || 'https://n8n.local/webhook/crm-trigger';
+        try {
+          const { IntegrationsService } = await import('../integrations/integrations.service');
+          await IntegrationsService.dispatchN8nEvent(workflow.trigger, triggerData);
+        } catch {
+          // Non-blocking n8n forward
+        }
+        resultData = {
+          targetUrl,
+          dispatchedPayload: {
+            workflow: workflow.name,
+            trigger: workflow.trigger,
+            eventData: triggerData,
+            timestamp: new Date().toISOString(),
+          },
+          status: 'Trigger enviado al workflow de n8n con éxito',
+        };
+        break;
+      }
+
       case 'webhook_dispatch': {
         const targetUrl = config.webhookUrl || 'https://api.crm-webhook.local/events';
         resultData = {

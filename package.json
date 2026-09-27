@@ -43,6 +43,8 @@
   "author": "Ignacio",
   "license": "MIT",
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "@playwright/test": "^1.63.0",
+    "concurrently": "^10.0.5",
+    "playwright": "^1.63.0"
   }
 }

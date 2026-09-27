@@ -490,3 +490,34 @@ export async function bulkAutoMapAttributes(req: Request, res: Response): Promis
   }
 }
 
+export async function sendTestEmail(req: Request, res: Response): Promise<void> {
+  try {
+    const { to, template, variables } = req.body;
+    const tenantId = (req as any).user?.tenantId || (req.headers['x-tenant-id'] as string) || 'master';
+    const { EmailService } = await import('../../services/email.service');
+    const result = await EmailService.sendEmail({
+      to: to || 'admin@dama-crm.local',
+      subject: req.body.subject,
+      template: template || '2fa_otp',
+      variables: variables || {},
+      tenantId,
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function previewEmailTemplate(req: Request, res: Response): Promise<void> {
+  try {
+    const { template, variables } = req.body;
+    const tenantId = (req as any).user?.tenantId || (req.headers['x-tenant-id'] as string) || 'master';
+    const { EmailService } = await import('../../services/email.service');
+    const branding = await EmailService.getTenantBranding(tenantId);
+    const result = EmailService.renderTemplate(template || '2fa_otp', variables || {}, branding);
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
