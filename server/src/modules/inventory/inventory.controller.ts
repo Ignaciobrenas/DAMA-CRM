@@ -697,3 +697,76 @@ export async function triggerNightlySync(req: Request, res: Response): Promise<v
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function importInventory(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const userId = (req as any).user?.id || null;
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ success: false, message: 'Se requiere una lista de productos válida en items' });
+      return;
+    }
+
+    const createdOrUpdated = [];
+    for (const item of items) {
+      if (!item.name) continue;
+      const sku = (item.sku && String(item.sku).trim()) || `SKU-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 100)}`;
+      const price = parseFloat(item.price) || 0;
+      const costPrice = item.costPrice ? parseFloat(item.costPrice) : 0;
+      const stock = parseInt(item.stock, 10) || 0;
+      const minStock = item.minStock ? parseInt(item.minStock, 10) : 5;
+
+      const product = await prisma.product.upsert({
+        where: { sku },
+        update: {
+          name: String(item.name).trim(),
+          description: item.description || undefined,
+          category: item.category || 'General',
+          price,
+          costPrice,
+          stock,
+          minStock,
+          unit: item.unit || 'ud',
+          location: item.location || undefined,
+          brand: item.brand || undefined,
+          supplierName: item.supplierName || undefined,
+          supplierSku: item.supplierSku || undefined,
+          barcode: item.barcode || undefined,
+          isActive: item.isActive !== undefined ? Boolean(item.isActive) : true,
+        },
+        create: {
+          sku,
+          name: String(item.name).trim(),
+          description: item.description || null,
+          category: item.category || 'General',
+          price,
+          costPrice,
+          stock,
+          minStock,
+          unit: item.unit || 'ud',
+          location: item.location || null,
+          brand: item.brand || null,
+          supplierName: item.supplierName || null,
+          supplierSku: item.supplierSku || null,
+          barcode: item.barcode || null,
+          isActive: item.isActive !== undefined ? Boolean(item.isActive) : true,
+          tenantId,
+        },
+      });
+      createdOrUpdated.push(product);
+    }
+
+    await logAudit(userId, 'IMPORT_INVENTORY', 'Product', 'batch', { count: createdOrUpdated.length, tenantId }, req.ip);
+
+    res.status(201).json({
+      success: true,
+      data: createdOrUpdated,
+      message: `Se han importado/actualizado ${createdOrUpdated.length} artículos en el inventario con éxito`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+

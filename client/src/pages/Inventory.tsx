@@ -35,12 +35,14 @@ import {
   Info,
   History,
   ShieldCheck,
+  Upload,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { soundService } from '../services/sound';
+import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
 
 export interface ProductItem {
   id: string;
@@ -111,6 +113,7 @@ export const Inventory: React.FC = () => {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [stats, setStats] = useState<InventoryStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState('');
 
   // View & Filter States
@@ -554,10 +557,10 @@ export const Inventory: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-                {t('inventory', 'Inventario & Catálogo de Artículos')}
+                {t('inventory', 'Inventario')}
               </h1>
               <p className="text-xs text-gray-500 dark:text-slate-400">
-                Control de existencias multialmacén, márgenes de rentabilidad, movimientos de stock y enlace UnoPIM
+                Control de existencias multialmacén, márgenes de rentabilidad, valoración y movimientos de stock
               </p>
             </div>
           </div>
@@ -573,12 +576,20 @@ export const Inventory: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="px-3.5 py-2 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors active:scale-95 shadow-2xs"
+          >
+            <Upload className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Importar Catálogo</span>
+          </button>
+
+          <button
             onClick={handleSimulateWebhook}
             className="px-3.5 py-2 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 text-purple-700 dark:text-purple-300 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors active:scale-95"
-            title="Simula un webhook entrante desde UnoPIM"
+            title="Simula un webhook entrante de actualización de stock"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Test Webhook UnoPIM</span>
+            <span>Sincronizar Webhook</span>
           </button>
 
           <button
@@ -1773,6 +1784,16 @@ export const Inventory: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Universal CSV / Excel Importer Modal */}
+      <ExcelCsvImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={() => {
+          loadData();
+        }}
+        targetType="inventory"
+      />
     </div>
   );
 };

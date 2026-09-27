@@ -43,7 +43,7 @@ const RESOURCES = [
   { id: 'projects', label: 'Proyectos Ágiles' },
   { id: 'tasks', label: 'Tareas & Planificación' },
   { id: 'invoices', label: 'Facturación & Presupuestos' },
-  { id: 'inventory', label: 'Inventario UnoPIM' },
+  { id: 'inventory', label: 'Inventario & Catálogo' },
   { id: 'workflows', label: 'Automatizaciones' },
   { id: 'omnichannel', label: 'Omnicanal WhatsApp' },
   { id: 'tickets', label: 'Mesa de Ayuda (Tickets)' },

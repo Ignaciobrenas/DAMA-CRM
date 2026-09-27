@@ -296,3 +296,60 @@ export async function bulkUpdateContacts(req: Request, res: Response): Promise<v
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function importContacts(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const userId = req.user?.id || null;
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ success: false, message: 'Se requiere una lista de contactos para importar' });
+      return;
+    }
+
+    const createdOrUpdated = [];
+    for (const item of items) {
+      const email = (item.email && String(item.email).trim().toLowerCase()) || `contacto_${Date.now().toString().slice(-6)}_${Math.floor(Math.random() * 1000)}@damacrm.local`;
+      const firstName = String(item.firstName || item.name || 'Sin Nombre').trim();
+      const lastName = String(item.lastName || '').trim();
+
+      const contact = await prisma.contact.upsert({
+        where: { email },
+        update: {
+          firstName,
+          lastName,
+          phone: item.phone ? String(item.phone) : undefined,
+          mobile: item.mobile ? String(item.mobile) : undefined,
+          position: item.position || item.cargo || undefined,
+          department: item.department || item.departamento || undefined,
+          isLead: item.isLead !== undefined ? Boolean(item.isLead) : undefined,
+          notes: item.notes || undefined,
+        },
+        create: {
+          email,
+          firstName,
+          lastName,
+          phone: item.phone ? String(item.phone) : null,
+          mobile: item.mobile ? String(item.mobile) : null,
+          position: item.position || item.cargo || null,
+          department: item.department || item.departamento || null,
+          isLead: item.isLead !== undefined ? Boolean(item.isLead) : false,
+          notes: item.notes || null,
+          tenantId,
+        },
+      });
+      createdOrUpdated.push(contact);
+    }
+
+    await logAudit(userId, 'IMPORT_CONTACTS', 'Contact', 'batch', { count: createdOrUpdated.length, tenantId }, req.ip);
+
+    res.status(201).json({
+      success: true,
+      data: createdOrUpdated,
+      message: `Se han importado/actualizado ${createdOrUpdated.length} contactos con éxito`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}

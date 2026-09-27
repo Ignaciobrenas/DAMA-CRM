@@ -9,6 +9,7 @@ import {
   listStockMovements,
   getInventoryStats,
   exportInventoryCsv,
+  importInventory,
   handleUnoPimWebhook,
   triggerNightlySync,
 } from './inventory.controller';
@@ -25,6 +26,7 @@ router.use(authMiddleware);
 
 router.get('/analytics/stats', requirePermission('inventory', 'read'), getInventoryStats);
 router.get('/export/csv', requirePermission('inventory', 'read'), exportInventoryCsv);
+router.post('/import', requirePermission('inventory', 'create'), importInventory);
 
 router.get('/', requirePermission('inventory', 'read'), listProducts);
 router.get('/:id', requirePermission('inventory', 'read'), getProduct);
