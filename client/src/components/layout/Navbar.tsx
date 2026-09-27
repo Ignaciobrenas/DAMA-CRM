@@ -98,12 +98,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
 
         <button
           onClick={onOpenSearch}
-          className="flex items-center space-x-2.5 px-3.5 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700/90 border border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 text-xs font-medium transition-all shadow-2xs group cursor-pointer w-44 sm:w-60 md:w-72"
-          title={t('searchPlaceholder')}
+          className="flex items-center space-x-2.5 px-3.5 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700/90 border border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 text-xs font-medium transition-all shadow-2xs group cursor-pointer w-40 sm:w-56 md:w-64"
+          title="Buscar"
         >
           <Search className="w-4 h-4 text-slate-500 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors shrink-0" />
-          <span className="truncate hidden sm:inline text-slate-600 dark:text-slate-300">{t('searchPlaceholder')}</span>
-          <span className="truncate sm:hidden text-slate-600 dark:text-slate-300">Buscar...</span>
+          <span className="truncate text-slate-600 dark:text-slate-300">Buscar</span>
           <kbd className="ml-auto hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded-md bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-2xs">
             ⌘K
           </kbd>

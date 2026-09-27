@@ -16,6 +16,29 @@ jobs:
   api-smoke-test:
     name: Live Backend API Health & Contract Check
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password123
+          POSTGRES_DB: dama_crm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,8 +56,11 @@ jobs:
 
       - name: Initialize Database & Build Server
         working-directory: server
+        env:
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/dama_crm?schema=public
         run: |
           npx prisma generate
+          npx prisma db push --accept-data-loss
           npm run build
 
       - name: Start Server in Background
@@ -43,6 +69,8 @@ jobs:
           PORT: 4000
           NODE_ENV: production
           JWT_SECRET: e2e_test_jwt_secret_key_1234567890
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/dama_crm?schema=public
+          REDIS_URL: redis://localhost:6379
         run: |
           node dist/server.js &
           echo "SERVER_PID=$!" >> $GITHUB_ENV

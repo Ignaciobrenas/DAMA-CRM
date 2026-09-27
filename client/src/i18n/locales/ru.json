@@ -1402,5 +1402,6 @@
   "invoicing.reminderSent": "Напоминание об оплате успешно отправлено",
   "invoicing.sendReminder": "Напомнить об оплате",
   "loginWithGoogle": "Продолжить через Google",
-  "orWithCredentials": "или войти с помощью эл. почты"
+  "orWithCredentials": "или войти с помощью эл. почты",
+  "calendar": "Календарь и расписание"
 }
