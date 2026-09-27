@@ -96,7 +96,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 max-h-[90vh] flex flex-col"
+          className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 max-h-[90vh] flex flex-col m-auto"
         >
           {/* Header Banner */}
           <div

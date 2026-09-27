@@ -184,7 +184,7 @@ export const OnboardingTourModal: React.FC<OnboardingTourModalProps> = ({
           exit={{ opacity: 0, scale: 0.94, y: 20 }}
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] cursor-default"
+          className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] cursor-default m-auto"
         >
           {/* Top Banner / Progress Header */}
           <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 text-white relative overflow-hidden shrink-0">

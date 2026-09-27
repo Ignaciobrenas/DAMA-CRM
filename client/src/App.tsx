@@ -278,7 +278,7 @@ const AppContent: React.FC = () => {
   const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 flex">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
       {/* Sidebar */}
       <Sidebar
         currentRoute={currentRoute}
