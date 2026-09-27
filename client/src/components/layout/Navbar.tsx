@@ -21,17 +21,22 @@ import { GodModeModal } from '../modals/GodModeModal';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { ClockWidget } from '../employee-portal/ClockWidget';
 import { OnboardingTourModal } from '../onboarding/OnboardingTourModal';
+import { UserProfileModal } from './UserProfileModal';
 
 interface NavbarProps {
   onOpenSearch: () => void;
   onToggleSidebar: () => void;
+  onNavigate?: (route: string) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, onNavigate }) => {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { user, logout, updatePreferences } = useAuth();
   const [isMuted, setIsMuted] = useState(() => soundService.isMuted());
+
+  // Profile modal state
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // God Mode SuperAdmin state
   const [isGodModalOpen, setIsGodModalOpen] = useState(false);
@@ -179,31 +184,48 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         {/* Real-time Notification Center with Interactive Navigation */}
         <NotificationCenter />
 
-        {/* User Pill & Logout */}
+        {/* User Pill & Profile Popup Trigger */}
         {user && (
-          <div className="flex items-center pl-2 space-x-2 border-l border-gray-200 dark:border-slate-800">
-            <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
-                {user.name.charAt(0).toUpperCase()}
+          <div className="flex items-center pl-2 space-x-1.5 border-l border-gray-200 dark:border-slate-800">
+            <button
+              onClick={() => {
+                soundService.playPopSound();
+                setIsProfileModalOpen(true);
+              }}
+              className="flex items-center space-x-2 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition text-left group"
+              title="Ver perfil de usuario, cambiar cuenta y sesión"
+            >
+              <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs ring-2 ring-transparent group-hover:ring-blue-400 transition">
+                {user.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  user.name.charAt(0).toUpperCase()
+                )}
               </div>
               <div className="hidden lg:block text-left">
-                <div className="text-xs font-semibold leading-tight text-gray-800 dark:text-slate-100">{user.name}</div>
+                <div className="text-xs font-semibold leading-tight text-gray-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">{user.name}</div>
                 <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center">
                   <Shield className="w-2.5 h-2.5 mr-0.5 inline" /> {user.role}
                 </div>
               </div>
-            </div>
-
-            <button
-              onClick={logout}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-              title={t('logout')}
-            >
-              <LogOut className="w-4 h-4" />
             </button>
           </div>
         )}
       </div>
+
+      {/* User Profile, Account Switcher & Session Modal */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onNavigate={(route) => {
+          if (onNavigate) {
+            onNavigate(route);
+          } else {
+            window.location.href = route;
+          }
+        }}
+        onOpenGodMode={isSuperAdmin ? () => setIsGodModalOpen(true) : undefined}
+      />
 
       {/* God Mode SuperAdmin Multi-Tenant Modal */}
       {isSuperAdmin && (

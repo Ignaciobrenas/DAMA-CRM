@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="mobileBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="tabletBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1000" height="600" rx="16" fill="#0B0F19"/>
+  <text x="500" y="38" fill="#FFFFFF" font-family="sans-serif" font-size="18" font-weight="800" text-anchor="middle">Experiencia Móvil &amp; Tablet 100% Nativa y Adaptable</text>
+  <text x="500" y="60" fill="#94A3B8" font-family="sans-serif" font-size="12" text-anchor="middle">Barra de Navegación Táctil Inferior • Gestos Ágiles • Safe-Area • Cero Desbordamientos</text>
+
+  <!-- Tablet Device Frame (Left/Center) -->
+  <g transform="translate(60, 90)">
+    <!-- Tablet Frame -->
+    <rect width="520" height="460" rx="24" fill="#1E293B" stroke="#334155" stroke-width="4"/>
+    <rect x="12" y="12" width="496" height="436" rx="16" fill="#0F172A"/>
+
+    <!-- Tablet Navbar -->
+    <rect x="12" y="12" width="496" height="44" rx="16 16 0 0" fill="#1E293B"/>
+    <text x="32" y="38" fill="#FFFFFF" font-family="sans-serif" font-size="13" font-weight="700">DAMA-CRM Tablet</text>
+    <circle cx="476" cy="34" r="12" fill="#3B82F6"/>
+    <text x="476" y="38" fill="#FFFFFF" font-family="sans-serif" font-size="10" font-weight="700" text-anchor="middle">I</text>
+
+    <!-- Content: Ventas Kanban Columns -->
+    <rect x="28" y="70" width="145" height="310" rx="10" fill="#1E293B"/>
+    <text x="38" y="90" fill="#60A5FA" font-family="sans-serif" font-size="11" font-weight="700">Propuestas (3)</text>
+    <rect x="34" y="104" width="133" height="60" rx="6" fill="#0F172A" stroke="#334155"/>
+    <text x="42" y="124" fill="#FFFFFF" font-family="sans-serif" font-size="10" font-weight="600">Servidores Cloud</text>
+    <text x="42" y="142" fill="#10B981" font-family="sans-serif" font-size="10" font-weight="700">12.500 €</text>
+
+    <rect x="185" y="70" width="145" height="310" rx="10" fill="#1E293B"/>
+    <text x="195" y="90" fill="#A78BFA" font-family="sans-serif" font-size="11" font-weight="700">Negociación (2)</text>
+    <rect x="191" y="104" width="133" height="60" rx="6" fill="#0F172A" stroke="#334155"/>
+    <text x="199" y="124" fill="#FFFFFF" font-family="sans-serif" font-size="10" font-weight="600">Licencia Anual</text>
+    <text x="199" y="142" fill="#10B981" font-family="sans-serif" font-size="10" font-weight="700">38.000 €</text>
+
+    <rect x="342" y="70" width="145" height="310" rx="10" fill="#1E293B"/>
+    <text x="352" y="90" fill="#34D399" font-family="sans-serif" font-size="11" font-weight="700">Ganados (8)</text>
+    <rect x="348" y="104" width="133" height="60" rx="6" fill="#0F172A" stroke="#10B981" stroke-width="1.5"/>
+    <text x="356" y="124" fill="#FFFFFF" font-family="sans-serif" font-size="10" font-weight="600">Auditoría 2026</text>
+    <text x="356" y="142" fill="#34D399" font-family="sans-serif" font-size="10" font-weight="700">65.000 €</text>
+
+    <!-- Bottom Tablet Bar -->
+    <rect x="12" y="394" width="496" height="54" rx="0 0 16 16" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="80" y="425" fill="#3B82F6" font-family="sans-serif" font-size="10" font-weight="700">Inicio</text>
+    <text x="180" y="425" fill="#94A3B8" font-family="sans-serif" font-size="10">Ventas</text>
+    <text x="280" y="425" fill="#94A3B8" font-family="sans-serif" font-size="10">Clientes</text>
+    <text x="380" y="425" fill="#94A3B8" font-family="sans-serif" font-size="10">Facturas</text>
+    <text x="460" y="425" fill="#94A3B8" font-family="sans-serif" font-size="10">Menú</text>
+  </g>
+
+  <!-- Smartphone Frame (Right) -->
+  <g transform="translate(640, 90)">
+    <rect width="280" height="460" rx="36" fill="#1E293B" stroke="#3B82F6" stroke-width="3.5"/>
+    <rect x="10" y="10" width="260" height="440" rx="28" fill="#0F172A"/>
+
+    <!-- Dynamic Island / Speaker Notch -->
+    <rect x="95" y="16" width="90" height="18" rx="9" fill="#000000"/>
+
+    <!-- Smartphone Header -->
+    <text x="24" y="58" fill="#FFFFFF" font-family="sans-serif" font-size="13" font-weight="800">Mi Tiempo</text>
+    <text x="24" y="74" fill="#34D399" font-family="sans-serif" font-size="9" font-weight="600">● Fichaje Activo: 04:15:32</text>
+
+    <!-- Quick Clock-In Widget Card -->
+    <rect x="20" y="90" width="240" height="96" rx="14" fill="#1E293B" stroke="#334155"/>
+    <text x="32" y="112" fill="#94A3B8" font-family="sans-serif" font-size="10" font-weight="600">Jornada Laboral Ordinaria</text>
+    <text x="32" y="136" fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="800">08:30 → 17:00</text>
+    <rect x="32" y="148" width="90" height="24" rx="6" fill="#EF4444" fill-opacity="0.2" stroke="#EF4444"/>
+    <text x="77" y="164" fill="#F87171" font-family="sans-serif" font-size="9" font-weight="700" text-anchor="middle">Fichar Salida</text>
+
+    <!-- Task Time Logs list -->
+    <rect x="20" y="196" width="240" height="170" rx="14" fill="#1E293B"/>
+    <text x="32" y="216" fill="#FFFFFF" font-family="sans-serif" font-size="11" font-weight="700">Imputación a Tareas</text>
+
+    <rect x="28" y="226" width="224" height="40" rx="8" fill="#0F172A"/>
+    <text x="36" y="244" fill="#FFFFFF" font-family="sans-serif" font-size="9" font-weight="600">Desarrollo Módulo Calendario</text>
+    <text x="36" y="258" fill="#60A5FA" font-family="sans-serif" font-size="9">Proyecto DAMA • 2.5 h</text>
+
+    <rect x="28" y="274" width="224" height="40" rx="8" fill="#0F172A"/>
+    <text x="36" y="292" fill="#FFFFFF" font-family="sans-serif" font-size="9" font-weight="600">Revisión de Facturas</text>
+    <text x="36" y="306" fill="#A78BFA" font-family="sans-serif" font-size="9">Finanzas • 1.0 h</text>
+
+    <!-- Smartphone Mobile Bottom Nav (Persistent) -->
+    <rect x="10" y="386" width="260" height="64" rx="0 0 28 28" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <rect x="80" y="394" width="46" height="34" rx="8" fill="#3B82F6" fill-opacity="0.2"/>
+    <text x="36" y="420" fill="#94A3B8" font-family="sans-serif" font-size="8">Inicio</text>
+    <text x="103" y="420" fill="#60A5FA" font-family="sans-serif" font-size="8" font-weight="800" text-anchor="middle">Ventas</text>
+    <text x="156" y="420" fill="#94A3B8" font-family="sans-serif" font-size="8">Clientes</text>
+    <text x="200" y="420" fill="#94A3B8" font-family="sans-serif" font-size="8">Facturas</text>
+    <text x="242" y="420" fill="#94A3B8" font-family="sans-serif" font-size="8">Menú</text>
+  </g>
+</svg>
