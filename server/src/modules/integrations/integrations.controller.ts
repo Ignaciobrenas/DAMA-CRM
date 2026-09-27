@@ -97,6 +97,28 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
         },
       },
       {
+        id: 'opencart',
+        nombre: 'OpenCart eCommerce',
+        categoria: 'Comercio Electrónico & Catálogo',
+        tipo: 'REST API v3/v4 & Webhooks',
+        estado: config.opencart?.status || 'disconnected',
+        activo: config.opencart?.enabled || false,
+        descripcion: 'Sincronización bidireccional de catálogo, mapeo automático de atributos de producto, control de existencias y pedidos de OpenCart.',
+        capacidades: ['Catálogo', 'Atributos Multi-App', 'Pedidos', 'Clientes', 'Mapeo Automático'],
+        documentacion: 'https://docs.opencart.com/en-gb/system/users/api/',
+        webhookUrl: `${baseUrl}/api/integrations/opencart/webhook`,
+        eventosSoportados: ['product.created', 'product.updated', 'order.created'],
+        configuracion: {
+          storeUrl: config.opencart?.storeUrl,
+          apiUsername: config.opencart?.apiUsername,
+          tieneApiKey: config.opencart?.hasApiKey,
+          sincronizarProductos: config.opencart?.syncProducts,
+          sincronizarPedidos: config.opencart?.syncOrders,
+          sincronizarClientes: config.opencart?.syncCustomers,
+          ultimaSincronizacion: config.opencart?.lastSyncAt || null,
+        },
+      },
+      {
         id: 'n8n',
         nombre: 'n8n Workflow Automation',
         categoria: 'Automatización & Flujos',
@@ -269,6 +291,7 @@ export function updateIntegration(req: Request, res: Response): void {
       'odoo',
       'woocommerce',
       'shopify',
+      'opencart',
       'n8n',
       'stripe',
       'zapier',
@@ -307,6 +330,9 @@ export async function testIntegration(req: Request, res: Response): Promise<void
         break;
       case 'shopify':
         result = await IntegrationsService.testShopify(req.body);
+        break;
+      case 'opencart':
+        result = await IntegrationsService.testOpenCart(req.body);
         break;
       case 'n8n':
         result = await IntegrationsService.testN8n(req.body);
@@ -347,7 +373,7 @@ export async function testIntegration(req: Request, res: Response): Promise<void
 export async function syncIntegration(req: Request, res: Response): Promise<void> {
   try {
     const { connector } = req.params;
-    const allowed = ['odoo', 'woocommerce', 'shopify', 'stripe', 'google_calendar', 'sage_one', 'sage_50', 'sage_200'];
+    const allowed = ['odoo', 'woocommerce', 'shopify', 'opencart', 'stripe', 'google_calendar', 'sage_one', 'sage_50', 'sage_200'];
     if (!allowed.includes(connector)) {
       res.status(400).json({ success: false, message: `La sincronización manual solo aplica a: ${allowed.join(', ')}` });
       return;
@@ -431,3 +457,36 @@ export async function triggerN8nTest(req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
+export async function handleOpenCartWebhook(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = (req.headers['x-tenant-id'] as string) || 'master';
+    const result = await IntegrationsService.handleOpenCartWebhook(req.body, tenantId);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export function getAttributesSchema(req: Request, res: Response): void {
+  try {
+    const schema = IntegrationsService.getConnectorsAttributesSchema();
+    res.json({
+      success: true,
+      data: schema,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function bulkAutoMapAttributes(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = (req.headers['x-tenant-id'] as string) || 'master';
+    const result = await IntegrationsService.bulkAutoMapProducts(tenantId);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+

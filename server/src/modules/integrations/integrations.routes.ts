@@ -7,10 +7,13 @@ import {
   syncIntegration,
   handleWooCommerceWebhook,
   handleShopifyWebhook,
+  handleOpenCartWebhook,
   handleN8nAction,
   handleStripeWebhook,
   handleZapierWebhook,
   triggerN8nTest,
+  getAttributesSchema,
+  bulkAutoMapAttributes,
 } from './integrations.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -26,6 +29,7 @@ router.get('/third-party', getIntegracionesDeTerceros);
 // -----------------------------------------------------------------------------
 router.post('/woocommerce/webhook', handleWooCommerceWebhook);
 router.post('/shopify/webhook', handleShopifyWebhook);
+router.post('/opencart/webhook', handleOpenCartWebhook);
 router.post('/n8n/action', handleN8nAction);
 router.post('/stripe/webhook', handleStripeWebhook);
 router.post('/zapier/webhook', handleZapierWebhook);
@@ -37,6 +41,8 @@ router.use(authMiddleware);
 
 // Lectura de estado permitida a usuarios autenticados
 router.get('/', getIntegrations);
+router.get('/attributes/schema', getAttributesSchema);
+router.post('/attributes/auto-map-bulk', requirePermission('inventory', 'update'), bulkAutoMapAttributes);
 
 // Modificaciones y ejecuciones protegidas para administradores
 router.put('/:connector', requirePermission('integrations', 'manage'), updateIntegration);
@@ -45,3 +51,4 @@ router.post('/:connector/sync', requirePermission('integrations', 'manage'), syn
 router.post('/n8n/test', requirePermission('integrations', 'manage'), triggerN8nTest);
 
 export default router;
+

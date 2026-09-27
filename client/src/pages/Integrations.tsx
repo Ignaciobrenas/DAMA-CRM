@@ -284,6 +284,24 @@ export const Integrations: React.FC = () => {
       canSync: true,
     },
     {
+      id: 'opencart',
+      name: 'OpenCart Store',
+      category: 'Comercio Electrónico',
+      categorySlug: 'ecommerce',
+      icon: ShoppingBag,
+      badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+      iconBg: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800/50',
+      iconColor: 'text-sky-600 dark:text-sky-400',
+      protocol: 'OpenCart REST API / Webhooks',
+      syncMode: 'Bidireccional / Catálogo & Pedidos',
+      description: 'Conexión integral con tiendas OpenCart (v3 / v4). Sincronización de catálogo, atributos de producto, pedidos y clientes.',
+      supported: ['Pedidos', 'Clientes', 'Catálogo', 'Atributos & Opciones', 'Stock'],
+      docsUrl: 'https://docs.opencart.com/',
+      config: integrations?.opencart,
+      endpointUrl: endpoints?.opencartWebhook,
+      canSync: true,
+    },
+    {
       id: 'n8n',
       name: 'n8n Workflow Automation',
       category: 'Automatización & Flujos',
@@ -1203,6 +1221,81 @@ export const Integrations: React.FC = () => {
                             className="p-1.5 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-200 text-slate-700 dark:text-slate-200"
                           >
                             {copiedKey === 'sh-hook' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* OPENCART Specific Fields */}
+                {selectedConnector === 'opencart' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        URL de la Tienda OpenCart
+                      </label>
+                      <input
+                        type="url"
+                        disabled={!isAdmin}
+                        placeholder="https://tienda-opencart.com"
+                        value={editingConfig.storeUrl || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, storeUrl: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Usuario API de OpenCart
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isAdmin}
+                        placeholder="dama_api_user"
+                        value={editingConfig.apiUsername || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, apiUsername: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          API Key / Token de Acceso OpenCart
+                        </label>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowSecret('ocApiKey')}
+                            className="text-xs text-slate-500 hover:text-brand-color flex items-center gap-1"
+                          >
+                            {showSecret['ocApiKey'] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            <span>{showSecret['ocApiKey'] ? 'Ocultar' : 'Mostrar'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type={showSecret['ocApiKey'] ? 'text' : 'password'}
+                        disabled={!isAdmin}
+                        placeholder={editingConfig.hasApiKey ? '•••••••• (Preservada en servidor)' : 'oc_api_key_xxxxxxxx'}
+                        value={editingConfig.apiKey || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, apiKey: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    {endpoints?.opencartWebhook && (
+                      <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                        <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          URL de Webhook para OpenCart:
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-brand-color font-mono break-all flex-1 select-all">
+                            {endpoints.opencartWebhook}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(endpoints.opencartWebhook || '', 'oc-hook')}
+                            className="p-1.5 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-200 text-slate-700 dark:text-slate-200"
+                          >
+                            {copiedKey === 'oc-hook' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>

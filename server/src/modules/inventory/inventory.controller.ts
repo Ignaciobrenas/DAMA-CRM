@@ -3,6 +3,7 @@ import { prisma } from '../../prisma';
 import { config } from '../../config';
 import { logAudit } from '../../middlewares/audit.middleware';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import { IntegrationsService } from '../integrations/integrations.service';
 
 export async function listProducts(req: Request, res: Response): Promise<void> {
   try {
@@ -216,6 +217,26 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
         isSync: Boolean(externalId),
         lastSyncedAt: externalId ? new Date() : null,
         tenantId,
+        attributes: req.body.attributes
+          ? (typeof req.body.attributes === 'string' ? req.body.attributes : JSON.stringify(req.body.attributes))
+          : JSON.stringify(
+              IntegrationsService.autoMapProductAttributes({
+                sku: finalSku,
+                name: name.trim(),
+                price: parseFloat(price) || 0,
+                costPrice: costPrice !== undefined && costPrice !== '' ? parseFloat(costPrice) : 0,
+                stock: initialStock,
+                minStock: minStock !== undefined && minStock !== '' ? parseInt(minStock, 10) : 5,
+                category: category?.trim() || 'General',
+                barcode: barcode?.trim() || null,
+                brand: brand?.trim() || null,
+                weight: weight !== undefined && weight !== '' ? parseFloat(weight) : null,
+                dimensions: dimensions?.trim() || null,
+                supplierSku: supplierSku?.trim() || null,
+                supplierName: supplierName?.trim() || null,
+                taxRate: taxRate !== undefined && taxRate !== '' ? parseFloat(taxRate) : 21.0,
+              })
+            ),
       },
     });
 
@@ -320,6 +341,9 @@ export async function updateProduct(req: Request, res: Response): Promise<void> 
         tags: tags !== undefined ? (tags?.trim() || null) : undefined,
         notes: notes !== undefined ? (notes?.trim() || null) : undefined,
         isActive: typeof isActive === 'boolean' ? isActive : undefined,
+        attributes: req.body.attributes !== undefined
+          ? (typeof req.body.attributes === 'string' ? req.body.attributes : JSON.stringify(req.body.attributes))
+          : undefined,
       },
     });
 
@@ -769,4 +793,77 @@ export async function importInventory(req: Request, res: Response): Promise<void
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function autoMapProductAttributesHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Producto no encontrado' });
+      return;
+    }
+
+    if (!isSuper && product.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a este producto' });
+      return;
+    }
+
+    const mapped = IntegrationsService.autoMapProductAttributes(product);
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        attributes: JSON.stringify(mapped),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      attributes: mapped,
+      message: 'Atributos multi-aplicación mapeados y sincronizados correctamente',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updateProductAttributesHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { attributes } = req.body;
+
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Producto no encontrado' });
+      return;
+    }
+
+    if (!isSuper && product.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a este producto' });
+      return;
+    }
+
+    const attributesString = typeof attributes === 'string' ? attributes : JSON.stringify(attributes);
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        attributes: attributesString,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Atributos del producto guardados correctamente',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 
