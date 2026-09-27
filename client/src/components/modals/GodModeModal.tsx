@@ -474,8 +474,26 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
                   {t('common.loading')}
                 </div>
               ) : tenants.length === 0 ? (
-                <div className="py-12 text-center text-slate-400">
-                  {t('godMode.noTenants')}
+                <div className="py-12 text-center text-slate-500 dark:text-slate-400 space-y-3">
+                  <Building2 className="w-10 h-10 mx-auto text-slate-400 dark:text-slate-500" />
+                  <p className="text-sm font-semibold">{t('godMode.noTenants') || 'No se han encontrado empresas registradas en esta plataforma.'}</p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">Puedes aprovisionar la primera empresa directamente o invitar a un administrador.</p>
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSubTab('create')}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
+                    >
+                      Aprovisionar Empresa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -19,9 +19,27 @@ export async function getTenants(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const tenants = await prisma.tenant.findMany({
+    let tenants = await prisma.tenant.findMany({
       orderBy: { createdAt: 'desc' },
     });
+
+    if (tenants.length === 0) {
+      const masterTenant = await prisma.tenant.upsert({
+        where: { slug: 'master' },
+        update: {},
+        create: {
+          slug: 'master',
+          name: 'DAMA Master Tenant',
+          isGodTenant: true,
+          status: 'ACTIVE',
+          plan: 'ENTERPRISE',
+          maxUsers: 100,
+          domain: 'master.damacrm.com',
+          branding: JSON.stringify({ companyName: 'DAMA CRM Enterprise' }),
+        },
+      });
+      tenants = [masterTenant];
+    }
 
     // Compute live metrics per tenant
     const tenantsWithMetrics = await Promise.all(
