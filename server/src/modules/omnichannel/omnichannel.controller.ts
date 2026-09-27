@@ -3,6 +3,7 @@ import { prisma } from '../../prisma';
 import { config } from '../../config';
 import { logAudit } from '../../middlewares/audit.middleware';
 import { wsService } from '../../services/websocket.service';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 /**
  * Meta WhatsApp Cloud API Webhook Verification (GET)
@@ -27,6 +28,7 @@ export function verifyWhatsAppWebhook(req: Request, res: Response): void {
 export async function receiveWhatsAppWebhook(req: Request, res: Response): Promise<void> {
   try {
     const body = req.body;
+    const targetTenant = (req.headers['x-tenant-id'] as string) || 'master';
 
     // Check if it is a WhatsApp entry message
     if (body.object === 'whatsapp_business_account' || body.entry) {
@@ -38,9 +40,10 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response): Promi
             const senderPhone = msg.from; // e.g. "34655778899"
             const textBody = msg.text?.body || '[Mensaje multimedia o interactivo]';
 
-            // Find or match contact by phone/mobile
+            // Find or match contact by phone/mobile in target tenant
             let contact = await prisma.contact.findFirst({
               where: {
+                tenantId: targetTenant,
                 OR: [
                   { phone: { contains: senderPhone } },
                   { mobile: { contains: senderPhone } },
@@ -60,6 +63,7 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response): Promi
                   mobile: `+${senderPhone}`,
                   isLead: true,
                   notes: 'Lead creado automáticamente vía webhook de WhatsApp Meta API',
+                  tenantId: targetTenant,
                 },
               });
             }
@@ -75,24 +79,25 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response): Promi
                 content: textBody,
                 rawPayload: JSON.stringify(msg),
                 isRead: false,
+                tenantId: targetTenant,
               },
             });
 
             console.log(`💬 [WhatsApp Inbound] Mensaje de ${contact.firstName} (${senderPhone}): "${textBody}"`);
 
-            // Broadcast real-time WebSocket events
-            wsService.broadcast('omnichannel:message', savedMsg);
-            wsService.broadcast('notification:new', {
+            // Broadcast real-time WebSocket events to tenant
+            wsService.broadcastToTenant(targetTenant, 'omnichannel:message', savedMsg);
+            wsService.broadcastToTenant(targetTenant, 'notification:new', {
               title: 'Nuevo WhatsApp recibido',
               desc: `${contact.firstName}: "${textBody.slice(0, 45)}..."`,
               type: 'chat',
+              tenantId: targetTenant,
             });
           }
         }
       }
     }
 
-    // Always respond 200 OK immediately as required by Meta API
     res.status(200).send('EVENT_RECEIVED');
   } catch (error: any) {
     console.error('Error in WhatsApp webhook:', error);
@@ -102,8 +107,14 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response): Promi
 
 export async function listMessages(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { contactId, channel } = req.query;
+
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
     if (contactId) where.contactId = String(contactId);
     if (channel) where.channel = String(channel);
 
@@ -126,6 +137,8 @@ export async function listMessages(req: Request, res: Response): Promise<void> {
 
 export async function sendOutboundMessage(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { contactId, channel, content } = req.body;
 
     if (!contactId || !content) {
@@ -139,6 +152,11 @@ export async function sendOutboundMessage(req: Request, res: Response): Promise<
       return;
     }
 
+    if (!isSuper && contact.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a este contacto' });
+      return;
+    }
+
     const msg = await prisma.omniMessage.create({
       data: {
         contactId,
@@ -146,16 +164,15 @@ export async function sendOutboundMessage(req: Request, res: Response): Promise<
         direction: 'OUTBOUND',
         sender: req.user?.name || 'Soporte DAMA-CRM',
         recipient: contact.phone || contact.email,
-        content,
+        content: content.trim(),
         timestamp: new Date(),
         isRead: true,
+        tenantId,
       },
     });
 
-    console.log(`📤 [Outbound ${msg.channel}] Enviado a ${contact.firstName} (${msg.recipient}): "${msg.content}"`);
-
-    // Broadcast real-time WebSocket events
-    wsService.broadcast('omnichannel:message', msg);
+    // Broadcast real-time WebSocket events to tenant
+    wsService.broadcastToTenant(tenantId, 'omnichannel:message', msg);
 
     res.status(201).json({ success: true, data: msg });
   } catch (error: any) {

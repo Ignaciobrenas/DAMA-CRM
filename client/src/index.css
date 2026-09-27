@@ -4,11 +4,21 @@
 
 :root {
   --brand-color: #2563EB;
-  --custom-radius: 0.85rem;
-  --brand-tint: rgba(37, 99, 235, 0.1);
+  --custom-radius: 0.5rem;
+  --brand-tint: rgba(37, 99, 235, 0.08);
 }
 
 @layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans;
+  }
+
   * {
     border-color: #E2E8F0;
   }
@@ -16,24 +26,17 @@
     border-color: #1E293B;
   }
 
-  /* Bordes redondeados en todo el CRM */
-  button,
-  input,
-  select,
-  textarea,
-  .rounded,
-  .rounded-sm,
-  .rounded-md,
-  .rounded-lg,
-  .rounded-xl {
-    border-radius: var(--custom-radius, 0.85rem);
+  /* Accessible focus indicators */
+  :focus-visible {
+    outline: 2px solid var(--brand-color, #2563EB);
+    outline-offset: 2px;
   }
 }
 
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color;
-  transition-duration: 150ms;
+/* Subtle transitions for interactive controls */
+button, a, input, select, textarea {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 120ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 

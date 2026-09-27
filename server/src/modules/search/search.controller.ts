@@ -1,9 +1,12 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export async function globalSearch(req: Request, res: Response): Promise<void> {
   try {
     const { q, category } = req.query;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     if (!q || typeof q !== 'string' || q.trim().length < 2) {
       res.json({ success: true, data: [] });
@@ -11,33 +14,31 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
     }
 
     const query = q.trim();
+    const tenantFilter: any = (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) ? { tenantId } : {};
 
-    const [companies, contacts, deals, projects, tasks, invoices, quotes, products] = await Promise.all([
+    const [companies, contacts, deals, projects, tasks, invoices, quotes, products, tickets, expenses] = await Promise.all([
       prisma.company.findMany({
         where: {
+          ...tenantFilter,
           OR: [
-            { name: { contains: query } },
-            { industry: { contains: query } },
-            { city: { contains: query } },
-            { address: { contains: query } },
-            { taxId: { contains: query } },
-            { email: { contains: query } },
-            { phone: { contains: query } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { industry: { contains: query, mode: 'insensitive' } },
+            { city: { contains: query, mode: 'insensitive' } },
+            { taxId: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
           ],
         },
         take: 8,
       }),
       prisma.contact.findMany({
         where: {
+          ...tenantFilter,
           OR: [
-            { firstName: { contains: query } },
-            { lastName: { contains: query } },
-            { email: { contains: query } },
-            { phone: { contains: query } },
-            { mobile: { contains: query } },
-            { position: { contains: query } },
-            { department: { contains: query } },
-            { notes: { contains: query } },
+            { firstName: { contains: query, mode: 'insensitive' } },
+            { lastName: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+            { phone: { contains: query, mode: 'insensitive' } },
+            { position: { contains: query, mode: 'insensitive' } },
           ],
         },
         include: { company: true },
@@ -45,9 +46,10 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       }),
       prisma.deal.findMany({
         where: {
+          ...tenantFilter,
           OR: [
-            { title: { contains: query } },
-            { notes: { contains: query } },
+            { title: { contains: query, mode: 'insensitive' } },
+            { notes: { contains: query, mode: 'insensitive' } },
           ],
         },
         include: { stage: true, company: true, contact: true },
@@ -55,20 +57,20 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       }),
       prisma.project.findMany({
         where: {
+          ...tenantFilter,
           OR: [
-            { name: { contains: query } },
-            { description: { contains: query } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
           ],
         },
         take: 8,
       }),
       prisma.task.findMany({
         where: {
+          project: tenantFilter,
           OR: [
             { title: { contains: query } },
             { description: { contains: query } },
-            { status: { contains: query } },
-            { priority: { contains: query } },
           ],
         },
         include: { project: true, assignee: true },
@@ -76,10 +78,10 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       }),
       prisma.invoice.findMany({
         where: {
+          ...tenantFilter,
           OR: [
-            { invoiceNumber: { contains: query } },
-            { notes: { contains: query } },
-            { status: { contains: query } },
+            { invoiceNumber: { contains: query, mode: 'insensitive' } },
+            { notes: { contains: query, mode: 'insensitive' } },
           ],
         },
         include: { company: true, contact: true },
@@ -87,10 +89,10 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       }),
       prisma.quote.findMany({
         where: {
+          ...tenantFilter,
           OR: [
-            { quoteNumber: { contains: query } },
-            { notes: { contains: query } },
-            { status: { contains: query } },
+            { quoteNumber: { contains: query, mode: 'insensitive' } },
+            { notes: { contains: query, mode: 'insensitive' } },
           ],
         },
         include: { company: true, contact: true },
@@ -98,11 +100,33 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       }),
       prisma.product.findMany({
         where: {
+          ...tenantFilter,
           OR: [
-            { name: { contains: query } },
-            { sku: { contains: query } },
-            { category: { contains: query } },
-            { description: { contains: query } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { sku: { contains: query, mode: 'insensitive' } },
+            { category: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        take: 8,
+      }),
+      prisma.ticket.findMany({
+        where: {
+          ...tenantFilter,
+          OR: [
+            { ticketNumber: { contains: query, mode: 'insensitive' } },
+            { title: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        include: { company: true, contact: true },
+        take: 8,
+      }),
+      prisma.expense.findMany({
+        where: {
+          ...tenantFilter,
+          OR: [
+            { expenseNumber: { contains: query, mode: 'insensitive' } },
+            { supplierName: { contains: query, mode: 'insensitive' } },
           ],
         },
         take: 8,
@@ -111,7 +135,7 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
 
     const results: Array<{
       category: string;
-      categoryKey: 'companies' | 'contacts' | 'deals' | 'projects' | 'tasks' | 'invoices' | 'quotes' | 'inventory';
+      categoryKey: 'companies' | 'contacts' | 'deals' | 'projects' | 'tasks' | 'invoices' | 'quotes' | 'inventory' | 'tickets' | 'expenses';
       id: string;
       title: string;
       subtitle: string;
@@ -172,7 +196,7 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       });
     });
 
-    tasks.forEach((t) => {
+    tasks.forEach((t: any) => {
       results.push({
         category: 'Tareas Ágiles',
         categoryKey: 'tasks',
@@ -213,7 +237,7 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
 
     products.forEach((p) => {
       results.push({
-        category: 'Inventario / UnoPIM',
+        category: 'Inventario',
         categoryKey: 'inventory',
         id: p.id,
         title: p.name,
@@ -224,7 +248,32 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
       });
     });
 
-    // If client requested a specific category filter on the backend
+    tickets.forEach((tck) => {
+      results.push({
+        category: 'Tickets',
+        categoryKey: 'tickets',
+        id: tck.id,
+        title: `Ticket #${tck.ticketNumber} - ${tck.title}`,
+        subtitle: `Prioridad: ${tck.priority} • Estado: ${tck.status} • ${tck.company?.name || tck.contact?.firstName || ''}`,
+        badge: tck.priority,
+        route: `/tickets?ticketId=${tck.id}`,
+        icon: 'LifeBuoy',
+      });
+    });
+
+    expenses.forEach((exp) => {
+      results.push({
+        category: 'Gastos',
+        categoryKey: 'expenses',
+        id: exp.id,
+        title: `${exp.expenseNumber} - ${exp.supplierName}`,
+        subtitle: `${exp.total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} • Categoría: ${exp.category}`,
+        badge: exp.status,
+        route: `/expenses?expenseId=${exp.id}`,
+        icon: 'CreditCard',
+      });
+    });
+
     const filteredResults = category && category !== 'all'
       ? results.filter((r) => r.categoryKey === category)
       : results;

@@ -1,10 +1,17 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export async function listFields(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { entityType } = req.query;
+
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
     if (entityType) where.entityType = String(entityType).toUpperCase();
 
     const fields = await prisma.customField.findMany({
@@ -20,6 +27,7 @@ export async function listFields(req: Request, res: Response): Promise<void> {
 
 export async function createField(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const { entityType, name, label, fieldType, options, isRequired, defaultValue } = req.body;
 
     if (!entityType || !name || !label || !fieldType) {
@@ -36,6 +44,7 @@ export async function createField(req: Request, res: Response): Promise<void> {
         optionsJson: options ? JSON.stringify(options) : null,
         isRequired: Boolean(isRequired),
         defaultValue: defaultValue || null,
+        tenantId,
       },
     });
 

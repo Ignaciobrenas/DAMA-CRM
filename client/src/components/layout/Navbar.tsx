@@ -35,8 +35,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
   // God Mode SuperAdmin state
   const [isGodModalOpen, setIsGodModalOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
-  const [activeTenant, setActiveTenant] = useState<any>({ slug: 'master', name: 'Master Tenant' });
+  const [activeTenant, setActiveTenant] = useState<any>(() => {
+    const savedSlug = localStorage.getItem('dama_switch_tenant');
+    const savedName = localStorage.getItem('dama_switch_tenant_name');
+    if (savedSlug && savedSlug !== 'master') {
+      return { slug: savedSlug, name: savedName || savedSlug };
+    }
+    return { slug: 'master', name: 'Master (Global)' };
+  });
   const isSuperAdmin = user?.role === 'ADMIN' || user?.email === 'ignaciobrenas@gmail.com' || user?.email === 'admin@dama-crm.local';
+
+  const handleSwitchTenant = (tenant: any) => {
+    if (!tenant || tenant.slug === 'master' || tenant.isGodTenant) {
+      localStorage.removeItem('dama_switch_tenant');
+      localStorage.removeItem('dama_switch_tenant_name');
+      setActiveTenant({ slug: 'master', name: 'Master (Global)' });
+    } else {
+      localStorage.setItem('dama_switch_tenant', tenant.slug);
+      localStorage.setItem('dama_switch_tenant_name', tenant.name);
+      setActiveTenant(tenant);
+    }
+    window.dispatchEvent(new CustomEvent('app:tenant-switched', { detail: tenant }));
+    // Force refresh the window data gracefully
+    setTimeout(() => {
+      window.location.reload();
+    }, 150);
+  };
+
+  const handleResetToMaster = () => {
+    handleSwitchTenant({ slug: 'master', name: 'Master (Global)', isGodTenant: true });
+  };
 
   const handleToggleSound = () => {
     const nextMuted = !isMuted;
@@ -183,7 +211,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
           onClose={() => setIsGodModalOpen(false)}
           activeTenantSlug={activeTenant?.slug || 'master'}
           onSelectTenant={(t) => {
-            setActiveTenant(t);
+            handleSwitchTenant(t);
           }}
         />
       )}
@@ -194,6 +222,34 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
         forceOpen={isTourOpen}
         onClose={() => setIsTourOpen(false)}
       />
+
+      {/* Sub-Tenant Impersonation Active Banner */}
+      {isSuperAdmin && activeTenant?.slug && activeTenant.slug !== 'master' && (
+        <div className="absolute top-14 left-0 right-0 z-20 px-4 py-1.5 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white flex items-center justify-between text-xs shadow-md">
+          <div className="flex items-center gap-2">
+            <span className="font-bold uppercase tracking-wider text-[10px] bg-black/25 px-2 py-0.5 rounded">
+              SuperAdmin Activo
+            </span>
+            <span>
+              Viendo datos aislados de: <strong>{activeTenant.name}</strong> ({activeTenant.slug})
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsGodModalOpen(true)}
+              className="px-2.5 py-0.5 rounded bg-white/20 hover:bg-white/30 text-white font-medium transition"
+            >
+              Cambiar Empresa
+            </button>
+            <button
+              onClick={handleResetToMaster}
+              className="px-2.5 py-0.5 rounded bg-black/40 hover:bg-black/60 text-white font-medium transition"
+            >
+              ✕ Salir a Master
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

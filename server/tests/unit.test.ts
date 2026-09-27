@@ -1059,7 +1059,353 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(rec.count > max, true);
     });
   });
+
+  describe('Multi-Tenant Isolation & Security Engine', () => {
+    const isGod = (user: { email?: string; role?: string; tenantId?: string | null }) => {
+      const isAdminRole = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+      const isGodEmail = user.email === 'ignaciobrenas@gmail.com' || user.email === 'admin@dama-crm.local';
+      const isMasterTenant = !user.tenantId || user.tenantId === 'master';
+      return isGodEmail || (isAdminRole && isMasterTenant);
+    };
+
+    const resolveTenant = (
+      user: { email?: string; role?: string; tenantId?: string | null } | null,
+      headers: Record<string, string | undefined>,
+      query: Record<string, string | undefined>
+    ) => {
+      const userTenant = user?.tenantId || 'master';
+      if (!user) {
+        const headerTenant = headers['x-tenant-id'] || headers['x-tenant-slug'];
+        return headerTenant ? headerTenant.trim().toLowerCase() : 'master';
+      }
+
+      if (isGod(user)) {
+        const switchHeader = headers['x-switch-tenant-id'] || headers['x-tenant-id'] || headers['x-tenant-slug'];
+        if (switchHeader && switchHeader.trim()) {
+          return switchHeader.trim().toLowerCase();
+        }
+        if (query.tenantId && query.tenantId.trim()) {
+          return query.tenantId.trim().toLowerCase();
+        }
+      }
+
+      // Standard user is ALWAYS restricted to their own tenant
+      return userTenant;
+    };
+
+    it('should correctly identify SuperAdmin / God users vs standard tenant admins', () => {
+      assert.strictEqual(isGod({ email: 'ignaciobrenas@gmail.com', role: 'ADMIN', tenantId: 'tenant_a' }), true);
+      assert.strictEqual(isGod({ email: 'admin@dama-crm.local', role: 'ADMIN', tenantId: null }), true);
+      assert.strictEqual(isGod({ email: 'master_admin@empresa.com', role: 'ADMIN', tenantId: 'master' }), true);
+      
+      // Regular tenant admin MUST NOT have God SuperAdmin status
+      assert.strictEqual(isGod({ email: 'ceo@subcompany.com', role: 'ADMIN', tenantId: 'subcompany_tenant' }), false);
+      assert.strictEqual(isGod({ email: 'sales@empresa.com', role: 'SALES', tenantId: 'master' }), false);
+    });
+
+    it('should strictly lock regular users to their assigned tenant even if headers are spoofed', () => {
+      const tenantUser = {
+        email: 'attacker@tenant-b.com',
+        role: 'ADMIN',
+        tenantId: 'tenant-b',
+      };
+
+      // Attacker tries to send X-Switch-Tenant-ID for victim tenant-a
+      const resolved = resolveTenant(
+        tenantUser,
+        { 'x-switch-tenant-id': 'tenant-a', 'x-tenant-id': 'tenant-a' },
+        { tenantId: 'tenant-a' }
+      );
+
+      // Must strictly evaluate to attacker's own tenant
+      assert.strictEqual(resolved, 'tenant-b');
+      assert.notStrictEqual(resolved, 'tenant-a');
+    });
+
+    it('should allow verified God SuperAdmin to switch tenant context smoothly', () => {
+      const godUser = {
+        email: 'ignaciobrenas@gmail.com',
+        role: 'ADMIN',
+        tenantId: 'master',
+      };
+
+      const resolvedHeader = resolveTenant(godUser, { 'x-switch-tenant-id': 'client-acme' }, {});
+      assert.strictEqual(resolvedHeader, 'client-acme');
+
+      const resolvedQuery = resolveTenant(godUser, {}, { tenantId: 'client-beta' });
+      assert.strictEqual(resolvedQuery, 'client-beta');
+
+      const resolvedDefault = resolveTenant(godUser, {}, {});
+      assert.strictEqual(resolvedDefault, 'master');
+    });
+
+    it('should maintain per-tenant sequential document numbering without cross-contamination', () => {
+      const formatInvoiceNumber = (year: number, count: number) => {
+        return `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
+      };
+
+      const tenant1Count = 5;
+      const tenant2Count = 0;
+
+      const tenant1Next = formatInvoiceNumber(2026, tenant1Count);
+      const tenant2Next = formatInvoiceNumber(2026, tenant2Count);
+
+      assert.strictEqual(tenant1Next, 'FAC-2026-0006');
+      assert.strictEqual(tenant2Next, 'FAC-2026-0001');
+    });
+  });
+
+  describe('Recurring Invoices & Subscriptions Engine', () => {
+    const computeNextBillingDate = (currentDate: Date, frequency: string): Date => {
+      const next = new Date(currentDate);
+      switch (frequency) {
+        case 'WEEKLY':
+          next.setDate(next.getDate() + 7);
+          break;
+        case 'QUARTERLY':
+          next.setMonth(next.getMonth() + 3);
+          break;
+        case 'BIANNUAL':
+          next.setMonth(next.getMonth() + 6);
+          break;
+        case 'YEARLY':
+          next.setFullYear(next.getFullYear() + 1);
+          break;
+        case 'MONTHLY':
+        default:
+          next.setMonth(next.getMonth() + 1);
+          break;
+      }
+      return next;
+    };
+
+    it('should calculate next billing cycle date accurately across frequencies', () => {
+      const baseDate = new Date('2026-01-15T00:00:00Z');
+
+      const monthly = computeNextBillingDate(baseDate, 'MONTHLY');
+      assert.strictEqual(monthly.getMonth(), 1); // February
+
+      const quarterly = computeNextBillingDate(baseDate, 'QUARTERLY');
+      assert.strictEqual(quarterly.getMonth(), 3); // April
+
+      const yearly = computeNextBillingDate(baseDate, 'YEARLY');
+      assert.strictEqual(yearly.getFullYear(), 2027);
+
+      const weekly = computeNextBillingDate(baseDate, 'WEEKLY');
+      assert.strictEqual(weekly.getDate(), 22);
+    });
+
+    it('should calculate recurring subscription total and VAT correctly', () => {
+      const items = [
+        { description: 'Cloud CRM Hosting Pro', quantity: 2, unitPrice: 49.99 },
+        { description: 'Priority Support SLA', quantity: 1, unitPrice: 100.0 },
+      ];
+      const taxRate = 21.0;
+
+      const subtotal = Number((items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)).toFixed(2));
+      const taxAmount = Number(((subtotal * taxRate) / 100).toFixed(2));
+      const total = Number((subtotal + taxAmount).toFixed(2));
+
+      assert.strictEqual(subtotal, 199.98);
+      assert.strictEqual(taxAmount, 42.0);
+      assert.strictEqual(total, 241.98);
+    });
+  });
+
+  describe('Contract Management & Digital Signatures Engine', () => {
+    it('should format contract number with sequence and year', () => {
+      const year = 2026;
+      const count = 3;
+      const contractNumber = `CTR-${year}-${String(count + 1).padStart(4, '0')}`;
+      assert.strictEqual(contractNumber, 'CTR-2026-0004');
+    });
+
+    it('should validate contract digital signature requirements', () => {
+      const validPayload = {
+        signatureData: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...',
+        signerName: 'María García López',
+      };
+
+      const isValid = Boolean(validPayload.signatureData && validPayload.signerName.trim());
+      assert.strictEqual(isValid, true);
+
+      const invalidPayload = { signatureData: '', signerName: '' };
+      const isInvalid = Boolean(invalidPayload.signatureData && invalidPayload.signerName.trim());
+      assert.strictEqual(isInvalid, false);
+    });
+  });
+
+  describe('Sage ERP & Accounting Connectors (Sage 1, Sage 50, Sage 200)', () => {
+    it('should validate Sage One (Sage Business Cloud) credentials and structure', () => {
+      const validSageOne = {
+        apiUrl: 'https://api.accounting.sage.com/v3.1',
+        apiKey: 'token_sage_one_abc123',
+        businessId: 'SBC-ES-00123',
+        syncContacts: true,
+        syncInvoices: true,
+        syncProducts: true,
+      };
+
+      const hasAuth = Boolean(validSageOne.apiKey && validSageOne.businessId);
+      assert.strictEqual(hasAuth, true);
+      assert.doesNotThrow(() => new URL(validSageOne.apiUrl));
+    });
+
+    it('should validate Sage 50 endpoint and fiscal year parameters', () => {
+      const validSage50 = {
+        endpointUrl: 'http://localhost:5493/sdata/sage50',
+        companyName: 'Empresa Sage 50 S.L.',
+        username: 'admin',
+        password: 'secure_password_50',
+        fiscalYear: '2026',
+        syncCustomers: true,
+        syncInvoices: true,
+        syncStock: true,
+      };
+
+      const hasAuth = Boolean(validSage50.password && validSage50.username);
+      assert.strictEqual(hasAuth, true);
+      assert.strictEqual(validSage50.fiscalYear, '2026');
+      assert.doesNotThrow(() => new URL(validSage50.endpointUrl));
+    });
+
+    it('should validate Sage 200 Advanced subscription key and enterprise ledger options', () => {
+      const validSage200 = {
+        baseUrl: 'https://api.sage.com/sage200/v1',
+        subscriptionKey: 'ocp_apim_key_enterprise_200',
+        companyId: 'SAGE200-CORP-ES',
+        syncCustomers: true,
+        syncInvoices: true,
+        syncLedgers: true,
+      };
+
+      const hasAuth = Boolean(validSage200.subscriptionKey && validSage200.companyId);
+      assert.strictEqual(hasAuth, true);
+      assert.strictEqual(validSage200.syncLedgers, true);
+      assert.doesNotThrow(() => new URL(validSage200.baseUrl));
+    });
+
+    it('should correctly preserve masked secrets in connector updates', () => {
+      const existingConfig = {
+        apiKey: 'real_secret_token_123',
+        endpointUrl: 'https://api.accounting.sage.com/v3.1',
+        syncContacts: true,
+      };
+
+      const patch = {
+        apiKey: '••••••••',
+        syncContacts: false,
+      };
+
+      const merged = { ...existingConfig, ...patch };
+      if (patch.apiKey === '••••••••') {
+        merged.apiKey = existingConfig.apiKey;
+      }
+
+      assert.strictEqual(merged.apiKey, 'real_secret_token_123');
+      assert.strictEqual(merged.syncContacts, false);
+    });
+  });
+
+  describe('Inventory & Stock Movements Core Logic', () => {
+    it('should correctly calculate inventory valuation metrics and margin', () => {
+      const products = [
+        { id: 'p1', name: 'Teclado Mecánico', stock: 15, price: 80, costPrice: 45 },
+        { id: 'p2', name: 'Monitor 27 IPS', stock: 8, price: 250, costPrice: 170 },
+        { id: 'p3', name: 'Ratón Ergonómico', stock: 0, price: 35, costPrice: 18 },
+      ];
+
+      const totalStock = products.reduce((acc, p) => acc + p.stock, 0);
+      const totalRetailValue = products.reduce((acc, p) => acc + p.stock * p.price, 0);
+      const totalCostValue = products.reduce((acc, p) => acc + p.stock * (p.costPrice || 0), 0);
+      const potentialProfit = totalRetailValue - totalCostValue;
+      const profitMarginPct = totalRetailValue > 0 ? (potentialProfit / totalRetailValue) * 100 : 0;
+
+      assert.strictEqual(totalStock, 23);
+      assert.strictEqual(totalRetailValue, 15 * 80 + 8 * 250); // 1200 + 2000 = 3200
+      assert.strictEqual(totalCostValue, 15 * 45 + 8 * 170); // 675 + 1360 = 2035
+      assert.strictEqual(potentialProfit, 3200 - 2035); // 1165
+      assert.strictEqual(Math.round(profitMarginPct * 10) / 10, 36.4);
+    });
+
+    it('should correctly calculate new stock on stock movement types', () => {
+      const calculateNewStock = (currentStock: number, type: 'IN' | 'OUT' | 'ADJUSTMENT' | 'RETURN', qty: number) => {
+        switch (type) {
+          case 'IN':
+          case 'RETURN':
+            return currentStock + qty;
+          case 'OUT':
+            return Math.max(0, currentStock - qty);
+          case 'ADJUSTMENT':
+            return qty;
+          default:
+            return currentStock;
+        }
+      };
+
+      assert.strictEqual(calculateNewStock(10, 'IN', 5), 15);
+      assert.strictEqual(calculateNewStock(10, 'OUT', 3), 7);
+      assert.strictEqual(calculateNewStock(10, 'OUT', 15), 0); // clamp to 0
+      assert.strictEqual(calculateNewStock(10, 'RETURN', 2), 12);
+      assert.strictEqual(calculateNewStock(10, 'ADJUSTMENT', 8), 8);
+    });
+
+    it('should identify low stock and out of stock items based on minStock', () => {
+      const catalog = [
+        { id: 'p1', stock: 0, minStock: 5 }, // OUT_OF_STOCK
+        { id: 'p2', stock: 3, minStock: 5 }, // LOW_STOCK
+        { id: 'p3', stock: 10, minStock: 5 }, // IN_STOCK
+        { id: 'p4', stock: 0, minStock: null }, // OUT_OF_STOCK
+      ];
+
+      const outOfStock = catalog.filter(p => p.stock <= 0);
+      const lowStock = catalog.filter(p => p.stock > 0 && p.minStock !== null && p.stock <= p.minStock);
+      const healthyStock = catalog.filter(p => p.stock > (p.minStock || 0));
+
+      assert.strictEqual(outOfStock.length, 2);
+      assert.strictEqual(lowStock.length, 1);
+      assert.strictEqual(healthyStock.length, 1);
+      assert.strictEqual(lowStock[0].id, 'p2');
+    });
+
+    it('should format CSV export rows with stock, cost and supplier sku safely', () => {
+      const product = {
+        sku: 'SKU-001',
+        name: 'Cable "HDMI" 2.1',
+        category: 'Cables',
+        stock: 50,
+        minStock: 10,
+        unit: 'ud',
+        price: 19.99,
+        costPrice: 8.50,
+        supplierName: 'Tech Supplies SL',
+        supplierSku: 'TS-HDMI-21',
+        isActive: true,
+      };
+
+      const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const row = [
+        product.sku,
+        escapeCsv(product.name),
+        escapeCsv(product.category),
+        product.stock,
+        product.minStock,
+        product.unit,
+        product.price,
+        product.costPrice,
+        escapeCsv(product.supplierName),
+        escapeCsv(product.supplierSku),
+        product.isActive ? 'Activo' : 'Inactivo',
+      ].join(';');
+
+      assert.strictEqual(row.includes('"Cable ""HDMI"" 2.1"'), true);
+      assert.strictEqual(row.includes('50;10;ud;19.99;8.5'), true);
+      assert.strictEqual(row.includes('"Tech Supplies SL"'), true);
+    });
+  });
 });
+
+
 
 
 

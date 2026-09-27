@@ -259,8 +259,8 @@ export const NotificationCenter: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className="absolute right-0 mt-2 w-96 max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 flex flex-col z-50 overflow-hidden"
-            style={{ maxHeight: '85vh' }}
+            className="fixed sm:absolute right-2 sm:right-0 left-2 sm:left-auto top-14 sm:top-auto mt-2 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 flex flex-col z-50 overflow-hidden"
+            style={{ maxHeight: 'calc(100vh - 120px)' }}
           >
             {/* Header */}
             <div className="p-3.5 border-b border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
