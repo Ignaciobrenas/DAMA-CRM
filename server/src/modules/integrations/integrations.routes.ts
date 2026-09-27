@@ -14,6 +14,8 @@ import {
   triggerN8nTest,
   getAttributesSchema,
   bulkAutoMapAttributes,
+  sendTestEmail,
+  previewEmailTemplate,
 } from './integrations.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -43,6 +45,8 @@ router.use(authMiddleware);
 router.get('/', getIntegrations);
 router.get('/attributes/schema', getAttributesSchema);
 router.post('/attributes/auto-map-bulk', requirePermission('inventory', 'update'), bulkAutoMapAttributes);
+router.post('/email/test', sendTestEmail);
+router.post('/email/preview', previewEmailTemplate);
 
 // Modificaciones y ejecuciones protegidas para administradores
 router.put('/:connector', requirePermission('integrations', 'manage'), updateIntegration);

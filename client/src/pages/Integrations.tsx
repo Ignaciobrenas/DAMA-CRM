@@ -42,6 +42,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { soundService } from '../services/sound';
+import { ApiConfiguratorModal } from '../components/integrations/ApiConfiguratorModal';
 
 interface ConnectorCardDefinition {
   id: string;
@@ -93,6 +94,7 @@ export const Integrations: React.FC = () => {
   const [modalTesting, setModalTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
+  const [isApiConfiguratorOpen, setIsApiConfiguratorOpen] = useState(false);
 
   const fetchIntegrations = async () => {
     try {
@@ -560,6 +562,17 @@ export const Integrations: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <button
+              onClick={() => {
+                soundService.playPopSound();
+                setIsApiConfiguratorOpen(true);
+              }}
+              className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 active:scale-95 shadow-md"
+            >
+              <Sliders className="w-4 h-4" />
+              <span>Configurador de APIs &amp; Snippets</span>
+            </button>
+
             <button
               onClick={fetchIntegrations}
               disabled={loading}
@@ -1868,6 +1881,12 @@ export const Integrations: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Interactive API Configurator & Connectors Setup Wizard */}
+      <ApiConfiguratorModal
+        isOpen={isApiConfiguratorOpen}
+        onClose={() => setIsApiConfiguratorOpen(false)}
+      />
     </div>
   );
 };
