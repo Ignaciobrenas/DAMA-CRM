@@ -20,8 +20,10 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react';
-import { apiRequest } from '../services/api';
+import { apiRequest, downloadFile } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { Modal } from '../components/common/Modal';
@@ -373,6 +375,24 @@ export const AgilePlanner: React.FC = () => {
     });
   };
 
+  const handleExportCSV = async () => {
+    try {
+      await downloadFile('/projects/export/csv', `proyectos_agile_${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success(t('success', 'Éxito'), t('agile.exportCsvSuccess', 'Proyectos y tareas exportados a Excel correctamente'));
+    } catch {
+      toast.error(t('error', 'Error'), t('agile.exportError', 'Error al exportar proyectos'));
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      await downloadFile('/projects/export/pdf', `informe_proyectos_agile_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success(t('success', 'Éxito'), t('agile.exportPdfSuccess', 'Informe PDF generado correctamente'));
+    } catch {
+      toast.error(t('error', 'Error'), t('agile.exportError', 'Error al exportar'));
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Header & Controls */}
@@ -386,7 +406,27 @@ export const AgilePlanner: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+          {/* Export buttons */}
+          <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
+            <button
+              onClick={handleExportCSV}
+              className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Exportar Proyectos a Excel (CSV)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Descargar Informe de Proyectos en PDF"
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-600" />
+              <span>PDF</span>
+            </button>
+          </div>
+
           {/* Tab Navigation Pill */}
           <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
             <button

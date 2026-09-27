@@ -2,6 +2,124 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { logAudit } from '../../middlewares/audit.middleware';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import { generateCsvBuffer, generateReportPdf } from '../../services/report-exporter.service';
+
+export async function exportProjectsCSV(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const projects = await prisma.project.findMany({
+      where: !isSuper ? { tenantId } : undefined,
+      include: {
+        deal: { select: { title: true } },
+        tasks: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const headers = [
+      'ID',
+      'Nombre Proyecto',
+      'Prioridad',
+      'Estado',
+      'Presupuesto (€)',
+      'Total Tareas',
+      'Tareas Completadas',
+      'Progreso (%)',
+      'Horas Estimadas',
+      'Horas Imputadas',
+      'Fecha Creación',
+    ];
+
+    const rows = projects.map((p) => {
+      const totalTasks = p.tasks.length;
+      const doneTasks = p.tasks.filter((t) => t.status === 'DONE').length;
+      const progress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+      const estHours = p.tasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
+      const logHours = p.tasks.reduce((sum, t) => sum + (t.loggedHours || 0), 0);
+
+      return [
+        p.id,
+        p.name,
+        p.priority,
+        p.status,
+        p.budget || 0,
+        totalTasks,
+        doneTasks,
+        `${progress}%`,
+        estHours,
+        logHours,
+        new Date(p.createdAt).toLocaleDateString('es-ES'),
+      ];
+    });
+
+    const csvBuffer = generateCsvBuffer(headers, rows);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="proyectos_agile_${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csvBuffer);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function exportProjectsPDF(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const projects = await prisma.project.findMany({
+      where: !isSuper ? { tenantId } : undefined,
+      include: {
+        tasks: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalBudget = projects.reduce((acc, p) => acc + (p.budget || 0), 0);
+    const totalTasks = projects.reduce((acc, p) => acc + p.tasks.length, 0);
+    const totalLoggedHours = projects.reduce((acc, p) => acc + p.tasks.reduce((s, t) => s + (t.loggedHours || 0), 0), 0);
+
+    const tableHeaders = ['Proyecto', 'Prioridad', 'Estado', 'Progreso', 'Horas Imputadas', 'Presupuesto'];
+    const tableRows = projects.slice(0, 50).map((p) => {
+      const done = p.tasks.filter((t) => t.status === 'DONE').length;
+      const pct = p.tasks.length > 0 ? Math.round((done / p.tasks.length) * 100) : 0;
+      const hours = p.tasks.reduce((s, t) => s + (t.loggedHours || 0), 0);
+
+      return [
+        p.name,
+        p.priority,
+        p.status,
+        `${pct}% (${done}/${p.tasks.length})`,
+        `${hours.toFixed(1)}h`,
+        `${(p.budget || 0).toLocaleString('es-ES')} €`,
+      ];
+    });
+
+    const pdfBuffer = await generateReportPdf({
+      title: 'Informe de Proyectos & Planificación Ágil',
+      subtitle: 'Avance de sprints, tareas, imputaciones horarias y presupuestos',
+      kpis: [
+        { label: 'Proyectos Activos', value: projects.length, color: '#2563EB' },
+        { label: 'Tareas Globales', value: totalTasks, color: '#0F172A' },
+        { label: 'Horas Imputadas', value: `${totalLoggedHours.toFixed(1)}h`, color: '#7C3AED' },
+        { label: 'Presupuesto Total', value: `${totalBudget.toLocaleString('es-ES')} €`, color: '#059669' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        'Las horas imputadas provienen de los partes de trabajo (worklogs) de cada tarea asociada.',
+        'El porcentaje de progreso refleja el ratio de tareas finalizadas en estado DONE.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="informe_proyectos_${new Date().toISOString().slice(0, 10)}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
 
 export async function listProjects(req: Request, res: Response): Promise<void> {
   try {

@@ -7,6 +7,8 @@ import {
   patchDeal,
   deleteDeal,
   listStages,
+  exportDealsCSV,
+  exportDealsPDF,
 } from './deals.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -17,6 +19,8 @@ const router = Router();
 
 router.use(authMiddleware);
 
+router.get('/export/csv', requirePermission('deals', 'read'), exportDealsCSV);
+router.get('/export/pdf', requirePermission('deals', 'read'), exportDealsPDF);
 router.get('/pipeline', requirePermission('deals', 'read'), getPipeline);
 router.get('/stages', requirePermission('deals', 'read'), listStages);
 router.get('/', requirePermission('deals', 'read'), listDeals);

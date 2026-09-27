@@ -4,6 +4,111 @@ import { logAudit } from '../../middlewares/audit.middleware';
 import { wsService } from '../../services/websocket.service';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 import { NotificationService } from '../notifications/notifications.service';
+import { generateCsvBuffer, generateReportPdf } from '../../services/report-exporter.service';
+
+export async function exportDealsCSV(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const deals = await prisma.deal.findMany({
+      where: !isSuper ? { tenantId } : undefined,
+      include: {
+        stage: true,
+        company: true,
+        contact: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const headers = [
+      'ID',
+      'Título Oportunidad',
+      'Etapa / Fase',
+      'Probabilidad (%)',
+      'Valor (€)',
+      'Valor Ponderado (€)',
+      'Estado',
+      'Empresa',
+      'Contacto',
+      'Fecha Creación',
+    ];
+
+    const rows = deals.map((d) => [
+      d.id,
+      d.title,
+      d.stage?.name || 'N/A',
+      `${d.stage?.probability || 0}%`,
+      d.value || 0,
+      ((d.value || 0) * ((d.stage?.probability || 0) / 100)).toFixed(2),
+      d.status,
+      d.company?.name || 'N/A',
+      d.contact ? `${d.contact.firstName} ${d.contact.lastName || ''}`.trim() : 'N/A',
+      new Date(d.createdAt).toLocaleDateString('es-ES'),
+    ]);
+
+    const csvBuffer = generateCsvBuffer(headers, rows);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="pipeline_ventas_${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csvBuffer);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function exportDealsPDF(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const deals = await prisma.deal.findMany({
+      where: !isSuper ? { tenantId } : undefined,
+      include: {
+        stage: true,
+        company: true,
+        contact: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalValue = deals.reduce((acc, d) => acc + (d.value || 0), 0);
+    const weightedValue = deals.reduce((acc, d) => acc + (d.value || 0) * ((d.stage?.probability || 0) / 100), 0);
+    const wonDeals = deals.filter((d) => d.status === 'WON');
+    const wonValue = wonDeals.reduce((acc, d) => acc + (d.value || 0), 0);
+
+    const tableHeaders = ['Oportunidad', 'Fase', 'Prob.', 'Importe', 'Empresa / Contacto'];
+    const tableRows = deals.slice(0, 50).map((d) => [
+      d.title.length > 25 ? d.title.substring(0, 22) + '...' : d.title,
+      d.stage?.name || 'N/A',
+      `${d.stage?.probability || 0}%`,
+      `${(d.value || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`,
+      d.company?.name || (d.contact ? `${d.contact.firstName}` : '-'),
+    ]);
+
+    const pdfBuffer = await generateReportPdf({
+      title: 'Informe de Pipeline Comercial & Ventas',
+      subtitle: 'Estado de oportunidades, embudo de conversión y valor ponderado',
+      kpis: [
+        { label: 'Oportunidades', value: deals.length, color: '#2563EB' },
+        { label: 'Pipeline Total', value: `${totalValue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`, color: '#0F172A' },
+        { label: 'Valor Ponderado', value: `${weightedValue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`, color: '#7C3AED' },
+        { label: 'Ganado (WON)', value: `${wonValue.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`, color: '#059669' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        'El valor ponderado se calcula aplicando el porcentaje de probabilidad histórica de cada fase del pipeline.',
+        'Los tratos ganados se sincronizan automáticamente con el módulo de Facturación y Clientes.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="informe_pipeline_${new Date().toISOString().slice(0, 10)}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
 
 export async function getPipeline(req: Request, res: Response): Promise<void> {
   try {
