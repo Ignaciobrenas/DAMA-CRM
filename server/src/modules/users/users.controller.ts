@@ -340,6 +340,8 @@ export const DEFAULT_PREFERENCES = {
   fontSize: 'md',
   uiScale: 1.0,
   iconStyle: 'animated',
+  timezone: 'Europe/Madrid',
+  dateFormat: 'DD/MM/YYYY',
 };
 
 export async function getUserPreferences(req: Request, res: Response): Promise<void> {

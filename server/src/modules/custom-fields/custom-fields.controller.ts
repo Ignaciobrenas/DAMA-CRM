@@ -101,3 +101,66 @@ export async function saveEntityValues(req: Request, res: Response): Promise<voi
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function updateField(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { label, fieldType, options, isRequired, defaultValue } = req.body;
+
+    const existing = await prisma.customField.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Campo personalizado no encontrado' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permiso para modificar este campo' });
+      return;
+    }
+
+    const updated = await prisma.customField.update({
+      where: { id },
+      data: {
+        label: label !== undefined ? label : existing.label,
+        fieldType: fieldType ? String(fieldType).toUpperCase() : existing.fieldType,
+        optionsJson: options !== undefined ? (options ? JSON.stringify(options) : null) : existing.optionsJson,
+        isRequired: isRequired !== undefined ? Boolean(isRequired) : existing.isRequired,
+        defaultValue: defaultValue !== undefined ? defaultValue : existing.defaultValue,
+      },
+    });
+
+    res.json({ success: true, data: updated, message: 'Campo personalizado actualizado correctamente' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteField(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existing = await prisma.customField.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Campo personalizado no encontrado' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permiso para eliminar este campo' });
+      return;
+    }
+
+    // Delete associated values first
+    await prisma.customFieldValue.deleteMany({ where: { customFieldId: id } });
+    await prisma.customField.delete({ where: { id } });
+
+    res.json({ success: true, message: 'Campo personalizado eliminado correctamente' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+

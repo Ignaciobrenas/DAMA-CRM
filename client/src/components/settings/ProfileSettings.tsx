@@ -576,6 +576,55 @@ export const ProfileSettings: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Timezone & Date Format Customization */}
+        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 bg-gray-50/60 dark:bg-slate-800/40 rounded-xl border border-gray-100 dark:border-slate-800 space-y-2">
+            <label className="block text-xs font-bold text-gray-900 dark:text-white">
+              Zona Horaria Regional
+            </label>
+            <select
+              value={user?.preferences?.timezone || 'Europe/Madrid'}
+              onChange={(e) => {
+                updatePreferences({ timezone: e.target.value });
+                toast.info('Zona Horaria Guardada', `Ajustada a ${e.target.value}`);
+              }}
+              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white font-medium focus:outline-none"
+            >
+              <option value="Europe/Madrid">Europe/Madrid (CET / CEST UTC+1/+2)</option>
+              <option value="Europe/London">Europe/London (GMT / BST UTC+0/+1)</option>
+              <option value="America/New_York">America/New_York (EST / EDT UTC-5/-4)</option>
+              <option value="America/Mexico_City">America/Mexico_City (CST UTC-6)</option>
+              <option value="America/Bogota">America/Bogota (COT UTC-5)</option>
+              <option value="America/Argentina/Buenos_Aires">America/Buenos_Aires (ART UTC-3)</option>
+              <option value="UTC">UTC Universal Time Coordinated</option>
+            </select>
+            <p className="text-[10px] text-gray-400">
+              Ajusta los horarios mostrados en tareas, reuniones y registros de auditoría.
+            </p>
+          </div>
+
+          <div className="p-4 bg-gray-50/60 dark:bg-slate-800/40 rounded-xl border border-gray-100 dark:border-slate-800 space-y-2">
+            <label className="block text-xs font-bold text-gray-900 dark:text-white">
+              Formato de Visualización de Fechas
+            </label>
+            <select
+              value={user?.preferences?.dateFormat || 'DD/MM/YYYY'}
+              onChange={(e) => {
+                updatePreferences({ dateFormat: e.target.value });
+                toast.info('Formato Guardado', `Fechas formateadas como ${e.target.value}`);
+              }}
+              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white font-medium focus:outline-none"
+            >
+              <option value="DD/MM/YYYY">DD/MM/YYYY (Estándar Europeo: 27/09/2026)</option>
+              <option value="YYYY-MM-DD">YYYY-MM-DD (ISO 8601: 2026-09-27)</option>
+              <option value="MM/DD/YYYY">MM/DD/YYYY (Estándar USA: 09/27/2026)</option>
+            </select>
+            <p className="text-[10px] text-gray-400">
+              Formato de fecha utilizado en tablas, listados y filtros de búsqueda.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
