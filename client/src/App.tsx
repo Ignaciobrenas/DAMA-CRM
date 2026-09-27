@@ -10,6 +10,7 @@ import { AppearanceProvider } from './context/AppearanceContext';
 import { wsClient } from './services/websocket';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
@@ -255,13 +256,13 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 pb-16 md:pb-0 ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 max-w-7xl w-full mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentRoute}
@@ -282,7 +283,7 @@ const AppContent: React.FC = () => {
             <span>&copy; {new Date().getFullYear()} {branding.companyName}. {t('allRightsReserved')}</span>
             <span className="text-gray-300 dark:text-slate-700 hidden sm:inline">|</span>
             <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 font-semibold border border-gray-200 dark:border-slate-700">
-              {t('runningVersion')}: v1.2.0-staging (Build 2026.09.26)
+              {t('runningVersion')}: v1.6.0-enterprise
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4">
@@ -307,6 +308,13 @@ const AppContent: React.FC = () => {
           </div>
         </footer>
       </div>
+
+      {/* Mobile Bottom Navigation Bar (Visible on Mobile & Tablets) */}
+      <MobileBottomNav
+        currentRoute={currentRoute}
+        onNavigate={navigateTo}
+        onOpenMenu={() => setIsSidebarOpen(true)}
+      />
 
       {/* Global Command Menu (Cmd+K) */}
       <CommandMenu

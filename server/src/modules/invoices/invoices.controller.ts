@@ -4,11 +4,19 @@ import { generatePdfBuffer, InvoicePdfData } from './pdf.service';
 import { logAudit } from '../../middlewares/audit.middleware';
 import { getBrandingConfig } from '../branding/branding.controller';
 import { NotificationService } from '../notifications/notifications.service';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export async function listInvoices(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { status, companyId, contactId } = req.query;
+
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
     if (status) where.status = String(status);
     if (companyId) where.companyId = String(companyId);
     if (contactId) where.contactId = String(contactId);
@@ -16,8 +24,8 @@ export async function listInvoices(req: Request, res: Response): Promise<void> {
     const invoices = await prisma.invoice.findMany({
       where,
       include: {
-        company: { select: { id: true, name: true } },
-        contact: { select: { id: true, firstName: true, lastName: true, email: true } },
+        company: { select: { id: true, name: true, taxId: true } },
+        contact: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
         items: true,
       },
       orderBy: { issueDate: 'desc' },
@@ -32,6 +40,9 @@ export async function listInvoices(req: Request, res: Response): Promise<void> {
 export async function getInvoice(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const invoice = await prisma.invoice.findUnique({
       where: { id },
       include: {
@@ -47,6 +58,11 @@ export async function getInvoice(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    if (!isSuper && invoice.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a esta factura' });
+      return;
+    }
+
     res.json({ success: true, data: invoice });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -55,33 +71,50 @@ export async function getInvoice(req: Request, res: Response): Promise<void> {
 
 export async function createInvoice(req: Request, res: Response): Promise<void> {
   try {
-    const { quoteId, contactId, companyId, dueDate, notes, taxRate = 21, items } = req.body;
+    const tenantId = getRequestTenant(req);
+    const { quoteId, contactId, companyId, dueDate, notes, taxRate = 21, items, currency = 'EUR' } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      res.status(400).json({ success: false, message: 'La factura debe contener al menos un elemento' });
+      res.status(400).json({ success: false, message: 'La factura debe contener al menos un concepto' });
       return;
+    }
+
+    // Verify company/contact tenant ownership
+    if (companyId) {
+      const comp = await prisma.company.findUnique({ where: { id: companyId } });
+      if (!comp || (!isGodSuperAdmin(req) && comp.tenantId !== tenantId)) {
+        res.status(400).json({ success: false, message: 'La empresa seleccionada no pertenece a su organización' });
+        return;
+      }
+    }
+    if (contactId) {
+      const cont = await prisma.contact.findUnique({ where: { id: contactId } });
+      if (!cont || (!isGodSuperAdmin(req) && cont.tenantId !== tenantId)) {
+        res.status(400).json({ success: false, message: 'El contacto seleccionado no pertenece a su organización' });
+        return;
+      }
     }
 
     const calculatedItems = items.map((it: any) => {
       const quantity = parseFloat(it.quantity) || 1;
       const unitPrice = parseFloat(it.unitPrice) || 0;
       return {
-        description: it.description,
+        description: it.description || 'Servicio o producto',
         quantity,
         unitPrice,
-        amount: quantity * unitPrice,
+        amount: Number((quantity * unitPrice).toFixed(2)),
       };
     });
 
-    const subtotal = calculatedItems.reduce((acc, it) => acc + it.amount, 0);
+    const subtotal = Number(calculatedItems.reduce((acc, it) => acc + it.amount, 0).toFixed(2));
     const taxRateNum = parseFloat(taxRate) || 21;
-    const taxAmount = subtotal * (taxRateNum / 100);
-    const total = subtotal + taxAmount;
+    const taxAmount = Number(((subtotal * taxRateNum) / 100).toFixed(2));
+    const total = Number((subtotal + taxAmount).toFixed(2));
 
-    // Generate unique invoice number: FAC-YYYY-SEQ
+    // Generate unique invoice number scoped to current tenant: FAC-YYYY-SEQ
     const year = new Date().getFullYear();
-    const count = await prisma.invoice.count();
-    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(3, '0')}`;
+    const count = await prisma.invoice.count({ where: { tenantId } });
+    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -96,7 +129,9 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
         taxRate: taxRateNum,
         taxAmount,
         total,
-        notes,
+        currency,
+        notes: notes?.trim() || null,
+        tenantId,
         items: {
           create: calculatedItems,
         },
@@ -108,7 +143,7 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
       },
     });
 
-    await logAudit(req.user?.id || null, 'CREATE', 'Invoice', invoice.id, { invoiceNumber, total }, req.ip);
+    await logAudit(req.user?.id || null, 'CREATE', 'Invoice', invoice.id, { invoiceNumber, total, tenantId }, req.ip);
 
     res.status(201).json({ success: true, data: invoice });
   } catch (error: any) {
@@ -119,17 +154,32 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
 export async function updateInvoiceStatus(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existing = await prisma.invoice.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Factura no encontrada' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar esta factura' });
+      return;
+    }
+
     const { status } = req.body;
 
     const invoice = await prisma.invoice.update({
       where: { id },
       data: {
         status,
-        paidAt: status === 'PAID' ? new Date() : undefined,
+        paidAt: status === 'PAID' ? new Date() : existing.paidAt,
+        paidAmount: status === 'PAID' ? existing.total : existing.paidAmount,
       },
     });
 
-    await logAudit(req.user?.id || null, 'UPDATE_STATUS', 'Invoice', id, { status }, req.ip);
+    await logAudit(req.user?.id || null, 'UPDATE_STATUS', 'Invoice', id, { status, tenantId }, req.ip);
 
     res.json({ success: true, data: invoice });
   } catch (error: any) {
@@ -140,6 +190,9 @@ export async function updateInvoiceStatus(req: Request, res: Response): Promise<
 export async function downloadInvoicePdf(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const invoice = await prisma.invoice.findUnique({
       where: { id },
       include: {
@@ -154,7 +207,22 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       return;
     }
 
-    const branding = getBrandingConfig();
+    if (!isSuper && invoice.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para descargar esta factura' });
+      return;
+    }
+
+    // Load tenant-specific branding
+    let branding = getBrandingConfig();
+    try {
+      const tenant = await prisma.tenant.findFirst({
+        where: { OR: [{ id: invoice.tenantId || 'master' }, { slug: invoice.tenantId || 'master' }] },
+        select: { branding: true },
+      });
+      if (tenant?.branding) {
+        branding = { ...branding, ...JSON.parse(tenant.branding) };
+      }
+    } catch {}
 
     const pdfData: InvoicePdfData = {
       invoiceNumber: invoice.invoiceNumber,
@@ -162,7 +230,7 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       issueDate: invoice.issueDate.toISOString().split('T')[0],
       dueDate: invoice.dueDate ? invoice.dueDate.toISOString().split('T')[0] : undefined,
       status: invoice.status,
-      companyName: branding.companyName || '',
+      companyName: branding.companyName || 'DAMA Enterprise',
       companyTaxId: branding.companyTaxId || '',
       companyAddress: branding.companyAddress || '',
       companyEmail: branding.companyEmail || '',
@@ -208,7 +276,16 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
 
 export async function listQuotes(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
     const quotes = await prisma.quote.findMany({
+      where,
       include: {
         company: { select: { id: true, name: true } },
         contact: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -225,7 +302,8 @@ export async function listQuotes(req: Request, res: Response): Promise<void> {
 
 export async function createQuote(req: Request, res: Response): Promise<void> {
   try {
-    const { contactId, companyId, expiryDate, notes, taxRate = 21, items } = req.body;
+    const tenantId = getRequestTenant(req);
+    const { contactId, companyId, expiryDate, notes, taxRate = 21, items, currency = 'EUR' } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       res.status(400).json({ success: false, message: 'El presupuesto debe contener al menos una línea' });
@@ -236,21 +314,21 @@ export async function createQuote(req: Request, res: Response): Promise<void> {
       const quantity = parseFloat(it.quantity) || 1;
       const unitPrice = parseFloat(it.unitPrice) || 0;
       return {
-        description: it.description,
+        description: it.description || 'Concepto presupuestado',
         quantity,
         unitPrice,
-        amount: quantity * unitPrice,
+        amount: Number((quantity * unitPrice).toFixed(2)),
       };
     });
 
-    const subtotal = calculatedItems.reduce((acc, it) => acc + it.amount, 0);
+    const subtotal = Number(calculatedItems.reduce((acc, it) => acc + it.amount, 0).toFixed(2));
     const taxRateNum = parseFloat(taxRate) || 21;
-    const taxAmount = subtotal * (taxRateNum / 100);
-    const total = subtotal + taxAmount;
+    const taxAmount = Number(((subtotal * taxRateNum) / 100).toFixed(2));
+    const total = Number((subtotal + taxAmount).toFixed(2));
 
     const year = new Date().getFullYear();
-    const count = await prisma.quote.count();
-    const quoteNumber = `PRE-${year}-${String(count + 1).padStart(3, '0')}`;
+    const count = await prisma.quote.count({ where: { tenantId } });
+    const quoteNumber = `PRE-${year}-${String(count + 1).padStart(4, '0')}`;
     const publicToken = `qsign_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     const quote = await prisma.quote.create({
@@ -266,7 +344,9 @@ export async function createQuote(req: Request, res: Response): Promise<void> {
         taxRate: taxRateNum,
         taxAmount,
         total,
-        notes,
+        currency,
+        notes: notes?.trim() || null,
+        tenantId,
         items: {
           create: calculatedItems,
         },
@@ -278,6 +358,8 @@ export async function createQuote(req: Request, res: Response): Promise<void> {
       },
     });
 
+    await logAudit(req.user?.id || null, 'CREATE', 'Quote', quote.id, { quoteNumber, total, tenantId }, req.ip);
+
     res.status(201).json({ success: true, data: quote });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -287,6 +369,9 @@ export async function createQuote(req: Request, res: Response): Promise<void> {
 export async function downloadQuotePdf(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const quote = await prisma.quote.findUnique({
       where: { id },
       include: { company: true, contact: true, items: true },
@@ -297,7 +382,21 @@ export async function downloadQuotePdf(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const branding = getBrandingConfig();
+    if (!isSuper && quote.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para descargar este presupuesto' });
+      return;
+    }
+
+    let branding = getBrandingConfig();
+    try {
+      const tenant = await prisma.tenant.findFirst({
+        where: { OR: [{ id: quote.tenantId || 'master' }, { slug: quote.tenantId || 'master' }] },
+        select: { branding: true },
+      });
+      if (tenant?.branding) {
+        branding = { ...branding, ...JSON.parse(tenant.branding) };
+      }
+    } catch {}
 
     const pdfData: InvoicePdfData = {
       invoiceNumber: quote.quoteNumber,
@@ -305,7 +404,7 @@ export async function downloadQuotePdf(req: Request, res: Response): Promise<voi
       issueDate: quote.issueDate.toISOString().split('T')[0],
       dueDate: quote.expiryDate ? quote.expiryDate.toISOString().split('T')[0] : undefined,
       status: quote.status,
-      companyName: branding.companyName || '',
+      companyName: branding.companyName || 'DAMA Enterprise',
       companyTaxId: branding.companyTaxId || '',
       companyAddress: branding.companyAddress || '',
       companyEmail: branding.companyEmail || '',
@@ -361,7 +460,16 @@ export async function publicPortalDownload(req: Request, res: Response): Promise
       return;
     }
 
-    const branding = getBrandingConfig();
+    let branding = getBrandingConfig();
+    try {
+      const tenant = await prisma.tenant.findFirst({
+        where: { OR: [{ id: invoice.tenantId || 'master' }, { slug: invoice.tenantId || 'master' }] },
+        select: { branding: true },
+      });
+      if (tenant?.branding) {
+        branding = { ...branding, ...JSON.parse(tenant.branding) };
+      }
+    } catch {}
 
     const pdfData: InvoicePdfData = {
       invoiceNumber: invoice.invoiceNumber,
@@ -369,7 +477,7 @@ export async function publicPortalDownload(req: Request, res: Response): Promise
       issueDate: invoice.issueDate.toISOString().split('T')[0],
       dueDate: invoice.dueDate ? invoice.dueDate.toISOString().split('T')[0] : undefined,
       status: invoice.status,
-      companyName: branding.companyName || '',
+      companyName: branding.companyName || 'DAMA Enterprise',
       companyTaxId: branding.companyTaxId || '',
       companyAddress: branding.companyAddress || '',
       companyEmail: branding.companyEmail || '',
@@ -415,6 +523,9 @@ export async function publicPortalDownload(req: Request, res: Response): Promise
 export async function convertQuoteToInvoice(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const quote = await prisma.quote.findUnique({
       where: { id },
       include: {
@@ -426,6 +537,11 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
 
     if (!quote) {
       res.status(404).json({ success: false, message: 'Presupuesto no encontrado' });
+      return;
+    }
+
+    if (!isSuper && quote.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para convertir este presupuesto' });
       return;
     }
 
@@ -443,8 +559,8 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
     }
 
     const year = new Date().getFullYear();
-    const count = await prisma.invoice.count();
-    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(3, '0')}`;
+    const count = await prisma.invoice.count({ where: { tenantId: quote.tenantId || 'master' } });
+    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -461,6 +577,7 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
         total: quote.total,
         currency: quote.currency,
         notes: quote.notes ? `${quote.notes} (Convertido de ${quote.quoteNumber})` : `Convertido de presupuesto ${quote.quoteNumber}`,
+        tenantId: quote.tenantId || 'master',
         items: {
           create: quote.items.map((it) => ({
             description: it.description,
@@ -478,18 +595,17 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
       },
     });
 
-    // Mark quote as ACCEPTED upon successful conversion
     await prisma.quote.update({
       where: { id: quote.id },
       data: { status: 'ACCEPTED' },
     });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'CONVERT_QUOTE',
       'Invoice',
       invoice.id,
-      { quoteId: quote.id, quoteNumber: quote.quoteNumber, invoiceNumber: invoice.invoiceNumber },
+      { quoteId: quote.id, quoteNumber: quote.quoteNumber, invoiceNumber: invoice.invoiceNumber, tenantId },
       req.ip
     );
 
@@ -506,15 +622,23 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
 export async function deleteInvoice(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const invoice = await prisma.invoice.findUnique({ where: { id } });
     if (!invoice) {
       res.status(404).json({ success: false, message: 'Factura no encontrada' });
       return;
     }
 
+    if (!isSuper && invoice.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar esta factura' });
+      return;
+    }
+
     await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
     await prisma.invoice.delete({ where: { id } });
-    await logAudit((req as any).user?.id || null, 'DELETE', 'Invoice', id, { invoiceNumber: invoice.invoiceNumber }, req.ip);
+    await logAudit(req.user?.id || null, 'DELETE', 'Invoice', id, { invoiceNumber: invoice.invoiceNumber, tenantId }, req.ip);
 
     res.json({ success: true, message: `Factura ${invoice.invoiceNumber} eliminada correctamente` });
   } catch (error: any) {
@@ -525,15 +649,23 @@ export async function deleteInvoice(req: Request, res: Response): Promise<void> 
 export async function deleteQuote(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const quote = await prisma.quote.findUnique({ where: { id } });
     if (!quote) {
       res.status(404).json({ success: false, message: 'Presupuesto no encontrado' });
       return;
     }
 
+    if (!isSuper && quote.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar este presupuesto' });
+      return;
+    }
+
     await prisma.invoiceItem.deleteMany({ where: { quoteId: id } });
     await prisma.quote.delete({ where: { id } });
-    await logAudit((req as any).user?.id || null, 'DELETE', 'Quote', id, { quoteNumber: quote.quoteNumber }, req.ip);
+    await logAudit(req.user?.id || null, 'DELETE', 'Quote', id, { quoteNumber: quote.quoteNumber, tenantId }, req.ip);
 
     res.json({ success: true, message: `Presupuesto ${quote.quoteNumber} eliminado correctamente` });
   } catch (error: any) {
@@ -565,16 +697,25 @@ export async function getPublicQuoteByToken(req: Request, res: Response): Promis
       return;
     }
 
-    const branding = getBrandingConfig();
+    let branding = getBrandingConfig();
+    try {
+      const tenant = await prisma.tenant.findFirst({
+        where: { OR: [{ id: quote.tenantId || 'master' }, { slug: quote.tenantId || 'master' }] },
+        select: { branding: true },
+      });
+      if (tenant?.branding) {
+        branding = { ...branding, ...JSON.parse(tenant.branding) };
+      }
+    } catch {}
 
     res.json({
       success: true,
       data: {
         ...quote,
         branding: {
-          companyName: branding.companyName || 'DAMA-CRM',
+          companyName: branding.companyName || 'DAMA CRM',
           companyTaxId: branding.companyTaxId,
-          primaryColor: branding.primaryColor || '#2563EB',
+          primaryColor: branding.primaryColor || '#072053',
           logoUrl: branding.logoUrl,
         },
       },
@@ -611,7 +752,7 @@ export async function signPublicQuote(req: Request, res: Response): Promise<void
       where: { id: quote.id },
       data: {
         signatureData,
-        signedBy: signedBy || quote.contact?.firstName ? `${quote.contact?.firstName} ${quote.contact?.lastName}` : 'Cliente',
+        signedBy: signedBy || (quote.contact?.firstName ? `${quote.contact?.firstName} ${quote.contact?.lastName}` : 'Cliente'),
         signedAt: new Date(),
         status: 'ACCEPTED',
       },
@@ -623,8 +764,8 @@ export async function signPublicQuote(req: Request, res: Response): Promise<void
 
     if (!existingInvoice) {
       const year = new Date().getFullYear();
-      const count = await prisma.invoice.count();
-      const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(3, '0')}`;
+      const count = await prisma.invoice.count({ where: { tenantId: quote.tenantId || 'master' } });
+      const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
 
       createdInvoice = await prisma.invoice.create({
         data: {
@@ -640,6 +781,7 @@ export async function signPublicQuote(req: Request, res: Response): Promise<void
           taxAmount: quote.taxAmount,
           total: quote.total,
           currency: quote.currency,
+          tenantId: quote.tenantId || 'master',
           notes: `Generada automáticamente tras firma digital online del presupuesto ${quote.quoteNumber}`,
           items: {
             create: quote.items.map((it) => ({
@@ -653,7 +795,6 @@ export async function signPublicQuote(req: Request, res: Response): Promise<void
       });
     }
 
-    // Audit log
     await logAudit(
       null,
       'SIGN_QUOTE_ONLINE',
@@ -664,11 +805,12 @@ export async function signPublicQuote(req: Request, res: Response): Promise<void
         signedBy: updatedQuote.signedBy,
         ipAddress: req.ip,
         autoCreatedInvoice: createdInvoice?.invoiceNumber,
+        tenantId: quote.tenantId,
       },
       req.ip
     );
 
-    // Dispatch real-time notification
+    // Dispatch real-time notification to tenant
     await NotificationService.notifyQuoteSigned({
       id: quote.id,
       quoteNumber: quote.quoteNumber,
@@ -697,11 +839,18 @@ export async function signPublicQuote(req: Request, res: Response): Promise<void
 export async function recordInvoicePayment(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { amount, notes } = req.body;
 
     const invoice = await prisma.invoice.findUnique({ where: { id } });
     if (!invoice) {
       res.status(404).json({ success: false, message: 'Factura no encontrada' });
+      return;
+    }
+
+    if (!isSuper && invoice.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para abonar esta factura' });
       return;
     }
 
@@ -720,11 +869,11 @@ export async function recordInvoicePayment(req: Request, res: Response): Promise
     });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'RECORD_PAYMENT',
       'Invoice',
       id,
-      { amount: payAmount, totalPaid: newPaidAmount, fullyPaid: isFullyPaid },
+      { amount: payAmount, totalPaid: newPaidAmount, fullyPaid: isFullyPaid, tenantId },
       req.ip
     );
 
@@ -749,10 +898,18 @@ export async function recordInvoicePayment(req: Request, res: Response): Promise
 
 export async function getAgingReport(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {
+      status: { in: ['SENT', 'OVERDUE', 'PARTIAL', 'DRAFT'] },
+    };
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
     const pendingInvoices = await prisma.invoice.findMany({
-      where: {
-        status: { in: ['SENT', 'OVERDUE', 'PARTIAL', 'DRAFT'] },
-      },
+      where,
       include: {
         company: true,
         contact: true,
@@ -833,4 +990,272 @@ export async function getAgingReport(req: Request, res: Response): Promise<void>
   }
 }
 
+// -----------------------------------------------------------------------------
+// Recurring Invoices & Subscription Billing Engine
+// -----------------------------------------------------------------------------
+
+export async function listRecurringInvoices(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { status, companyId } = req.query;
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+    if (status) where.status = String(status);
+    if (companyId) where.companyId = String(companyId);
+
+    const recurring = await prisma.recurringInvoice.findMany({
+      where,
+      include: {
+        company: { select: { id: true, name: true, taxId: true } },
+        contact: { select: { id: true, firstName: true, lastName: true, email: true } },
+        items: true,
+      },
+      orderBy: { nextIssueDate: 'asc' },
+    });
+
+    res.json({ success: true, data: recurring });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function createRecurringInvoice(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const {
+      title,
+      frequency = 'MONTHLY',
+      startDate,
+      nextIssueDate,
+      endDate,
+      taxRate = 21,
+      currency = 'EUR',
+      notes,
+      autoSendEmail = true,
+      companyId,
+      contactId,
+      items = [],
+    } = req.body;
+
+    if (!title || !items || items.length === 0) {
+      res.status(400).json({ success: false, message: 'Título y al menos una línea de concepto son obligatorios' });
+      return;
+    }
+
+    const subtotal = items.reduce(
+      (sum: number, it: any) => sum + Number(it.quantity || 1) * Number(it.unitPrice || 0),
+      0
+    );
+    const taxAmount = Number(((subtotal * Number(taxRate)) / 100).toFixed(2));
+    const total = Number((subtotal + taxAmount).toFixed(2));
+
+    const start = startDate ? new Date(startDate) : new Date();
+    const nextDate = nextIssueDate ? new Date(nextIssueDate) : new Date(start);
+
+    const recurring = await prisma.recurringInvoice.create({
+      data: {
+        title,
+        frequency,
+        status: 'ACTIVE',
+        startDate: start,
+        nextIssueDate: nextDate,
+        endDate: endDate ? new Date(endDate) : null,
+        subtotal,
+        taxRate: Number(taxRate),
+        taxAmount,
+        total,
+        currency,
+        notes,
+        autoSendEmail: Boolean(autoSendEmail),
+        companyId: companyId || null,
+        contactId: contactId || null,
+        tenantId,
+        items: {
+          create: items.map((it: any) => ({
+            description: it.description,
+            quantity: Number(it.quantity) || 1,
+            unitPrice: Number(it.unitPrice) || 0,
+            amount: Number((Number(it.quantity || 1) * Number(it.unitPrice || 0)).toFixed(2)),
+          })),
+        },
+      },
+      include: {
+        company: true,
+        contact: true,
+        items: true,
+      },
+    });
+
+    logAudit(
+      req.user?.id || null,
+      'CREATE',
+      'RecurringInvoice',
+      recurring.id,
+      { title, total, frequency, tenantId },
+      req.ip
+    );
+
+    res.status(201).json({ success: true, data: recurring });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updateRecurringInvoiceStatus(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existing = await prisma.recurringInvoice.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Suscripción recurrente no encontrada' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar esta suscripción' });
+      return;
+    }
+
+    const updated = await prisma.recurringInvoice.update({
+      where: { id },
+      data: { status },
+      include: { company: true, contact: true, items: true },
+    });
+
+    res.json({ success: true, data: updated, message: `Estado actualizado a ${status}` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function generateInvoiceFromRecurring(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const recurring = await prisma.recurringInvoice.findUnique({
+      where: { id },
+      include: { items: true, company: true, contact: true },
+    });
+
+    if (!recurring) {
+      res.status(404).json({ success: false, message: 'Suscripción no encontrada' });
+      return;
+    }
+
+    if (!isSuper && recurring.tenantId && recurring.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para acceder a esta suscripción' });
+      return;
+    }
+
+    // Generate isolated invoice sequence for tenant
+    const currentYear = new Date().getFullYear();
+    const invoiceCount = await prisma.invoice.count({
+      where: {
+        tenantId: recurring.tenantId || tenantId,
+        invoiceNumber: { startsWith: `FAC-${currentYear}` },
+      },
+    });
+    const invoiceNumber = `FAC-${currentYear}-${String(invoiceCount + 1).padStart(4, '0')}`;
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    const invoice = await prisma.invoice.create({
+      data: {
+        invoiceNumber,
+        companyId: recurring.companyId,
+        contactId: recurring.contactId,
+        status: 'SENT',
+        issueDate: new Date(),
+        dueDate,
+        subtotal: recurring.subtotal,
+        taxRate: recurring.taxRate,
+        taxAmount: recurring.taxAmount,
+        total: recurring.total,
+        currency: recurring.currency,
+        notes: `Generada automáticamente desde suscripción recurrente: ${recurring.title}. ${recurring.notes || ''}`.trim(),
+        tenantId: recurring.tenantId || tenantId,
+        items: {
+          create: recurring.items.map((it) => ({
+            description: it.description,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            amount: it.amount,
+          })),
+        },
+      },
+      include: { company: true, contact: true, items: true },
+    });
+
+    // Compute next issue date according to frequency
+    const nextDate = new Date(recurring.nextIssueDate || new Date());
+    switch (recurring.frequency) {
+      case 'WEEKLY':
+        nextDate.setDate(nextDate.getDate() + 7);
+        break;
+      case 'QUARTERLY':
+        nextDate.setMonth(nextDate.getMonth() + 3);
+        break;
+      case 'BIANNUAL':
+        nextDate.setMonth(nextDate.getMonth() + 6);
+        break;
+      case 'YEARLY':
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+        break;
+      case 'MONTHLY':
+      default:
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        break;
+    }
+
+    await prisma.recurringInvoice.update({
+      where: { id },
+      data: {
+        lastIssuedAt: new Date(),
+        nextIssueDate: nextDate,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: invoice,
+      message: `Factura ${invoice.invoiceNumber} emitida exitosamente`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteRecurringInvoice(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existing = await prisma.recurringInvoice.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Suscripción no encontrada' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar esta suscripción' });
+      return;
+    }
+
+    await prisma.recurringInvoice.delete({ where: { id } });
+    res.json({ success: true, message: 'Suscripción recurrente eliminada exitosamente' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
 

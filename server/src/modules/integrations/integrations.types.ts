@@ -7,7 +7,10 @@ export type ConnectorType =
   | 'whatsapp'
   | 'stripe'
   | 'zapier'
-  | 'google_calendar';
+  | 'google_calendar'
+  | 'sage_one'
+  | 'sage_50'
+  | 'sage_200';
 
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error' | 'pending';
 
@@ -96,6 +99,58 @@ export interface GoogleCalendarConfig {
   lastError?: string;
 }
 
+export interface SageOneConfig {
+  enabled: boolean;
+  apiUrl: string;
+  apiKey?: string;
+  hasApiKey?: boolean;
+  clientId?: string;
+  clientSecret?: string;
+  hasClientSecret?: boolean;
+  businessId?: string;
+  syncContacts: boolean;
+  syncInvoices: boolean;
+  syncProducts: boolean;
+  status: IntegrationStatus;
+  lastSyncAt?: string;
+  lastError?: string;
+}
+
+export interface Sage50Config {
+  enabled: boolean;
+  endpointUrl: string;
+  companyName: string;
+  username?: string;
+  password?: string;
+  hasPassword?: boolean;
+  apiKey?: string;
+  hasApiKey?: boolean;
+  fiscalYear?: string;
+  syncCustomers: boolean;
+  syncInvoices: boolean;
+  syncStock: boolean;
+  status: IntegrationStatus;
+  lastSyncAt?: string;
+  lastError?: string;
+}
+
+export interface Sage200Config {
+  enabled: boolean;
+  baseUrl: string;
+  subscriptionKey?: string;
+  hasSubscriptionKey?: boolean;
+  clientId?: string;
+  clientSecret?: string;
+  hasClientSecret?: boolean;
+  companyId?: string;
+  syncCustomers: boolean;
+  syncInvoices: boolean;
+  syncLedgers: boolean;
+  status: IntegrationStatus;
+  lastSyncAt?: string;
+  lastError?: string;
+}
+
 export interface IntegrationsConfig {
   odoo: OdooConfig;
   woocommerce: WooCommerceConfig;
@@ -104,4 +159,7 @@ export interface IntegrationsConfig {
   stripe?: StripeConfig;
   zapier?: ZapierConfig;
   google_calendar?: GoogleCalendarConfig;
+  sage_one?: SageOneConfig;
+  sage_50?: Sage50Config;
+  sage_200?: Sage200Config;
 }

@@ -1,9 +1,30 @@
 # 📋 Estado Completo del Proyecto DAMA-CRM
 
-> **Fecha de Actualización:** Febrero 2026  
-> **Versión:** 1.0.0 (Producción / Self-Hosted)  
+> **Fecha de Actualización:** Septiembre 2026  
+> **Versión:** 1.6.0 (Producción / Multi-Tenant Hardened Enterprise Edition + Recurring Billing & Contracts)  
 > **Licencia:** MIT  
 > **Autor:** Ignacio (`ignaciobrenas@gmail.com`)
+> **Estado de Auditoría:** 100% Validado (75/75 Tests Unitarios e Integración en Verde)
+> **Migraciones Prisma:** `20260927101500_add_recurring_invoices_and_contracts` aplicada y sincronizada en PostgreSQL (Docker).
+
+---
+
+## 🛡️ Hitos Recientes: Auditoría, Migraciones Prisma, Suscripciones y Contratos
+
+- **Migración de Base de Datos Prisma (`20260927101500_add_recurring_invoices_and_contracts`):**
+  - Nuevas entidades `RecurringInvoice`, `RecurringInvoiceItem` y `Contract` con claves foráneas, índices y partición de datos por `tenantId`.
+  - Migración aplicada en PostgreSQL (`localhost:5433` / Docker).
+- **Motor de Suscripciones y Facturación Recurrente (`/api/invoices/recurring`):**
+  - Generación periódica configurable (Semanal, Mensual, Trimestral, Semestral, Anual), cálculo de IVA/IRPF, activación/pausa y botón "Emitir Ya" para anticipar ciclos.
+- **Gestión de Contratos B2B y Firma Digital (`/api/contracts`):**
+  - Numeración correlativa `CTR-YYYY-xxxx`, tipología de contratos (Servicios, SLA, NDA, Licencias), vigencia temporal y auditoría forense inmutable.
+- **Aislamiento Multi-Tenant Estricto (`server/src/utils/tenant.ts` & `auth.middleware.ts`):**
+  - Todas las consultas a la base de datos se filtran de forma determinista mediante `where: { tenantId }`.
+  - La spoofing de cabeceras (`X-Tenant-ID`, `X-Switch-Tenant-ID`) por parte de usuarios no autorizados es neutralizada de raíz.
+  - Cuentas de empresas en estado `SUSPENDED` son rechazadas inmediatamente con código HTTP 403 Forbidden.
+  - El SuperAdmin (God Mode) dispone de selector de contexto multi-empresa con banner visual de alerta persistente y retorno en 1 clic a la vista global (`master`).
+- **Refinamiento UI/UX Profesional (Anti-Boilerplate):**
+  - Tipografía perfeccionada con suavizado subpixel, micro-interacciones sutiles (120ms), radios geométricos consistentes por componente y contrastes conformes con WCAG 2.1 AA.
 
 ---
 

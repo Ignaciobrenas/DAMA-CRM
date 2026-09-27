@@ -1,11 +1,21 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
-import { dispatchWorkflowEvent, executeWorkflow } from './workflow.runner';
+import { executeWorkflow } from './workflow.runner';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export async function listWorkflows(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
     const workflows = await prisma.workflow.findMany({
+      where,
       include: {
         _count: { select: { logs: true } },
       },
@@ -20,6 +30,7 @@ export async function listWorkflows(req: Request, res: Response): Promise<void> 
 
 export async function createWorkflow(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const { name, description, trigger, triggerConfig, action, actionConfig } = req.body;
 
     if (!name || !trigger || !action) {
@@ -36,10 +47,11 @@ export async function createWorkflow(req: Request, res: Response): Promise<void>
         action,
         actionConfig: actionConfig ? JSON.stringify(actionConfig) : null,
         isActive: true,
+        tenantId,
       },
     });
 
-    await logAudit((req as any).user?.id || null, 'CREATE', 'Workflow', workflow.id, { name: workflow.name }, req.ip);
+    await logAudit(req.user?.id || null, 'CREATE', 'Workflow', workflow.id, { name: workflow.name, tenantId }, req.ip);
 
     res.status(201).json({ success: true, data: workflow });
   } catch (error: any) {
@@ -50,13 +62,21 @@ export async function createWorkflow(req: Request, res: Response): Promise<void>
 export async function updateWorkflow(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { name, description, trigger, action, isActive } = req.body;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existing = await prisma.workflow.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Workflow no encontrado' });
       return;
     }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar este flujo de trabajo' });
+      return;
+    }
+
+    const { name, description, trigger, action, isActive } = req.body;
 
     const updated = await prisma.workflow.update({
       where: { id },
@@ -70,11 +90,11 @@ export async function updateWorkflow(req: Request, res: Response): Promise<void>
     });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'UPDATE',
       'Workflow',
       updated.id,
-      { name: updated.name },
+      { name: updated.name, tenantId },
       req.ip
     );
 
@@ -87,10 +107,17 @@ export async function updateWorkflow(req: Request, res: Response): Promise<void>
 export async function deleteWorkflow(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existing = await prisma.workflow.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Workflow no encontrado' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar este flujo de trabajo' });
       return;
     }
 
@@ -99,11 +126,11 @@ export async function deleteWorkflow(req: Request, res: Response): Promise<void>
     await prisma.workflow.delete({ where: { id } });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'DELETE',
       'Workflow',
       id,
-      { name: existing.name },
+      { name: existing.name, tenantId },
       req.ip
     );
 
@@ -116,6 +143,20 @@ export async function deleteWorkflow(req: Request, res: Response): Promise<void>
 export async function toggleWorkflow(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existing = await prisma.workflow.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Workflow no encontrado' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar este flujo de trabajo' });
+      return;
+    }
+
     const { isActive } = req.body;
 
     const updated = await prisma.workflow.update({
@@ -132,6 +173,9 @@ export async function toggleWorkflow(req: Request, res: Response): Promise<void>
 export async function triggerTestWorkflow(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const workflow = await prisma.workflow.findUnique({ where: { id } });
 
     if (!workflow) {
@@ -139,16 +183,20 @@ export async function triggerTestWorkflow(req: Request, res: Response): Promise<
       return;
     }
 
-    // Generate test data tailored to the trigger
+    if (!isSuper && workflow.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a este flujo de trabajo' });
+      return;
+    }
+
     const testData: Record<string, any> = {
       test: true,
       title: `Prueba Automatizada: ${workflow.name}`,
       email: 'prueba@cliente.com',
       value: 12500,
       timestamp: new Date().toISOString(),
+      tenantId,
     };
 
-    // Execute directly and synchronously
     const result = await executeWorkflow(workflow, testData);
 
     if (result.status === 'SUCCESS') {
@@ -172,8 +220,19 @@ export async function triggerTestWorkflow(req: Request, res: Response): Promise<
 export async function getWorkflowLogs(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {};
+    if (id) {
+      where.workflowId = id;
+    }
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.workflow = { tenantId };
+    }
+
     const logs = await prisma.workflowLog.findMany({
-      where: id ? { workflowId: id } : {},
+      where,
       include: {
         workflow: { select: { id: true, name: true } },
       },

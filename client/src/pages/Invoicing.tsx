@@ -12,9 +12,11 @@ import { exportToCSV } from '../utils/exportUtils';
 export const Invoicing: React.FC = () => {
   const { t } = useLanguage();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<'invoices' | 'quotes'>('invoices');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'quotes' | 'recurring' | 'contracts'>('invoices');
   const [invoices, setInvoices] = useState<any[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
+  const [recurringInvoices, setRecurringInvoices] = useState<any[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,10 +29,16 @@ export const Invoicing: React.FC = () => {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'invoice' | 'quote'>('invoice');
+  const [modalType, setModalType] = useState<'invoice' | 'quote' | 'recurring' | 'contract'>('invoice');
   const [companyId, setCompanyId] = useState('');
   const [contactId, setContactId] = useState('');
   const [taxRate, setTaxRate] = useState('21');
+  const [frequency, setFrequency] = useState('MONTHLY');
+  const [contractType, setContractType] = useState('SERVICE');
+  const [contractValue, setContractValue] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<Array<{ description: string; quantity: number; unitPrice: number }>>([
     { description: '', quantity: 1, unitPrice: 0 },
@@ -38,15 +46,19 @@ export const Invoicing: React.FC = () => {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [resInvoices, resQuotes, resCompanies, resContacts] = await Promise.all([
+    const [resInvoices, resQuotes, resRecurring, resContracts, resCompanies, resContacts] = await Promise.all([
       apiRequest('/invoices'),
       apiRequest('/invoices/quotes/all'),
+      apiRequest('/invoices/recurring/all'),
+      apiRequest('/contracts'),
       apiRequest('/companies?limit=100'),
       apiRequest('/contacts?limit=100'),
     ]);
 
     if (resInvoices.success) setInvoices(resInvoices.data || []);
     if (resQuotes.success) setQuotes(resQuotes.data || []);
+    if (resRecurring.success) setRecurringInvoices(resRecurring.data || []);
+    if (resContracts.success) setContracts(resContracts.data || []);
     if (resCompanies.success) setCompanies(resCompanies.data || []);
     if (resContacts.success) setContacts(resContacts.data || []);
     setIsLoading(false);
@@ -162,27 +174,67 @@ export const Invoicing: React.FC = () => {
 
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    const endpoint = modalType === 'invoice' ? '/invoices' : '/invoices/quotes';
+    let endpoint = '/invoices';
     const numPrefix = modalType === 'invoice' ? 'FAC' : 'PRE';
     const number = `${numPrefix}-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
 
-    const body: any = {
-      contactId: contactId || null,
-      companyId: companyId || null,
-      taxRate: parseFloat(taxRate),
-      currency: 'EUR',
-      notes,
-      items: items.map((it) => ({
-        description: it.description,
-        quantity: Number(it.quantity),
-        unitPrice: parseFloat(it.unitPrice as any),
-      })),
-    };
+    if (modalType === 'quote') {
+      endpoint = '/invoices/quotes';
+    } else if (modalType === 'recurring') {
+      endpoint = '/invoices/recurring';
+    } else if (modalType === 'contract') {
+      endpoint = '/contracts';
+    }
 
-    if (modalType === 'invoice') {
-      body.invoiceNumber = number;
+    let body: any = {};
+
+    if (modalType === 'contract') {
+      body = {
+        title: title || 'Contrato de Servicios',
+        type: contractType,
+        value: parseFloat(contractValue) || 0,
+        startDate: startDate || new Date().toISOString(),
+        endDate: endDate || null,
+        companyId: companyId || null,
+        contactId: contactId || null,
+        terms: notes,
+      };
+    } else if (modalType === 'recurring') {
+      body = {
+        title: title || 'Suscripción Recurrente',
+        frequency,
+        startDate: startDate || new Date().toISOString(),
+        nextIssueDate: startDate || new Date().toISOString(),
+        contactId: contactId || null,
+        companyId: companyId || null,
+        taxRate: parseFloat(taxRate),
+        currency: 'EUR',
+        notes,
+        items: items.map((it) => ({
+          description: it.description,
+          quantity: Number(it.quantity),
+          unitPrice: parseFloat(it.unitPrice as any),
+        })),
+      };
     } else {
-      body.quoteNumber = number;
+      body = {
+        contactId: contactId || null,
+        companyId: companyId || null,
+        taxRate: parseFloat(taxRate),
+        currency: 'EUR',
+        notes,
+        items: items.map((it) => ({
+          description: it.description,
+          quantity: Number(it.quantity),
+          unitPrice: parseFloat(it.unitPrice as any),
+        })),
+      };
+
+      if (modalType === 'invoice') {
+        body.invoiceNumber = number;
+      } else {
+        body.quoteNumber = number;
+      }
     }
 
     const res = await apiRequest(endpoint, {
@@ -191,13 +243,69 @@ export const Invoicing: React.FC = () => {
     });
 
     if (res.success) {
-      toast.success(t('success'), modalType === 'invoice' ? 'Factura generada' : 'Presupuesto creado');
+      toast.success(
+        t('success'),
+        modalType === 'invoice'
+          ? 'Factura generada'
+          : modalType === 'quote'
+          ? 'Presupuesto creado'
+          : modalType === 'recurring'
+          ? 'Suscripción recurrente configurada'
+          : 'Contrato registrado'
+      );
       setIsModalOpen(false);
       setNotes('');
+      setTitle('');
+      setContractValue('');
       setItems([{ description: '', quantity: 1, unitPrice: 0 }]);
       loadData();
     } else {
       toast.error(t('error'), res.message || 'Error al crear documento');
+    }
+  };
+
+  const handleTriggerRecurring = async (id: string) => {
+    try {
+      const res = await apiRequest(`/invoices/recurring/${id}/generate`, { method: 'POST' });
+      if (res.success) {
+        toast.success(t('success'), res.message || 'Factura emitida automáticamente');
+        await loadData();
+        setActiveTab('invoices');
+      } else {
+        toast.error(t('error'), res.message || 'Error al emitir factura');
+      }
+    } catch {
+      toast.error(t('error'), 'Fallo al procesar emisión');
+    }
+  };
+
+  const handleToggleRecurringStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
+    const res = await apiRequest(`/invoices/recurring/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    if (res.success) {
+      toast.success(t('success'), `Suscripción ${nextStatus === 'ACTIVE' ? 'activada' : 'pausada'}`);
+      loadData();
+    }
+  };
+
+  const handleDeleteRecurring = async (id: string, name: string) => {
+    if (!window.confirm(`¿Deseas eliminar la suscripción "${name}"?`)) return;
+    const res = await apiRequest(`/invoices/recurring/${id}`, { method: 'DELETE' });
+    if (res.success) {
+      toast.success(t('success'), 'Suscripción eliminada');
+      loadData();
+    }
+  };
+
+  const handleDeleteContract = async (id: string, number: string) => {
+    if (!window.confirm(`¿Deseas eliminar el contrato ${number}?`)) return;
+    const res = await apiRequest(`/contracts/${id}`, { method: 'DELETE' });
+    if (res.success) {
+      toast.success(t('success'), 'Contrato eliminado');
+      loadData();
     }
   };
 
@@ -286,6 +394,26 @@ export const Invoicing: React.FC = () => {
             >
               {t('quotes')} ({quotes.length})
             </button>
+            <button
+              onClick={() => setActiveTab('recurring')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                activeTab === 'recurring'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
+              }`}
+            >
+              Suscripciones ({recurringInvoices.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('contracts')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                activeTab === 'contracts'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
+              }`}
+            >
+              Contratos ({contracts.length})
+            </button>
           </div>
 
           <button
@@ -327,6 +455,30 @@ export const Invoicing: React.FC = () => {
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{t('newQuote')}</span>
+            </button>
+          </PermissionGate>
+          <PermissionGate resource="invoices" action="create">
+            <button
+              onClick={() => {
+                setModalType('recurring');
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Suscripción</span>
+            </button>
+          </PermissionGate>
+          <PermissionGate resource="deals" action="create">
+            <button
+              onClick={() => {
+                setModalType('contract');
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Contrato</span>
             </button>
           </PermissionGate>
         </div>
@@ -574,14 +726,199 @@ export const Invoicing: React.FC = () => {
         </div>
       )}
 
+      {/* Tab: Recurring Invoices (Subscriptions) */}
+      {activeTab === 'recurring' && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+              <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
+                <tr>
+                  <th className="px-4 py-3">Concepto / Título</th>
+                  <th className="px-4 py-3">{t('client')}</th>
+                  <th className="px-4 py-3">Frecuencia</th>
+                  <th className="px-4 py-3">Próxima Emisión</th>
+                  <th className="px-4 py-3">{t('status')}</th>
+                  <th className="px-4 py-3">{t('total')}</th>
+                  <th className="px-4 py-3 text-right">{t('actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                {recurringInvoices.length > 0 ? (
+                  recurringInvoices.map((rec) => (
+                    <tr key={rec.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
+                        {rec.title}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-gray-900 dark:text-white">
+                          {rec.company?.name || `${rec.contact?.firstName || ''} ${rec.contact?.lastName || ''}`.trim() || '—'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 font-mono">
+                          {rec.frequency}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-slate-300">
+                        {new Date(rec.nextIssueDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleToggleRecurringStatus(rec.id, rec.status)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition ${
+                            rec.status === 'ACTIVE'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                          }`}
+                          title="Clic para pausar o activar suscripción"
+                        >
+                          {rec.status === 'ACTIVE' ? '● Activa' : '⏸ Pausada'}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                        {rec.total.toLocaleString('es-ES', { style: 'currency', currency: rec.currency || 'EUR' })}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex items-center space-x-1.5">
+                          <button
+                            onClick={() => handleTriggerRecurring(rec.id)}
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 rounded text-xs font-semibold shadow-xs"
+                            title="Emitir factura ahora sin esperar al ciclo programado"
+                          >
+                            <span>⚡ Emitir Ya</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRecurring(rec.id, rec.title)}
+                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
+                            title="Eliminar suscripción"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                      Sin suscripciones recurrentes activas.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Contracts */}
+      {activeTab === 'contracts' && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+              <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
+                <tr>
+                  <th className="px-4 py-3">Nº Contrato</th>
+                  <th className="px-4 py-3">Título / Objeto</th>
+                  <th className="px-4 py-3">{t('client')}</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Vigencia</th>
+                  <th className="px-4 py-3">{t('total')}</th>
+                  <th className="px-4 py-3">{t('status')}</th>
+                  <th className="px-4 py-3 text-right">{t('actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                {contracts.length > 0 ? (
+                  contracts.map((ctr) => (
+                    <tr key={ctr.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
+                        {ctr.contractNumber}
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
+                        {ctr.title}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-gray-900 dark:text-white">
+                          {ctr.company?.name || `${ctr.contact?.firstName || ''} ${ctr.contact?.lastName || ''}`.trim() || '—'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 font-mono">
+                          {ctr.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-slate-300">
+                        {new Date(ctr.startDate).toLocaleDateString()}
+                        {ctr.endDate ? ` → ${new Date(ctr.endDate).toLocaleDateString()}` : ' (Indefinido)'}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                        {(ctr.value || 0).toLocaleString('es-ES', { style: 'currency', currency: ctr.currency || 'EUR' })}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
+                          {ctr.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex items-center space-x-1.5">
+                          <button
+                            onClick={() => handleDeleteContract(ctr.id, ctr.contractNumber)}
+                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
+                            title="Eliminar contrato"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-xs text-gray-400">
+                      Sin contratos registrados todavía.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Create Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={modalType === 'invoice' ? t('newInvoice') : t('newQuote')}
+        title={
+          modalType === 'invoice'
+            ? t('newInvoice')
+            : modalType === 'quote'
+            ? t('newQuote')
+            : modalType === 'recurring'
+            ? 'Nueva Suscripción Recurrente'
+            : 'Nuevo Contrato de Cliente'
+        }
         size="lg"
       >
         <form onSubmit={handleCreateDocument} className="space-y-4">
+          {/* Custom title for contracts or recurring */}
+          {(modalType === 'recurring' || modalType === 'contract') && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                {modalType === 'recurring' ? 'Nombre de la Suscripción *' : 'Título del Contrato *'}
+              </label>
+              <input
+                type="text"
+                required
+                placeholder={modalType === 'recurring' ? 'p.ej. Mantenimiento Web Mensual' : 'p.ej. Contrato Marco de Consultoría IT'}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies')}</label>
@@ -613,105 +950,177 @@ export const Invoicing: React.FC = () => {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('invoicing.taxSelect')}</label>
-              <select
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-              >
-                <option value="21">{t('invoicing.taxGeneral')}</option>
-                <option value="10">{t('invoicing.taxReduced')}</option>
-                <option value="4">{t('invoicing.taxSuperReduced')}</option>
-                <option value="0">{t('invoicing.taxExempt')}</option>
-                <option value="7">{t('invoicing.taxCanary')}</option>
-              </select>
-            </div>
-          </div>
 
-          {/* Items Table in Modal */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-900 dark:text-white">{t('lineItems')}</label>
-              <button
-                type="button"
-                onClick={addItemRow}
-                className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-              >
-                + {t('addLine')}
-              </button>
-            </div>
-
-            {items.map((it, idx) => (
-              <div key={idx} className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  placeholder={t('conceptDescription')}
-                  required
-                  value={it.description}
-                  onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                  className="flex-1 px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                />
-                <input
-                  type="number"
-                  placeholder={t('quantity')}
-                  required
-                  min="1"
-                  value={it.quantity}
-                  onChange={(e) => updateItem(idx, 'quantity', parseFloat(e.target.value) || 1)}
-                  className="w-20 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
-                />
-                <input
-                  type="number"
-                  placeholder={t('invoicing.pricePlaceholder')}
-                  required
-                  step="0.01"
-                  value={it.unitPrice}
-                  onChange={(e) => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
-                  className="w-24 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-right"
-                />
-                {items.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeItemRow(idx)}
-                    className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
+            {modalType === 'recurring' ? (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Periodicidad</label>
+                <select
+                  value={frequency}
+                  onChange={(e) => setFrequency(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="MONTHLY">Mensual</option>
+                  <option value="QUARTERLY">Trimestral</option>
+                  <option value="BIANNUAL">Semestral</option>
+                  <option value="YEARLY">Anual</option>
+                  <option value="WEEKLY">Semanal</option>
+                </select>
               </div>
-            ))}
+            ) : modalType === 'contract' ? (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Tipo de Contrato</label>
+                <select
+                  value={contractType}
+                  onChange={(e) => setContractType(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="SERVICE">Servicios</option>
+                  <option value="SLA">SLA / Mantenimiento</option>
+                  <option value="NDA">Confidencialidad (NDA)</option>
+                  <option value="LICENSE">Licencia Software</option>
+                  <option value="PARTNERSHIP">Alianza / Partner</option>
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('invoicing.taxSelect')}</label>
+                <select
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="21">{t('invoicing.taxGeneral')}</option>
+                  <option value="10">{t('invoicing.taxReduced')}</option>
+                  <option value="4">{t('invoicing.taxSuperReduced')}</option>
+                  <option value="0">{t('invoicing.taxExempt')}</option>
+                  <option value="7">{t('invoicing.taxCanary')}</option>
+                </select>
+              </div>
+            )}
           </div>
+
+          {modalType === 'contract' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Importe Contrato (€)</label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={contractValue}
+                  onChange={(e) => setContractValue(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Fecha de Inicio</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Fecha de Fin (Opcional)</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Items Table in Modal (for invoice, quote, and recurring) */}
+          {modalType !== 'contract' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-900 dark:text-white">{t('lineItems')}</label>
+                <button
+                  type="button"
+                  onClick={addItemRow}
+                  className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                >
+                  + {t('addLine')}
+                </button>
+              </div>
+
+              {items.map((it, idx) => (
+                <div key={idx} className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    placeholder={t('conceptDescription')}
+                    required
+                    value={it.description}
+                    onChange={(e) => updateItem(idx, 'description', e.target.value)}
+                    className="flex-1 px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                  />
+                  <input
+                    type="number"
+                    placeholder={t('quantity')}
+                    required
+                    min="1"
+                    value={it.quantity}
+                    onChange={(e) => updateItem(idx, 'quantity', parseFloat(e.target.value) || 1)}
+                    className="w-20 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
+                  />
+                  <input
+                    type="number"
+                    placeholder={t('invoicing.pricePlaceholder')}
+                    required
+                    step="0.01"
+                    value={it.unitPrice}
+                    onChange={(e) => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                    className="w-24 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-right"
+                  />
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItemRow(idx)}
+                      className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Live Breakdown Box */}
-          <div className="p-3 bg-gray-50 dark:bg-slate-800/60 rounded-xl border border-gray-200 dark:border-slate-700/80 space-y-1.5 text-xs">
-            <div className="flex justify-between text-gray-600 dark:text-slate-400">
-              <span>{t('invoicing.subtotal')}:</span>
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {calculatedSubtotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-              </span>
+          {modalType !== 'contract' && (
+            <div className="p-3 bg-gray-50 dark:bg-slate-800/60 rounded-xl border border-gray-200 dark:border-slate-700/80 space-y-1.5 text-xs">
+              <div className="flex justify-between text-gray-600 dark:text-slate-400">
+                <span>{t('invoicing.subtotal')}:</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {calculatedSubtotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                </span>
+              </div>
+              <div className="flex justify-between text-gray-600 dark:text-slate-400">
+                <span>{t('invoicing.taxAmount')} ({taxRate}%):</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {calculatedTaxAmount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white pt-1.5 border-t border-gray-200 dark:border-slate-700">
+                <span>{t('invoicing.totalAmount')}:</span>
+                <span className="text-blue-600 dark:text-blue-400">
+                  {calculatedTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between text-gray-600 dark:text-slate-400">
-              <span>{t('invoicing.taxAmount')} ({taxRate}%):</span>
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {calculatedTaxAmount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white pt-1.5 border-t border-gray-200 dark:border-slate-700">
-              <span>{t('invoicing.totalAmount')}:</span>
-              <span className="text-blue-600 dark:text-blue-400">
-                {calculatedTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-              </span>
-            </div>
-          </div>
+          )}
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('notes')}</label>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              {modalType === 'contract' ? 'Términos y Cláusulas del Contrato' : t('notes')}
+            </label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder={t('invoicing.paymentTermsPlaceholder')}
+              placeholder={modalType === 'contract' ? 'Cláusulas, condiciones de renovación, confidencialidad...' : t('invoicing.paymentTermsPlaceholder')}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
             />
           </div>
@@ -728,7 +1137,13 @@ export const Invoicing: React.FC = () => {
               type="submit"
               className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
             >
-              {modalType === 'invoice' ? t('newInvoice') : t('newQuote')}
+              {modalType === 'invoice'
+                ? t('newInvoice')
+                : modalType === 'quote'
+                ? t('newQuote')
+                : modalType === 'recurring'
+                ? 'Guardar Suscripción'
+                : 'Guardar Contrato'}
             </button>
           </div>
         </form>

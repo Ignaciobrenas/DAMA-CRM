@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import { prisma } from '../prisma';
+import { isGodSuperAdmin, isTenantActive } from '../utils/tenant';
 
 export interface AuthenticatedUser {
   id: string;
   email: string;
   name: string;
-  tenantId?: string | null;
+  tenantId: string;
   roleId: string;
   role: string;
   permissions: Array<{ resource: string; action: string }>;
@@ -70,11 +71,38 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       } catch {}
     }
 
+    // Multi-tenant resolution:
+    // Only God SuperAdmins can switch tenant via headers/query. Regular users are strictly bound to their user.tenantId.
+    const isSuper = isGodSuperAdmin({ email: user.email, role: user.role.name, tenantId: user.tenantId });
+    let resolvedTenantId = user.tenantId || 'master';
+
+    if (isSuper) {
+      const switchHeader = (req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id'] || req.headers['x-tenant-slug']) as string | undefined;
+      if (switchHeader && switchHeader.trim()) {
+        resolvedTenantId = switchHeader.trim().toLowerCase();
+      } else if (req.query.tenantId && typeof req.query.tenantId === 'string' && req.query.tenantId.trim()) {
+        resolvedTenantId = req.query.tenantId.trim().toLowerCase();
+      }
+    }
+
+    // Verify if tenant is suspended (unless requester is SuperAdmin)
+    if (!isSuper) {
+      const tenantCheck = await isTenantActive(resolvedTenantId);
+      if (!tenantCheck.active) {
+        res.status(403).json({
+          success: false,
+          message: tenantCheck.message || 'La cuenta de esta empresa se encuentra temporalmente suspendida.',
+          suspended: true,
+        });
+        return;
+      }
+    }
+
     req.user = {
       id: user.id,
       email: user.email,
       name: user.name,
-      tenantId: user.tenantId || (req.headers['x-tenant-id'] as string) || 'master',
+      tenantId: resolvedTenantId,
       roleId: user.roleId,
       role: user.role.name,
       permissions: Array.from(permissionsMap.values()),
@@ -85,3 +113,4 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     res.status(401).json({ success: false, message: 'Token de acceso inválido o expirado' });
   }
 }
+

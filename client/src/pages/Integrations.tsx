@@ -386,6 +386,57 @@ export const Integrations: React.FC = () => {
       isSystem: true,
       endpointUrl: endpoints?.whatsappWebhook,
     },
+    {
+      id: 'sage_one',
+      name: 'Sage Business Cloud (Sage One)',
+      category: 'ERP & Contabilidad',
+      categorySlug: 'erp',
+      icon: Building2,
+      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+      iconBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
+      protocol: 'Sage Accounting API v3.1 / OAuth2',
+      syncMode: 'Bidireccional REST',
+      description: 'Conexión oficial con Sage Business Cloud (Sage 1) para sincronización automática de clientes, catálogo de artículos y facturas de venta.',
+      supported: ['Clientes (Sales Ledger)', 'Facturas de Venta', 'Catálogo de Artículos', 'Impuestos SII'],
+      docsUrl: 'https://developer.sage.com/accounting/reference/',
+      config: integrations?.sage_one,
+      canSync: true,
+    },
+    {
+      id: 'sage_50',
+      name: 'Sage 50cloud / Desktop',
+      category: 'ERP & Contabilidad',
+      categorySlug: 'erp',
+      icon: Layers,
+      badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+      iconBg: 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border-teal-100 dark:border-teal-800/50',
+      iconColor: 'text-teal-600 dark:text-teal-400',
+      protocol: 'SData Protocol & Desktop Engine',
+      syncMode: 'Subcuentas 430 & Almacén',
+      description: 'Enlace contable y de stock con Sage 50. Gestión de subcuentas contables de clientes, facturas emitidas y existencias.',
+      supported: ['Subcuentas 430', 'Facturas Expedidas', 'Control de Stock', 'Asientos Contables'],
+      docsUrl: 'https://developer.sage.com/50-cloud/',
+      config: integrations?.sage_50,
+      canSync: true,
+    },
+    {
+      id: 'sage_200',
+      name: 'Sage 200 Advanced Enterprise',
+      category: 'ERP & Contabilidad',
+      categorySlug: 'erp',
+      icon: Building2,
+      badgeColor: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
+      iconBg: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-800/50',
+      iconColor: 'text-cyan-600 dark:text-cyan-400',
+      protocol: 'REST API v1 / SData v2.0 Enterprise',
+      syncMode: 'Multidivisa & Analítica',
+      description: 'Integración avanzada con la suite Sage 200 para sincronización multidivisa, contabilidad financiera, pedidos y clientes corporativos.',
+      supported: ['Sales Ledger Accounts', 'Financial Journals', 'Facturación Multidivisa', 'Almacenes Múltiples'],
+      docsUrl: 'https://developer.sage.com/sage-200/',
+      config: integrations?.sage_200,
+      canSync: true,
+    },
   ];
 
   // Métricas y conteos
@@ -1350,6 +1401,317 @@ export const Integrations: React.FC = () => {
                         onChange={(e) => setEditingConfig({ ...editingConfig, clientSecret: e.target.value })}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* SAGE ONE (Sage Business Cloud Accounting) Specific Fields */}
+                {selectedConnector === 'sage_one' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        URL de la API (Sage Business Cloud v3.1)
+                      </label>
+                      <input
+                        type="url"
+                        disabled={!isAdmin}
+                        placeholder="https://api.accounting.sage.com/v3.1"
+                        value={editingConfig.apiUrl || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, apiUrl: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          ID de Empresa / Negocio
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="SBC-ES-00123"
+                          value={editingConfig.businessId || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, businessId: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Client ID (OAuth2)
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="sage-client-id-xxxx"
+                          value={editingConfig.clientId || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, clientId: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          API Key / Access Token
+                        </label>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowSecret('sageOneKey')}
+                            className="text-xs text-slate-500 hover:text-brand-color flex items-center gap-1"
+                          >
+                            {showSecret['sageOneKey'] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            <span>{showSecret['sageOneKey'] ? 'Ocultar' : 'Mostrar'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type={showSecret['sageOneKey'] ? 'text' : 'password'}
+                        disabled={!isAdmin}
+                        placeholder={editingConfig.hasApiKey ? '•••••••• (Preservada en servidor)' : 'Bearer Token / API Key'}
+                        value={editingConfig.apiKey || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, apiKey: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="pt-2 space-y-2">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('integrations.entitiesToSync')}</span>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncContacts ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncContacts: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Contactos / Clientes</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncInvoices ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncInvoices: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Facturas de Venta</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncProducts ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncProducts: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Catálogo Productos</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SAGE 50 Specific Fields */}
+                {selectedConnector === 'sage_50' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Endpoint SData / Desktop Service
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="http://localhost:5493/sdata/sage50"
+                          value={editingConfig.endpointUrl || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, endpointUrl: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Nombre Empresa en Sage 50
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="Empresa Sage 50 S.L."
+                          value={editingConfig.companyName || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, companyName: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Usuario SData / Operador
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="admin"
+                          value={editingConfig.username || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, username: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Ejercicio Fiscal
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="2026"
+                          value={editingConfig.fiscalYear || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, fiscalYear: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Contraseña de Conexión / API Key
+                        </label>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowSecret('sage50Pass')}
+                            className="text-xs text-slate-500 hover:text-brand-color flex items-center gap-1"
+                          >
+                            {showSecret['sage50Pass'] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            <span>{showSecret['sage50Pass'] ? 'Ocultar' : 'Mostrar'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type={showSecret['sage50Pass'] ? 'text' : 'password'}
+                        disabled={!isAdmin}
+                        placeholder={editingConfig.hasPassword || editingConfig.hasApiKey ? '•••••••• (Preservada en servidor)' : 'Contraseña Sage 50'}
+                        value={editingConfig.password || editingConfig.apiKey || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, password: e.target.value, apiKey: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="pt-2 space-y-2">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('integrations.entitiesToSync')}</span>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncCustomers ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncCustomers: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Subcuentas Clientes (430)</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncInvoices ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncInvoices: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Facturas Emitidas</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncStock ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncStock: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Artículos & Stock</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SAGE 200 Specific Fields */}
+                {selectedConnector === 'sage_200' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Endpoint Base Sage 200 API
+                      </label>
+                      <input
+                        type="url"
+                        disabled={!isAdmin}
+                        placeholder="https://api.sage.com/sage200/v1"
+                        value={editingConfig.baseUrl || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, baseUrl: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          ID de Empresa / Tenant Sage 200
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="SAGE200-CORP-ES"
+                          value={editingConfig.companyId || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, companyId: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Subscription Key (Ocp-Apim-Key)
+                        </label>
+                        <input
+                          type="password"
+                          disabled={!isAdmin}
+                          placeholder={editingConfig.hasSubscriptionKey ? '•••••••• (Preservada en servidor)' : 'sage200_sub_key_xxxx'}
+                          value={editingConfig.subscriptionKey || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, subscriptionKey: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-2 space-y-2">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('integrations.entitiesToSync')}</span>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncCustomers ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncCustomers: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Sales Ledger Accounts</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncInvoices ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncInvoices: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Facturas & Pedidos</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            disabled={!isAdmin}
+                            checked={editingConfig.syncLedgers ?? true}
+                            onChange={(e) => setEditingConfig({ ...editingConfig, syncLedgers: e.target.checked })}
+                            className="rounded text-brand-color"
+                          />
+                          <span>Asientos / Libros Mayores</span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 )}
