@@ -22,6 +22,8 @@ import {
   assignProjectMember,
   removeProjectMember,
   getProjectMembers,
+  exportProjectsCSV,
+  exportProjectsPDF,
 } from './projects.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -33,6 +35,10 @@ router.use(authMiddleware);
 // Mobile & user specific
 router.get('/my-tasks', getMyTasks);
 router.get('/my-worklogs', getMyWorkLogs);
+
+// Export
+router.get('/export/csv', requirePermission('projects', 'read'), exportProjectsCSV);
+router.get('/export/pdf', requirePermission('projects', 'read'), exportProjectsPDF);
 
 // Projects
 router.get('/', requirePermission('projects', 'read'), listProjects);

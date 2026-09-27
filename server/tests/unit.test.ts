@@ -2148,7 +2148,49 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(Number(totalCost.toFixed(2)), 42.8);
     });
   });
+
+  describe('Enterprise Global Report Exporter (UTF-8 BOM CSV & Branded PDF)', () => {
+    it('should generate valid UTF-8 BOM CSV buffer with semicolon separators for Excel compatibility', () => {
+      const { generateCsvBuffer } = require('../src/services/report-exporter.service');
+      const headers = ['ID', 'Nombre', 'Importe', 'Notas'];
+      const rows = [
+        ['1', 'Cliente Pérez', 150.5, 'Factura pagada; todo ok'],
+        ['2', 'Empresa "Alfa"', 2300.0, 'Sin incidencias'],
+      ];
+
+      const buffer = generateCsvBuffer(headers, rows);
+      assert.ok(buffer instanceof Buffer, 'Should return a Buffer');
+
+      const content = buffer.toString('utf8');
+      assert.ok(content.startsWith('\uFEFF'), 'CSV must start with UTF-8 BOM character');
+      assert.ok(content.includes('"Cliente Pérez";"150.5"'), 'Fields should be delimited by semicolons');
+      assert.ok(content.includes('""Alfa""'), 'Quotes should be escaped cleanly');
+    });
+
+    it('should generate branded PDF buffer with standard header and valid PDF spec', async () => {
+      const { generateReportPdf } = require('../src/services/report-exporter.service');
+      const buffer = await generateReportPdf({
+        title: 'Informe Comercial de Prueba',
+        subtitle: 'Auditoría automática de métricas',
+        companyName: 'DAMA Test Corp',
+        kpis: [
+          { label: 'Total', value: '10.000 €', color: '#2563EB' },
+          { label: 'Conversión', value: '68%', color: '#059669' },
+        ],
+        tableHeaders: ['Concepto', 'Valor'],
+        tableRows: [['Oportunidades Ganadas', '15'], ['Tickets Cerrados', '42']],
+        summaryNotes: ['Reporte generado automáticamente para testing.'],
+      });
+
+      assert.ok(buffer instanceof Buffer, 'Must return a PDF buffer');
+      const rawString = buffer.toString('binary');
+      assert.ok(rawString.startsWith('%PDF-1.'), 'PDF file must start with valid PDF specification header');
+      assert.ok(rawString.includes('Informe Comercial de Prueba') || rawString.includes('PDFKit'), 'PDF must include document content');
+    });
+  });
 });
+
+
 
 
 

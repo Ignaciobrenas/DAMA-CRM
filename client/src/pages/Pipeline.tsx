@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, DollarSign, Building2, User, Calendar, X, AlertCircle, Search, Filter } from 'lucide-react';
+import { Plus, DollarSign, Building2, User, Calendar, X, AlertCircle, Search, Filter, FileSpreadsheet, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { apiRequest } from '../services/api';
+import { apiRequest, downloadFile } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { RecordDrawer } from '../components/crm/RecordDrawer';
@@ -166,6 +166,24 @@ export const Pipeline: React.FC = () => {
     });
   };
 
+  const handleExportCSV = async () => {
+    try {
+      await downloadFile('/deals/export/csv', `pipeline_ventas_${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success(t('success', 'Éxito'), t('pipeline.exportCsvSuccess', 'Pipeline exportado a Excel correctamente'));
+    } catch {
+      toast.error(t('error', 'Error'), t('pipeline.exportError', 'Error al exportar'));
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      await downloadFile('/deals/export/pdf', `informe_pipeline_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success(t('success', 'Éxito'), t('pipeline.exportPdfSuccess', 'Informe PDF generado correctamente'));
+    } catch {
+      toast.error(t('error', 'Error'), t('pipeline.exportError', 'Error al exportar'));
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Header */}
@@ -179,15 +197,37 @@ export const Pipeline: React.FC = () => {
           </p>
         </div>
 
-        <PermissionGate resource="deals" action="create">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t('newDeal')}</span>
-          </button>
-        </PermissionGate>
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          {/* Export buttons */}
+          <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-lg border border-gray-200 dark:border-slate-700">
+            <button
+              onClick={handleExportCSV}
+              className="px-2.5 py-1 rounded text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Exportar Pipeline a Excel (CSV)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="px-2.5 py-1 rounded text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Descargar Informe PDF de Pipeline"
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-600" />
+              <span>PDF</span>
+            </button>
+          </div>
+
+          <PermissionGate resource="deals" action="create">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newDeal')}</span>
+            </button>
+          </PermissionGate>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
