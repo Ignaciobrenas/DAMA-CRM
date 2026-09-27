@@ -2,6 +2,23 @@ version: '3.8'
 
 services:
   # ----------------------------------------------------------------------------
+  # DNS Server: Wildcard DNS Resolver for *.dama.com -> 127.0.0.1
+  # ----------------------------------------------------------------------------
+  crm-dns:
+    build:
+      context: ./docker/dns
+      dockerfile: Dockerfile
+    container_name: dama-crm-dns
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - dama-network
+
+  # ----------------------------------------------------------------------------
   # Traefik: Reverse Proxy & Zero-Cost SSL Gateway
   # ----------------------------------------------------------------------------
   crm-proxy:

@@ -41,6 +41,29 @@ export async function apiRequest<T = any>(
     headers.set('X-Switch-Tenant-ID', switchTenant);
   }
 
+  // Automatic Subdomain Tenant Detection (e.g. god.dama.com -> 'god')
+  try {
+    if (typeof window !== 'undefined') {
+      const hostParts = window.location.hostname.toLowerCase().split('.');
+      if (
+        (window.location.hostname.endsWith('.dama.com') ||
+          window.location.hostname.endsWith('.damacrm.local') ||
+          window.location.hostname.endsWith('.localhost')) &&
+        hostParts.length >= 3
+      ) {
+        const sub = hostParts[0];
+        if (sub && sub !== 'app' && sub !== 'www' && sub !== 'api') {
+          if (!headers.has('X-Tenant-Slug')) {
+            headers.set('X-Tenant-Slug', sub);
+          }
+          if (!headers.has('X-Switch-Tenant-ID') && !switchTenant) {
+            headers.set('X-Switch-Tenant-ID', sub);
+          }
+        }
+      }
+    }
+  } catch {}
+
   let fullUrl = `${API_BASE}${endpoint}`;
   if (options.params) {
     const searchParams = new URLSearchParams();

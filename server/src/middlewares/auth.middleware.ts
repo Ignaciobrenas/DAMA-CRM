@@ -78,10 +78,24 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
 
     if (isSuper) {
       const switchHeader = (req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id'] || req.headers['x-tenant-slug']) as string | undefined;
+      const hostHeader = (req.headers['x-forwarded-host'] || req.headers.host || '') as string;
+      let hostSubdomain = '';
+      if (hostHeader) {
+        const cleanHost = hostHeader.split(':')[0].toLowerCase();
+        if (cleanHost.endsWith('.dama.com') || cleanHost.endsWith('.damacrm.local') || cleanHost.endsWith('.localhost')) {
+          const parts = cleanHost.split('.');
+          if (parts.length >= 3 && parts[0] !== 'app' && parts[0] !== 'www' && parts[0] !== 'api') {
+            hostSubdomain = parts[0];
+          }
+        }
+      }
+
       if (switchHeader && switchHeader.trim()) {
         resolvedTenantId = switchHeader.trim().toLowerCase();
       } else if (req.query.tenantId && typeof req.query.tenantId === 'string' && req.query.tenantId.trim()) {
         resolvedTenantId = req.query.tenantId.trim().toLowerCase();
+      } else if (hostSubdomain) {
+        resolvedTenantId = hostSubdomain.toLowerCase();
       }
     }
 

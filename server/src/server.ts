@@ -52,6 +52,10 @@ const allowedOriginPatterns = [
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
   /\.damacrm\.com$/,
   /\.damacrm\.local$/,
+  /\.dama\.com$/,
+  /^https?:\/\/([a-zA-Z0-9-]+\.)?dama\.com(:\d+)?$/,
+  /^https?:\/\/([a-zA-Z0-9-]+\.)?damacrm\.local(:\d+)?$/,
+  /^https?:\/\/([a-zA-Z0-9-]+\.)?localhost(:\d+)?$/,
 ];
 
 const customOrigins = (process.env.ALLOWED_ORIGINS || '')

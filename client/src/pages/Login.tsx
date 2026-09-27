@@ -25,6 +25,7 @@ import { useBranding } from '../context/BrandingContext';
 import { SUPPORTED_LANGUAGES, Language } from '../i18n';
 import { LoadingSpinner } from '../components/common/Loading';
 import { apiRequest } from '../services/api';
+import { getSubdomainTenant } from '../utils/subdomain';
 
 interface LoginProps {
   onNavigatePrivacy?: () => void;
@@ -75,7 +76,11 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
       setInvitedRole(roleParam);
     }
     const tenantParam = params.get('tenant');
-    if (tenantParam && tenantParam !== 'master') {
+    const subdomainSlug = getSubdomainTenant();
+
+    if (subdomainSlug) {
+      localStorage.setItem('dama_switch_tenant', subdomainSlug);
+    } else if (tenantParam && tenantParam !== 'master') {
       localStorage.setItem('dama_switch_tenant', tenantParam);
     }
   }, []);
@@ -231,6 +236,11 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
           <div className="flex items-center space-x-1.5 text-xs text-gray-500 dark:text-slate-400">
             <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span className="font-semibold">{branding.companyName}</span>
+            {getSubdomainTenant() && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
+                {getSubdomainTenant()}.dama.com
+              </span>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
