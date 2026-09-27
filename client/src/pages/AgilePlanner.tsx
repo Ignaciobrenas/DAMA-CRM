@@ -434,7 +434,7 @@ export const AgilePlanner: React.FC = () => {
                       {col.label}
                     </h3>
                   </div>
-                  <span className="text-[11px] font-bold px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-400">
+                  <span className="text-[11px] font-bold px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-200">
                     {colTasks.length}
                   </span>
                 </div>
@@ -466,13 +466,13 @@ export const AgilePlanner: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="text-[10px] text-gray-500 dark:text-slate-400 flex items-center space-x-1">
-                        <Folder className="w-3 h-3 text-gray-400" />
+                      <div className="text-[10px] text-slate-600 dark:text-slate-300 flex items-center space-x-1 font-medium">
+                        <Folder className="w-3 h-3 text-slate-400 dark:text-slate-400" />
                         <span className="truncate">{task.project?.name || 'Proyecto'}</span>
                       </div>
 
                       {task.assignee && (
-                        <div className="text-[10px] text-slate-600 dark:text-slate-300 flex items-center space-x-1">
+                        <div className="text-[10px] text-slate-700 dark:text-slate-200 flex items-center space-x-1 font-medium">
                           <UserIcon className="w-3 h-3 text-blue-500" />
                           <span>{task.assignee.name}</span>
                         </div>
