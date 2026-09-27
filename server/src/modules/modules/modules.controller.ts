@@ -48,12 +48,18 @@ export const DEFAULT_MODULES_CONFIG: CompanyModulesConfig = {
  */
 function resolveTenant(req: Request): string {
   const user = (req as any).user;
-  const isSuperAdmin = user?.role === 'ADMIN' || user?.email === 'ignaciobrenas@gmail.com' || user?.email === 'admin@dama-crm.local';
+  const isSuperAdmin =
+    user?.role === 'ADMIN' ||
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'GOD' ||
+    user?.tenantId === 'god' ||
+    user?.email === 'ignaciobrenas@gmail.com' ||
+    user?.email === 'admin@dama-crm.local';
   
   if (isSuperAdmin && req.query.tenantId) {
-    return String(req.query.tenantId);
+    return String(req.query.tenantId).toLowerCase();
   }
-  return user?.tenantId || (req.headers['x-tenant-id'] as string) || 'master';
+  return user?.tenantId || (req.headers['x-tenant-slug'] as string) || (req.headers['x-tenant-id'] as string) || 'master';
 }
 
 /**
@@ -61,7 +67,14 @@ function resolveTenant(req: Request): string {
  */
 function isUserCompanyAdmin(user: any): boolean {
   if (!user) return false;
-  if (user.role === 'ADMIN' || user.email === 'ignaciobrenas@gmail.com' || user.email === 'admin@dama-crm.local') {
+  if (
+    user.role === 'ADMIN' ||
+    user.role === 'SUPER_ADMIN' ||
+    user.role === 'GOD' ||
+    user.tenantId === 'god' ||
+    user.email === 'ignaciobrenas@gmail.com' ||
+    user.email === 'admin@dama-crm.local'
+  ) {
     return true;
   }
   return user.role === 'COMPANY_ADMIN' || user.role === 'OWNER';
@@ -75,25 +88,42 @@ export async function getCompanyModules(req: Request, res: Response): Promise<vo
   try {
     const user = (req as any).user;
     const tenantSlug = resolveTenant(req);
+    const isGod =
+      tenantSlug === 'god' ||
+      tenantSlug === 'master' ||
+      user?.tenantId === 'god' ||
+      user?.role === 'GOD' ||
+      user?.role === 'ADMIN' ||
+      user?.email === 'ignaciobrenas@gmail.com' ||
+      user?.email === 'admin@dama-crm.local';
 
     // Look up tenant or create fallback entry
     let tenant = await prisma.tenant.findUnique({
       where: { slug: tenantSlug },
     });
 
-    if (!tenant && tenantSlug === 'master') {
+    if (!tenant && (tenantSlug === 'master' || tenantSlug === 'god')) {
       tenant = await prisma.tenant.create({
         data: {
-          slug: 'master',
-          name: 'Master Enterprise',
+          slug: tenantSlug,
+          name: tenantSlug === 'god' ? 'DAMA God Root Enterprise' : 'Master Enterprise',
           isGodTenant: true,
+          status: 'ACTIVE',
+          plan: 'ENTERPRISE',
           settings: JSON.stringify({ modules: DEFAULT_MODULES_CONFIG }),
         },
       });
     }
 
     let activeModules = { ...DEFAULT_MODULES_CONFIG };
-    if (tenant?.settings) {
+
+    // If God mode / slug god, ALL modules are strictly enabled
+    if (isGod) {
+      activeModules = { ...DEFAULT_MODULES_CONFIG };
+      for (const k of Object.keys(activeModules) as Array<keyof CompanyModulesConfig>) {
+        activeModules[k] = true;
+      }
+    } else if (tenant?.settings) {
       try {
         const parsed = JSON.parse(tenant.settings);
         if (parsed.modules && typeof parsed.modules === 'object') {
@@ -110,7 +140,8 @@ export async function getCompanyModules(req: Request, res: Response): Promise<vo
       tenant: {
         id: tenant?.id || tenantSlug,
         slug: tenant?.slug || tenantSlug,
-        name: tenant?.name || 'Empresa Principal',
+        name: tenant?.name || (tenantSlug === 'god' ? 'DAMA God SuperAdmin' : 'Empresa Principal'),
+        isGodTenant: isGod || tenant?.isGodTenant || false,
       },
       isCompanyAdmin: isUserCompanyAdmin(user),
     });

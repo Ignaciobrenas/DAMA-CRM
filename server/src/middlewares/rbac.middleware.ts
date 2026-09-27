@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { isGodSuperAdmin } from '../utils/tenant';
 
 /**
  * Dynamic RBAC Middleware for fine-grained permission checks.
@@ -14,8 +15,14 @@ export function requirePermission(resource: string, action: string) {
       return;
     }
 
-    // System administrator bypasses matrix
-    if (req.user.role === 'ADMIN') {
+    // System administrator, God SuperAdmin, and God slug users bypass matrix with full access
+    if (
+      req.user.role === 'ADMIN' ||
+      req.user.role === 'SUPER_ADMIN' ||
+      req.user.role === 'GOD' ||
+      req.user.tenantId === 'god' ||
+      isGodSuperAdmin(req)
+    ) {
       next();
       return;
     }

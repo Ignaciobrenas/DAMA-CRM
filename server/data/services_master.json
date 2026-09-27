@@ -1,0 +1,62 @@
+[
+  {
+    "id": "srv-corte-mujer",
+    "name": "Corte de Pelo Mujer & Peinado",
+    "category": "HAIRDRESSING",
+    "durationMin": 45,
+    "price": 32,
+    "supplyCost": 3.5,
+    "description": "Lavado con champú hidratante, corte personalizado y peinado con secador",
+    "isPopular": true
+  },
+  {
+    "id": "srv-corte-hombre",
+    "name": "Corte Degradado Hombre & Barba",
+    "category": "BARBER",
+    "durationMin": 35,
+    "price": 22,
+    "supplyCost": 2,
+    "description": "Corte fade a máquina y tijera, perfilado y ritual de toalla caliente para barba",
+    "isPopular": true
+  },
+  {
+    "id": "srv-color-mechas",
+    "name": "Coloración Completa + Balayage / Mechas",
+    "category": "HAIRDRESSING",
+    "durationMin": 120,
+    "price": 85,
+    "supplyCost": 14,
+    "description": "Decoloración técnica, matiz personalizado, tratamiento plex y peinado",
+    "isPopular": true
+  },
+  {
+    "id": "srv-tratamiento-keratina",
+    "name": "Tratamiento de Keratina Antifrizz & Brillo",
+    "category": "TREATMENT",
+    "durationMin": 90,
+    "price": 110,
+    "supplyCost": 18,
+    "description": "Alisado orgánico y sellado de cutícula con efecto de hasta 4 meses",
+    "isPopular": false
+  },
+  {
+    "id": "srv-manicura-semi",
+    "name": "Manicura Rusa & Esmaltado Semipermanente",
+    "category": "BEAUTY",
+    "durationMin": 50,
+    "price": 28,
+    "supplyCost": 4,
+    "description": "Limpieza de cutículas a torno, nivelación con base rubber y color de larga duración",
+    "isPopular": true
+  },
+  {
+    "id": "srv-higiene-facial",
+    "name": "Higiene Facial Profunda con Ultrasonidos",
+    "category": "BEAUTY",
+    "durationMin": 60,
+    "price": 48,
+    "supplyCost": 7.5,
+    "description": "Extracción, peeling enzimático, hidratación intensiva y mascarilla de ácido hialurónico",
+    "isPopular": false
+  }
+]
