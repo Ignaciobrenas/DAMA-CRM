@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="calBg" x1="0" y1="0" x2="1000" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1000" height="560" rx="16" fill="url(#calBg)"/>
+  <rect width="1000" height="560" rx="16" stroke="#334155" stroke-width="2"/>
+
+  <!-- Window Header -->
+  <rect width="1000" height="42" fill="#090D16" rx="16 16 0 0"/>
+  <circle cx="28" cy="21" r="6" fill="#EF4444"/>
+  <circle cx="48" cy="21" r="6" fill="#F59E0B"/>
+  <circle cx="68" cy="21" r="6" fill="#10B981"/>
+  <text x="500" y="26" fill="#94A3B8" font-family="sans-serif" font-size="12" font-weight="600" text-anchor="middle">DAMA-CRM — Calendario, Recordatorios &amp; Sincronización Google / Apple</text>
+
+  <!-- Calendar Controls Bar -->
+  <rect x="24" y="60" width="952" height="60" rx="12" fill="#1E293B" stroke="#334155"/>
+  <text x="44" y="96" fill="#FFFFFF" font-family="sans-serif" font-size="16" font-weight="700">Octubre 2026</text>
+  
+  <!-- Filter tabs -->
+  <rect x="200" y="74" width="80" height="32" rx="8" fill="#3B82F6"/>
+  <text x="240" y="94" fill="#FFFFFF" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">Todos</text>
+
+  <rect x="290" y="74" width="130" height="32" rx="8" fill="#0F172A"/>
+  <text x="355" y="94" fill="#94A3B8" font-family="sans-serif" font-size="11" text-anchor="middle">Mi Calendario</text>
+
+  <rect x="430" y="74" width="120" height="32" rx="8" fill="#0F172A"/>
+  <text x="490" y="94" fill="#94A3B8" font-family="sans-serif" font-size="11" text-anchor="middle">Global Empresa</text>
+
+  <!-- Apple & Google Sync Badges -->
+  <rect x="680" y="74" width="140" height="32" rx="8" fill="#8B5CF6" fill-opacity="0.2" stroke="#8B5CF6"/>
+  <text x="750" y="94" fill="#C4B5FD" font-family="sans-serif" font-size="10" font-weight="700" text-anchor="middle"> Apple WebCal .ics</text>
+
+  <rect x="830" y="74" width="130" height="32" rx="8" fill="#3B82F6" fill-opacity="0.2" stroke="#3B82F6"/>
+  <text x="895" y="94" fill="#93C5FD" font-family="sans-serif" font-size="10" font-weight="700" text-anchor="middle">G Google Sync ✓</text>
+
+  <!-- Calendar Grid Table (Month View) -->
+  <rect x="24" y="136" width="952" height="400" rx="12" fill="#1E293B" stroke="#334155"/>
+  
+  <!-- Days header -->
+  <text x="92" y="162" fill="#94A3B8" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">LUNES</text>
+  <text x="228" y="162" fill="#94A3B8" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">MARTES</text>
+  <text x="364" y="162" fill="#94A3B8" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">MIÉRCOLES</text>
+  <text x="500" y="162" fill="#94A3B8" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">JUEVES</text>
+  <text x="636" y="162" fill="#94A3B8" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">VIERNES</text>
+  <text x="772" y="162" fill="#64748B" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">SÁBADO</text>
+  <text x="908" y="162" fill="#64748B" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">DOMINGO</text>
+  <line x1="24" y1="174" x2="976" y2="174" stroke="#334155"/>
+
+  <!-- Row 1 Cells with Events -->
+  <rect x="36" y="184" width="120" height="95" rx="8" fill="#0F172A"/>
+  <text x="46" y="202" fill="#FFFFFF" font-family="sans-serif" font-size="11" font-weight="700">1</text>
+  <rect x="42" y="210" width="108" height="24" rx="4" fill="#3B82F6"/>
+  <text x="50" y="226" fill="#FFFFFF" font-family="sans-serif" font-size="9" font-weight="600">Reunión Acme</text>
+  <rect x="42" y="238" width="108" height="24" rx="4" fill="#EF4444"/>
+  <text x="50" y="254" fill="#FFFFFF" font-family="sans-serif" font-size="9" font-weight="600">Entrega Sprint</text>
+
+  <rect x="172" y="184" width="120" height="95" rx="8" fill="#0F172A"/>
+  <text x="182" y="202" fill="#FFFFFF" font-family="sans-serif" font-size="11" font-weight="700">2</text>
+  <rect x="178" y="210" width="108" height="24" rx="4" fill="#8B5CF6"/>
+  <text x="186" y="226" fill="#FFFFFF" font-family="sans-serif" font-size="9" font-weight="600">Townhall General</text>
+
+  <!-- Today highlight -->
+  <rect x="308" y="184" width="120" height="95" rx="8" fill="#1E3A8A" fill-opacity="0.3" stroke="#3B82F6" stroke-width="2"/>
+  <text x="318" y="202" fill="#60A5FA" font-family="sans-serif" font-size="11" font-weight="800">3 (Hoy)</text>
+  <rect x="314" y="210" width="108" height="24" rx="4" fill="#10B981"/>
+  <text x="322" y="226" fill="#FFFFFF" font-family="sans-serif" font-size="9" font-weight="600">Lanzamiento v2.0</text>
+  <rect x="314" y="238" width="108" height="24" rx="4" fill="#F59E0B"/>
+  <text x="322" y="254" fill="#FFFFFF" font-family="sans-serif" font-size="9" font-weight="600">Demo con Clientes</text>
+
+  <!-- Rest of cells -->
+  <rect x="444" y="184" width="120" height="95" rx="8" fill="#0F172A"/>
+  <text x="454" y="202" fill="#FFFFFF" font-family="sans-serif" font-size="11" font-weight="700">4</text>
+
+  <rect x="580" y="184" width="120" height="95" rx="8" fill="#0F172A"/>
+  <text x="590" y="202" fill="#FFFFFF" font-family="sans-serif" font-size="11" font-weight="700">5</text>
+  <rect x="586" y="210" width="108" height="24" rx="4" fill="#06B6D4"/>
+  <text x="594" y="226" fill="#FFFFFF" font-family="sans-serif" font-size="9" font-weight="600">Bloque Deep Work</text>
+
+  <rect x="716" y="184" width="120" height="95" rx="8" fill="#0F172A" opacity="0.6"/>
+  <text x="726" y="202" fill="#64748B" font-family="sans-serif" font-size="11" font-weight="700">6</text>
+
+  <rect x="852" y="184" width="120" height="95" rx="8" fill="#0F172A" opacity="0.6"/>
+  <text x="862" y="202" fill="#64748B" font-family="sans-serif" font-size="11" font-weight="700">7</text>
+</svg>

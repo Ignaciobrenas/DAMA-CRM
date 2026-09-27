@@ -24,6 +24,8 @@ import {
   WalletCards,
   UserCheck,
   Clock,
+  Calendar,
+  Settings,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -62,6 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     animation?: IconAnimationVariant;
   }> = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/', animation: 'bounce' },
+    { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', animation: 'bounce' },
     { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', animation: 'pulse' },
     { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', moduleKey: 'portalEmpleado', animation: 'float' },
     { id: 'tickets', label: t('sidebar.tickets'), icon: Ticket, route: '/tickets', resource: 'tickets', moduleKey: 'tickets', animation: 'tilt' },
@@ -77,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'integrations', label: t('integrations'), icon: Blocks, route: '/integrations', moduleKey: 'integrations', animation: 'spin' },
     { id: 'lead-capture', label: t('leadCapture'), icon: Zap, route: '/lead-capture', moduleKey: 'leadCapture', animation: 'glow' },
     { id: 'reports', label: t('reportsBI'), icon: BarChart3, route: '/reports', resource: 'reports', moduleKey: 'reports', animation: 'bounce' },
-    { id: 'settings', label: t('settings'), icon: ShieldCheck, route: '/settings', resource: 'users', animation: 'spin' },
+    { id: 'settings', label: t('settings'), icon: Settings, route: '/settings', resource: 'users', animation: 'spin' },
     { id: 'portal', label: t('clientPortal'), icon: ExternalLink, route: '/portal', resource: 'invoices', moduleKey: 'clientPortal', animation: 'float' },
     { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq', animation: 'bounce' },
     { id: 'privacy', label: t('privacyPolicy'), icon: Lock, route: '/privacy', animation: 'tilt' },

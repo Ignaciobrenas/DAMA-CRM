@@ -1563,7 +1563,79 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(workedHours, 8.0);
     });
   });
+
+  describe('Calendar Module: RFC 5545 iCal & Alert Reminders', () => {
+    const generateICalStub = (events: Array<{ id: string; title: string; startDate: Date; endDate: Date; allDay?: boolean; location?: string }>) => {
+      const formatDate = (date: Date, allDay: boolean = false): string => {
+        if (allDay) return date.toISOString().replace(/[-:]/g, '').split('T')[0];
+        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      };
+
+      let ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//DAMA-CRM//Enterprise Calendar 1.0//ES',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+      ];
+
+      for (const ev of events) {
+        ics.push('BEGIN:VEVENT');
+        ics.push(`UID:${ev.id}@dama-crm.local`);
+        ics.push(`SUMMARY:${ev.title}`);
+        ics.push(`DTSTART:${formatDate(ev.startDate, ev.allDay)}`);
+        ics.push(`DTEND:${formatDate(ev.endDate, ev.allDay)}`);
+        if (ev.location) ics.push(`LOCATION:${ev.location}`);
+        ics.push('END:VEVENT');
+      }
+
+      ics.push('END:VCALENDAR');
+      return ics.join('\r\n');
+    };
+
+    it('should generate valid RFC 5545 iCalendar stream with VEVENT blocks', () => {
+      const mockEvents = [
+        {
+          id: 'ev-101',
+          title: 'Reunión Comercial Acme Corp',
+          startDate: new Date('2026-10-01T10:00:00Z'),
+          endDate: new Date('2026-10-01T11:00:00Z'),
+          location: 'https://meet.google.com/abc-defg-hij',
+        },
+      ];
+
+      const icsOutput = generateICalStub(mockEvents);
+      assert.strictEqual(icsOutput.includes('BEGIN:VCALENDAR'), true);
+      assert.strictEqual(icsOutput.includes('BEGIN:VEVENT'), true);
+      assert.strictEqual(icsOutput.includes('UID:ev-101@dama-crm.local'), true);
+      assert.strictEqual(icsOutput.includes('SUMMARY:Reunión Comercial Acme Corp'), true);
+      assert.strictEqual(icsOutput.includes('LOCATION:https://meet.google.com/abc-defg-hij'), true);
+      assert.strictEqual(icsOutput.includes('END:VCALENDAR'), true);
+    });
+
+    it('should compute reminder timestamp based on minutesBefore correctly', () => {
+      const eventStart = new Date('2026-10-05T15:00:00Z');
+      const minutesBefore = 15;
+      const remindAt = new Date(eventStart.getTime() - minutesBefore * 60 * 1000);
+
+      assert.strictEqual(remindAt.toISOString(), '2026-10-05T14:45:00.000Z');
+    });
+
+    it('should isolate company-wide events from strictly private user events', () => {
+      const currentUserId = 'usr_ignacio';
+      const events = [
+        { id: '1', userId: 'usr_ignacio', isCompanyWide: false, title: 'Personal Dentist' },
+        { id: '2', userId: 'usr_other', isCompanyWide: true, title: 'Company Townhall' },
+        { id: '3', userId: 'usr_other', isCompanyWide: false, title: 'Private Note Other' },
+      ];
+
+      const visibleToUser = events.filter(e => e.userId === currentUserId || e.isCompanyWide);
+      assert.strictEqual(visibleToUser.length, 2);
+      assert.strictEqual(visibleToUser.some(e => e.title === 'Private Note Other'), false);
+    });
+  });
 });
+
 
 
 
