@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { BrandingProvider, useBranding } from './context/BrandingContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { ModulesProvider, useModules } from './context/ModulesContext';
 import { AppearanceProvider } from './context/AppearanceContext';
 import { wsClient } from './services/websocket';
@@ -372,13 +373,15 @@ export const App: React.FC = () => {
         <LanguageProvider>
           <BrandingProvider>
             <ToastProvider>
-              <AuthProvider>
-                <AppearanceProvider>
-                  <ModulesProvider>
-                    <AppContent />
-                  </ModulesProvider>
-                </AppearanceProvider>
-              </AuthProvider>
+              <ConfirmProvider>
+                <AuthProvider>
+                  <AppearanceProvider>
+                    <ModulesProvider>
+                      <AppContent />
+                    </ModulesProvider>
+                  </AppearanceProvider>
+                </AuthProvider>
+              </ConfirmProvider>
             </ToastProvider>
           </BrandingProvider>
         </LanguageProvider>

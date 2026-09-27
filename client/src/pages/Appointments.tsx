@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { apiRequest, downloadFile } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { soundService } from '../services/sound';
 
 export interface SalonServiceItem {
@@ -84,6 +86,8 @@ const STATUS_BADGES: Record<string, { label: string; color: string }> = {
 
 export const Appointments: React.FC = () => {
   const { t } = useLanguage();
+  const toast = useToast();
+  const { confirm } = useConfirm();
 
   const [activeTab, setActiveTab] = useState<'appointments' | 'services' | 'analytics'>('appointments');
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
@@ -225,10 +229,23 @@ export const Appointments: React.FC = () => {
   };
 
   const handleDeleteAppointment = async (id: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta cita?')) return;
+    const apt = appointments.find((a) => a.id === id);
+    const dateFormatted = apt?.startTime ? new Date(apt.startTime).toLocaleString() : '';
+    const isConfirmed = await confirm({
+      title: '¿Eliminar cita?',
+      description: '¿Estás seguro de que deseas eliminar esta cita? Esta acción no se puede deshacer.',
+      entityName: apt ? `${apt.clientName}${dateFormatted ? ` (${dateFormatted})` : ''}` : undefined,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!isConfirmed) return;
     const res = await apiRequest(`/appointments/${id}`, { method: 'DELETE' });
     if (res.success) {
+      toast.success('Cita eliminada', 'La cita se ha eliminado correctamente.');
       loadData();
+    } else {
+      toast.error('Error al eliminar', res.message || 'No se pudo eliminar la cita.');
     }
   };
 

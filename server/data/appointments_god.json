@@ -69,40 +69,5 @@
     "notes": "Sesión de asesoramiento completada con éxito.",
     "createdAt": "2026-09-27T15:32:56.883Z",
     "updatedAt": "2026-09-27T15:32:56.883Z"
-  },
-  {
-    "id": "apt-003",
-    "tenantId": "god",
-    "clientName": "Laura Valero",
-    "clientPhone": "+34 655 443 322",
-    "clientEmail": "laura.v@example.com",
-    "staffId": "staff-2",
-    "staffName": "Sofía Martínez (Consultor Senior)",
-    "serviceIds": [
-      "srv-consultoria-estrategica"
-    ],
-    "services": [
-      {
-        "id": "srv-consultoria-estrategica",
-        "name": "Consultoría Estratégica & Diagnóstico Inicial",
-        "category": "CONSULTATION",
-        "durationMin": 60,
-        "price": 85,
-        "supplyCost": 5,
-        "description": "Sesión de análisis de negocio, detección de necesidades y hoja de ruta personalizada",
-        "isPopular": true
-      }
-    ],
-    "startTime": "2026-09-27T14:00:00.000Z",
-    "endTime": "2026-09-27T15:00:00.000Z",
-    "durationMin": 60,
-    "totalPrice": 85,
-    "totalSupplyCost": 5,
-    "estimatedProfit": 80,
-    "status": "SCHEDULED",
-    "paymentStatus": "PENDING",
-    "notes": "Primera reunión de diagnóstico.",
-    "createdAt": "2026-09-27T15:32:56.883Z",
-    "updatedAt": "2026-09-27T15:32:56.883Z"
   }
 ]

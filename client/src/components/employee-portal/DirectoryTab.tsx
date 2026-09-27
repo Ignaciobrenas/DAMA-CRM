@@ -15,6 +15,7 @@ import {
 import { apiRequest } from '../../services/api';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { NewEmployeeModal } from './NewEmployeeModal';
 
 interface Employee {
@@ -43,6 +44,7 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
 }) => {
   const { t } = useLanguage();
   const toast = useToast();
+  const { confirm } = useConfirm();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -74,7 +76,15 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
   }, [search, deptFilter, contractFilter]);
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`${t('employees.confirmDelete')} ${name}?`)) return;
+    const isConfirmed = await confirm({
+      title: t('employees.confirmDelete') || '¿Eliminar empleado?',
+      description: `¿Estás seguro de que deseas eliminar a ${name}? Se desvinculará del portal y registros de la empresa.`,
+      entityName: name,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       const res = await apiRequest(`/employees/${id}`, { method: 'DELETE' });
       if (res.success) {

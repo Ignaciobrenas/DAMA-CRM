@@ -20,6 +20,7 @@ import {
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import {
   isValidEmail,
   isValidPhone,
@@ -35,6 +36,7 @@ import { exportToCSV } from '../utils/exportUtils';
 export const Companies: React.FC = () => {
   const { t } = useLanguage();
   const toast = useToast();
+  const { confirm } = useConfirm();
   const [companies, setCompanies] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -221,8 +223,15 @@ export const Companies: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    const confirmMsg = t('bulk.confirmDelete').replace('{count}', String(selectedIds.size));
-    if (!window.confirm(confirmMsg)) return;
+    const isConfirmed = await confirm({
+      title: '¿Eliminar empresas seleccionadas?',
+      description: `¿Estás seguro de que deseas eliminar permanentemente ${selectedIds.size} empresas seleccionadas?`,
+      entityName: `${selectedIds.size} empresas`,
+      confirmText: 'Eliminar todas',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!isConfirmed) return;
 
     const res = await apiRequest('/companies/bulk-delete', {
       method: 'POST',
