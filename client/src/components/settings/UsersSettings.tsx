@@ -17,7 +17,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { apiRequest } from '../../services/api';
-import { checkPasswordStrength, isValidEmail } from '../../utils/validators';
+import { checkPasswordStrength, isValidEmail, validateEmail, validateRequired } from '../../utils/validators';
+import { ValidatedInput } from '../common/ValidatedInput';
 
 interface UserItem {
   id: string;
@@ -483,33 +484,24 @@ export const UsersSettings: React.FC = () => {
               )}
 
               <form onSubmit={handleCreateUser} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Nombre Completo *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newUserForm.name}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                    placeholder="Ej. Laura Gómez"
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  label="Nombre Completo"
+                  required
+                  value={newUserForm.name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                  validator={(val) => validateRequired(val, 'El nombre completo')}
+                  placeholder="Ej. Laura Gómez"
+                />
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Correo Electrónico *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={newUserForm.email}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                    placeholder="laura.gomez@empresa.com"
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  label="Correo Electrónico"
+                  type="email"
+                  required
+                  value={newUserForm.email}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                  validator={validateEmail}
+                  placeholder="laura.gomez@empresa.com"
+                />
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
@@ -518,7 +510,7 @@ export const UsersSettings: React.FC = () => {
                   <select
                     value={newUserForm.roleId}
                     onChange={(e) => setNewUserForm({ ...newUserForm, roleId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                   >
                     {roles.map((r) => (
                       <option key={r.id} value={r.id}>
@@ -528,19 +520,15 @@ export const UsersSettings: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Contraseña Temporal *
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={newUserForm.password}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  label="Contraseña Temporal"
+                  type="password"
+                  required
+                  value={newUserForm.password}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                  validator={(val) => validateRequired(val, 'La contraseña temporal', 6)}
+                  placeholder="••••••••"
+                />
 
                 <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
                   <button
@@ -612,31 +600,22 @@ export const UsersSettings: React.FC = () => {
 
               <form onSubmit={handleUpdateUser} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                      Nombre Completo *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editUserForm.name}
-                      onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  <ValidatedInput
+                    label="Nombre Completo"
+                    required
+                    value={editUserForm.name}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                    validator={(val) => validateRequired(val, 'El nombre')}
+                  />
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                      Correo Electrónico *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={editUserForm.email}
-                      onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  <ValidatedInput
+                    label="Correo Electrónico"
+                    type="email"
+                    required
+                    value={editUserForm.email}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                    validator={validateEmail}
+                  />
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
@@ -645,7 +624,7 @@ export const UsersSettings: React.FC = () => {
                     <select
                       value={editUserForm.roleId}
                       onChange={(e) => setEditUserForm({ ...editUserForm, roleId: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                     >
                       {roles.map((r) => (
                         <option key={r.id} value={r.id}>
@@ -662,7 +641,7 @@ export const UsersSettings: React.FC = () => {
                     <select
                       value={editUserForm.isActive ? 'active' : 'inactive'}
                       onChange={(e) => setEditUserForm({ ...editUserForm, isActive: e.target.value === 'active' })}
-                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                     >
                       <option value="active">Activo (Permite acceso)</option>
                       <option value="inactive">Desactivado (Bloqueado)</option>
@@ -670,18 +649,13 @@ export const UsersSettings: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Nueva Contraseña (Opcional)
-                  </label>
-                  <input
-                    type="password"
-                    value={editUserForm.password}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
-                    placeholder="Dejar en blanco para mantener la contraseña actual"
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  label="Nueva Contraseña (Opcional)"
+                  type="password"
+                  value={editUserForm.password}
+                  onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+                  placeholder="Dejar en blanco para mantener la contraseña actual"
+                />
 
                 {/* Custom Permissions Matrix */}
                 <div className="pt-2 border-t border-gray-100 dark:border-slate-800 space-y-2">
