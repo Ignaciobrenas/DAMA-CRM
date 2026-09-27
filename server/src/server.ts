@@ -67,7 +67,7 @@ app.use(
       if (isPatternAllowed || isCustomAllowed || config.env === 'development') {
         callback(null, true);
       } else {
-        callback(null, true);
+        callback(null, false);
       }
     },
     credentials: true,

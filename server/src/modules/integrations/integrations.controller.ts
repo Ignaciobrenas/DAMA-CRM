@@ -436,6 +436,18 @@ export async function handleShopifyWebhook(req: Request, res: Response): Promise
 
 export async function handleN8nAction(req: Request, res: Response): Promise<void> {
   try {
+    const n8nConfig = IntegrationsService.loadConfig().n8n;
+    if (n8nConfig.apiKey && n8nConfig.apiKey.trim()) {
+      const authHeader = req.headers.authorization;
+      const apiKeyHeader = req.headers['x-api-key'];
+      const bodyApiKey = req.body?.apiKey;
+      const providedKey = apiKeyHeader || bodyApiKey || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader);
+      if (providedKey !== n8nConfig.apiKey) {
+        res.status(401).json({ success: false, message: 'Clave API de n8n no válida o no proporcionada' });
+        return;
+      }
+    }
+
     const { action, payload } = req.body;
     if (!action) {
       res.status(400).json({ success: false, message: 'El parámetro action es obligatorio' });
