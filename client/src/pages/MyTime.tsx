@@ -306,36 +306,36 @@ export const MyTime: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Fichado Hoy</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Fichado Hoy</span>
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono mt-1">
             {todayClockedHours}h
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">Jornada computable legal</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Jornada computable legal</p>
         </div>
 
         <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Reportado en Tareas</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Reportado en Tareas</span>
           <div className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 font-mono mt-1">
             {totalReportedHours.toFixed(1)}h
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">{taskWorkLogs.length} registros en proyectos</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{taskWorkLogs.length} registros en proyectos</p>
         </div>
 
         <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Mis Tareas Activas</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Mis Tareas Activas</span>
           <div className="text-2xl font-extrabold text-purple-600 dark:text-purple-400 font-mono mt-1">
             {myTasks.length}
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">Asignadas en sprints</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Asignadas en sprints</p>
         </div>
 
         <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cumplimiento RGPD</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Cumplimiento RGPD</span>
           <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
             <CheckCircle2 className="w-4 h-4" />
             <span>Registro Conforme</span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-0.5">Estatuto de los Trabajadores</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Estatuto de los Trabajadores</p>
         </div>
       </div>
 
@@ -346,7 +346,7 @@ export const MyTime: React.FC = () => {
           className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-colors ${
             activeTab === 'attendance'
               ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Registro de Fichajes
@@ -356,7 +356,7 @@ export const MyTime: React.FC = () => {
           className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-colors ${
             activeTab === 'worklogs'
               ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Tiempo en Tareas y Proyectos ({taskWorkLogs.length})
@@ -367,15 +367,15 @@ export const MyTime: React.FC = () => {
       {activeTab === 'attendance' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
               Historial de Fichajes y Horarios
             </h2>
-            <span className="text-xs text-slate-400 font-mono">{timeRecords.length} registros</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-medium">{timeRecords.length} registros</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-semibold">
                 <tr>
                   <th className="py-3 px-4">Fecha</th>
                   <th className="py-3 px-4">Entrada</th>
@@ -426,15 +426,15 @@ export const MyTime: React.FC = () => {
       {activeTab === 'worklogs' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
               Desglose de Tiempo Reportado en Proyectos
             </h2>
-            <span className="text-xs text-slate-400 font-mono">Total: {totalReportedHours.toFixed(1)}h</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-medium">Total: {totalReportedHours.toFixed(1)}h</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-semibold">
                 <tr>
                   <th className="py-3 px-4">Fecha</th>
                   <th className="py-3 px-4">Proyecto</th>
