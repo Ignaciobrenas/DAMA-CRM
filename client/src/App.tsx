@@ -77,18 +77,28 @@ const AppContent: React.FC = () => {
   const { branding } = useBranding();
   const { t } = useLanguage();
   const { isModuleEnabled } = useModules();
-  const [currentRoute, setCurrentRoute] = useState<string>(() => {
+  
+  const resolveCurrentRoute = (): string => {
+    if (window.location.hash && window.location.hash.startsWith('#/')) {
+      return normalizeRoute(window.location.hash.slice(1));
+    }
     return normalizeRoute(window.location.pathname);
-  });
+  };
+
+  const [currentRoute, setCurrentRoute] = useState<string>(resolveCurrentRoute);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentRoute(normalizeRoute(window.location.pathname));
+    const handleRouteChange = () => {
+      setCurrentRoute(resolveCurrentRoute());
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handleRouteChange);
+    window.addEventListener('hashchange', handleRouteChange);
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+      window.removeEventListener('hashchange', handleRouteChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -108,7 +118,10 @@ const AppContent: React.FC = () => {
 
   const navigateTo = (route: string) => {
     const target = normalizeRoute(route);
-    if (window.location.pathname !== target) {
+    const isLocalProtocol = window.location.protocol === 'file:' || window.location.protocol.startsWith('capacitor');
+    if (isLocalProtocol) {
+      window.location.hash = '#' + target;
+    } else if (window.location.pathname !== target) {
       window.history.pushState(null, '', target);
     }
     setCurrentRoute(target);
