@@ -72,7 +72,25 @@ export async function getInvoice(req: Request, res: Response): Promise<void> {
 export async function createInvoice(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = getRequestTenant(req);
-    const { quoteId, contactId, companyId, dueDate, notes, taxRate = 21, items, currency = 'EUR' } = req.body;
+    const {
+      quoteId,
+      contactId,
+      companyId,
+      issueDate: rawIssueDate,
+      dueDate,
+      notes,
+      taxRate = 21,
+      items,
+      currency = 'EUR',
+      discountPercent = 0,
+      discountAmount = 0,
+      irpfRate = 0,
+      paymentTerms = 'IMMEDIATE',
+      isRectifying = false,
+      rectifiesInvoiceId = null,
+      rectifyingReason = null,
+      proforma = false,
+    } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       res.status(400).json({ success: false, message: 'La factura debe contener al menos un concepto' });
@@ -98,23 +116,54 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
     const calculatedItems = items.map((it: any) => {
       const quantity = parseFloat(it.quantity) || 1;
       const unitPrice = parseFloat(it.unitPrice) || 0;
+      const itemDiscount = parseFloat(it.discount) || 0;
+      const grossAmount = quantity * unitPrice;
+      const netAmount = grossAmount * (1 - itemDiscount / 100);
       return {
         description: it.description || 'Servicio o producto',
         quantity,
         unitPrice,
-        amount: Number((quantity * unitPrice).toFixed(2)),
+        discount: itemDiscount,
+        amount: Number(netAmount.toFixed(2)),
       };
     });
 
     const subtotal = Number(calculatedItems.reduce((acc, it) => acc + it.amount, 0).toFixed(2));
-    const taxRateNum = parseFloat(taxRate) || 21;
-    const taxAmount = Number(((subtotal * taxRateNum) / 100).toFixed(2));
-    const total = Number((subtotal + taxAmount).toFixed(2));
+    const discPct = parseFloat(discountPercent) || 0;
+    const computedDiscountAmount = discountAmount ? parseFloat(discountAmount) : Number(((subtotal * discPct) / 100).toFixed(2));
+    const taxableBase = Math.max(0, subtotal - computedDiscountAmount);
 
-    // Generate unique invoice number scoped to current tenant: FAC-YYYY-SEQ
+    const taxRateNum = parseFloat(taxRate) || 0;
+    const taxAmount = Number(((taxableBase * taxRateNum) / 100).toFixed(2));
+
+    const irpfRateNum = parseFloat(irpfRate) || 0;
+    const computedIrpfAmount = Number(((taxableBase * irpfRateNum) / 100).toFixed(2));
+
+    const total = Number((taxableBase + taxAmount - computedIrpfAmount).toFixed(2));
+
+    // Generate unique invoice number scoped to current tenant: FAC-YYYY-SEQ / REC-YYYY-SEQ / PRO-YYYY-SEQ
     const year = new Date().getFullYear();
     const count = await prisma.invoice.count({ where: { tenantId } });
-    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
+    const prefix = isRectifying ? 'REC' : proforma ? 'PRO' : 'FAC';
+    const invoiceNumber = `${prefix}-${year}-${String(count + 1).padStart(4, '0')}`;
+
+    const parsedIssueDate = rawIssueDate ? new Date(rawIssueDate) : new Date();
+
+    // Calculate due date based on payment terms if not explicitly given
+    let finalDueDate = dueDate ? new Date(dueDate) : new Date(parsedIssueDate.getTime() + 30 * 86400000);
+    if (!dueDate && paymentTerms) {
+      if (paymentTerms === 'IMMEDIATE') {
+        finalDueDate = new Date(parsedIssueDate);
+      } else if (paymentTerms === 'DAYS_15') {
+        finalDueDate = new Date(parsedIssueDate.getTime() + 15 * 86400000);
+      } else if (paymentTerms === 'DAYS_30') {
+        finalDueDate = new Date(parsedIssueDate.getTime() + 30 * 86400000);
+      } else if (paymentTerms === 'DAYS_60') {
+        finalDueDate = new Date(parsedIssueDate.getTime() + 60 * 86400000);
+      } else if (paymentTerms === 'END_OF_MONTH') {
+        finalDueDate = new Date(parsedIssueDate.getFullYear(), parsedIssueDate.getMonth() + 1, 0);
+      }
+    }
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -122,14 +171,23 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
         quoteId: quoteId || null,
         contactId: contactId || null,
         companyId: companyId || null,
-        issueDate: new Date(),
-        dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        issueDate: parsedIssueDate,
+        dueDate: finalDueDate,
         status: 'DRAFT',
         subtotal,
+        discountPercent: discPct,
+        discountAmount: computedDiscountAmount,
         taxRate: taxRateNum,
         taxAmount,
+        irpfRate: irpfRateNum,
+        irpfAmount: computedIrpfAmount,
         total,
         currency,
+        paymentTerms,
+        isRectifying: Boolean(isRectifying),
+        rectifiesInvoiceId: rectifiesInvoiceId || null,
+        rectifyingReason: rectifyingReason || null,
+        proforma: Boolean(proforma),
         notes: notes?.trim() || null,
         tenantId,
         items: {
@@ -145,7 +203,11 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
 
     await logAudit(req.user?.id || null, 'CREATE', 'Invoice', invoice.id, { invoiceNumber, total, tenantId }, req.ip);
 
-    res.status(201).json({ success: true, data: invoice });
+    res.status(201).json({
+      success: true,
+      data: invoice,
+      message: `${isRectifying ? 'Factura Rectificativa' : proforma ? 'Factura Proforma' : 'Factura'} generada correctamente`,
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -1345,5 +1407,221 @@ export async function importInvoices(req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function rectifyInvoice(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { reason, rectifyAmount } = req.body;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const original = await prisma.invoice.findUnique({
+      where: { id },
+      include: { items: true, company: true, contact: true },
+    });
+
+    if (!original) {
+      res.status(404).json({ success: false, message: 'Factura original no encontrada' });
+      return;
+    }
+
+    if (!isSuper && original.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a esta factura' });
+      return;
+    }
+
+    const year = new Date().getFullYear();
+    const count = await prisma.invoice.count({ where: { tenantId } });
+    const invoiceNumber = `REC-${year}-${String(count + 1).padStart(4, '0')}`;
+
+    // Negative items or adjusted rectify amount
+    const isPartial = rectifyAmount !== undefined && rectifyAmount !== null && parseFloat(rectifyAmount) > 0;
+    const partialSubtotal = isPartial ? -parseFloat(rectifyAmount) : -original.subtotal;
+    const taxAmount = Number(((partialSubtotal * original.taxRate) / 100).toFixed(2));
+    const total = Number((partialSubtotal + taxAmount).toFixed(2));
+
+    const items = isPartial
+      ? [
+          {
+            description: `Abono / Rectificación parcial sobre ${original.invoiceNumber}: ${reason || 'Ajuste de importe'}`,
+            quantity: 1,
+            unitPrice: partialSubtotal,
+            amount: partialSubtotal,
+          },
+        ]
+      : original.items.map((it) => ({
+          description: `Rectificación: ${it.description}`,
+          quantity: it.quantity,
+          unitPrice: -Math.abs(it.unitPrice),
+          discount: it.discount || 0,
+          amount: -Math.abs(it.amount),
+        }));
+
+    const rectifyingInvoice = await prisma.invoice.create({
+      data: {
+        invoiceNumber,
+        companyId: original.companyId,
+        contactId: original.contactId,
+        issueDate: new Date(),
+        dueDate: new Date(),
+        status: 'PAID',
+        subtotal: partialSubtotal,
+        taxRate: original.taxRate,
+        taxAmount,
+        total,
+        currency: original.currency,
+        isRectifying: true,
+        rectifiesInvoiceId: original.id,
+        rectifyingReason: reason || `Rectificación y anulación de ${original.invoiceNumber}`,
+        notes: `Factura Rectificativa / Abono vinculada a la factura original ${original.invoiceNumber}. Motivo: ${reason || 'Abono'}`,
+        tenantId,
+        items: {
+          create: items,
+        },
+      },
+      include: { items: true, company: true, contact: true },
+    });
+
+    await logAudit(
+      req.user?.id || null,
+      'RECTIFY',
+      'Invoice',
+      rectifyingInvoice.id,
+      { originalId: original.id, rectifyingNumber: invoiceNumber, tenantId },
+      req.ip
+    );
+
+    res.status(201).json({
+      success: true,
+      data: rectifyingInvoice,
+      message: `Factura rectificativa ${invoiceNumber} generada con éxito`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function duplicateInvoice(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const original = await prisma.invoice.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!original) {
+      res.status(404).json({ success: false, message: 'Factura no encontrada' });
+      return;
+    }
+
+    if (!isSuper && original.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para duplicar esta factura' });
+      return;
+    }
+
+    const year = new Date().getFullYear();
+    const count = await prisma.invoice.count({ where: { tenantId } });
+    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
+
+    const duplicate = await prisma.invoice.create({
+      data: {
+        invoiceNumber,
+        companyId: original.companyId,
+        contactId: original.contactId,
+        issueDate: new Date(),
+        dueDate: new Date(Date.now() + 30 * 86400000),
+        status: 'DRAFT',
+        subtotal: original.subtotal,
+        discountPercent: original.discountPercent,
+        discountAmount: original.discountAmount,
+        taxRate: original.taxRate,
+        taxAmount: original.taxAmount,
+        irpfRate: original.irpfRate,
+        irpfAmount: original.irpfAmount,
+        total: original.total,
+        currency: original.currency,
+        paymentTerms: original.paymentTerms,
+        notes: original.notes,
+        tenantId,
+        items: {
+          create: original.items.map((it) => ({
+            description: it.description,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            discount: it.discount || 0,
+            amount: it.amount,
+          })),
+        },
+      },
+      include: { items: true, company: true, contact: true },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: duplicate,
+      message: `Factura clonada con nuevo número ${invoiceNumber}`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function sendInvoiceEmail(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { emailTo, subject, message } = req.body;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: { company: true, contact: true, items: true },
+    });
+
+    if (!invoice) {
+      res.status(404).json({ success: false, message: 'Factura no encontrada' });
+      return;
+    }
+
+    if (!isSuper && invoice.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a esta factura' });
+      return;
+    }
+
+    const recipient = emailTo || invoice.contact?.email || invoice.company?.email;
+    if (!recipient) {
+      res.status(400).json({ success: false, message: 'No se encontró una dirección de correo para el cliente' });
+      return;
+    }
+
+    // Update status to SENT if it was DRAFT
+    if (invoice.status === 'DRAFT') {
+      await prisma.invoice.update({
+        where: { id },
+        data: { status: 'SENT' },
+      });
+    }
+
+    await logAudit(
+      req.user?.id || null,
+      'EMAIL_SENT',
+      'Invoice',
+      invoice.id,
+      { recipient, invoiceNumber: invoice.invoiceNumber, tenantId },
+      req.ip
+    );
+
+    res.json({
+      success: true,
+      message: `Factura ${invoice.invoiceNumber} enviada por correo a ${recipient}`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 
 

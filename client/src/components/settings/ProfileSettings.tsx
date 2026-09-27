@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
   LayoutDashboard,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -386,8 +387,13 @@ export const ProfileSettings: React.FC = () => {
                 <div className="text-[10px] space-y-1 p-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800">
                   {pwdCheck.rules.map((r) => (
                     <div key={r.id} className="flex items-center space-x-1.5">
-                      <span className={r.passed ? 'text-emerald-500 font-bold' : 'text-gray-400'}>
-                        {r.passed ? '✓' : '○'} {r.label}
+                      {r.passed ? (
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                      ) : (
+                        <span className="w-3 h-3 rounded-full border border-gray-400 shrink-0 inline-block" />
+                      )}
+                      <span className={r.passed ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-gray-400'}>
+                        {r.label}
                       </span>
                     </div>
                   ))}
@@ -482,8 +488,9 @@ export const ProfileSettings: React.FC = () => {
               </div>
             </div>
 
-            <div className="text-[10px] text-gray-400 bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-gray-100 dark:border-slate-800">
-              💡 Todas tus preferencias de usuario se aplican al instante y quedan guardadas en tu cuenta.
+            <div className="text-[10px] text-gray-400 bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-gray-100 dark:border-slate-800 flex items-center space-x-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Todas tus preferencias de usuario se aplican al instante y quedan guardadas en tu cuenta.</span>
             </div>
           </div>
         </div>

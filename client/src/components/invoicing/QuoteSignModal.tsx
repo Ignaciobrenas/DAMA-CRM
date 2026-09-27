@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { PenTool, X } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
@@ -127,7 +128,8 @@ export const QuoteSignModal: React.FC<QuoteSignModalProps> = ({
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              ✍️ {t('quotes.digitalAcceptanceTitle')}
+              <PenTool className="w-5 h-5 text-amber-500" />
+              <span>{t('quotes.digitalAcceptanceTitle')}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {quoteNumber} • {t('quotes.totalToAccept')}: <strong className="text-slate-900 dark:text-white">{total.toFixed(2)} €</strong>
@@ -137,7 +139,7 @@ export const QuoteSignModal: React.FC<QuoteSignModalProps> = ({
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 

@@ -571,8 +571,9 @@ export const LeadCapture: React.FC = () => {
                         ¡Hola de nuevo, <strong>{profileResult.contact.firstName}</strong>!
                       </div>
                       <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-blue-200 dark:border-blue-900/50 space-y-2">
-                        <div className="font-semibold text-blue-700 dark:text-blue-300 text-[11px]">
-                          ⚡ Campos adaptados progresivamente (no se le vuelve a pedir el nombre):
+                        <div className="font-semibold text-blue-700 dark:text-blue-300 text-[11px] flex items-center space-x-1">
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>Campos adaptados progresivamente (no se le vuelve a pedir el nombre):</span>
                         </div>
                         <div className="space-y-1.5">
                           {profileResult.nextSuggestedFields.includes('phone') && (

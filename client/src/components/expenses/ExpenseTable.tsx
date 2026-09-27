@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trash2 } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 
 export interface Expense {
@@ -126,7 +127,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
                   className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition"
                   title={t('common.delete')}
                 >
-                  🗑️
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </td>
             </tr>
