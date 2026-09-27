@@ -576,3 +576,119 @@ export async function getRevenueStats(req: Request, res: Response): Promise<void
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
+/**
+ * GET /api/appointments/export/csv
+ * Export appointments to CSV / Excel
+ */
+export async function exportAppointmentsCsv(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = req.user?.tenantId || 'master';
+    const appointments = loadAppointments(tenantId);
+    const { generateCsvBuffer } = await import('../../services/report-exporter.service');
+
+    const headers = [
+      'ID Cita',
+      'Fecha',
+      'Hora Inicio',
+      'Hora Fin',
+      'Cliente',
+      'Teléfono',
+      'Email',
+      'Estilista / Asignado',
+      'Servicios',
+      'Duración (min)',
+      'Precio Total (€)',
+      'Coste Insumos (€)',
+      'Beneficio Neto (€)',
+      'Estado Cita',
+      'Estado Pago',
+      'Método Pago',
+      'Notas',
+    ];
+
+    const rows = appointments.map((a) => {
+      const sDate = new Date(a.startTime);
+      const eDate = new Date(a.endTime);
+      return [
+        a.id,
+        sDate.toLocaleDateString('es-ES'),
+        sDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        eDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        a.clientName,
+        a.clientPhone || '',
+        a.clientEmail || '',
+        a.staffName,
+        a.services.map((s) => s.name).join(' + '),
+        a.durationMin,
+        a.totalPrice.toFixed(2),
+        a.totalSupplyCost.toFixed(2),
+        a.estimatedProfit.toFixed(2),
+        a.status,
+        a.paymentStatus,
+        a.paymentMethod || 'PENDIENTE',
+        a.notes || '',
+      ];
+    });
+
+    const csvBuf = generateCsvBuffer(headers, rows);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=citas_salon_${tenantId}_${Date.now()}.csv`);
+    res.send(csvBuf);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/**
+ * GET /api/appointments/export/pdf
+ * Export official Salon Bookings & Revenue PDF Report
+ */
+export async function exportAppointmentsPdf(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = req.user?.tenantId || 'master';
+    const appointments = loadAppointments(tenantId);
+    const { generateReportPdf } = await import('../../services/report-exporter.service');
+
+    const totalRevenue = appointments.reduce((sum, a) => sum + (a.status !== 'CANCELLED' ? a.totalPrice : 0), 0);
+    const totalProfit = appointments.reduce((sum, a) => sum + (a.status !== 'CANCELLED' ? a.estimatedProfit : 0), 0);
+    const completedCount = appointments.filter((a) => a.status === 'COMPLETED').length;
+
+    const tableHeaders = ['Fecha / Hora', 'Cliente', 'Profesional', 'Servicios', 'Total (€)', 'Estado'];
+    const tableRows = appointments.slice(0, 40).map((a) => [
+      `${new Date(a.startTime).toLocaleDateString('es-ES')} ${new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      a.clientName,
+      a.staffName.split(' ')[0],
+      a.services.map((s) => s.name).join(', ').slice(0, 30),
+      `${a.totalPrice.toFixed(2)}€`,
+      a.status === 'COMPLETED' ? 'Completada' : a.status === 'CONFIRMED' ? 'Confirmada' : a.status,
+    ]);
+
+    const pdfBuf = await generateReportPdf({
+      title: 'Informe de Citas, Salón & Estimación de Ingresos',
+      subtitle: 'Resumen financiero de reservas, ocupación de estilistas y margen neto',
+      companyName: 'DAMA-CRM Salón Pro',
+      dateRange: `Mes de ${new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' })}`,
+      kpis: [
+        { label: 'Facturación Prevista', value: `${totalRevenue.toFixed(2)}€`, color: '#EC4899' },
+        { label: 'Beneficio Neto Estimado', value: `${totalProfit.toFixed(2)}€`, color: '#10B981' },
+        { label: 'Citas Realizadas', value: completedCount, color: '#2563EB' },
+        { label: 'Total Reservas', value: appointments.length, color: '#8B5CF6' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        '* El beneficio neto se calcula deduciendo los costes de tintes, champús y consumibles del importe total.',
+        '* Informe oficial generado para control de caja, rendimientos y liquidación de estilistas.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=informe_citas_${tenantId}_${Date.now()}.pdf`);
+    res.send(pdfBuf);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+

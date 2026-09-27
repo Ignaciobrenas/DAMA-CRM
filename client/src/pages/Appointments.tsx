@@ -23,8 +23,10 @@ import {
   Award,
   Layers,
   Check,
+  Download,
+  FileText,
 } from 'lucide-react';
-import { apiRequest } from '../services/api';
+import { apiRequest, downloadFile } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { soundService } from '../services/sound';
 
@@ -272,7 +274,23 @@ export const Appointments: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => downloadFile('/appointments/export/csv', 'citas_salon.csv')}
+            className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors flex items-center space-x-1.5"
+            title="Exportar a Excel / CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-500" />
+            <span>{t('exportCsv', 'Exportar Excel')}</span>
+          </button>
+          <button
+            onClick={() => downloadFile('/appointments/export/pdf', 'informe_citas_salon.pdf')}
+            className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors flex items-center space-x-1.5"
+            title="Descargar informe oficial en PDF"
+          >
+            <FileText className="w-3.5 h-3.5 text-pink-500" />
+            <span>{t('exportPdf', 'Informe PDF')}</span>
+          </button>
           <button
             onClick={() => setIsServiceModalOpen(true)}
             className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors flex items-center space-x-1.5"

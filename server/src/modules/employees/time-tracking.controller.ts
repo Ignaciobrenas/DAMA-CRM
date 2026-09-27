@@ -261,3 +261,157 @@ export const syncWithOdooAttendance = async (req: Request, res: Response): Promi
     res.status(500).json({ success: false, message: 'Error al sincronizar con Odoo', error: error.message });
   }
 };
+
+/**
+ * GET /api/employees/time-tracking/export/csv
+ * Export labor time records / fichajes to CSV / Excel
+ */
+export const exportTimeRecordsCsv = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const isSuper = isSuperAdminUser(user);
+    const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR' || isSuper;
+    const { generateCsvBuffer } = await import('../../services/report-exporter.service');
+
+    let where: any = {};
+    if (!isHrOrAdmin) {
+      const myEmployee = await prisma.employee.findUnique({ where: { userId: user.id } });
+      if (!myEmployee) {
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=registro_jornada_${Date.now()}.csv`);
+        res.send(generateCsvBuffer(['Empleado', 'Fecha', 'Entrada', 'Salida', 'Horas', 'Tipo'], []));
+        return;
+      }
+      where.employeeId = myEmployee.id;
+    } else {
+      if (!isSuper) {
+        where.tenantId = user?.tenantId || 'master';
+      }
+    }
+
+    const records = await prisma.timeRecord.findMany({
+      where,
+      include: {
+        employee: { select: { firstName: true, lastName: true, email: true, jobTitle: true } },
+      },
+      orderBy: { clockIn: 'desc' },
+      take: 1000,
+    });
+
+    const headers = [
+      'Empleado',
+      'Puesto / Cargo',
+      'Fecha',
+      'Hora Entrada',
+      'Hora Salida',
+      'Duración (Minutos)',
+      'Total Horas',
+      'Tipo Jornada',
+      'Motivo / Justificación',
+      'Ubicación / IP',
+      'Estado',
+    ];
+
+    const rows = records.map((r) => {
+      const cIn = new Date(r.clockIn);
+      const cOut = r.clockOut ? new Date(r.clockOut) : null;
+      const hours = r.durationMinutes ? (r.durationMinutes / 60).toFixed(2) : 'En curso';
+      return [
+        r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : 'Empleado',
+        r.employee?.jobTitle || '',
+        cIn.toLocaleDateString('es-ES'),
+        cIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        cOut ? cOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'En curso',
+        r.durationMinutes || 0,
+        hours,
+        r.type,
+        r.reason || '',
+        r.location || r.ipAddress || 'Oficina',
+        r.status,
+      ];
+    });
+
+    const csvBuf = generateCsvBuffer(headers, rows);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=registro_jornada_${user?.tenantId || 'empresa'}_${Date.now()}.csv`);
+    res.send(csvBuf);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al exportar registro de jornada', error: error.message });
+  }
+};
+
+/**
+ * GET /api/employees/time-tracking/export/pdf
+ * Export official Spanish Labor Law (Estatuto de los Trabajadores art. 34.9) Workday PDF Report
+ */
+export const exportTimeRecordsPdf = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const isSuper = isSuperAdminUser(user);
+    const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR' || isSuper;
+    const { generateReportPdf } = await import('../../services/report-exporter.service');
+
+    let where: any = {};
+    if (!isHrOrAdmin) {
+      const myEmployee = await prisma.employee.findUnique({ where: { userId: user.id } });
+      if (!myEmployee) {
+        res.status(404).json({ success: false, message: 'Perfil de empleado no encontrado' });
+        return;
+      }
+      where.employeeId = myEmployee.id;
+    } else {
+      if (!isSuper) {
+        where.tenantId = user?.tenantId || 'master';
+      }
+    }
+
+    const records = await prisma.timeRecord.findMany({
+      where,
+      include: {
+        employee: { select: { firstName: true, lastName: true, jobTitle: true } },
+      },
+      orderBy: { clockIn: 'desc' },
+      take: 50,
+    });
+
+    const totalMinutes = records.reduce((acc, r) => acc + (r.durationMinutes || 0), 0);
+    const totalHours = (totalMinutes / 60).toFixed(1);
+
+    const tableHeaders = ['Empleado', 'Fecha', 'Entrada', 'Salida', 'Horas', 'Tipo'];
+    const tableRows = records.map((r) => [
+      r.employee ? `${r.employee.firstName} ${r.employee.lastName.charAt(0)}.` : 'Empleado',
+      new Date(r.clockIn).toLocaleDateString('es-ES'),
+      new Date(r.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      r.clockOut ? new Date(r.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'En curso',
+      r.durationMinutes ? `${(r.durationMinutes / 60).toFixed(1)}h` : '0h',
+      r.type,
+    ]);
+
+    const pdfBuf = await generateReportPdf({
+      title: 'Registro de Jornada Laboral Oficial (Art. 34.9 ET)',
+      subtitle: 'Certificado de fichajes, horas ordinarias y cumplimiento de normativa laboral',
+      companyName: 'DAMA-CRM Recursos Humanos',
+      dateRange: `Mes en curso - ${new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`,
+      kpis: [
+        { label: 'Total Fichajes', value: records.length, color: '#2563EB' },
+        { label: 'Horas Trabajadas', value: `${totalHours}h`, color: '#10B981' },
+        { label: 'Jornadas Ordinarias', value: records.filter((r) => r.type === 'WORK').length, color: '#3B82F6' },
+        { label: 'Guardias / Extras', value: records.filter((r) => r.type === 'OVERTIME').length, color: '#F59E0B' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        '* Documento legal acreditativo de cómputo de jornada según Real Decreto-ley 8/2019 de 8 de marzo.',
+        '* Los datos quedan custodiados electrónicamente durante 4 años a disposición de la ITSS y representación legal.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=registro_jornada_${Date.now()}.pdf`);
+    res.send(pdfBuf);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al exportar registro de jornada en PDF', error: error.message });
+  }
+};
+

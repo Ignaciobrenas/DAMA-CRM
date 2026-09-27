@@ -20,8 +20,9 @@ import {
   Phone,
   RefreshCw,
   Send,
+  Download,
 } from 'lucide-react';
-import { apiRequest } from '../services/api';
+import { apiRequest, downloadFile } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { soundService } from '../services/sound';
 
@@ -214,13 +215,31 @@ export const Logistics: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsNewShipmentModalOpen(true)}
-          className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors flex items-center space-x-1.5 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('logistics.newShipment', 'Nuevo Envío / Paquete')}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => downloadFile('/logistics/export/csv', 'manifiesto_envios.csv')}
+            className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors flex items-center space-x-1.5"
+            title="Exportar Manifiesto de Envíos en CSV / Excel"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-500" />
+            <span>{t('exportCsv', 'Exportar Excel')}</span>
+          </button>
+          <button
+            onClick={() => downloadFile('/logistics/export/pdf', 'informe_logistica_envios.pdf')}
+            className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors flex items-center space-x-1.5"
+            title="Descargar informe oficial de expedición en PDF"
+          >
+            <FileText className="w-3.5 h-3.5 text-blue-500" />
+            <span>{t('exportPdf', 'Informe PDF')}</span>
+          </button>
+          <button
+            onClick={() => setIsNewShipmentModalOpen(true)}
+            className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors flex items-center space-x-1.5 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('logistics.newShipment', 'Nuevo Envío / Paquete')}</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}

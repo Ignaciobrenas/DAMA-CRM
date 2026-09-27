@@ -419,3 +419,137 @@ export async function getTicketStats(req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, message: 'Error al obtener métricas de soporte', error: error.message });
   }
 }
+
+/**
+ * GET /api/tickets/export/csv
+ * Export helpdesk support tickets to CSV / Excel
+ */
+export async function exportTicketsCsv(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { generateCsvBuffer } = await import('../../services/report-exporter.service');
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      where,
+      include: {
+        contact: { select: { firstName: true, lastName: true, email: true } },
+        company: { select: { name: true } },
+        assignedTo: { select: { name: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const headers = [
+      'Nº Ticket',
+      'Asunto / Título',
+      'Estado',
+      'Prioridad',
+      'Categoría',
+      'Canal Origen',
+      'Cliente',
+      'Empresa',
+      'Agente Asignado',
+      'Fecha Creación',
+      'Vencimiento SLA',
+      'Fecha Primera Respuesta',
+      'Fecha Resolución',
+    ];
+
+    const rows = tickets.map((t) => [
+      t.ticketNumber,
+      t.title,
+      t.status,
+      t.priority,
+      t.category,
+      t.channel,
+      t.contact ? `${t.contact.firstName} ${t.contact.lastName}` : '',
+      t.company ? t.company.name : '',
+      t.assignedTo ? t.assignedTo.name : 'Sin asignar',
+      new Date(t.createdAt).toLocaleDateString('es-ES'),
+      t.slaDueAt ? new Date(t.slaDueAt).toLocaleDateString('es-ES') : '',
+      t.firstResponseAt ? new Date(t.firstResponseAt).toLocaleDateString('es-ES') : '',
+      t.resolvedAt ? new Date(t.resolvedAt).toLocaleDateString('es-ES') : '',
+    ]);
+
+    const csvBuf = generateCsvBuffer(headers, rows);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=tickets_soporte_${tenantId}_${Date.now()}.csv`);
+    res.send(csvBuf);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al exportar tickets en CSV', error: error.message });
+  }
+}
+
+/**
+ * GET /api/tickets/export/pdf
+ * Export official Helpdesk SLA Performance & Incident PDF Report
+ */
+export async function exportTicketsPdf(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { generateReportPdf } = await import('../../services/report-exporter.service');
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      where,
+      include: {
+        contact: { select: { firstName: true, lastName: true } },
+        assignedTo: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const total = tickets.length;
+    const resolved = tickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
+    const open = tickets.filter((t) => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length;
+    const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 100;
+
+    const tableHeaders = ['Nº Ticket', 'Asunto', 'Prioridad', 'Cliente', 'Agente', 'Estado'];
+    const tableRows = tickets.map((t) => [
+      t.ticketNumber,
+      t.title.slice(0, 26),
+      t.priority === 'URGENT' ? 'URGENTE' : t.priority,
+      t.contact ? `${t.contact.firstName}` : '-',
+      t.assignedTo ? t.assignedTo.name.split(' ')[0] : 'Sin Asignar',
+      t.status === 'RESOLVED' ? 'Resuelto' : t.status === 'CLOSED' ? 'Cerrado' : t.status === 'IN_PROGRESS' ? 'En Curso' : 'Abierto',
+    ]);
+
+    const pdfBuf = await generateReportPdf({
+      title: 'Informe de Soporte Helpdesk & Cumplimiento SLA',
+      subtitle: 'Métricas de resolución de incidencias, tiempos de respuesta y atención al cliente',
+      companyName: 'DAMA-CRM Helpdesk Hub',
+      dateRange: `Informe generado a ${new Date().toLocaleDateString('es-ES')}`,
+      kpis: [
+        { label: 'Total Tickets', value: total, color: '#2563EB' },
+        { label: 'Tickets Abiertos', value: open, color: '#F59E0B' },
+        { label: 'Tickets Resueltos', value: resolved, color: '#10B981' },
+        { label: 'Tasa Resolución', value: `${resolutionRate}%`, color: '#8B5CF6' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        '* Métricas oficiales de calidad de servicio y tiempos de respuesta conforme a acuerdos de nivel de servicio (SLA).',
+        '* Todas las incidencias registradas con trazabilidad por agente y canal de entrada.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=informe_soporte_sla_${tenantId}_${Date.now()}.pdf`);
+    res.send(pdfBuf);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al exportar informe de tickets en PDF', error: error.message });
+  }
+}

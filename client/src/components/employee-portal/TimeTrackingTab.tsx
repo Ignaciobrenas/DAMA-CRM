@@ -10,9 +10,10 @@ import {
   TrendingUp,
   MapPin,
   FileSpreadsheet,
+  FileText,
   Briefcase,
 } from 'lucide-react';
-import { apiRequest } from '../../services/api';
+import { apiRequest, downloadFile } from '../../services/api';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { ClockWidget } from './ClockWidget';
@@ -123,6 +124,18 @@ export const TimeTrackingTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
     link.click();
     document.body.removeChild(link);
     toast.success(t('timeTracking.exportSuccess'));
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      await downloadFile(
+        '/employees/time-tracking/export/pdf',
+        `informe_fichajes_${new Date().toISOString().slice(0, 10)}.pdf`
+      );
+      toast.success(t('timeTracking.exportPdfSuccess', 'Informe oficial PDF generado correctamente'));
+    } catch {
+      toast.error(t('timeTracking.exportError', 'Error al exportar'));
+    }
   };
 
   // Calculations
@@ -255,9 +268,19 @@ export const TimeTrackingTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
           <button
             onClick={handleExportCSV}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-800 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition shadow-xs"
+            title="Exportar a CSV/Excel"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>{t('timeTracking.exportCSV')}</span>
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{t('timeTracking.exportCSV', 'Excel')}</span>
+          </button>
+
+          <button
+            onClick={handleExportPDF}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-800 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition shadow-xs"
+            title="Exportar Informe Oficial PDF"
+          >
+            <FileText className="w-3.5 h-3.5 text-rose-600" />
+            <span>PDF</span>
           </button>
 
           <button

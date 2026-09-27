@@ -7,9 +7,14 @@ import {
   updateTicket,
   addTicketMessage,
   getTicketStats,
+  exportTicketsCsv,
+  exportTicketsPdf,
 } from './tickets.controller';
 
 const router = Router();
+
+router.get('/export/csv', authMiddleware, exportTicketsCsv);
+router.get('/export/pdf', authMiddleware, exportTicketsPdf);
 
 // Allow public access for customer ticket creation or authenticated access
 router.get('/stats/summary', authMiddleware, getTicketStats);
