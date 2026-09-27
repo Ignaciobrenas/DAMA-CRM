@@ -376,6 +376,43 @@ export const AccessibilitySettings: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Live Icon Style Demo Sandbox */}
+        <div className="mt-4 p-4 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/50 dark:border-purple-900/30">
+          <span className="text-[11px] font-bold text-purple-900 dark:text-purple-300 block mb-2">
+            Demostración en vivo del estilo seleccionado ({iconStyle.toUpperCase()}): Pasa el ratón por encima de los botones
+          </span>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-xs font-semibold text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 shadow-2xs flex items-center space-x-1.5 hover:border-purple-400 group"
+            >
+              <Sliders className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span>Ajustes</span>
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-xs font-semibold text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 shadow-2xs flex items-center space-x-1.5 hover:border-blue-400 group"
+            >
+              <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span>Oportunidades</span>
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 text-xs font-semibold text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 shadow-2xs flex items-center space-x-1.5 hover:border-emerald-400 group"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Automatizaciones</span>
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 text-xs font-semibold text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 shadow-2xs flex items-center space-x-1.5 hover:border-rose-400 group"
+            >
+              <Type className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              <span>Facturación</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

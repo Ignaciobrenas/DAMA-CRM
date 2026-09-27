@@ -21,6 +21,7 @@ import {
   updateRecurringInvoiceStatus,
   generateInvoiceFromRecurring,
   deleteRecurringInvoice,
+  importInvoices,
 } from './invoices.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -40,6 +41,7 @@ router.use(authMiddleware);
 // Invoices & Dunning
 router.get('/aging/report', requirePermission('invoices', 'read'), getAgingReport);
 router.get('/', requirePermission('invoices', 'read'), listInvoices);
+router.post('/import', requirePermission('invoices', 'create'), importInvoices);
 router.get('/:id', requirePermission('invoices', 'read'), getInvoice);
 router.post('/', requirePermission('invoices', 'create'), validate(createInvoiceSchema), createInvoice);
 router.patch('/:id/status', requirePermission('invoices', 'update'), updateInvoiceStatus);

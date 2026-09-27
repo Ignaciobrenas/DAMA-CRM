@@ -1259,3 +1259,91 @@ export async function deleteRecurringInvoice(req: Request, res: Response): Promi
   }
 }
 
+export async function importInvoices(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const userId = (req as any).user?.id || null;
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ success: false, message: 'Se requiere una lista de facturas válida en items' });
+      return;
+    }
+
+    const createdInvoices = [];
+    for (const inv of items) {
+      const invoiceNumber = inv.invoiceNumber || `IMP-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 100)}`;
+      const subtotal = parseFloat(inv.subtotal) || 0;
+      const taxRate = parseFloat(inv.taxRate) || 21;
+      const taxAmount = Math.round(((subtotal * taxRate) / 100) * 100) / 100;
+      const total = inv.total ? parseFloat(inv.total) : subtotal + taxAmount;
+      const status = ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED'].includes(inv.status?.toUpperCase())
+        ? inv.status.toUpperCase()
+        : 'PAID';
+
+      let companyId: string | null = null;
+      if (inv.clientName) {
+        const existingCompany = await prisma.company.findFirst({
+          where: {
+            name: { equals: inv.clientName.trim() },
+            tenantId,
+          },
+        });
+        if (existingCompany) {
+          companyId = existingCompany.id;
+        } else {
+          const newComp = await prisma.company.create({
+            data: {
+              name: inv.clientName.trim(),
+              taxId: inv.clientTaxId?.trim() || null,
+              tenantId,
+            },
+          });
+          companyId = newComp.id;
+        }
+      }
+
+      const issueDate = inv.issueDate ? new Date(inv.issueDate) : new Date();
+      const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(issueDate.getTime() + 30 * 86400000);
+
+      const record = await prisma.invoice.create({
+        data: {
+          invoiceNumber,
+          tenantId,
+          companyId,
+          issueDate,
+          dueDate,
+          subtotal,
+          taxRate,
+          taxAmount,
+          total,
+          status,
+          notes: inv.notes || 'Importada desde archivo externo',
+          items: {
+            create: [
+              {
+                description: inv.description || 'Concepto de servicios importado',
+                quantity: 1,
+                unitPrice: subtotal,
+                amount: subtotal,
+              },
+            ],
+          },
+        },
+      });
+      createdInvoices.push(record);
+    }
+
+    await logAudit(userId, 'IMPORT_INVOICES', 'Invoice', 'batch', { count: createdInvoices.length, tenantId }, req.ip);
+
+    res.status(201).json({
+      success: true,
+      data: createdInvoices,
+      message: `Se han importado ${createdInvoices.length} facturas exitosamente a la base de datos`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+

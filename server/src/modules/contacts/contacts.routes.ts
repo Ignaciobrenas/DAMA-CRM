@@ -7,6 +7,7 @@ import {
   deleteContact,
   bulkDeleteContacts,
   bulkUpdateContacts,
+  importContacts,
 } from './contacts.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -18,6 +19,7 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get('/', requirePermission('contacts', 'read'), listContacts);
+router.post('/import', requirePermission('contacts', 'create'), importContacts);
 router.post('/bulk-delete', requirePermission('contacts', 'delete'), bulkDeleteContacts);
 router.post('/bulk-update', requirePermission('contacts', 'update'), bulkUpdateContacts);
 router.get('/:id', requirePermission('contacts', 'read'), getContact);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Download, CheckCircle, Clock, AlertCircle, Trash2, Bell, FileSpreadsheet } from 'lucide-react';
+import { Plus, Download, CheckCircle, Clock, AlertCircle, Trash2, Bell, FileSpreadsheet, Upload } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
@@ -8,6 +8,7 @@ import { PermissionGate } from '../components/common/PermissionGate';
 import { AgingReportModal } from '../components/invoicing/AgingReportModal';
 import { QuoteSignModal } from '../components/invoicing/QuoteSignModal';
 import { exportToCSV } from '../utils/exportUtils';
+import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
 
 export const Invoicing: React.FC = () => {
   const { t } = useLanguage();
@@ -25,6 +26,7 @@ export const Invoicing: React.FC = () => {
 
   // SME Suite Modals
   const [isAgingModalOpen, setIsAgingModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [signingQuote, setSigningQuote] = useState<any>(null);
 
   // Modal State
@@ -432,6 +434,17 @@ export const Invoicing: React.FC = () => {
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             <span className="hidden sm:inline">{t('exportCsv')}</span>
           </button>
+
+          <PermissionGate resource="invoices" action="create">
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+              title="Importar Facturas por Excel o CSV"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">Importar Facturas</span>
+            </button>
+          </PermissionGate>
 
           <PermissionGate resource="invoices" action="create">
             <button
@@ -1172,6 +1185,16 @@ export const Invoicing: React.FC = () => {
           }}
         />
       )}
+
+      {/* Batch Invoices Importer Modal */}
+      <ExcelCsvImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={() => {
+          loadData();
+        }}
+        targetType="invoices"
+      />
     </div>
   );
 };
