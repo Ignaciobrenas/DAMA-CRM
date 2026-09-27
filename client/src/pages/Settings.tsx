@@ -9,6 +9,7 @@ import {
   Users,
   Plug,
   Server,
+  Tag,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -23,6 +24,7 @@ import { SecuritySettings } from '../components/settings/SecuritySettings';
 import { UsersSettings } from '../components/settings/UsersSettings';
 import { IntegrationsSettings } from '../components/settings/IntegrationsSettings';
 import { SystemSettings } from '../components/settings/SystemSettings';
+import { CustomFieldsSettings } from '../components/settings/CustomFieldsSettings';
 
 export const Settings: React.FC = () => {
   const { user } = useAuth();
@@ -37,7 +39,7 @@ export const Settings: React.FC = () => {
   const canManageCompany = isCompanyAdmin || isSuperAdmin;
 
   const [activeTab, setActiveTab] = useState<
-    'accessibility' | 'modules' | 'profile' | 'company' | 'security' | 'users' | 'integrations' | 'system'
+    'accessibility' | 'modules' | 'profile' | 'company' | 'custom_fields' | 'security' | 'users' | 'integrations' | 'system'
   >('accessibility');
 
   const settingsTabs = [
@@ -66,6 +68,11 @@ export const Settings: React.FC = () => {
             id: 'company',
             label: t('settings.tabCompany', 'Identidad & Facturación'),
             icon: Building2,
+          },
+          {
+            id: 'custom_fields',
+            label: t('settings.tabCustomFields', 'Campos Personalizados'),
+            icon: Tag,
           },
         ]
       : []),
@@ -103,7 +110,7 @@ export const Settings: React.FC = () => {
           {t('settings', 'Configuración')}
         </h1>
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          Personalización visual, gestión modular, seguridad 2FA, identidad corporativa y copias de seguridad
+          Personalización visual, campos dinámicos, gestión modular, seguridad 2FA, identidad corporativa y copias de seguridad
         </p>
       </div>
 
@@ -149,6 +156,7 @@ export const Settings: React.FC = () => {
           {activeTab === 'modules' && canManageCompany && <ModulesSettings />}
           {activeTab === 'profile' && <ProfileSettings />}
           {activeTab === 'company' && canManageCompany && <CompanySettings />}
+          {activeTab === 'custom_fields' && canManageCompany && <CustomFieldsSettings />}
           {activeTab === 'security' && <SecuritySettings />}
           {activeTab === 'users' && canManageCompany && <UsersSettings />}
           {activeTab === 'integrations' && canManageCompany && <IntegrationsSettings />}
@@ -158,3 +166,4 @@ export const Settings: React.FC = () => {
     </div>
   );
 };
+

@@ -15,6 +15,8 @@ export interface UserPreferences {
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   uiScale?: number;
   iconStyle?: 'animated' | 'solid' | 'minimal';
+  timezone?: string;
+  dateFormat?: string;
 }
 
 export interface User {
