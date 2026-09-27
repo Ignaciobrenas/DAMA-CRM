@@ -20,6 +20,23 @@ import {
   Headphones,
   FolderKanban,
   CheckCircle2,
+  Mic,
+  MicOff,
+  Paperclip,
+  Pin,
+  PinOff,
+  Reply,
+  Copy,
+  Play,
+  Pause,
+  Volume2,
+  X,
+  FileText,
+  Image,
+  Download,
+  MoreVertical,
+  CornerDownRight,
+  Filter,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
@@ -50,7 +67,7 @@ const CANNED_RESPONSES = [
   },
 ];
 
-const EMOJI_SHORTCUTS = ['👍', '🎉', '🚀', '💡', '✅', '🔥', '👀', '🙌'];
+const EMOJI_SHORTCUTS = ['👍', '🎉', '🚀', '💡', '✅', '🔥', '👀', '🙌', '❤️', '👏'];
 
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   general: <Hash className="w-4 h-4 text-blue-500" />,
@@ -70,27 +87,144 @@ const ROLE_COLORS: Record<string, string> = {
   VIEWER: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700',
 };
 
+// Simulated Audio Note Player Component
+interface AudioNotePlayerProps {
+  durationSeconds?: number;
+  isOutbound?: boolean;
+}
+
+const AudioNotePlayer: React.FC<AudioNotePlayerProps> = ({ durationSeconds = 18, isOutbound = false }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState<1 | 1.5 | 2>(1);
+  const timerRef = useRef<any>(null);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      clearInterval(timerRef.current);
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+      timerRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(timerRef.current);
+            setIsPlaying(false);
+            return 0;
+          }
+          return prev + (100 / (durationSeconds * 10)) * playbackSpeed;
+        });
+      }, 100);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const changeSpeed = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (playbackSpeed === 1) setPlaybackSpeed(1.5);
+    else if (playbackSpeed === 1.5) setPlaybackSpeed(2);
+    else setPlaybackSpeed(1);
+  };
+
+  return (
+    <div
+      className={`flex items-center space-x-2.5 p-2 rounded-xl transition-all ${
+        isOutbound
+          ? 'bg-blue-700/60 text-white'
+          : 'bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white'
+      }`}
+    >
+      <button
+        type="button"
+        onClick={togglePlay}
+        className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105 shrink-0 ${
+          isOutbound
+            ? 'bg-white text-blue-600'
+            : 'bg-emerald-600 text-white dark:bg-emerald-500'
+        }`}
+      >
+        {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+      </button>
+
+      {/* Waveform Visualization Bars */}
+      <div className="flex-1 flex items-center space-x-0.5 h-6 cursor-pointer">
+        {[40, 70, 30, 90, 60, 100, 45, 80, 20, 65, 85, 40, 75, 55, 95, 30, 70, 50, 85, 35].map(
+          (height, idx) => {
+            const barProgress = (idx / 20) * 100;
+            const isFilled = progress >= barProgress;
+            return (
+              <span
+                key={idx}
+                className={`w-1 rounded-full transition-all duration-150 ${
+                  isFilled
+                    ? isOutbound
+                      ? 'bg-white'
+                      : 'bg-emerald-500'
+                    : isOutbound
+                    ? 'bg-blue-300/50'
+                    : 'bg-gray-300 dark:bg-slate-600'
+                }`}
+                style={{ height: `${height}%` }}
+              />
+            );
+          }
+        )}
+      </div>
+
+      <div className="flex items-center space-x-1.5 shrink-0">
+        <span className="text-[10px] font-mono opacity-80">
+          0:{Math.floor((durationSeconds * (100 - progress)) / 100).toString().padStart(2, '0')}
+        </span>
+        <button
+          type="button"
+          onClick={changeSpeed}
+          className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+            isOutbound ? 'bg-blue-800 text-white' : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
+          }`}
+        >
+          {playbackSpeed}x
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const Omnichannel: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  // Tab State: 'whatsapp' (External WhatsApp/Customer Chat) vs 'internal' (Team Internal Chat)
+  // Tab State: 'whatsapp' vs 'internal'
   const [activeTab, setActiveTab] = useState<'whatsapp' | 'internal'>('whatsapp');
 
-  // WhatsApp / Omnichannel External Chat State
+  // WhatsApp / External Chat State
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [replyContent, setReplyContent] = useState('');
   const [selectedChannel, setSelectedChannel] = useState<'WHATSAPP' | 'EMAIL'>('WHATSAPP');
   const [searchQuery, setSearchQuery] = useState('');
+  const [inChatSearchQuery, setInChatSearchQuery] = useState('');
+  const [isInChatSearchOpen, setIsInChatSearchOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isWsConnected, setIsWsConnected] = useState<boolean>(wsClient.isWsConnected());
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<{ [contactId: string]: number }>({});
   const [lastMessages, setLastMessages] = useState<{ [contactId: string]: { content: string; time?: string } }>({});
+  const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [pinnedMessageIds, setPinnedMessageIds] = useState<string[]>([]);
+  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<any>(null);
+  const recordingTimerRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Internal Team Chat State
   const [internalChannels, setInternalChannels] = useState<any[]>([]);
@@ -99,7 +233,13 @@ export const Omnichannel: React.FC = () => {
   const [internalMessages, setInternalMessages] = useState<any[]>([]);
   const [internalInputText, setInternalInputText] = useState('');
   const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  const [internalInChatSearchQuery, setInternalInChatSearchQuery] = useState('');
+  const [isInternalInChatSearchOpen, setIsInternalInChatSearchOpen] = useState(false);
   const [internalUnreadCounts, setInternalUnreadCounts] = useState<{ [targetId: string]: number }>({});
+  const [internalReplyingTo, setInternalReplyingTo] = useState<any | null>(null);
+  const [internalPinnedIds, setInternalPinnedIds] = useState<string[]>([]);
+  const [showInternalPinnedOnly, setShowInternalPinnedOnly] = useState(false);
+
   const internalMessagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -154,12 +294,10 @@ export const Omnichannel: React.FC = () => {
     loadContacts();
     loadInternalChannels();
 
-    // Listen to WebSocket connection state changes
     const unsubConn = wsClient.on('connection:change', ({ connected }) => {
       setIsWsConnected(connected);
     });
 
-    // Listen to incoming real-time external messages
     const unsubMsg = wsClient.on('omnichannel:message', (msg: any) => {
       if (msg.direction === 'INBOUND') {
         soundService.playMessageChime();
@@ -188,7 +326,6 @@ export const Omnichannel: React.FC = () => {
       });
     });
 
-    // Listen for real-time typing events from external peers
     const unsubTyping = wsClient.on('omnichannel:typing', (data: any) => {
       setSelectedContact((currentSelected: any) => {
         if (currentSelected && data.contactId === currentSelected.id) {
@@ -202,9 +339,7 @@ export const Omnichannel: React.FC = () => {
       });
     });
 
-    // Listen to real-time internal team messages
     const unsubInternalMsg = wsClient.on('internal_chat:message', (msg: any) => {
-      // Play soft notification sound
       soundService.playMessageChime();
 
       setSelectedInternalTarget((currentTarget: any) => {
@@ -241,6 +376,7 @@ export const Omnichannel: React.FC = () => {
       loadMessages(selectedContact.id);
       setIsPartnerTyping(false);
       setUnreadCounts((prev) => ({ ...prev, [selectedContact.id]: 0 }));
+      setReplyingToMessage(null);
     }
   }, [selectedContact]);
 
@@ -248,6 +384,7 @@ export const Omnichannel: React.FC = () => {
     if (selectedInternalTarget) {
       loadInternalMessages(selectedInternalTarget.id);
       setInternalUnreadCounts((prev) => ({ ...prev, [selectedInternalTarget.id]: 0 }));
+      setInternalReplyingTo(null);
     }
   }, [selectedInternalTarget]);
 
@@ -274,6 +411,67 @@ export const Omnichannel: React.FC = () => {
     typingTimeoutRef.current = setTimeout(() => {
       wsClient.send('omnichannel:typing', { contactId: selectedContact.id, isTyping: false });
     }, 2000);
+  };
+
+  // Voice Recording Simulator
+  const startRecordingVoice = () => {
+    setIsRecordingVoice(true);
+    setRecordingSeconds(0);
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingSeconds((prev) => prev + 1);
+    }, 1000);
+  };
+
+  const stopAndSendVoice = async () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    setIsRecordingVoice(false);
+
+    if (!selectedContact) return;
+
+    const res = await apiRequest('/omnichannel/messages', {
+      method: 'POST',
+      body: JSON.stringify({
+        contactId: selectedContact.id,
+        channel: 'WHATSAPP',
+        content: `🎤 [Nota de voz - ${recordingSeconds}s]`,
+        isAudio: true,
+        audioDuration: recordingSeconds,
+      }),
+    });
+
+    if (res.success) {
+      soundService.playSuccessChime();
+      loadMessages(selectedContact.id);
+    }
+  };
+
+  const cancelRecordingVoice = () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    setIsRecordingVoice(false);
+    setRecordingSeconds(0);
+  };
+
+  const handleFileUploadSimulated = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedContact) return;
+
+    setReplyContent((prev) => `${prev} 📎 Archivo adjunto: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`.trim());
+  };
+
+  const togglePinMessage = (msgId: string) => {
+    setPinnedMessageIds((prev) =>
+      prev.includes(msgId) ? prev.filter((id) => id !== msgId) : [...prev, msgId]
+    );
+  };
+
+  const toggleInternalPinMessage = (msgId: string) => {
+    setInternalPinnedIds((prev) =>
+      prev.includes(msgId) ? prev.filter((id) => id !== msgId) : [...prev, msgId]
+    );
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
   };
 
   const filteredContacts = contacts.filter((c) => {
@@ -308,17 +506,23 @@ export const Omnichannel: React.FC = () => {
 
     wsClient.send('omnichannel:typing', { contactId: selectedContact.id, isTyping: false });
 
+    let finalContent = replyContent.trim();
+    if (replyingToMessage) {
+      finalContent = `> Replying to: "${replyingToMessage.content.slice(0, 40)}..."\n\n${finalContent}`;
+    }
+
     const res = await apiRequest('/omnichannel/messages', {
       method: 'POST',
       body: JSON.stringify({
         contactId: selectedContact.id,
         channel: selectedChannel,
-        content: replyContent.trim(),
+        content: finalContent,
       }),
     });
 
     if (res.success) {
       setReplyContent('');
+      setReplyingToMessage(null);
       loadMessages(selectedContact.id);
     }
   };
@@ -328,8 +532,13 @@ export const Omnichannel: React.FC = () => {
     if (!internalInputText.trim() || !selectedInternalTarget) return;
 
     const channelTargetId = selectedInternalTarget.id;
-    const text = internalInputText.trim();
+    let text = internalInputText.trim();
+    if (internalReplyingTo) {
+      text = `> [${internalReplyingTo.senderName}]: "${internalReplyingTo.content.slice(0, 40)}..."\n\n${text}`;
+    }
+
     setInternalInputText('');
+    setInternalReplyingTo(null);
 
     const res = await apiRequest('/omnichannel/internal/messages', {
       method: 'POST',
@@ -348,51 +557,80 @@ export const Omnichannel: React.FC = () => {
     }
   };
 
+  const activeMessages = messages.filter((m) => {
+    if (showPinnedOnly && !pinnedMessageIds.includes(m.id)) return false;
+    if (inChatSearchQuery.trim()) {
+      return m.content?.toLowerCase().includes(inChatSearchQuery.toLowerCase());
+    }
+    return true;
+  });
+
+  const activeInternalMessages = internalMessages.filter((m) => {
+    if (showInternalPinnedOnly && !internalPinnedIds.includes(m.id)) return false;
+    if (internalInChatSearchQuery.trim()) {
+      return m.content?.toLowerCase().includes(internalInChatSearchQuery.toLowerCase());
+    }
+    return true;
+  });
+
+  const totalWhatsAppUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
+  const totalInternalUnread = Object.values(internalUnreadCounts).reduce((a, b) => a + b, 0);
+
   return (
     <div className="space-y-4">
       {/* Top Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-xl font-black tracking-tight text-gray-900 dark:text-white">
               {t('omnichannel', 'Comunicaciones & Chat')}
             </h1>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
-              Omnicanal
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
+              Centro Unificado
             </span>
           </div>
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
             {activeTab === 'whatsapp'
-              ? t('omnichannel.subtitle', 'Bandeja de entrada unificada de WhatsApp Meta Cloud API y correos de clientes')
-              : t('omnichannel.internalSubtitle', 'Canales de equipo, salas por departamento y mensajes directos corporativos')}
+              ? 'Bandeja unificada de WhatsApp Meta Cloud API y correos de clientes'
+              : 'Canales de equipo, salas por departamento y mensajería directa corporativa'}
           </p>
         </div>
 
         {/* Tab Buttons & Real-time status */}
         <div className="flex items-center space-x-3">
-          <div className="flex bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
+          <div className="flex bg-gray-100 dark:bg-slate-800 p-1 rounded-xl">
             <button
               onClick={() => setActiveTab('whatsapp')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all relative ${
                 activeTab === 'whatsapp'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
                   : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
               <span>{t('omnichannel.tabWhatsApp', 'WhatsApp & Clientes')}</span>
+              {totalWhatsAppUnread > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-600 text-white">
+                  {totalWhatsAppUnread}
+                </span>
+              )}
             </button>
 
             <button
               onClick={() => setActiveTab('internal')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all relative ${
                 activeTab === 'internal'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                   : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <Users className="w-3.5 h-3.5 text-indigo-500" />
               <span>{t('omnichannel.tabInternal', 'Chat Interno de Equipo')}</span>
+              {totalInternalUnread > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-indigo-600 text-white">
+                  {totalInternalUnread}
+                </span>
+              )}
             </button>
           </div>
 
@@ -417,12 +655,15 @@ export const Omnichannel: React.FC = () => {
 
       {/* VIEW 1: WhatsApp & External Clients Chat */}
       {activeTab === 'whatsapp' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs h-[calc(100vh-230px)] flex">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs h-[calc(100vh-230px)] flex">
           {/* Left: Contacts List */}
-          <div className="w-1/3 min-w-[240px] max-w-[340px] border-r border-gray-200 dark:border-slate-800 flex flex-col">
+          <div className="w-1/3 min-w-[260px] max-w-[340px] border-r border-gray-200 dark:border-slate-800 flex flex-col bg-gray-50/30 dark:bg-slate-950/20">
             <div className="p-3 border-b border-gray-200 dark:border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-slate-300">
-                <span>{t('omnichannel.conversations', 'Conversaciones')}</span>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>{t('omnichannel.conversations', 'Clientes & Contactos')}</span>
+                </div>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-500">
                   {filteredContacts.length}
                 </span>
@@ -431,33 +672,34 @@ export const Omnichannel: React.FC = () => {
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder={t('omnichannel.searchContactPlaceholder', 'Buscar por cliente, empresa...')}
+                  placeholder={t('omnichannel.searchContactPlaceholder', 'Buscar cliente, teléfono...')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                  className="w-full pl-8 pr-2.5 py-1 text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
                 />
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-800/60">
               {filteredContacts.length === 0 ? (
-                <div className="p-4 text-center text-xs text-gray-400">
+                <div className="p-6 text-center text-xs text-gray-400">
                   {t('omnichannel.noContacts', 'No se encontraron contactos')}
                 </div>
               ) : (
                 filteredContacts.map((c) => {
                   const isSelected = selectedContact?.id === c.id;
+                  const unread = unreadCounts[c.id] || 0;
                   return (
                     <button
                       key={c.id}
                       onClick={() => setSelectedContact(c)}
-                      className={`w-full text-left p-3 flex items-start space-x-2.5 transition-colors ${
+                      className={`w-full text-left p-3 flex items-start space-x-2.5 transition-all ${
                         isSelected
-                          ? 'bg-blue-50/80 dark:bg-blue-950/40 border-l-4 border-blue-600'
-                          : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
+                          ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-l-4 border-emerald-600 shadow-xs'
+                          : 'hover:bg-gray-100/60 dark:hover:bg-slate-800/50'
                       }`}
                     >
-                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                         {c.firstName ? c.firstName.charAt(0) : 'C'}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -465,14 +707,14 @@ export const Omnichannel: React.FC = () => {
                           <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
                             {c.firstName} {c.lastName}
                           </span>
-                          {unreadCounts[c.id] > 0 && (
-                            <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-600 text-white shrink-0">
-                              {unreadCounts[c.id]}
+                          {unread > 0 && (
+                            <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-600 text-white shrink-0 animate-pulse">
+                              {unread}
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-gray-500 dark:text-slate-400 truncate">
-                          {lastMessages[c.id]?.content || c.company?.name || c.phone || c.email}
+                        <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mt-0.5">
+                          {lastMessages[c.id]?.content || c.phone || c.email || 'Sin mensajes'}
                         </div>
                       </div>
                     </button>
@@ -486,74 +728,205 @@ export const Omnichannel: React.FC = () => {
           <div className="flex-1 flex flex-col bg-gray-50/50 dark:bg-slate-950/40">
             {selectedContact ? (
               <div className="p-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-gray-900 dark:text-white">
-                    {selectedContact.firstName} {selectedContact.lastName}
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center justify-center font-bold text-xs">
+                    {selectedContact.firstName ? selectedContact.firstName.charAt(0) : 'C'}
                   </div>
-                  <div className="text-[10px] text-gray-500">
-                    {selectedContact.phone} • {selectedContact.email}
+                  <div>
+                    <div className="text-xs font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                      <span>{selectedContact.firstName} {selectedContact.lastName}</span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        Meta WhatsApp API
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gray-500 flex items-center space-x-2">
+                      <span>{selectedContact.phone || selectedContact.email}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Channel Selector */}
-                <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-[11px] font-semibold">
+                <div className="flex items-center space-x-2">
+                  {/* In-chat search toggle */}
                   <button
-                    onClick={() => setSelectedChannel('WHATSAPP')}
-                    className={`px-2 py-1 rounded-md transition-colors ${
-                      selectedChannel === 'WHATSAPP'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-gray-600 dark:text-slate-400'
+                    onClick={() => setIsInChatSearchOpen(!isInChatSearchOpen)}
+                    className={`p-1.5 rounded-lg border text-xs transition-colors ${
+                      isInChatSearchOpen
+                        ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/50'
+                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700'
                     }`}
+                    title="Buscar en la conversación"
                   >
-                    WhatsApp
+                    <Search className="w-3.5 h-3.5" />
                   </button>
+
+                  {/* Pinned Messages toggle */}
                   <button
-                    onClick={() => setSelectedChannel('EMAIL')}
-                    className={`px-2 py-1 rounded-md transition-colors ${
-                      selectedChannel === 'EMAIL'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-gray-600 dark:text-slate-400'
+                    onClick={() => setShowPinnedOnly(!showPinnedOnly)}
+                    className={`p-1.5 rounded-lg border text-xs transition-colors flex items-center space-x-1 ${
+                      showPinnedOnly
+                        ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/50'
+                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700'
                     }`}
+                    title="Ver solo mensajes fijados"
                   >
-                    Email
+                    <Pin className="w-3.5 h-3.5" />
+                    {pinnedMessageIds.length > 0 && (
+                      <span className="text-[10px] font-bold">{pinnedMessageIds.length}</span>
+                    )}
                   </button>
+
+                  {/* Channel Selector */}
+                  <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-[11px] font-semibold">
+                    <button
+                      onClick={() => setSelectedChannel('WHATSAPP')}
+                      className={`px-2 py-1 rounded-md transition-colors ${
+                        selectedChannel === 'WHATSAPP'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-gray-600 dark:text-slate-400'
+                      }`}
+                    >
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => setSelectedChannel('EMAIL')}
+                      className={`px-2 py-1 rounded-md transition-colors ${
+                        selectedChannel === 'EMAIL'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-gray-600 dark:text-slate-400'
+                      }`}
+                    >
+                      Email
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="p-3 text-xs text-gray-400">{t('omnichannel.selectContactPrompt', 'Selecciona un contacto')}</div>
             )}
 
+            {/* In-chat Search Input Bar */}
+            {isInChatSearchOpen && (
+              <div className="px-3 py-2 bg-blue-50/70 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-900/60 flex items-center justify-between space-x-2 animate-in fade-in duration-150">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" />
+                  <input
+                    type="text"
+                    value={inChatSearchQuery}
+                    onChange={(e) => setInChatSearchQuery(e.target.value)}
+                    placeholder="Buscar en los mensajes de este chat..."
+                    className="w-full pl-8 pr-2.5 py-1 text-xs bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
+                  />
+                </div>
+                {inChatSearchQuery && (
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold shrink-0">
+                    {activeMessages.length} resultados
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setIsInChatSearchOpen(false);
+                    setInChatSearchQuery('');
+                  }}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             {/* Messages Bubble Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {messages.length === 0 ? (
+              {activeMessages.length === 0 ? (
                 <div className="py-20 text-center text-xs text-gray-400">
-                  {t('omnichannel.emptyConversation', 'Sin mensajes en la conversación. Puedes enviar el primer mensaje a continuación.')}
+                  {showPinnedOnly
+                    ? 'No hay mensajes fijados en esta conversación.'
+                    : inChatSearchQuery
+                    ? 'No se encontraron mensajes que coincidan con la búsqueda.'
+                    : t('omnichannel.emptyConversation', 'Sin mensajes en la conversación. Puedes enviar el primer mensaje a continuación.')}
                 </div>
               ) : (
-                messages.map((m) => {
+                activeMessages.map((m) => {
                   const isOutbound = m.direction === 'OUTBOUND';
+                  const isPinned = pinnedMessageIds.includes(m.id);
+                  const isVoiceNote = m.isAudio || m.content?.includes('[Nota de voz');
+
                   return (
                     <div
                       key={m.id}
-                      className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}
+                      className={`flex flex-col group ${isOutbound ? 'items-end' : 'items-start'}`}
                     >
                       <div
-                        className={`max-w-md p-3 rounded-xl text-xs space-y-1 shadow-xs ${
+                        className={`max-w-md p-3 rounded-2xl text-xs space-y-1.5 shadow-xs relative transition-all ${
                           isOutbound
-                            ? 'bg-blue-600 text-white rounded-br-none'
-                            : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-700 rounded-bl-none'
-                        }`}
+                            ? 'bg-blue-600 text-white rounded-br-xs'
+                            : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-700 rounded-bl-xs'
+                        } ${isPinned ? 'ring-2 ring-amber-400 shadow-md' : ''}`}
                       >
-                        <div className="flex items-center justify-between text-[9px] opacity-75 space-x-2">
-                          <span>{m.sender}</span>
-                          <span>{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {/* Pinned Badge */}
+                        {isPinned && (
+                          <div className="flex items-center space-x-1 text-[9px] font-bold text-amber-500 pb-0.5">
+                            <Pin className="w-2.5 h-2.5 fill-current" />
+                            <span>Mensaje fijado</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-[9px] opacity-75 space-x-3">
+                          <span className="font-semibold">{m.sender || (isOutbound ? 'Tú' : selectedContact?.firstName)}</span>
+                          <div className="flex items-center space-x-1">
+                            <span>{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {isOutbound && <CheckCheck className="w-3 h-3 text-blue-200" />}
+                          </div>
                         </div>
-                        <p className="leading-relaxed">{m.content}</p>
+
+                        {/* Message Content or Audio Note */}
+                        {isVoiceNote ? (
+                          <AudioNotePlayer
+                            durationSeconds={m.audioDuration || 18}
+                            isOutbound={isOutbound}
+                          />
+                        ) : (
+                          <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                        )}
+
+                        {/* Hover Action Bar */}
+                        <div
+                          className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-0.5 shadow-md ${
+                            isOutbound ? 'right-0 -translate-y-6' : 'left-0 -translate-y-6'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setReplyingToMessage(m)}
+                            className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-blue-600 rounded"
+                            title="Responder"
+                          >
+                            <Reply className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => togglePinMessage(m.id)}
+                            className={`p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded ${
+                              isPinned ? 'text-amber-500' : 'text-gray-500 hover:text-amber-500'
+                            }`}
+                            title={isPinned ? 'Desfijar' : 'Fijar mensaje'}
+                          >
+                            <Pin className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(m.content)}
+                            className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-emerald-600 rounded"
+                            title="Copiar texto"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
                 })
               )}
+
               {isPartnerTyping && (
                 <div className="flex items-start animate-in fade-in duration-150">
                   <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-3 py-2 rounded-xl rounded-bl-none shadow-xs flex items-center space-x-2 text-xs text-gray-500">
@@ -561,9 +934,9 @@ export const Omnichannel: React.FC = () => {
                       {selectedContact?.firstName} está escribiendo
                     </span>
                     <span className="flex space-x-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
                     </span>
                   </div>
                 </div>
@@ -571,19 +944,37 @@ export const Omnichannel: React.FC = () => {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Replying To Message Banner */}
+            {replyingToMessage && (
+              <div className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/50 border-t border-blue-200 dark:border-blue-800 flex items-center justify-between text-xs text-blue-900 dark:text-blue-200">
+                <div className="flex items-center space-x-2 truncate">
+                  <CornerDownRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <span className="font-semibold shrink-0">Respondiendo a:</span>
+                  <span className="truncate italic opacity-80">"{replyingToMessage.content}"</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyingToMessage(null)}
+                  className="p-1 hover:text-rose-500"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             {/* Quick Canned Responses */}
-            {selectedContact && (
+            {selectedContact && !isRecordingVoice && (
               <div className="px-3 pt-2 pb-1.5 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex items-center space-x-1.5 overflow-x-auto scrollbar-none">
                 <div className="flex items-center space-x-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 shrink-0 mr-1">
                   <Sparkles className="w-3 h-3 text-amber-500" />
-                  <span>{t('omnichannel.cannedResponsesLabel', 'Plantillas:')}</span>
+                  <span>Plantillas:</span>
                 </div>
                 {CANNED_RESPONSES.map((item, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => applyCannedResponse(item.template)}
-                    className="shrink-0 px-2.5 py-1 text-[11px] font-medium bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-blue-950/50 dark:hover:text-blue-400 text-gray-600 dark:text-slate-300 rounded-md transition-colors"
+                    className="shrink-0 px-2.5 py-1 text-[11px] font-medium bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-400 text-gray-600 dark:text-slate-300 rounded-lg transition-colors"
                   >
                     {item.label}
                   </button>
@@ -591,39 +982,95 @@ export const Omnichannel: React.FC = () => {
               </div>
             )}
 
-            {/* Reply Form */}
-            <form
-              onSubmit={handleSendMessage}
-              className="p-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex items-center space-x-2"
-            >
-              <input
-                type="text"
-                required
-                value={replyContent}
-                onChange={handleTypingChange}
-                placeholder={`Escribe un mensaje por ${selectedChannel === 'WHATSAPP' ? 'WhatsApp' : 'Email'}...`}
-                className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-              />
-              <button
-                type="submit"
-                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs transition-colors shrink-0"
-                title="Enviar"
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUploadSimulated}
+              className="hidden"
+            />
+
+            {/* Reply Form or Active Voice Recording Bar */}
+            {isRecordingVoice ? (
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border-t border-rose-200 dark:border-rose-900 flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center space-x-2 text-xs font-bold text-rose-600 dark:text-rose-400">
+                  <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
+                  <span>Grabando nota de voz: {recordingSeconds}s</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={cancelRecordingVoice}
+                    className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-rose-100 rounded-lg"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopAndSendVoice}
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg flex items-center space-x-1"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Enviar Audio</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form
+                onSubmit={handleSendMessage}
+                className="p-3 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex items-center space-x-2"
               >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                  title="Adjuntar archivo o imagen"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+
+                <input
+                  type="text"
+                  required
+                  value={replyContent}
+                  onChange={handleTypingChange}
+                  placeholder={`Escribe un mensaje por ${selectedChannel === 'WHATSAPP' ? 'WhatsApp' : 'Email'}...`}
+                  className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                />
+
+                <button
+                  type="button"
+                  onClick={startRecordingVoice}
+                  className="p-2 text-gray-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                  title="Grabar nota de voz"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="submit"
+                  className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-colors shrink-0"
+                  title="Enviar mensaje"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
 
       {/* VIEW 2: Internal Team Chat */}
       {activeTab === 'internal' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs h-[calc(100vh-230px)] flex">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs h-[calc(100vh-230px)] flex">
           {/* Left: Channels & Teammates List */}
-          <div className="w-1/3 min-w-[240px] max-w-[340px] border-r border-gray-200 dark:border-slate-800 flex flex-col bg-gray-50/40 dark:bg-slate-950/20">
+          <div className="w-1/3 min-w-[260px] max-w-[340px] border-r border-gray-200 dark:border-slate-800 flex flex-col bg-gray-50/40 dark:bg-slate-950/20">
             <div className="p-3 border-b border-gray-200 dark:border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-gray-800 dark:text-slate-200">
-                <span>{t('omnichannel.internalDirectory', 'Canales & Compañeros')}</span>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                  <span>{t('omnichannel.internalDirectory', 'Canales & Compañeros')}</span>
+                </div>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-800">
                   {internalChannels.length + teamMembers.length}
                 </span>
@@ -655,9 +1102,9 @@ export const Omnichannel: React.FC = () => {
                       <button
                         key={ch.id}
                         onClick={() => setSelectedInternalTarget(ch)}
-                        className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition-all ${
+                        className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center justify-between transition-all ${
                           isSelected
-                            ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                            ? 'bg-indigo-600 text-white shadow-xs font-bold'
                             : 'hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300'
                         }`}
                       >
@@ -699,16 +1146,16 @@ export const Omnichannel: React.FC = () => {
                       <button
                         key={tm.id}
                         onClick={() => setSelectedInternalTarget(tm)}
-                        className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition-all ${
+                        className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center justify-between transition-all ${
                           isSelected
-                            ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                            ? 'bg-indigo-600 text-white shadow-xs font-bold'
                             : 'hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300'
                         }`}
                       >
                         <div className="flex items-center space-x-2.5 min-w-0">
                           <div className="relative">
                             <div
-                              className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${
+                              className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] ${
                                 isSelected ? 'bg-white text-indigo-700' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200'
                               }`}
                             >
@@ -764,7 +1211,7 @@ export const Omnichannel: React.FC = () => {
             {selectedInternalTarget ? (
               <div className="p-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-800 shadow-xs">
                     {selectedInternalTarget.type === 'channel' ? (
                       CHANNEL_ICONS[selectedInternalTarget.name] || <Hash className="w-5 h-5" />
                     ) : (
@@ -796,18 +1243,72 @@ export const Omnichannel: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 text-[11px] text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-slate-700">
-                  <Shield className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Cifrado & Aislado por Empresa</span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsInternalInChatSearchOpen(!isInternalInChatSearchOpen)}
+                    className={`p-1.5 rounded-lg border text-xs transition-colors ${
+                      isInternalInChatSearchOpen
+                        ? 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/50'
+                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700'
+                    }`}
+                    title="Buscar mensajes en este canal"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={() => setShowInternalPinnedOnly(!showInternalPinnedOnly)}
+                    className={`p-1.5 rounded-lg border text-xs transition-colors flex items-center space-x-1 ${
+                      showInternalPinnedOnly
+                        ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/50'
+                        : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700'
+                    }`}
+                    title="Ver mensajes fijados del canal"
+                  >
+                    <Pin className="w-3.5 h-3.5" />
+                    {internalPinnedIds.length > 0 && (
+                      <span className="text-[10px] font-bold">{internalPinnedIds.length}</span>
+                    )}
+                  </button>
+
+                  <div className="flex items-center space-x-1.5 text-[11px] text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-slate-700">
+                    <Shield className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Aislado</span>
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="p-3 text-xs text-gray-400">Selecciona un canal o compañero para conversar</div>
             )}
 
+            {/* In-chat Search Input Bar */}
+            {isInternalInChatSearchOpen && (
+              <div className="px-3 py-2 bg-indigo-50/70 dark:bg-indigo-950/30 border-b border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between space-x-2 animate-in fade-in duration-150">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-500" />
+                  <input
+                    type="text"
+                    value={internalInChatSearchQuery}
+                    onChange={(e) => setInternalInChatSearchQuery(e.target.value)}
+                    placeholder="Buscar en los mensajes de este canal..."
+                    className="w-full pl-8 pr-2.5 py-1 text-xs bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-800 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setIsInternalInChatSearchOpen(false);
+                    setInternalInChatSearchQuery('');
+                  }}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             {/* Internal Message Stream */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {internalMessages.length === 0 ? (
+              {activeInternalMessages.length === 0 ? (
                 <div className="py-20 text-center space-y-2">
                   <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto border border-indigo-200 dark:border-indigo-800">
                     <MessageCircle className="w-6 h-6" />
@@ -824,15 +1325,16 @@ export const Omnichannel: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                internalMessages.map((msg) => {
+                activeInternalMessages.map((msg) => {
                   const isOwn = msg.senderId === user?.id;
+                  const isPinned = internalPinnedIds.includes(msg.id);
                   return (
                     <div
                       key={msg.id}
-                      className={`flex items-start space-x-2.5 ${isOwn ? 'flex-row-reverse space-x-reverse' : ''}`}
+                      className={`flex items-start space-x-2.5 group ${isOwn ? 'flex-row-reverse space-x-reverse' : ''}`}
                     >
                       <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${
+                        className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 shadow-xs ${
                           isOwn
                             ? 'bg-indigo-600 text-white'
                             : 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-200'
@@ -854,15 +1356,58 @@ export const Omnichannel: React.FC = () => {
                           )}
                           <span>•</span>
                           <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          {isPinned && (
+                            <span className="text-[9px] font-bold text-amber-500 flex items-center space-x-0.5">
+                              <Pin className="w-2.5 h-2.5 fill-current" />
+                              <span>Fijado</span>
+                            </span>
+                          )}
                         </div>
-                        <div
-                          className={`p-3 rounded-xl text-xs shadow-xs leading-relaxed ${
-                            isOwn
-                              ? 'bg-indigo-600 text-white rounded-tr-none'
-                              : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-700 rounded-tl-none'
-                          }`}
-                        >
-                          {msg.content}
+
+                        <div className="relative">
+                          <div
+                            className={`p-3 rounded-2xl text-xs shadow-xs leading-relaxed whitespace-pre-wrap ${
+                              isOwn
+                                ? 'bg-indigo-600 text-white rounded-tr-xs'
+                                : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-700 rounded-tl-xs'
+                            } ${isPinned ? 'ring-2 ring-amber-400' : ''}`}
+                          >
+                            {msg.content}
+                          </div>
+
+                          {/* Hover Action Bar */}
+                          <div
+                            className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-0.5 shadow-md ${
+                              isOwn ? 'right-0 -translate-y-6' : 'left-0 -translate-y-6'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setInternalReplyingTo(msg)}
+                              className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-indigo-600 rounded"
+                              title="Responder"
+                            >
+                              <Reply className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleInternalPinMessage(msg.id)}
+                              className={`p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded ${
+                                isPinned ? 'text-amber-500' : 'text-gray-500 hover:text-amber-500'
+                              }`}
+                              title={isPinned ? 'Desfijar' : 'Fijar mensaje'}
+                            >
+                              <Pin className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(msg.content)}
+                              className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-emerald-600 rounded"
+                              title="Copiar texto"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -872,9 +1417,27 @@ export const Omnichannel: React.FC = () => {
               <div ref={internalMessagesEndRef} />
             </div>
 
+            {/* Replying Banner */}
+            {internalReplyingTo && (
+              <div className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 border-t border-indigo-200 dark:border-indigo-800 flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200">
+                <div className="flex items-center space-x-2 truncate">
+                  <CornerDownRight className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span className="font-semibold shrink-0">Respondiendo a {internalReplyingTo.senderName}:</span>
+                  <span className="truncate italic opacity-80">"{internalReplyingTo.content}"</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInternalReplyingTo(null)}
+                  className="p-1 hover:text-rose-500"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             {/* Quick Emoji Reaction Bar */}
             <div className="px-3 pt-2 pb-1 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex items-center space-x-1.5">
-              <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mr-1">Reacciones rápidas:</span>
+              <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mr-1">Reacciones:</span>
               {EMOJI_SHORTCUTS.map((emoji, idx) => (
                 <button
                   key={idx}
@@ -902,11 +1465,11 @@ export const Omnichannel: React.FC = () => {
                     ? `Escribe un mensaje en #${selectedInternalTarget.name}...`
                     : `Mensaje directo para ${selectedInternalTarget?.name || 'compañero'}...`
                 }
-                className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-indigo-600"
+                className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-indigo-600"
               />
               <button
                 type="submit"
-                className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-xs transition-colors shrink-0"
+                className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs transition-colors shrink-0"
                 title="Enviar al equipo"
               >
                 <Send className="w-4 h-4" />

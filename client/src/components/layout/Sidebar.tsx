@@ -26,7 +26,7 @@ import {
   Clock,
   Calendar,
   Settings,
-  Scissors,
+  CalendarCheck,
   Truck,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }> = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/', animation: 'bounce' },
     { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', animation: 'bounce' },
-    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Salón'), icon: Scissors, route: '/appointments', moduleKey: 'appointments', animation: 'bounce' },
+    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Servicios'), icon: CalendarCheck, route: '/appointments', moduleKey: 'appointments', animation: 'bounce' },
     { id: 'logistics', label: t('sidebar.logistics', 'Logística & Paquetería'), icon: Truck, route: '/logistics', moduleKey: 'logistics', animation: 'tilt' },
     { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', animation: 'pulse' },
     { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', moduleKey: 'portalEmpleado', animation: 'float' },
