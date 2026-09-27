@@ -1402,5 +1402,6 @@
   "invoicing.reminderSent": "Lembrete de cobrança enviado com sucesso",
   "invoicing.sendReminder": "Cobrar Pagamento",
   "loginWithGoogle": "Continuar com o Google",
-  "orWithCredentials": "ou continuar com e-mail"
+  "orWithCredentials": "ou continuar com e-mail",
+  "calendar": "Calendário e Agenda"
 }

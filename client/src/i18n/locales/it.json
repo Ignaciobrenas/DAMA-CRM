@@ -1402,5 +1402,6 @@
   "invoicing.reminderSent": "Sollecito di pagamento inviato con successo",
   "invoicing.sendReminder": "Invia sollecito",
   "loginWithGoogle": "Continua con Google",
-  "orWithCredentials": "oppure continua con l'email"
+  "orWithCredentials": "oppure continua con l'email",
+  "calendar": "Calendario e Agenda"
 }

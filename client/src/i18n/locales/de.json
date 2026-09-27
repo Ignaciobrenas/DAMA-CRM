@@ -1402,5 +1402,6 @@
   "invoicing.reminderSent": "Zahlungserinnerung erfolgreich gesendet",
   "invoicing.sendReminder": "Mahnung senden",
   "loginWithGoogle": "Mit Google fortfahren",
-  "orWithCredentials": "oder mit E-Mail fortfahren"
+  "orWithCredentials": "oder mit E-Mail fortfahren",
+  "calendar": "Kalender & Terminplan"
 }
