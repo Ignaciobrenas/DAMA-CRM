@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
   Sun,
@@ -11,6 +11,7 @@ import {
   Volume2,
   VolumeX,
   HelpCircle,
+  Check,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -34,6 +35,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
   const { language, setLanguage, t } = useLanguage();
   const { user, logout, updatePreferences } = useAuth();
   const [isMuted, setIsMuted] = useState(() => soundService.isMuted());
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
 
   // Profile modal state
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -50,6 +53,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
     return { slug: 'master', name: 'Master (Global)' };
   });
   const isSuperAdmin = user?.role === 'ADMIN' || user?.email === 'ignaciobrenas@gmail.com' || user?.email === 'admin@dama-crm.local';
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(event.target as Node)) {
+        setIsLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSwitchTenant = (tenant: any) => {
     if (!tenant || tenant.slug === 'master' || tenant.isGodTenant) {
@@ -126,15 +139,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
         {/* 1-Click Clock In/Out Real-Time Widget */}
         <ClockWidget compact />
 
-        {/* Real-time sync indicator */}
-        <div className="hidden xl:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300/70 dark:border-emerald-700/70 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 shadow-2xs">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
-          <span>{t('liveSync')}</span>
-        </div>
-
         {/* Utility Group Divider */}
         <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
 
@@ -148,21 +152,56 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
           {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
         </button>
 
-        {/* Language selector */}
-        <div className="relative flex items-center">
-          <Globe className="w-4 h-4 text-slate-500 dark:text-slate-300 mr-1.5 hidden sm:inline shrink-0" />
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as Language)}
+        {/* Language selector popup */}
+        <div className="relative" ref={langDropdownRef}>
+          <button
+            onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
             aria-label={t('languageSelect')}
-            className="text-xs font-medium bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 px-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            title={t('languageSelect')}
+            className={`p-2 rounded-xl border transition-colors flex items-center justify-center ${
+              isLangDropdownOpen
+                ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-400 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
+            }`}
           >
-            {SUPPORTED_LANGUAGES.map((l) => (
-              <option key={l.code} value={l.code} className="dark:bg-slate-900 text-slate-800 dark:text-slate-100">
-                {l.nativeName}
-              </option>
-            ))}
-          </select>
+            <Globe className="w-4 h-4" />
+          </button>
+
+          {isLangDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-52 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                {t('languageSelect') || 'Idioma / Language'}
+              </div>
+              <div className="max-h-64 overflow-y-auto py-1">
+                {SUPPORTED_LANGUAGES.map((l) => {
+                  const isSelected = language === l.code;
+                  return (
+                    <button
+                      key={l.code}
+                      type="button"
+                      onClick={() => {
+                        setLanguage(l.code as Language);
+                        setIsLangDropdownOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 text-xs flex items-center justify-between transition-colors ${
+                        isSelected
+                          ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <span className="w-6 text-center text-[10px] font-mono font-bold uppercase py-0.5 px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          {l.code}
+                        </span>
+                        <span className="text-left">{l.nativeName}</span>
+                      </div>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Theme toggle */}
