@@ -1,0 +1,108 @@
+[
+  {
+    "id": "apt-001",
+    "tenantId": "god",
+    "clientName": "Elena Ramos García",
+    "clientPhone": "+34 612 345 678",
+    "clientEmail": "elena.ramos@example.com",
+    "staffId": "staff-1",
+    "staffName": "Ignacio (Especialista Senior)",
+    "serviceIds": [
+      "srv-auditoria-tecnica"
+    ],
+    "services": [
+      {
+        "id": "srv-auditoria-tecnica",
+        "name": "Auditoría Técnica y Plan de Acción",
+        "category": "TECHNICAL",
+        "durationMin": 90,
+        "price": 120,
+        "supplyCost": 10,
+        "description": "Revisión exhaustiva de sistemas, procesos y entrega de informe ejecutivo",
+        "isPopular": true
+      }
+    ],
+    "startTime": "2026-09-27T08:00:00.000Z",
+    "endTime": "2026-09-27T09:30:00.000Z",
+    "durationMin": 90,
+    "totalPrice": 120,
+    "totalSupplyCost": 10,
+    "estimatedProfit": 110,
+    "status": "CONFIRMED",
+    "paymentStatus": "PENDING",
+    "notes": "Revisión inicial del plan de trabajo y validación de requisitos.",
+    "createdAt": "2026-09-27T15:32:56.883Z",
+    "updatedAt": "2026-09-27T15:32:56.883Z"
+  },
+  {
+    "id": "apt-002",
+    "tenantId": "god",
+    "clientName": "Carlos Mendoza",
+    "clientPhone": "+34 689 987 654",
+    "clientEmail": "carlos.m@example.com",
+    "staffId": "staff-1",
+    "staffName": "Ignacio (Especialista Senior)",
+    "serviceIds": [
+      "srv-asesoramiento-fiscal"
+    ],
+    "services": [
+      {
+        "id": "srv-asesoramiento-fiscal",
+        "name": "Sesión de Asesoramiento Personalizado",
+        "category": "ADVISORY",
+        "durationMin": 45,
+        "price": 65,
+        "supplyCost": 2.5,
+        "description": "Resolución de dudas especializadas, planificación y recomendaciones operativas",
+        "isPopular": true
+      }
+    ],
+    "startTime": "2026-09-27T10:30:00.000Z",
+    "endTime": "2026-09-27T11:15:00.000Z",
+    "durationMin": 45,
+    "totalPrice": 65,
+    "totalSupplyCost": 2.5,
+    "estimatedProfit": 62.5,
+    "status": "COMPLETED",
+    "paymentStatus": "PAID",
+    "paymentMethod": "BIZUM",
+    "notes": "Sesión de asesoramiento completada con éxito.",
+    "createdAt": "2026-09-27T15:32:56.883Z",
+    "updatedAt": "2026-09-27T15:32:56.883Z"
+  },
+  {
+    "id": "apt-003",
+    "tenantId": "god",
+    "clientName": "Laura Valero",
+    "clientPhone": "+34 655 443 322",
+    "clientEmail": "laura.v@example.com",
+    "staffId": "staff-2",
+    "staffName": "Sofía Martínez (Consultor Senior)",
+    "serviceIds": [
+      "srv-consultoria-estrategica"
+    ],
+    "services": [
+      {
+        "id": "srv-consultoria-estrategica",
+        "name": "Consultoría Estratégica & Diagnóstico Inicial",
+        "category": "CONSULTATION",
+        "durationMin": 60,
+        "price": 85,
+        "supplyCost": 5,
+        "description": "Sesión de análisis de negocio, detección de necesidades y hoja de ruta personalizada",
+        "isPopular": true
+      }
+    ],
+    "startTime": "2026-09-27T14:00:00.000Z",
+    "endTime": "2026-09-27T15:00:00.000Z",
+    "durationMin": 60,
+    "totalPrice": 85,
+    "totalSupplyCost": 5,
+    "estimatedProfit": 80,
+    "status": "SCHEDULED",
+    "paymentStatus": "PENDING",
+    "notes": "Primera reunión de diagnóstico.",
+    "createdAt": "2026-09-27T15:32:56.883Z",
+    "updatedAt": "2026-09-27T15:32:56.883Z"
+  }
+]

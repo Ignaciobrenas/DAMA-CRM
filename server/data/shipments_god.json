@@ -1,0 +1,132 @@
+[
+  {
+    "id": "shp-001",
+    "tenantId": "god",
+    "trackingNumber": "GLS-ES-88349102",
+    "carrier": "GLS",
+    "recipientName": "Marta Delgado - Salón Estilistas Madrid",
+    "recipientPhone": "+34 622 112 334",
+    "recipientEmail": "marta@estilistasdelgado.es",
+    "destinationAddress": "Calle Serrano 45, 2ºA",
+    "destinationCity": "Madrid",
+    "destinationPostalCode": "28001",
+    "destinationCountry": "España",
+    "status": "OUT_FOR_DELIVERY",
+    "weightKg": 3.4,
+    "packageType": "STANDARD_BOX",
+    "shippingCost": 7.95,
+    "orderNumber": "PED-2026-089",
+    "notes": "Productos de cosmética capilar y champús profesionales.",
+    "estimatedDeliveryDate": "2026-09-27T15:33:37.057Z",
+    "events": [
+      {
+        "id": "evt-1",
+        "status": "PRE_TRANSIT",
+        "description": "Envío registrado en plataforma y etiqueta generada",
+        "location": "Almacén Central (Barcelona)",
+        "timestamp": "2026-09-26T03:33:37.057Z"
+      },
+      {
+        "id": "evt-2",
+        "status": "IN_TRANSIT",
+        "description": "Paquete clasificado en Hub Logístico Principal y en tránsito",
+        "location": "Hub Central Coslada (Madrid)",
+        "timestamp": "2026-09-27T03:33:37.057Z"
+      },
+      {
+        "id": "evt-3",
+        "status": "OUT_FOR_DELIVERY",
+        "description": "Paquete asignado a repartidor. Entrega estimada hoy antes de las 18:00h",
+        "location": "Delegación GLS Madrid Centro",
+        "timestamp": "2026-09-27T13:33:37.057Z"
+      }
+    ],
+    "createdAt": "2026-09-26T03:33:37.057Z",
+    "updatedAt": "2026-09-27T15:33:37.057Z"
+  },
+  {
+    "id": "shp-002",
+    "tenantId": "god",
+    "trackingNumber": "NCX-94810239",
+    "carrier": "NACEX",
+    "recipientName": "Alejandro Sanz - Barbería Clásica",
+    "recipientPhone": "+34 677 889 900",
+    "recipientEmail": "alejandro@barberiasanz.com",
+    "destinationAddress": "Avinguda Diagonal 230",
+    "destinationCity": "Barcelona",
+    "destinationPostalCode": "08018",
+    "destinationCountry": "España",
+    "status": "DELIVERED",
+    "weightKg": 1.8,
+    "packageType": "STANDARD_BOX",
+    "shippingCost": 6.5,
+    "orderNumber": "PED-2026-082",
+    "notes": "Cuchillas de afeitar y máquinas de corte Wahl.",
+    "estimatedDeliveryDate": "2026-09-26T15:33:37.057Z",
+    "actualDeliveryDate": "2026-09-26T19:33:37.057Z",
+    "signatureProof": "Firmado por: A. Sanz (DNI: ***4321*)",
+    "events": [
+      {
+        "id": "evt-10",
+        "status": "PRE_TRANSIT",
+        "description": "Recogida solicitada en almacén",
+        "location": "Hub Valencia",
+        "timestamp": "2026-09-25T15:33:37.057Z"
+      },
+      {
+        "id": "evt-11",
+        "status": "IN_TRANSIT",
+        "description": "Llegada a plataforma de distribución regional",
+        "location": "Centro Distribución El Prat (Barcelona)",
+        "timestamp": "2026-09-26T13:33:37.057Z"
+      },
+      {
+        "id": "evt-12",
+        "status": "DELIVERED",
+        "description": "Paquete entregado correctamente en destino",
+        "location": "Barcelona",
+        "timestamp": "2026-09-26T19:33:37.057Z"
+      }
+    ],
+    "createdAt": "2026-09-25T15:33:37.057Z",
+    "updatedAt": "2026-09-27T15:33:37.057Z"
+  },
+  {
+    "id": "shp-003",
+    "tenantId": "god",
+    "trackingNumber": "TBA93821049ES",
+    "carrier": "AMAZON",
+    "recipientName": "Clínica Dermocosmética Bellasur",
+    "recipientPhone": "+34 655 123 789",
+    "recipientEmail": "pedidos@bellasur.es",
+    "destinationAddress": "Plaza Nueva 12",
+    "destinationCity": "Sevilla",
+    "destinationPostalCode": "41001",
+    "destinationCountry": "España",
+    "status": "IN_TRANSIT",
+    "weightKg": 5.2,
+    "packageType": "STANDARD_BOX",
+    "shippingCost": 8.4,
+    "orderNumber": "AMZ-ES-40291",
+    "notes": "Envío Fulfillment by Amazon (FBA) prioritario.",
+    "estimatedDeliveryDate": "2026-09-28T15:33:37.057Z",
+    "events": [
+      {
+        "id": "evt-20",
+        "status": "PRE_TRANSIT",
+        "description": "Envío empaquetado en centro logístico Amazon MAD4",
+        "location": "San Fernando de Henares (Madrid)",
+        "timestamp": "2026-09-27T05:33:37.057Z"
+      },
+      {
+        "id": "evt-21",
+        "status": "IN_TRANSIT",
+        "description": "En tránsito hacia la estación de entrega local",
+        "location": "Estación Logística Amazon SVQ1 (Sevilla)",
+        "timestamp": "2026-09-27T13:33:37.057Z"
+      }
+    ],
+    "createdAt": "2026-09-27T05:33:37.057Z",
+    "updatedAt": "2026-09-27T15:33:37.057Z"
+  }
+]

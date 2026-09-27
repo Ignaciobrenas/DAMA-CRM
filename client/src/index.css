@@ -16,11 +16,11 @@
   }
 
   body {
-    @apply bg-slate-100/90 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans;
+    @apply bg-slate-200/70 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans;
   }
 
   * {
-    border-color: #E2E8F0;
+    border-color: #CBD5E1;
   }
   .dark * {
     border-color: #334155;
@@ -31,6 +31,31 @@
     outline: 2px solid var(--brand-color, #2563EB);
     outline-offset: 2px;
   }
+}
+
+/* Light mode multi-tonal slate grayscale layers */
+html:not(.dark) .bg-white {
+  background-color: #F8FAFC;
+}
+html:not(.dark) .border-gray-200,
+html:not(.dark) .border-slate-200 {
+  border-color: #CBD5E1;
+}
+html:not(.dark) .bg-gray-50,
+html:not(.dark) .bg-slate-50 {
+  background-color: #EEF2F6;
+}
+html:not(.dark) .bg-gray-100,
+html:not(.dark) .bg-slate-100 {
+  background-color: #E2E8F0;
+}
+html:not(.dark) .hover\:bg-gray-100:hover,
+html:not(.dark) .hover\:bg-slate-100:hover {
+  background-color: #CBD5E1;
+}
+html:not(.dark) .hover\:bg-gray-50:hover,
+html:not(.dark) .hover\:bg-slate-50:hover {
+  background-color: #E2E8F0;
 }
 
 /* Subtle transitions for interactive controls */

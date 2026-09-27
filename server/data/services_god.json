@@ -1,0 +1,52 @@
+[
+  {
+    "id": "srv-consultoria-estrategica",
+    "name": "Consultoría Estratégica & Diagnóstico Inicial",
+    "category": "CONSULTATION",
+    "durationMin": 60,
+    "price": 85,
+    "supplyCost": 5,
+    "description": "Sesión de análisis de negocio, detección de necesidades y hoja de ruta personalizada",
+    "isPopular": true
+  },
+  {
+    "id": "srv-auditoria-tecnica",
+    "name": "Auditoría Técnica y Plan de Acción",
+    "category": "TECHNICAL",
+    "durationMin": 90,
+    "price": 120,
+    "supplyCost": 10,
+    "description": "Revisión exhaustiva de sistemas, procesos y entrega de informe ejecutivo",
+    "isPopular": true
+  },
+  {
+    "id": "srv-asesoramiento-fiscal",
+    "name": "Sesión de Asesoramiento Personalizado",
+    "category": "ADVISORY",
+    "durationMin": 45,
+    "price": 65,
+    "supplyCost": 2.5,
+    "description": "Resolución de dudas especializadas, planificación y recomendaciones operativas",
+    "isPopular": true
+  },
+  {
+    "id": "srv-mantenimiento-preventivo",
+    "name": "Mantenimiento Preventivo & Optimización",
+    "category": "SERVICE",
+    "durationMin": 60,
+    "price": 75,
+    "supplyCost": 8,
+    "description": "Inspección de calidad, puesta a punto preventiva y ajuste de parámetros",
+    "isPopular": false
+  },
+  {
+    "id": "srv-revision-periodica",
+    "name": "Revisión Periódica de Seguimiento",
+    "category": "SERVICE",
+    "durationMin": 30,
+    "price": 45,
+    "supplyCost": 2,
+    "description": "Control de avances, revisión de hitos clave y soporte directo",
+    "isPopular": true
+  }
+]
