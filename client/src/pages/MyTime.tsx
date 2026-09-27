@@ -8,6 +8,7 @@ import {
   Calendar,
   Layers,
   FileSpreadsheet,
+  FileText,
   MapPin,
   Coffee,
   Briefcase,
@@ -18,7 +19,7 @@ import {
   Filter,
   X,
 } from 'lucide-react';
-import { apiRequest } from '../services/api';
+import { apiRequest, downloadFile } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { soundService } from '../services/sound';
@@ -193,6 +194,30 @@ export const MyTime: React.FC = () => {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      await downloadFile(
+        '/employees/time-tracking/export/csv',
+        `registro_jornada_${new Date().toISOString().slice(0, 10)}.csv`
+      );
+      toast.success('Excel Generado', 'El registro de fichajes se ha exportado en CSV/Excel');
+    } catch {
+      toast.error('Error', 'No se pudo exportar el registro de jornada');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      await downloadFile(
+        '/employees/time-tracking/export/pdf',
+        `informe_fichajes_oficial_${new Date().toISOString().slice(0, 10)}.pdf`
+      );
+      toast.success('PDF Generado', 'Informe oficial de inspección de trabajo generado');
+    } catch {
+      toast.error('Error', 'No se pudo generar el informe oficial en PDF');
+    }
+  };
+
   const totalReportedHours = taskWorkLogs.reduce((acc, l) => acc + l.hours, 0);
   const todayClockedMinutes = clockStatus?.todayMinutes || 0;
   const todayClockedHours = (todayClockedMinutes / 60).toFixed(1);
@@ -217,7 +242,27 @@ export const MyTime: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Official inspection export */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Exportar Registro de Fichajes a Excel (CSV)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Descargar Informe Oficial de Jornada en PDF"
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-600" />
+              <span>PDF Oficial</span>
+            </button>
+          </div>
+
           <button
             onClick={() => setIsLogModalOpen(true)}
             className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm shadow-blue-600/20"

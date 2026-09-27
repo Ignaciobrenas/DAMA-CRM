@@ -291,3 +291,128 @@ export async function getPnLSummary(req: Request, res: Response): Promise<void> 
     res.status(500).json({ success: false, message: 'Error al calcular resumen P&L', error: error.message });
   }
 }
+
+/**
+ * GET /api/expenses/export/csv
+ * Export official Tax Expenses Ledger to CSV / Excel
+ */
+export async function exportExpensesCsv(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { generateCsvBuffer } = await import('../../services/report-exporter.service');
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
+    const expenses = await prisma.expense.findMany({
+      where,
+      orderBy: { issueDate: 'desc' },
+    });
+
+    const headers = [
+      'Nº Gasto / Factura',
+      'Proveedor',
+      'NIF / CIF Proveedor',
+      'Categoría',
+      'Fecha Emisión',
+      'Fecha Vencimiento',
+      'Base Imponible (€)',
+      'Tipo IVA (%)',
+      'Cuota IVA (€)',
+      'Importe Total (€)',
+      'Método de Pago',
+      'Estado',
+      'Notas',
+    ];
+
+    const rows = expenses.map((e) => [
+      e.expenseNumber,
+      e.supplierName,
+      e.supplierTaxId || '',
+      e.category,
+      new Date(e.issueDate).toLocaleDateString('es-ES'),
+      e.dueDate ? new Date(e.dueDate).toLocaleDateString('es-ES') : '',
+      e.subtotal.toFixed(2),
+      e.taxRate.toFixed(1),
+      e.taxAmount.toFixed(2),
+      e.total.toFixed(2),
+      e.paymentMethod || 'TRANSFERENCIA',
+      e.status,
+      e.notes || '',
+    ]);
+
+    const csvBuf = generateCsvBuffer(headers, rows);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=libro_gastos_${tenantId}_${Date.now()}.csv`);
+    res.send(csvBuf);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al exportar gastos en CSV', error: error.message });
+  }
+}
+
+/**
+ * GET /api/expenses/export/pdf
+ * Export official AEAT Modelo 303 & Tax Expenses PDF Report
+ */
+export async function exportExpensesPdf(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { generateReportPdf } = await import('../../services/report-exporter.service');
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
+    const [expenses, invoices] = await Promise.all([
+      prisma.expense.findMany({ where, orderBy: { issueDate: 'desc' } }),
+      prisma.invoice.findMany({ where, select: { total: true, subtotal: true, taxAmount: true, status: true } }),
+    ]);
+
+    const totalExpenses = expenses.reduce((acc, e) => acc + e.total, 0);
+    const deductibleVat = expenses.reduce((acc, e) => acc + e.taxAmount, 0);
+    const totalInvoiced = invoices.reduce((acc, i) => acc + i.total, 0);
+    const outputVat = invoices.reduce((acc, i) => acc + i.taxAmount, 0);
+    const netVatBalance = outputVat - deductibleVat;
+
+    const tableHeaders = ['Nº Gasto', 'Proveedor', 'Fecha', 'Base (€)', 'IVA (€)', 'Total (€)'];
+    const tableRows = expenses.slice(0, 45).map((e) => [
+      e.expenseNumber,
+      e.supplierName.slice(0, 24),
+      new Date(e.issueDate).toLocaleDateString('es-ES'),
+      `${e.subtotal.toFixed(2)}€`,
+      `${e.taxAmount.toFixed(2)}€ (${e.taxRate}%)`,
+      `${e.total.toFixed(2)}€`,
+    ]);
+
+    const pdfBuf = await generateReportPdf({
+      title: 'Libro Registro de Gastos & Modelo 303',
+      subtitle: 'Liquidación fiscal de IVA soportado deducible y desglose de proveedores',
+      companyName: 'DAMA-CRM Fiscal & Tax',
+      dateRange: `Ejercicio Fiscal ${new Date().getFullYear()}`,
+      kpis: [
+        { label: 'Total Gastos', value: `${totalExpenses.toFixed(2)}€`, color: '#EF4444' },
+        { label: 'IVA Soportado Deducible', value: `${deductibleVat.toFixed(2)}€`, color: '#10B981' },
+        { label: 'IVA Repercutido (Ventas)', value: `${outputVat.toFixed(2)}€`, color: '#3B82F6' },
+        { label: 'Saldo IVA a Liquidar', value: `${netVatBalance.toFixed(2)}€`, color: netVatBalance >= 0 ? '#F59E0B' : '#10B981' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        '* Libro de facturas recibidas y gastos deducibles conforme al Reglamento de Facturación y AEAT.',
+        '* Todos los importes en euros (€) con desglose de cuotas soportadas.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=libro_gastos_modelo303_${tenantId}_${Date.now()}.pdf`);
+    res.send(pdfBuf);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al exportar informe de gastos en PDF', error: error.message });
+  }
+}

@@ -7,12 +7,17 @@ import {
   listServices,
   createOrUpdateService,
   getRevenueStats,
+  exportAppointmentsCsv,
+  exportAppointmentsPdf,
 } from './appointments.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
 router.use(authMiddleware);
+
+router.get('/export/csv', exportAppointmentsCsv);
+router.get('/export/pdf', exportAppointmentsPdf);
 
 router.get('/services', listServices);
 router.post('/services', createOrUpdateService);

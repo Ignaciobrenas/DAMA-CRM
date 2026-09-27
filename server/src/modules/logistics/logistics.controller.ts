@@ -459,3 +459,118 @@ export async function getLogisticsStats(req: Request, res: Response): Promise<vo
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
+/**
+ * GET /api/logistics/export/csv
+ * Export shipments manifest to CSV / Excel
+ */
+export async function exportShipmentsCsv(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = req.user?.tenantId || 'master';
+    const shipments = loadShipments(tenantId);
+    const { generateCsvBuffer } = await import('../../services/report-exporter.service');
+
+    const headers = [
+      'Nº Seguimiento (Tracking)',
+      'Transportista',
+      'Destinatario',
+      'Teléfono',
+      'Email',
+      'Dirección Entrega',
+      'Ciudad',
+      'Código Postal',
+      'País',
+      'Estado Envío',
+      'Tipo Paquete',
+      'Peso (Kg)',
+      'Coste Envío (€)',
+      'Nº Pedido / Referencia',
+      'Fecha Creación',
+      'Fecha Estimada Entrega',
+      'Fecha Real Entrega',
+      'Firma / DNI',
+    ];
+
+    const rows = shipments.map((s) => [
+      s.trackingNumber,
+      s.carrier,
+      s.recipientName,
+      s.recipientPhone || '',
+      s.recipientEmail || '',
+      s.destinationAddress,
+      s.destinationCity,
+      s.destinationPostalCode,
+      s.destinationCountry,
+      s.status,
+      s.packageType,
+      s.weightKg,
+      s.shippingCost.toFixed(2),
+      s.orderNumber || '',
+      new Date(s.createdAt).toLocaleDateString('es-ES'),
+      new Date(s.estimatedDeliveryDate).toLocaleDateString('es-ES'),
+      s.actualDeliveryDate ? new Date(s.actualDeliveryDate).toLocaleDateString('es-ES') : '',
+      s.signatureProof || '',
+    ]);
+
+    const csvBuf = generateCsvBuffer(headers, rows);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=manifiesto_envios_${tenantId}_${Date.now()}.csv`);
+    res.send(csvBuf);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/**
+ * GET /api/logistics/export/pdf
+ * Export official Shipping Manifest & Delivery Report
+ */
+export async function exportShipmentsPdf(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = req.user?.tenantId || 'master';
+    const shipments = loadShipments(tenantId);
+    const { generateReportPdf } = await import('../../services/report-exporter.service');
+
+    const totalShipments = shipments.length;
+    const deliveredCount = shipments.filter((s) => s.status === 'DELIVERED').length;
+    const totalSpend = shipments.reduce((sum, s) => sum + (s.shippingCost || 0), 0);
+    const inTransit = shipments.filter((s) => ['IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(s.status)).length;
+
+    const tableHeaders = ['Tracking', 'Agencia', 'Destinatario', 'Ciudad', 'Coste (€)', 'Estado'];
+    const tableRows = shipments.slice(0, 45).map((s) => [
+      s.trackingNumber,
+      s.carrier,
+      s.recipientName.slice(0, 24),
+      s.destinationCity,
+      `${s.shippingCost.toFixed(2)}€`,
+      s.status === 'DELIVERED' ? 'Entregado' : s.status === 'OUT_FOR_DELIVERY' ? 'En Reparto' : s.status,
+    ]);
+
+    const pdfBuf = await generateReportPdf({
+      title: 'Manifiesto de Envíos & Seguimiento Logístico',
+      subtitle: 'Informe consolidado de paquetería multicarrier (GLS, NACEX, Amazon, Correos, DHL)',
+      companyName: 'DAMA-CRM Logistics Hub',
+      dateRange: `Expediciones registradas a ${new Date().toLocaleDateString('es-ES')}`,
+      kpis: [
+        { label: 'Total Envíos', value: totalShipments, color: '#2563EB' },
+        { label: 'En Reparto / Tránsito', value: inTransit, color: '#F59E0B' },
+        { label: 'Entregados con Éxito', value: deliveredCount, color: '#10B981' },
+        { label: 'Gasto Portes', value: `${totalSpend.toFixed(2)}€`, color: '#8B5CF6' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        '* Manifiesto oficial de expedición para control de mensajería, transportistas y albaranes.',
+        '* Trazabilidad completa con eventos de tracking en tiempo real e identificación de entrega.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=informe_logistica_${tenantId}_${Date.now()}.pdf`);
+    res.send(pdfBuf);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+

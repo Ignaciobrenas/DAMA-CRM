@@ -152,4 +152,33 @@ export const api = {
   delete: (url: string, options?: ApiOptions) => apiRequest(url, { ...options, method: 'DELETE' }),
 };
 
+export async function downloadFile(endpoint: string, fallbackFilename: string): Promise<boolean> {
+  try {
+    const token = localStorage.getItem('dama_token');
+    const switchTenant = localStorage.getItem('dama_switch_tenant');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (switchTenant) headers['X-Switch-Tenant-ID'] = switchTenant;
+
+    const fullUrl = `${API_BASE}${endpoint}`;
+    const res = await fetch(fullUrl, { headers });
+
+    if (!res.ok) throw new Error('Error al descargar archivo');
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fallbackFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    return true;
+  } catch (err) {
+    console.error('Download failed:', err);
+    return false;
+  }
+}
+
 

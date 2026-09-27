@@ -5,12 +5,17 @@ import {
   getShipmentDetails,
   updateShipmentStatus,
   getLogisticsStats,
+  exportShipmentsCsv,
+  exportShipmentsPdf,
 } from './logistics.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
 router.use(authMiddleware);
+
+router.get('/export/csv', exportShipmentsCsv);
+router.get('/export/pdf', exportShipmentsPdf);
 
 router.get('/stats', getLogisticsStats);
 
