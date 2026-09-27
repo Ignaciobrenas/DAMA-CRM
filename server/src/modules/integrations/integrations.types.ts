@@ -135,21 +135,6 @@ export interface Sage50Config {
   lastError?: string;
 }
 
-export type ConnectorType =
-  | 'odoo'
-  | 'woocommerce'
-  | 'shopify'
-  | 'opencart'
-  | 'n8n'
-  | 'unopim'
-  | 'whatsapp'
-  | 'stripe'
-  | 'zapier'
-  | 'google_calendar'
-  | 'sage_one'
-  | 'sage_50'
-  | 'sage_200';
-
 export interface OpenCartConfig {
   enabled: boolean;
   storeUrl: string;
