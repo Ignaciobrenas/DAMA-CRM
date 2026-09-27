@@ -103,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         } ${isCollapsed ? 'w-16' : 'w-60'}`}
       >
         {/* Brand Header */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} h-14 border-b border-gray-200 dark:border-slate-800`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} h-16 border-b border-gray-200 dark:border-slate-800`}>
           <div className="flex items-center space-x-2.5 truncate">
             <img
               src={getLogo('symbol')}
