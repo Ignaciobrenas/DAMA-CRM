@@ -12,6 +12,8 @@ import {
   importInventory,
   handleUnoPimWebhook,
   triggerNightlySync,
+  autoMapProductAttributesHandler,
+  updateProductAttributesHandler,
 } from './inventory.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -37,6 +39,10 @@ router.delete('/:id', requirePermission('inventory', 'delete'), deleteProduct);
 router.post('/:id/stock-movement', requirePermission('inventory', 'update'), createStockMovement);
 router.get('/:id/movements', requirePermission('inventory', 'read'), listStockMovements);
 
+router.post('/:id/auto-map-attributes', requirePermission('inventory', 'update'), autoMapProductAttributesHandler);
+router.patch('/:id/attributes', requirePermission('inventory', 'update'), updateProductAttributesHandler);
+
 router.post('/sync/nightly', requirePermission('inventory', 'manage'), triggerNightlySync);
 
 export default router;
+
