@@ -171,6 +171,7 @@ model Contact {
   contracts    Contract[]
   omniMessages OmniMessage[]
   calendarEvents CalendarEvent[]
+  appointments Appointment[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -211,6 +212,7 @@ model Deal {
   tenantId          String?   @default("master")
   projects          Project[]
   calendarEvents    CalendarEvent[]
+  shipments         Shipment[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -397,6 +399,7 @@ model Invoice {
   paidAt             DateTime?
   tenantId           String?       @default("master")
   items              InvoiceItem[]
+  shipments          Shipment[]
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -926,6 +929,149 @@ model CalendarIntegration {
 
   @@unique([userId, provider])
   @@map("calendar_integrations")
+}
+
+// -----------------------------------------------------------------------------
+// Appointments & Professional Booking Engine (Universal: Advisory, Tech, Health, Services)
+// -----------------------------------------------------------------------------
+
+model AppointmentService {
+  id          String   @id @default(uuid())
+  tenantId    String?  @default("master")
+  name        String
+  category    String   @default("CONSULTATION") // CONSULTATION, TECHNICAL, ADVISORY, SERVICE, TREATMENT, OTHER
+  durationMin Int      @default(30)
+  price       Float    @default(0.0)
+  supplyCost  Float    @default(0.0)
+  description String?
+  isPopular   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, category])
+  @@map("appointment_services")
+}
+
+model Appointment {
+  id              String   @id @default(uuid())
+  tenantId        String?  @default("master")
+  clientName      String
+  clientPhone     String?
+  clientEmail     String?
+  contactId       String?
+  contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  staffId         String?
+  staffName       String   @default("Especialista")
+  serviceIds      String?  @default("[]") // JSON Array of service IDs
+  servicesDetails String?  @default("[]") // JSON Array of full service item objects
+  startTime       DateTime
+  endTime         DateTime
+  durationMin     Int      @default(30)
+  totalPrice      Float    @default(0.0)
+  totalSupplyCost Float    @default(0.0)
+  estimatedProfit Float    @default(0.0)
+  status          String   @default("SCHEDULED") // SCHEDULED, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW
+  paymentStatus   String   @default("PENDING")   // PENDING, PAID, REFUNDED
+  paymentMethod   String?  // CASH, CARD, BIZUM, TRANSFER
+  notes           String?
+  invoiceId       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId, startTime])
+  @@index([tenantId, status])
+  @@index([contactId])
+  @@map("appointments")
+}
+
+// -----------------------------------------------------------------------------
+// Logistics & Multi-Carrier Courier Tracking Engine (GLS, NACEX, Amazon, Correos, DHL, SEUR)
+// -----------------------------------------------------------------------------
+
+model Shipment {
+  id               String               @id @default(uuid())
+  tenantId         String?              @default("master")
+  trackingNumber   String
+  carrier          String               @default("GLS") // GLS, NACEX, AMAZON, CORREOS, DHL, SEUR, FEDEX, UPS
+  recipientName    String
+  recipientAddress String
+  recipientCity    String
+  recipientPhone   String?
+  recipientEmail   String?
+  status           String               @default("PENDING") // PENDING, PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, EXCEPTION, RETURNED
+  origin           String               @default("Almacén Central")
+  destination      String
+  estimatedDelivery DateTime?
+  actualDelivery   DateTime?
+  dealId           String?
+  deal             Deal?                @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  invoiceId        String?
+  invoice          Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  weightKg         Float?               @default(1.0)
+  notes            String?
+  checkpoints      ShipmentCheckpoint[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@unique([tenantId, trackingNumber])
+  @@index([tenantId, carrier])
+  @@index([tenantId, status])
+  @@map("shipments")
+}
+
+model ShipmentCheckpoint {
+  id          String   @id @default(uuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status      String
+  location    String
+  description String
+  timestamp   DateTime @default(now())
+
+  @@index([shipmentId, timestamp])
+  @@map("shipment_checkpoints")
+}
+
+// -----------------------------------------------------------------------------
+// Internal Team Chat & Department Channels
+// -----------------------------------------------------------------------------
+
+model InternalChatChannel {
+  id          String                @id @default(uuid())
+  tenantId    String?               @default("master")
+  name        String
+  type        String                @default("DEPARTMENT") // DEPARTMENT, DIRECT, PROJECT, ANNOUNCEMENT
+  description String?
+  isPrivate   Boolean               @default(false)
+  members     String?               @default("[]") // JSON array of user IDs
+  messages    InternalChatMessage[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([tenantId, type])
+  @@map("internal_chat_channels")
+}
+
+model InternalChatMessage {
+  id          String               @id @default(uuid())
+  channelId   String
+  channel     InternalChatChannel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  tenantId    String?              @default("master")
+  senderId    String
+  senderName  String
+  senderAvatar String?
+  text        String
+  attachments String?              @default("[]") // JSON Array of attachments
+  reactions   String?              @default("{}") // JSON map of emoji -> userIds
+  isPinned    Boolean              @default(false)
+  replyToId   String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([channelId, createdAt])
+  @@index([tenantId, senderId])
+  @@map("internal_chat_messages")
 }
 
 

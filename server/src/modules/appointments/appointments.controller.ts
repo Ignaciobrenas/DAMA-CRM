@@ -12,10 +12,10 @@ if (!fs.existsSync(DATA_DIR)) {
 export interface SalonServiceItem {
   id: string;
   name: string;
-  category: 'HAIRDRESSING' | 'BEAUTY' | 'BARBER' | 'TREATMENT' | 'MASSAGE' | 'CONSULTATION';
+  category: 'CONSULTATION' | 'TECHNICAL' | 'ADVISORY' | 'SERVICE' | 'TREATMENT' | 'OTHER' | 'HAIRDRESSING' | 'BEAUTY' | 'BARBER' | 'MASSAGE';
   durationMin: number;
   price: number;
-  supplyCost: number; // Consumable cost (tintes, champús, cremas)
+  supplyCost: number; // Coste de materiales o suministros directos
   description?: string;
   isPopular?: boolean;
 }
@@ -48,64 +48,54 @@ export interface AppointmentData {
 
 const DEFAULT_SERVICES: SalonServiceItem[] = [
   {
-    id: 'srv-corte-mujer',
-    name: 'Corte de Pelo Mujer & Peinado',
-    category: 'HAIRDRESSING',
-    durationMin: 45,
-    price: 32.0,
-    supplyCost: 3.5,
-    description: 'Lavado con champú hidratante, corte personalizado y peinado con secador',
-    isPopular: true,
-  },
-  {
-    id: 'srv-corte-hombre',
-    name: 'Corte Degradado Hombre & Barba',
-    category: 'BARBER',
-    durationMin: 35,
-    price: 22.0,
-    supplyCost: 2.0,
-    description: 'Corte fade a máquina y tijera, perfilado y ritual de toalla caliente para barba',
-    isPopular: true,
-  },
-  {
-    id: 'srv-color-mechas',
-    name: 'Coloración Completa + Balayage / Mechas',
-    category: 'HAIRDRESSING',
-    durationMin: 120,
-    price: 85.0,
-    supplyCost: 14.0,
-    description: 'Decoloración técnica, matiz personalizado, tratamiento plex y peinado',
-    isPopular: true,
-  },
-  {
-    id: 'srv-tratamiento-keratina',
-    name: 'Tratamiento de Keratina Antifrizz & Brillo',
-    category: 'TREATMENT',
-    durationMin: 90,
-    price: 110.0,
-    supplyCost: 18.0,
-    description: 'Alisado orgánico y sellado de cutícula con efecto de hasta 4 meses',
-    isPopular: false,
-  },
-  {
-    id: 'srv-manicura-semi',
-    name: 'Manicura Rusa & Esmaltado Semipermanente',
-    category: 'BEAUTY',
-    durationMin: 50,
-    price: 28.0,
-    supplyCost: 4.0,
-    description: 'Limpieza de cutículas a torno, nivelación con base rubber y color de larga duración',
-    isPopular: true,
-  },
-  {
-    id: 'srv-higiene-facial',
-    name: 'Higiene Facial Profunda con Ultrasonidos',
-    category: 'BEAUTY',
+    id: 'srv-consultoria-estrategica',
+    name: 'Consultoría Estratégica & Diagnóstico Inicial',
+    category: 'CONSULTATION',
     durationMin: 60,
-    price: 48.0,
-    supplyCost: 7.5,
-    description: 'Extracción, peeling enzimático, hidratación intensiva y mascarilla de ácido hialurónico',
+    price: 85.0,
+    supplyCost: 5.0,
+    description: 'Sesión de análisis de negocio, detección de necesidades y hoja de ruta personalizada',
+    isPopular: true,
+  },
+  {
+    id: 'srv-auditoria-tecnica',
+    name: 'Auditoría Técnica y Plan de Acción',
+    category: 'TECHNICAL',
+    durationMin: 90,
+    price: 120.0,
+    supplyCost: 10.0,
+    description: 'Revisión exhaustiva de sistemas, procesos y entrega de informe ejecutivo',
+    isPopular: true,
+  },
+  {
+    id: 'srv-asesoramiento-fiscal',
+    name: 'Sesión de Asesoramiento Personalizado',
+    category: 'ADVISORY',
+    durationMin: 45,
+    price: 65.0,
+    supplyCost: 2.5,
+    description: 'Resolución de dudas especializadas, planificación y recomendaciones operativas',
+    isPopular: true,
+  },
+  {
+    id: 'srv-mantenimiento-preventivo',
+    name: 'Mantenimiento Preventivo & Optimización',
+    category: 'SERVICE',
+    durationMin: 60,
+    price: 75.0,
+    supplyCost: 8.0,
+    description: 'Inspección de calidad, puesta a punto preventiva y ajuste de parámetros',
     isPopular: false,
+  },
+  {
+    id: 'srv-revision-periodica',
+    name: 'Revisión Periódica de Seguimiento',
+    category: 'SERVICE',
+    durationMin: 30,
+    price: 45.0,
+    supplyCost: 2.0,
+    description: 'Control de avances, revisión de hitos clave y soporte directo',
+    isPopular: true,
   },
 ];
 
@@ -146,18 +136,18 @@ function loadAppointments(tenantId: string): AppointmentData[] {
         clientPhone: '+34 612 345 678',
         clientEmail: 'elena.ramos@example.com',
         staffId: 'staff-1',
-        staffName: 'Ignacio (Estilista Senior)',
-        serviceIds: ['srv-color-mechas'],
-        services: [DEFAULT_SERVICES[2]],
+        staffName: 'Ignacio (Especialista Senior)',
+        serviceIds: ['srv-auditoria-tecnica'],
+        services: [DEFAULT_SERVICES[1]],
         startTime: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(),
-        endTime: new Date(new Date().setHours(12, 0, 0, 0)).toISOString(),
-        durationMin: 120,
-        totalPrice: 85.0,
-        totalSupplyCost: 14.0,
-        estimatedProfit: 71.0,
+        endTime: new Date(new Date().setHours(11, 30, 0, 0)).toISOString(),
+        durationMin: 90,
+        totalPrice: 120.0,
+        totalSupplyCost: 10.0,
+        estimatedProfit: 110.0,
         status: 'CONFIRMED',
         paymentStatus: 'PENDING',
-        notes: 'Cliente habitual, prefiere matiz ceniza frío.',
+        notes: 'Revisión inicial del plan de trabajo y validación de requisitos.',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -168,19 +158,19 @@ function loadAppointments(tenantId: string): AppointmentData[] {
         clientPhone: '+34 689 987 654',
         clientEmail: 'carlos.m@example.com',
         staffId: 'staff-1',
-        staffName: 'Ignacio (Estilista Senior)',
-        serviceIds: ['srv-corte-hombre'],
-        services: [DEFAULT_SERVICES[1]],
+        staffName: 'Ignacio (Especialista Senior)',
+        serviceIds: ['srv-asesoramiento-fiscal'],
+        services: [DEFAULT_SERVICES[2]],
         startTime: new Date(new Date().setHours(12, 30, 0, 0)).toISOString(),
-        endTime: new Date(new Date().setHours(13, 10, 0, 0)).toISOString(),
-        durationMin: 40,
-        totalPrice: 22.0,
-        totalSupplyCost: 2.0,
-        estimatedProfit: 20.0,
+        endTime: new Date(new Date().setHours(13, 15, 0, 0)).toISOString(),
+        durationMin: 45,
+        totalPrice: 65.0,
+        totalSupplyCost: 2.5,
+        estimatedProfit: 62.5,
         status: 'COMPLETED',
         paymentStatus: 'PAID',
         paymentMethod: 'BIZUM',
-        notes: 'Degradado al 0.5 con perfilado a navaja.',
+        notes: 'Sesión de asesoramiento completada con éxito.',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -191,18 +181,18 @@ function loadAppointments(tenantId: string): AppointmentData[] {
         clientPhone: '+34 655 443 322',
         clientEmail: 'laura.v@example.com',
         staffId: 'staff-2',
-        staffName: 'Sofía Martínez (Estética & Manicura)',
-        serviceIds: ['srv-manicura-semi'],
-        services: [DEFAULT_SERVICES[4]],
+        staffName: 'Sofía Martínez (Consultor Senior)',
+        serviceIds: ['srv-consultoria-estrategica'],
+        services: [DEFAULT_SERVICES[0]],
         startTime: new Date(new Date().setHours(16, 0, 0, 0)).toISOString(),
         endTime: new Date(new Date().setHours(17, 0, 0, 0)).toISOString(),
         durationMin: 60,
-        totalPrice: 28.0,
-        totalSupplyCost: 4.0,
-        estimatedProfit: 24.0,
+        totalPrice: 85.0,
+        totalSupplyCost: 5.0,
+        estimatedProfit: 80.0,
         status: 'SCHEDULED',
         paymentStatus: 'PENDING',
-        notes: 'Diseño nail art en uñas anulares.',
+        notes: 'Primera reunión de diagnóstico.',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -595,11 +585,11 @@ export async function exportAppointmentsCsv(req: Request, res: Response): Promis
       'Cliente',
       'Teléfono',
       'Email',
-      'Estilista / Asignado',
+      'Profesional / Especialista',
       'Servicios',
       'Duración (min)',
       'Precio Total (€)',
-      'Coste Insumos (€)',
+      'Coste Insumos / Operativo (€)',
       'Beneficio Neto (€)',
       'Estado Cita',
       'Estado Pago',
@@ -634,7 +624,7 @@ export async function exportAppointmentsCsv(req: Request, res: Response): Promis
     const csvBuf = generateCsvBuffer(headers, rows);
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename=citas_salon_${tenantId}_${Date.now()}.csv`);
+    res.setHeader('Content-Disposition', `attachment; filename=citas_servicios_${tenantId}_${Date.now()}.csv`);
     res.send(csvBuf);
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -643,7 +633,7 @@ export async function exportAppointmentsCsv(req: Request, res: Response): Promis
 
 /**
  * GET /api/appointments/export/pdf
- * Export official Salon Bookings & Revenue PDF Report
+ * Export official Professional Services & Appointments PDF Report
  */
 export async function exportAppointmentsPdf(req: Request, res: Response): Promise<void> {
   try {
@@ -666,26 +656,26 @@ export async function exportAppointmentsPdf(req: Request, res: Response): Promis
     ]);
 
     const pdfBuf = await generateReportPdf({
-      title: 'Informe de Citas, Salón & Estimación de Ingresos',
-      subtitle: 'Resumen financiero de reservas, ocupación de estilistas y margen neto',
-      companyName: 'DAMA-CRM Salón Pro',
+      title: 'Informe de Citas, Servicios Profesionales & Estimación de Ingresos',
+      subtitle: 'Resumen financiero de reservas, ocupación de especialistas y rentabilidad neta',
+      companyName: 'DAMA-CRM Professional Services',
       dateRange: `Mes de ${new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' })}`,
       kpis: [
-        { label: 'Facturación Prevista', value: `${totalRevenue.toFixed(2)}€`, color: '#EC4899' },
+        { label: 'Facturación Prevista', value: `${totalRevenue.toFixed(2)}€`, color: '#3B82F6' },
         { label: 'Beneficio Neto Estimado', value: `${totalProfit.toFixed(2)}€`, color: '#10B981' },
-        { label: 'Citas Realizadas', value: completedCount, color: '#2563EB' },
+        { label: 'Citas Realizadas', value: completedCount, color: '#6366F1' },
         { label: 'Total Reservas', value: appointments.length, color: '#8B5CF6' },
       ],
       tableHeaders,
       tableRows,
       summaryNotes: [
-        '* El beneficio neto se calcula deduciendo los costes de tintes, champús y consumibles del importe total.',
-        '* Informe oficial generado para control de caja, rendimientos y liquidación de estilistas.',
+        '* El beneficio neto se calcula deduciendo los costes de suministros u operativos directos del importe total.',
+        '* Informe oficial generado para control de facturación, rendimientos y liquidaciones profesionales.',
       ],
     });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=informe_citas_${tenantId}_${Date.now()}.pdf`);
+    res.setHeader('Content-Disposition', `inline; filename=informe_citas_servicios_${tenantId}_${Date.now()}.pdf`);
     res.send(pdfBuf);
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
