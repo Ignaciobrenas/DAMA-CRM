@@ -16,7 +16,7 @@
   }
 
   body {
-    @apply bg-slate-200/70 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans;
+    @apply bg-slate-200/80 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans;
   }
 
   * {
@@ -33,26 +33,84 @@
   }
 }
 
-/* Light mode multi-tonal slate grayscale layers */
-html:not(.dark) .bg-white {
-  background-color: #F8FAFC;
+/* High-Contrast Light Mode Surfaces & Sharp Contrast */
+html:not(.dark) {
+  --surface-bg: #FFFFFF;
+  --surface-card: #FFFFFF;
+  --surface-well: #EEF2F6;
+  --surface-hover: #E2E8F0;
+  --border-subtle: #CBD5E1;
+  --border-strong: #94A3B8;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
 }
+
+html:not(.dark) .bg-white {
+  background-color: #FFFFFF;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+}
+
 html:not(.dark) .border-gray-200,
 html:not(.dark) .border-slate-200 {
   border-color: #CBD5E1;
 }
+
+html:not(.dark) .border-gray-100,
+html:not(.dark) .border-slate-100 {
+  border-color: #E2E8F0;
+}
+
+html:not(.dark) .border-gray-300,
+html:not(.dark) .border-slate-300 {
+  border-color: #94A3B8;
+}
+
 html:not(.dark) .bg-gray-50,
 html:not(.dark) .bg-slate-50 {
-  background-color: #EEF2F6;
+  background-color: #F1F5F9;
 }
+
 html:not(.dark) .bg-gray-100,
 html:not(.dark) .bg-slate-100 {
   background-color: #E2E8F0;
 }
+
+html:not(.dark) .text-gray-900,
+html:not(.dark) .text-slate-900 {
+  color: #0F172A !important;
+}
+
+html:not(.dark) .text-gray-800,
+html:not(.dark) .text-slate-800 {
+  color: #1E293B !important;
+}
+
+html:not(.dark) .text-gray-700,
+html:not(.dark) .text-slate-700 {
+  color: #334155 !important;
+}
+
+html:not(.dark) .text-gray-600,
+html:not(.dark) .text-slate-600 {
+  color: #475569 !important;
+}
+
+html:not(.dark) .text-gray-500,
+html:not(.dark) .text-slate-500 {
+  color: #475569 !important;
+}
+
+html:not(.dark) .text-gray-400,
+html:not(.dark) .text-slate-400 {
+  color: #64748B !important;
+}
+
 html:not(.dark) .hover\:bg-gray-100:hover,
 html:not(.dark) .hover\:bg-slate-100:hover {
   background-color: #CBD5E1;
 }
+
 html:not(.dark) .hover\:bg-gray-50:hover,
 html:not(.dark) .hover\:bg-slate-50:hover {
   background-color: #E2E8F0;
