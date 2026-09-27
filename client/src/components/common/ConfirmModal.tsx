@@ -14,6 +14,7 @@ export interface ConfirmModalProps {
   confirmText?: string;
   confirmLabel?: string;
   cancelText?: string;
+  cancelLabel?: string;
   variant?: 'danger' | 'warning' | 'info';
   isLoading?: boolean;
 }
@@ -29,11 +30,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmText,
   confirmLabel,
   cancelText = 'Cancelar',
+  cancelLabel,
   variant = 'danger',
   isLoading = false,
 }) => {
   const finalDescription = description || message || '';
   const finalConfirmText = confirmLabel || confirmText || 'Confirmar';
+  const finalCancelText = cancelLabel || cancelText || 'Cancelar';
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen && !isLoading) {

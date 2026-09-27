@@ -43,10 +43,12 @@ import { Expenses } from './pages/Expenses';
 import { PublicQuoteSign } from './pages/PublicQuoteSign';
 import { EmployeePortal } from './pages/EmployeePortal';
 import { MyTime } from './pages/MyTime';
+import { CalendarPage } from './pages/Calendar';
 
 const normalizeRoute = (pathname: string): string => {
   const p = pathname.toLowerCase();
   if (p.startsWith('/quote/sign/')) return pathname;
+  if (p === '/calendar') return '/calendar';
   if (p === '/portal-empleado') return '/portal-empleado';
   if (p === '/my-time') return '/my-time';
   if (p === '/tickets') return '/tickets';
@@ -245,6 +247,8 @@ const AppContent: React.FC = () => {
         );
       case '/faq':
         return <FAQ onNavigate={navigateTo} />;
+      case '/calendar':
+        return <CalendarPage />;
       default:
         return <Dashboard onNavigate={navigateTo} />;
     }
@@ -267,6 +271,7 @@ const AppContent: React.FC = () => {
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onNavigate={navigateTo}
         />
 
         <main className="flex-1 p-3 sm:p-6 max-w-7xl w-full mx-auto">

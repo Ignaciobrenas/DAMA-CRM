@@ -56,6 +56,9 @@ model User {
   taskComments     TaskComment[]
   taskWorkLogs     TaskWorkLog[]
   projectMembers   ProjectMember[]
+  calendarEvents   CalendarEvent[]
+  calendarReminders CalendarReminder[]
+  calendarIntegrations CalendarIntegration[]
 
   @@index([tenantId, isActive])
   @@index([email])
@@ -167,6 +170,7 @@ model Contact {
   recurringInvoices RecurringInvoice[]
   contracts    Contract[]
   omniMessages OmniMessage[]
+  calendarEvents CalendarEvent[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -206,6 +210,7 @@ model Deal {
   notes             String?
   tenantId          String?   @default("master")
   projects          Project[]
+  calendarEvents    CalendarEvent[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -231,6 +236,7 @@ model Project {
   sprints     Sprint[]
   tasks       Task[]
   members     ProjectMember[]
+  calendarEvents CalendarEvent[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
@@ -284,6 +290,7 @@ model Task {
   dueDate        DateTime?
   comments       TaskComment[]
   workLogs       TaskWorkLog[]
+  calendarEvents CalendarEvent[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -842,6 +849,82 @@ model TimeRecord {
   @@index([tenantId, clockIn])
   @@index([employeeId, clockIn])
   @@map("time_records")
+}
+
+// -----------------------------------------------------------------------------
+// Calendar Module: Personal & Company Calendars, Events, Alerts & Sync
+// -----------------------------------------------------------------------------
+
+model CalendarEvent {
+  id               String             @id @default(uuid())
+  tenantId         String?            @default("master")
+  userId           String
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  startDate        DateTime
+  endDate          DateTime
+  allDay           Boolean            @default(false)
+  location         String?
+  color            String?            @default("#3B82F6")
+  type             String             @default("EVENT") // EVENT, MEETING, DEADLINE, MILESTONE, REMINDER, CALL, TIME_BLOCK
+  isCompanyWide    Boolean            @default(false)
+  status           String             @default("CONFIRMED") // CONFIRMED, TENTATIVE, CANCELLED
+  projectId        String?
+  project          Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  taskId           String?
+  task             Task?              @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  dealId           String?
+  deal             Deal?              @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contactId        String?
+  contact          Contact?           @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  externalSyncId   String?
+  externalProvider String?            // GOOGLE, APPLE, ICAL
+  recurrence       String?            @default("NONE") // NONE, DAILY, WEEKLY, MONTHLY, YEARLY
+  reminders        CalendarReminder[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([tenantId, startDate])
+  @@index([userId, startDate])
+  @@index([projectId])
+  @@index([isCompanyWide])
+  @@map("calendar_events")
+}
+
+model CalendarReminder {
+  id            String        @id @default(uuid())
+  eventId       String
+  event         CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tenantId      String?       @default("master")
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  minutesBefore Int           @default(15) // 0, 5, 10, 15, 30, 60, 1440
+  method        String        @default("NOTIFICATION") // NOTIFICATION, EMAIL, SOUND, ALL
+  isDismissed   Boolean       @default(false)
+  remindAt      DateTime
+  createdAt     DateTime      @default(now())
+
+  @@index([userId, remindAt, isDismissed])
+  @@map("calendar_reminders")
+}
+
+model CalendarIntegration {
+  id          String    @id @default(uuid())
+  tenantId    String?   @default("master")
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String    // GOOGLE, APPLE, OUTLOOK
+  isEnabled   Boolean   @default(false)
+  syncToken   String?   // token or iCal feed secret
+  calendarId  String?
+  lastSyncAt  DateTime?
+  config      String?   @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, provider])
+  @@map("calendar_integrations")
 }
 
 

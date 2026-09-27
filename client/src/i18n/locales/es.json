@@ -1,6 +1,7 @@
 {
   "dashboard": "Panel Principal",
-  "pipeline": "Embudo de Ventas",
+  "calendar": "Calendario & Agenda",
+  "pipeline": "Ventas",
   "contacts": "Contactos",
   "companies": "Empresas",
   "agile": "Planificador Ágil",
