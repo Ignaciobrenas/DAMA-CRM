@@ -29,7 +29,7 @@ const AVAILABLE_MODULE_ROUTES = [
   { path: '/contacts', label: 'Contactos y Clientes' },
   { path: '/companies', label: 'Empresas & Cuentas' },
   { path: '/invoicing', label: 'Facturación & Cobros' },
-  { path: '/inventory', label: 'Inventario UnoPIM' },
+  { path: '/inventory', label: 'Inventario & Stock' },
   { path: '/tickets', label: 'Mesa de Ayuda (Tickets)' },
   { path: '/expenses', label: 'Gastos & Viáticos' },
   { path: '/workflows', label: 'Automatizaciones' },
