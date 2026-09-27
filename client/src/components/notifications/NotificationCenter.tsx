@@ -17,6 +17,7 @@ import {
   Sparkles,
   Inbox,
   Filter,
+  Zap,
 } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 import { api } from '../../services/api';
@@ -415,8 +416,9 @@ export const NotificationCenter: React.FC = () => {
             {/* Footer */}
             {notifications.length > 0 && (
               <div className="p-2 border-t border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-center">
-                <span className="text-[10px] text-gray-400 dark:text-slate-500">
-                  ⚡ {t('notifications.realtimeConnected')}
+                <span className="inline-flex items-center space-x-1 text-[10px] text-gray-400 dark:text-slate-500">
+                  <Zap className="w-3 h-3 text-amber-500" />
+                  <span>{t('notifications.realtimeConnected')}</span>
                 </span>
               </div>
             )}

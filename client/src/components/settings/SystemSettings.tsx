@@ -13,6 +13,7 @@ import {
   FileSpreadsheet,
   FileCode,
   ShieldAlert,
+  Check,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
@@ -135,11 +136,11 @@ export const SystemSettings: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-2 text-[11px] font-mono bg-white dark:bg-slate-900 p-3 rounded-lg border border-gray-200 dark:border-slate-800">
                 <div className="text-gray-500">Contactos & Empresas:</div>
-                <div className="text-right font-bold text-gray-900 dark:text-white">✓ Incluido</div>
+                <div className="text-right font-bold text-gray-900 dark:text-white flex items-center justify-end"><Check className="w-3.5 h-3.5 text-emerald-500 mr-1" /> Incluido</div>
                 <div className="text-gray-500">Facturación & Cobros:</div>
-                <div className="text-right font-bold text-gray-900 dark:text-white">✓ Incluido</div>
+                <div className="text-right font-bold text-gray-900 dark:text-white flex items-center justify-end"><Check className="w-3.5 h-3.5 text-emerald-500 mr-1" /> Incluido</div>
                 <div className="text-gray-500">Fichajes & Jornada:</div>
-                <div className="text-right font-bold text-gray-900 dark:text-white">✓ Incluido</div>
+                <div className="text-right font-bold text-gray-900 dark:text-white flex items-center justify-end"><Check className="w-3.5 h-3.5 text-emerald-500 mr-1" /> Incluido</div>
                 <div className="text-gray-500">Formato Estándar:</div>
                 <div className="text-right font-bold text-blue-600 dark:text-blue-400">JSON ISO 8601</div>
               </div>

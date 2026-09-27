@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AlertTriangle, CheckCircle2, PenTool } from 'lucide-react';
 import { useTranslation } from '../context/LanguageContext';
 import { api } from '../services/api';
 import { LoadingScreen } from '../components/common/Loading';
@@ -39,7 +40,7 @@ export const PublicQuoteSign: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
         <div className="p-8 max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl text-center">
-          <span className="text-4xl block mb-3">⚠️</span>
+          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">
             {t('quotes.invalidQuoteLink')}
           </h2>
@@ -167,7 +168,7 @@ export const PublicQuoteSign: React.FC = () => {
           <div className="p-8 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800">
             {isAccepted ? (
               <div className="p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-center space-y-3">
-                <span className="text-3xl block">✅</span>
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
                 <h3 className="text-base font-bold text-emerald-800 dark:text-emerald-300">
                   {t('quotes.quoteAcceptedAndSigned')}
                 </h3>
@@ -196,9 +197,10 @@ export const PublicQuoteSign: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setShowSignModal(true)}
-                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 text-sm"
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 text-sm flex items-center justify-center gap-2"
                 >
-                  ✍️ {t('quotes.signAndAcceptAction')}
+                  <PenTool className="w-4 h-4" />
+                  <span>{t('quotes.signAndAcceptAction')}</span>
                 </button>
               </div>
             )}

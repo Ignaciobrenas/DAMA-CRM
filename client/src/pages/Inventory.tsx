@@ -446,13 +446,13 @@ export const Inventory: React.FC = () => {
     });
 
     if (res.success) {
-      toast.success('Webhook UnoPIM sincronizado', `Stock de SRV-CLOUD-M actualizado a ${randomStock} uds.`);
-      setSyncStatusMsg(`✅ Webhook procesado: Stock de SRV-CLOUD-M actualizado a ${randomStock} uds.`);
+      toast.success('Webhook sincronizado', `Stock de SRV-CLOUD-M actualizado a ${randomStock} uds.`);
+      setSyncStatusMsg(`Webhook procesado: Stock de SRV-CLOUD-M actualizado a ${randomStock} uds.`);
       soundService.play('success');
       loadData();
     } else {
-      toast.error('Fallo en Webhook UnoPIM', res.message || 'Error de sincronización');
-      setSyncStatusMsg(`❌ Error: ${res.message}`);
+      toast.error('Fallo en Webhook', res.message || 'Error de sincronización');
+      setSyncStatusMsg(`Error: ${res.message}`);
     }
   };
 
@@ -1676,11 +1676,11 @@ export const Inventory: React.FC = () => {
                     onChange={(e) => setMovementData({ ...movementData, type: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="INBOUND">🟢 Entrada / Recepción de Mercancía (+)</option>
-                    <option value="OUTBOUND">🔴 Salida / Despacho / Venta (-)</option>
-                    <option value="ADJUSTMENT">🔵 Ajuste de Inventario / Recuento</option>
-                    <option value="RETURN">🟡 Devolución de Cliente (+)</option>
-                    <option value="TRANSFER">🟣 Transferencia entre Almacenes</option>
+                    <option value="INBOUND">Entrada / Recepción de Mercancía (+)</option>
+                    <option value="OUTBOUND">Salida / Despacho / Venta (-)</option>
+                    <option value="ADJUSTMENT">Ajuste de Inventario / Recuento</option>
+                    <option value="RETURN">Devolución de Cliente (+)</option>
+                    <option value="TRANSFER">Transferencia entre Almacenes</option>
                   </select>
                 </div>
 

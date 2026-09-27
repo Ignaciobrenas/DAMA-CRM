@@ -1,4 +1,5 @@
 import React from 'react';
+import { MessageSquare } from 'lucide-react';
 import { Ticket } from './TicketListTable';
 import { useTranslation } from '../../context/LanguageContext';
 
@@ -110,7 +111,10 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700/60">
-                      <span>💬 {ticket.messages?.length || 0}</span>
+                      <span className="flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3 text-slate-400" />
+                        <span>{ticket.messages?.length || 0}</span>
+                      </span>
                       <span className="font-medium text-slate-600 dark:text-slate-300 truncate max-w-[90px]">
                         {ticket.assignedTo?.name || t('tickets.unassigned')}
                       </span>

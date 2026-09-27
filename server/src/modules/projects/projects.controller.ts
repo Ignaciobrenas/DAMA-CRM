@@ -452,3 +452,277 @@ export async function getMyTasks(req: Request, res: Response): Promise<void> {
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function getTaskDetails(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const task = await prisma.task.findUnique({
+      where: { id },
+      include: {
+        project: {
+          include: {
+            members: { include: { user: { select: { id: true, name: true, email: true, avatar: true } } } },
+          },
+        },
+        sprint: true,
+        assignee: { select: { id: true, name: true, email: true, avatar: true } },
+        comments: {
+          include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+        workLogs: {
+          include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+          orderBy: { date: 'desc' },
+        },
+      },
+    });
+
+    if (!task) {
+      res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
+
+    res.json({ success: true, data: task });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function addTaskComment(req: Request, res: Response): Promise<void> {
+  try {
+    const { taskId } = req.params;
+    const { content, imageUrl } = req.body;
+    const user = req.user;
+
+    if (!content || !String(content).trim()) {
+      res.status(400).json({ success: false, message: 'El comentario no puede estar vacío' });
+      return;
+    }
+
+    const comment = await prisma.taskComment.create({
+      data: {
+        taskId,
+        userId: user?.id || null,
+        userName: user?.name || 'Usuario',
+        content: String(content).trim(),
+        imageUrl: imageUrl || null,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+    });
+
+    res.status(201).json({ success: true, data: comment, message: 'Comentario añadido con éxito' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function listTaskComments(req: Request, res: Response): Promise<void> {
+  try {
+    const { taskId } = req.params;
+    const comments = await prisma.taskComment.findMany({
+      where: { taskId },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json({ success: true, data: comments });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteTaskComment(req: Request, res: Response): Promise<void> {
+  try {
+    const { commentId } = req.params;
+    await prisma.taskComment.delete({ where: { id: commentId } });
+    res.json({ success: true, message: 'Comentario eliminado' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function addTaskWorkLog(req: Request, res: Response): Promise<void> {
+  try {
+    const { taskId } = req.params;
+    const { hours, description, date } = req.body;
+    const user = req.user;
+
+    const numHours = parseFloat(hours);
+    if (isNaN(numHours) || numHours <= 0) {
+      res.status(400).json({ success: false, message: 'Se requiere un número de horas válido' });
+      return;
+    }
+
+    const workLog = await prisma.taskWorkLog.create({
+      data: {
+        taskId,
+        userId: user?.id || null,
+        userName: user?.name || 'Usuario',
+        hours: numHours,
+        description: description || 'Reporte de tiempo',
+        date: date ? new Date(date) : new Date(),
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    // Automatically recalculate task total loggedHours
+    const allLogs = await prisma.taskWorkLog.findMany({ where: { taskId } });
+    const totalLogged = allLogs.reduce((sum, log) => sum + log.hours, 0);
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { loggedHours: totalLogged },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: workLog,
+      totalLoggedHours: totalLogged,
+      message: `Se han reportado ${numHours}h con éxito`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function listTaskWorkLogs(req: Request, res: Response): Promise<void> {
+  try {
+    const { taskId } = req.params;
+    const workLogs = await prisma.taskWorkLog.findMany({
+      where: { taskId },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    res.json({ success: true, data: workLogs });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteTaskWorkLog(req: Request, res: Response): Promise<void> {
+  try {
+    const { workLogId } = req.params;
+    const existing = await prisma.taskWorkLog.findUnique({ where: { id: workLogId } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Registro de tiempo no encontrado' });
+      return;
+    }
+
+    await prisma.taskWorkLog.delete({ where: { id: workLogId } });
+
+    // Recalculate loggedHours
+    const allLogs = await prisma.taskWorkLog.findMany({ where: { taskId: existing.taskId } });
+    const totalLogged = allLogs.reduce((sum, log) => sum + log.hours, 0);
+    await prisma.task.update({
+      where: { id: existing.taskId },
+      data: { loggedHours: totalLogged },
+    });
+
+    res.json({ success: true, message: 'Registro de tiempo eliminado', totalLoggedHours: totalLogged });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function getMyWorkLogs(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    const { from, to } = req.query;
+
+    const where: any = { userId };
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = new Date(from as string);
+      if (to) where.date.lte = new Date(to as string);
+    }
+
+    const workLogs = await prisma.taskWorkLog.findMany({
+      where,
+      include: {
+        task: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            project: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    const totalHours = workLogs.reduce((sum, log) => sum + log.hours, 0);
+
+    res.json({
+      success: true,
+      data: workLogs,
+      totalHours,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function assignProjectMember(req: Request, res: Response): Promise<void> {
+  try {
+    const { id: projectId } = req.params;
+    const { userId, role = 'MEMBER' } = req.body;
+
+    if (!userId) {
+      res.status(400).json({ success: false, message: 'Se requiere userId' });
+      return;
+    }
+
+    const member = await prisma.projectMember.upsert({
+      where: {
+        projectId_userId: { projectId, userId },
+      },
+      update: { role },
+      create: { projectId, userId, role },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+    });
+
+    res.status(201).json({ success: true, data: member, message: 'Miembro asignado al proyecto' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function removeProjectMember(req: Request, res: Response): Promise<void> {
+  try {
+    const { id: projectId, userId } = req.params;
+    await prisma.projectMember.deleteMany({
+      where: { projectId, userId },
+    });
+    res.json({ success: true, message: 'Miembro retirado del proyecto' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function getProjectMembers(req: Request, res: Response): Promise<void> {
+  try {
+    const { id: projectId } = req.params;
+    const members = await prisma.projectMember.findMany({
+      where: { projectId },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+    });
+
+    res.json({ success: true, data: members });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
