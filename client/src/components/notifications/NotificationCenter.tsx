@@ -300,46 +300,72 @@ export const NotificationCenter: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tabs: Unread vs All */}
-              <div className="flex items-center justify-between">
-                <div className="flex p-0.5 bg-gray-200/60 dark:bg-slate-800 rounded-lg text-xs">
-                  <button
-                    onClick={() => setActiveTab('unread')}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${
-                      activeTab === 'unread'
-                        ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-xs'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    {t('notifications.tabUnread')} {unreadCount > 0 && `(${unreadCount})`}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('all')}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${
-                      activeTab === 'all'
-                        ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-xs'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    {t('notifications.tabAll')} ({notifications.length})
-                  </button>
+              {/* Tabs & Category Filter Controls */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex p-0.5 bg-slate-200/80 dark:bg-slate-800 rounded-lg text-xs">
+                    <button
+                      onClick={() => setActiveTab('unread')}
+                      className={`px-2.5 py-1 rounded-md font-semibold text-xs transition ${
+                        activeTab === 'unread'
+                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {t('notifications.tabUnread')} {unreadCount > 0 && `(${unreadCount})`}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('all')}
+                      className={`px-2.5 py-1 rounded-md font-semibold text-xs transition ${
+                        activeTab === 'all'
+                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {t('notifications.tabAll')} ({notifications.length})
+                    </button>
+                  </div>
+
+                  {/* Styled Category Dropdown Pill */}
+                  <div className="flex items-center space-x-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-lg text-xs shadow-2xs">
+                    <Filter className="w-3 h-3 text-blue-500 shrink-0" />
+                    <select
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value)}
+                      className="text-[11px] font-semibold bg-transparent text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                    >
+                      <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterAll')}</option>
+                      <option value="ticket" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterTickets')}</option>
+                      <option value="invoice" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterInvoices')}</option>
+                      <option value="quote" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterQuotes')}</option>
+                      <option value="deal" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterDeals')}</option>
+                      <option value="stock" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterStock')}</option>
+                    </select>
+                  </div>
                 </div>
 
-                {/* Category filter select */}
-                <div className="flex items-center space-x-1 text-xs">
-                  <Filter className="w-3 h-3 text-gray-400" />
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="text-[11px] bg-transparent border-0 font-medium text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer"
-                  >
-                    <option value="all">{t('notifications.filterAll')}</option>
-                    <option value="ticket">{t('notifications.filterTickets')}</option>
-                    <option value="invoice">{t('notifications.filterInvoices')}</option>
-                    <option value="quote">{t('notifications.filterQuotes')}</option>
-                    <option value="deal">{t('notifications.filterDeals')}</option>
-                    <option value="stock">{t('notifications.filterStock')}</option>
-                  </select>
+                {/* Quick Category Chips */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                  {[
+                    { id: 'all', label: t('notifications.filterAll') },
+                    { id: 'ticket', label: t('notifications.filterTickets') },
+                    { id: 'invoice', label: t('notifications.filterInvoices') },
+                    { id: 'deal', label: t('notifications.filterDeals') },
+                    { id: 'stock', label: t('notifications.filterStock') },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setTypeFilter(cat.id)}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition shrink-0 ${
+                        typeFilter === cat.id
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200/60 dark:border-slate-700/60'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

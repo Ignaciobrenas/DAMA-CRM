@@ -85,23 +85,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start justify-end p-3 sm:p-4 pt-16 sm:pt-16 pointer-events-none">
-        {/* Backdrop for click outside */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs pointer-events-auto"
-        />
-
+      <div
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      >
         {/* Modal / Popup Card */}
         <motion.div
-          initial={{ opacity: 0, y: -10, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -10, scale: 0.96 }}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="relative w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden pointer-events-auto z-10"
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 max-h-[90vh] flex flex-col"
         >
           {/* Header Banner */}
           <div
