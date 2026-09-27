@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { wsService } from '../../services/websocket.service';
 import { NotificationService } from '../notifications/notifications.service';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 function calculateSlaDeadline(priority: string): Date {
   const now = Date.now();
@@ -21,9 +22,14 @@ function calculateSlaDeadline(priority: string): Date {
 // 1. GET /api/tickets - List tickets with filtering & search
 export async function getTickets(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { status, priority, category, search, contactId, companyId } = req.query;
 
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
 
     if (status) {
       where.status = status as string;
@@ -44,9 +50,9 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
     if (search && typeof search === 'string' && search.trim()) {
       const q = search.trim();
       where.OR = [
-        { ticketNumber: { contains: q } },
-        { title: { contains: q } },
-        { description: { contains: q } },
+        { ticketNumber: { contains: q, mode: 'insensitive' } },
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
       ];
     }
 
@@ -69,8 +75,8 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
       success: true,
       data: tickets,
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al obtener tickets de soporte', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al obtener tickets de soporte', error: error.message });
   }
 }
 
@@ -78,6 +84,8 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
 export async function getTicketById(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const ticket = await prisma.ticket.findUnique({
       where: { id },
@@ -98,18 +106,24 @@ export async function getTicketById(req: Request, res: Response): Promise<void> 
       return;
     }
 
+    if (!isSuper && ticket.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a este ticket' });
+      return;
+    }
+
     res.json({
       success: true,
       data: ticket,
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al obtener ticket', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al obtener ticket', error: error.message });
   }
 }
 
 // 3. POST /api/tickets - Create new ticket
 export async function createTicket(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const {
       title,
       description,
@@ -127,8 +141,24 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Generate unique sequential ticket number
-    const count = await prisma.ticket.count();
+    // Verify company/contact belongs to tenant
+    if (companyId) {
+      const comp = await prisma.company.findUnique({ where: { id: companyId } });
+      if (!comp || (!isGodSuperAdmin(req) && comp.tenantId !== tenantId)) {
+        res.status(400).json({ success: false, message: 'La empresa seleccionada no pertenece a su organización' });
+        return;
+      }
+    }
+    if (contactId) {
+      const cont = await prisma.contact.findUnique({ where: { id: contactId } });
+      if (!cont || (!isGodSuperAdmin(req) && cont.tenantId !== tenantId)) {
+        res.status(400).json({ success: false, message: 'El contacto seleccionado no pertenece a su organización' });
+        return;
+      }
+    }
+
+    // Generate sequential ticket number scoped per tenant
+    const count = await prisma.ticket.count({ where: { tenantId } });
     const year = new Date().getFullYear();
     const seq = String(count + 1).padStart(4, '0');
     const ticketNumber = `TCK-${year}-${seq}`;
@@ -138,8 +168,8 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
     const ticket = await prisma.ticket.create({
       data: {
         ticketNumber,
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         priority: priority.toUpperCase(),
         category: category.toUpperCase(),
         channel: channel.toUpperCase(),
@@ -148,13 +178,14 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
         companyId: companyId || null,
         assignedToId: assignedToId || null,
         slaDueAt,
+        tenantId,
         messages: initialMessage
           ? {
               create: {
                 senderType: req.user ? 'AGENT' : 'CUSTOMER',
                 senderId: req.user?.id || null,
                 senderName: req.user?.name || 'Cliente',
-                message: initialMessage,
+                message: initialMessage.trim(),
                 isInternal: false,
               },
             }
@@ -171,7 +202,7 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
     });
 
     // Broadcast live WebSocket event and persist real-time notification
-    wsService.broadcast('ticket:created', ticket);
+    wsService.broadcastToTenant(tenantId, 'ticket:created', ticket);
     await NotificationService.notifyTicketCreated({
       id: ticket.id,
       ticketNumber: ticket.ticketNumber,
@@ -187,6 +218,7 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
         action: 'CREATE_TICKET',
         entity: 'Ticket',
         entityId: ticket.id,
+        tenantId,
         details: JSON.stringify({ ticketNumber: ticket.ticketNumber, title: ticket.title, priority: ticket.priority }),
       },
     });
@@ -196,8 +228,8 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
       data: ticket,
       message: 'Ticket de soporte creado correctamente',
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al crear ticket', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al crear ticket', error: error.message });
   }
 }
 
@@ -205,13 +237,21 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
 export async function updateTicket(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { status, priority, category, assignedToId, title, description } = req.body;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existing = await prisma.ticket.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Ticket no encontrado' });
       return;
     }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar este ticket' });
+      return;
+    }
+
+    const { status, priority, category, assignedToId, title, description } = req.body;
 
     const data: any = {};
     if (status !== undefined) {
@@ -228,8 +268,8 @@ export async function updateTicket(req: Request, res: Response): Promise<void> {
     }
     if (category !== undefined) data.category = category;
     if (assignedToId !== undefined) data.assignedToId = assignedToId || null;
-    if (title !== undefined) data.title = title;
-    if (description !== undefined) data.description = description;
+    if (title !== undefined) data.title = title.trim();
+    if (description !== undefined) data.description = description.trim();
 
     const updated = await prisma.ticket.update({
       where: { id },
@@ -246,16 +286,16 @@ export async function updateTicket(req: Request, res: Response): Promise<void> {
       },
     });
 
-    // Broadcast live WebSocket event
-    wsService.broadcast('ticket:updated', updated);
+    // Broadcast live WebSocket event to tenant
+    wsService.broadcastToTenant(tenantId, 'ticket:updated', updated);
 
     res.json({
       success: true,
       data: updated,
       message: 'Ticket actualizado correctamente',
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al actualizar ticket', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al actualizar ticket', error: error.message });
   }
 }
 
@@ -263,16 +303,24 @@ export async function updateTicket(req: Request, res: Response): Promise<void> {
 export async function addTicketMessage(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { message, isInternal = false, attachments } = req.body;
-
-    if (!message || !message.trim()) {
-      res.status(400).json({ success: false, message: 'El contenido del mensaje no puede estar vacío' });
-      return;
-    }
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const ticket = await prisma.ticket.findUnique({ where: { id } });
     if (!ticket) {
       res.status(404).json({ success: false, message: 'Ticket no encontrado' });
+      return;
+    }
+
+    if (!isSuper && ticket.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a este ticket' });
+      return;
+    }
+
+    const { message, isInternal = false, attachments } = req.body;
+
+    if (!message || !message.trim()) {
+      res.status(400).json({ success: false, message: 'El contenido del mensaje no puede estar vacío' });
       return;
     }
 
@@ -300,7 +348,7 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
     }
 
     // Broadcast live WebSocket event and persist real-time notification
-    wsService.broadcast('ticket:message', {
+    wsService.broadcastToTenant(tenantId, 'ticket:message', {
       ticketId: id,
       message: newMessage,
     });
@@ -317,27 +365,36 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
       data: newMessage,
       message: isInternal ? 'Nota interna confidencial guardada' : 'Mensaje enviado correctamente',
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al registrar mensaje en el ticket', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al registrar mensaje en el ticket', error: error.message });
   }
 }
 
 // 6. GET /api/tickets/stats/summary - Summary SLA & operational metrics
 export async function getTicketStats(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const baseWhere: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      baseWhere.tenantId = tenantId;
+    }
+
     const [total, open, inProgress, resolved, closed, urgent] = await Promise.all([
-      prisma.ticket.count(),
-      prisma.ticket.count({ where: { status: 'OPEN' } }),
-      prisma.ticket.count({ where: { status: 'IN_PROGRESS' } }),
-      prisma.ticket.count({ where: { status: 'RESOLVED' } }),
-      prisma.ticket.count({ where: { status: 'CLOSED' } }),
-      prisma.ticket.count({ where: { priority: 'URGENT', status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+      prisma.ticket.count({ where: baseWhere }),
+      prisma.ticket.count({ where: { ...baseWhere, status: 'OPEN' } }),
+      prisma.ticket.count({ where: { ...baseWhere, status: 'IN_PROGRESS' } }),
+      prisma.ticket.count({ where: { ...baseWhere, status: 'RESOLVED' } }),
+      prisma.ticket.count({ where: { ...baseWhere, status: 'CLOSED' } }),
+      prisma.ticket.count({ where: { ...baseWhere, priority: 'URGENT', status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
     ]);
 
     // Calculate SLA breaches among active tickets
     const now = new Date();
     const breachedActiveTickets = await prisma.ticket.count({
       where: {
+        ...baseWhere,
         status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING_CUSTOMER'] },
         slaDueAt: { lt: now },
       },
@@ -358,7 +415,7 @@ export async function getTicketStats(req: Request, res: Response): Promise<void>
         complianceRate,
       },
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al obtener métricas de soporte', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al obtener métricas de soporte', error: error.message });
   }
 }

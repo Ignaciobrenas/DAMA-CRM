@@ -1,11 +1,18 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export async function listProjects(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { status } = req.query;
+
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
     if (status) where.status = String(status);
 
     const projects = await prisma.project.findMany({
@@ -48,6 +55,9 @@ export async function listProjects(req: Request, res: Response): Promise<void> {
 export async function getProject(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
@@ -68,6 +78,11 @@ export async function getProject(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    if (!isSuper && project.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a este proyecto' });
+      return;
+    }
+
     res.json({ success: true, data: project });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -76,11 +91,21 @@ export async function getProject(req: Request, res: Response): Promise<void> {
 
 export async function createProject(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const { name, description, status, priority, dealId, startDate, endDate, budget } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       res.status(400).json({ success: false, message: 'El nombre del proyecto es obligatorio' });
       return;
+    }
+
+    // Verify deal belongs to same tenant
+    if (dealId) {
+      const deal = await prisma.deal.findUnique({ where: { id: dealId } });
+      if (!deal || (!isGodSuperAdmin(req) && deal.tenantId !== tenantId)) {
+        res.status(400).json({ success: false, message: 'La oportunidad comercial seleccionada no pertenece a su organización' });
+        return;
+      }
     }
 
     const project = await prisma.project.create({
@@ -92,11 +117,12 @@ export async function createProject(req: Request, res: Response): Promise<void> 
         dealId: dealId || null,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
-        budget: budget ? parseFloat(budget) : null,
+        budget: budget !== undefined && budget !== '' ? parseFloat(budget) : null,
+        tenantId,
       },
     });
 
-    await logAudit((req as any).user?.id || null, 'CREATE', 'Project', project.id, { name: project.name }, req.ip);
+    await logAudit(req.user?.id || null, 'CREATE', 'Project', project.id, { name: project.name, tenantId }, req.ip);
 
     res.status(201).json({ success: true, data: project });
   } catch (error: any) {
@@ -107,13 +133,21 @@ export async function createProject(req: Request, res: Response): Promise<void> 
 export async function updateProject(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { name, description, status, priority, dealId, startDate, endDate, budget } = req.body;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Proyecto no encontrado' });
       return;
     }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar este proyecto' });
+      return;
+    }
+
+    const { name, description, status, priority, dealId, startDate, endDate, budget } = req.body;
 
     const updated = await prisma.project.update({
       where: { id },
@@ -125,16 +159,16 @@ export async function updateProject(req: Request, res: Response): Promise<void> 
         dealId: dealId !== undefined ? (dealId || null) : undefined,
         startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
         endDate: endDate !== undefined ? (endDate ? new Date(endDate) : null) : undefined,
-        budget: budget !== undefined ? (budget ? parseFloat(budget) : null) : undefined,
+        budget: budget !== undefined ? (budget !== '' ? parseFloat(budget) : null) : undefined,
       },
     });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'UPDATE',
       'Project',
       updated.id,
-      { name: updated.name },
+      { name: updated.name, tenantId },
       req.ip
     );
 
@@ -147,10 +181,17 @@ export async function updateProject(req: Request, res: Response): Promise<void> 
 export async function deleteProject(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Proyecto no encontrado' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar este proyecto' });
       return;
     }
 
@@ -160,11 +201,11 @@ export async function deleteProject(req: Request, res: Response): Promise<void> 
     await prisma.project.delete({ where: { id } });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'DELETE',
       'Project',
       id,
-      { name: existing.name },
+      { name: existing.name, tenantId },
       req.ip
     );
 
@@ -177,9 +218,18 @@ export async function deleteProject(req: Request, res: Response): Promise<void> 
 export async function createSprint(req: Request, res: Response): Promise<void> {
   try {
     const { projectId } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project || (!isSuper && project.tenantId !== tenantId)) {
+      res.status(404).json({ success: false, message: 'Proyecto no encontrado o sin acceso' });
+      return;
+    }
+
     const { name, goal, startDate, endDate } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       res.status(400).json({ success: false, message: 'El nombre del sprint es obligatorio' });
       return;
     }
@@ -203,8 +253,15 @@ export async function createSprint(req: Request, res: Response): Promise<void> {
 
 export async function listTasks(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { projectId, sprintId, assigneeId, status } = req.query;
+
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.project = { tenantId };
+    }
+
     if (projectId) where.projectId = String(projectId);
     if (sprintId) where.sprintId = String(sprintId);
     if (assigneeId) where.assigneeId = String(assigneeId);
@@ -228,10 +285,18 @@ export async function listTasks(req: Request, res: Response): Promise<void> {
 
 export async function createTask(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { projectId, sprintId, title, description, status, priority, storyPoints, estimatedHours, assigneeId, dueDate } = req.body;
 
     if (!projectId || !title) {
       res.status(400).json({ success: false, message: 'Proyecto y título son obligatorios' });
+      return;
+    }
+
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project || (!isSuper && project.tenantId !== tenantId)) {
+      res.status(404).json({ success: false, message: 'Proyecto no encontrado o sin acceso' });
       return;
     }
 
@@ -254,7 +319,7 @@ export async function createTask(req: Request, res: Response): Promise<void> {
       },
     });
 
-    await logAudit((req as any).user?.id || null, 'CREATE', 'Task', task.id, { title: task.title }, req.ip);
+    await logAudit(req.user?.id || null, 'CREATE', 'Task', task.id, { title: task.title, projectId, tenantId }, req.ip);
 
     res.status(201).json({ success: true, data: task });
   } catch (error: any) {
@@ -265,6 +330,24 @@ export async function createTask(req: Request, res: Response): Promise<void> {
 export async function patchTask(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existingTask = await prisma.task.findUnique({
+      where: { id },
+      include: { project: true },
+    });
+
+    if (!existingTask) {
+      res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
+
+    if (!isSuper && existingTask.project.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar esta tarea' });
+      return;
+    }
+
     const { status, priority, storyPoints, estimatedHours, loggedHours, assigneeId, sprintId, dueDate, title, description } = req.body;
 
     const data: any = {};
@@ -298,21 +381,32 @@ export async function patchTask(req: Request, res: Response): Promise<void> {
 export async function deleteTask(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
-    const existing = await prisma.task.findUnique({ where: { id } });
+    const existing = await prisma.task.findUnique({
+      where: { id },
+      include: { project: true },
+    });
+
     if (!existing) {
       res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
+
+    if (!isSuper && existing.project.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar esta tarea' });
       return;
     }
 
     await prisma.task.delete({ where: { id } });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'DELETE',
       'Task',
       id,
-      { title: existing.title },
+      { title: existing.title, tenantId },
       req.ip
     );
 
@@ -324,13 +418,21 @@ export async function deleteTask(req: Request, res: Response): Promise<void> {
 
 export async function getMyTasks(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {
+      assigneeId: userId,
+      status: { not: 'DONE' },
+    };
+
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.project = { tenantId };
+    }
 
     const myTasks = await prisma.task.findMany({
-      where: {
-        assigneeId: userId,
-        status: { not: 'DONE' },
-      },
+      where,
       include: {
         project: { select: { id: true, name: true } },
         sprint: { select: { id: true, name: true } },

@@ -50,6 +50,35 @@ export interface IntegrationsResponseData {
     email?: string;
     hasClientSecret?: boolean;
   };
+  sage_one?: ConnectorPublicConfig & {
+    apiUrl: string;
+    businessId?: string;
+    hasApiKey?: boolean;
+    hasClientSecret?: boolean;
+    syncContacts: boolean;
+    syncInvoices: boolean;
+    syncProducts: boolean;
+  };
+  sage_50?: ConnectorPublicConfig & {
+    endpointUrl: string;
+    companyName: string;
+    username?: string;
+    hasPassword?: boolean;
+    hasApiKey?: boolean;
+    fiscalYear?: string;
+    syncCustomers: boolean;
+    syncInvoices: boolean;
+    syncStock: boolean;
+  };
+  sage_200?: ConnectorPublicConfig & {
+    baseUrl: string;
+    companyId?: string;
+    hasSubscriptionKey?: boolean;
+    hasClientSecret?: boolean;
+    syncCustomers: boolean;
+    syncInvoices: boolean;
+    syncLedgers: boolean;
+  };
 }
 
 export interface IntegrationsEndpoints {

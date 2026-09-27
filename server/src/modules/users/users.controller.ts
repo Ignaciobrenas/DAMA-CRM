@@ -2,10 +2,20 @@ import { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import { prisma } from '../../prisma';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export async function listUsers(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
     const users = await prisma.user.findMany({
+      where,
       include: {
         role: {
           include: {
@@ -32,6 +42,7 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
         twoFactorEnabled: u.twoFactorEnabled,
         role: u.role.name,
         roleId: u.roleId,
+        tenantId: u.tenantId,
         customPermissions,
         rolePermissions: u.role.permissions.map((p) => ({ resource: p.resource, action: p.action })),
         createdAt: u.createdAt,
@@ -46,12 +57,9 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
 
 export async function createUser(req: Request, res: Response): Promise<void> {
   try {
-    const currentUser = (req as any).user;
-    const isSuperAdmin =
-      currentUser?.role === 'ADMIN' &&
-      (currentUser?.email === 'ignaciobrenas@gmail.com' ||
-        currentUser?.email === 'admin@dama-crm.local' ||
-        currentUser?.tenantId === 'master');
+    const currentUser = req.user;
+    const isSuper = isGodSuperAdmin(req);
+    const effectiveTenant = getRequestTenant(req);
 
     const { email, password, name, roleId, tenantId: targetTenantId } = req.body;
 
@@ -60,9 +68,9 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const assignedTenantId = isSuperAdmin
-      ? targetTenantId || currentUser?.tenantId || 'master'
-      : currentUser?.tenantId || 'master';
+    const assignedTenantId = isSuper
+      ? targetTenantId || effectiveTenant || 'master'
+      : effectiveTenant;
 
     const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (existing) {
@@ -75,7 +83,7 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       data: {
         email: email.toLowerCase().trim(),
         passwordHash,
-        name,
+        name: name.trim(),
         roleId,
         tenantId: assignedTenantId,
         isActive: true,
@@ -104,16 +112,24 @@ export async function createUser(req: Request, res: Response): Promise<void> {
 export async function updateUser(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { name, email, roleId, password, isActive, customPermissions } = req.body;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existingUser = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, email: true, preferences: true },
+      select: { id: true, email: true, preferences: true, tenantId: true },
     });
     if (!existingUser) {
       res.status(404).json({ success: false, message: 'Usuario no encontrado' });
       return;
     }
+
+    if (!isSuper && existingUser.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar usuarios de otra organización' });
+      return;
+    }
+
+    const { name, email, roleId, password, isActive, customPermissions } = req.body;
 
     const dataToUpdate: any = {};
     if (name) dataToUpdate.name = name.trim();
@@ -147,11 +163,11 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
     });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'UPDATE',
       'User',
       id,
-      { name: updated.name, email: updated.email, role: updated.role.name },
+      { name: updated.name, email: updated.email, role: updated.role.name, tenantId },
       req.ip
     );
 
@@ -175,6 +191,7 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
         twoFactorEnabled: updated.twoFactorEnabled,
         role: updated.role.name,
         roleId: updated.roleId,
+        tenantId: updated.tenantId,
         customPermissions: parsedCustomPermissions,
         rolePermissions: updated.role.permissions.map((p) => ({ resource: p.resource, action: p.action })),
         createdAt: updated.createdAt,
@@ -188,7 +205,9 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
 export async function deleteUser(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const currentUserId = (req as any).user?.id;
+    const currentUserId = req.user?.id;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     if (id === currentUserId) {
       res.status(400).json({
@@ -204,8 +223,13 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    if (!isSuper && user.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar este usuario' });
+      return;
+    }
+
     await prisma.user.delete({ where: { id } });
-    await logAudit(currentUserId || null, 'DELETE', 'User', id, { email: user.email }, req.ip);
+    await logAudit(currentUserId || null, 'DELETE', 'User', id, { email: user.email, tenantId }, req.ip);
 
     res.json({ success: true, message: `Usuario ${user.name} eliminado correctamente` });
   } catch (error: any) {
@@ -232,7 +256,7 @@ export async function listRoles(req: Request, res: Response): Promise<void> {
 export async function updateRolePermissions(req: Request, res: Response): Promise<void> {
   try {
     const { roleId } = req.params;
-    const { permissions } = req.body; // Array of { resource: string, action: string }
+    const { permissions } = req.body;
 
     if (!Array.isArray(permissions)) {
       res.status(400).json({ success: false, message: 'Formato de permisos inválido' });
@@ -253,7 +277,7 @@ export async function updateRolePermissions(req: Request, res: Response): Promis
       });
     }
 
-    await logAudit((req as any).user?.id || null, 'UPDATE_PERMISSIONS', 'Role', roleId, { count: permissions.length }, req.ip);
+    await logAudit(req.user?.id || null, 'UPDATE_PERMISSIONS', 'Role', roleId, { count: permissions.length }, req.ip);
 
     const updatedRole = await prisma.role.findUnique({
       where: { id: roleId },
@@ -268,14 +292,23 @@ export async function updateRolePermissions(req: Request, res: Response): Promis
 
 export async function listAuditLogs(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
     const logs = await prisma.auditLog.findMany({
+      where,
       include: {
         user: {
           select: { id: true, name: true, email: true },
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 100,
     });
 
     res.json({ success: true, data: logs });
@@ -311,7 +344,7 @@ export const DEFAULT_PREFERENCES = {
 
 export async function getUserPreferences(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     if (!userId) {
       res.status(401).json({ success: false, message: 'Usuario no autenticado' });
       return;
@@ -339,7 +372,7 @@ export async function getUserPreferences(req: Request, res: Response): Promise<v
 
 export async function updateUserPreferences(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     if (!userId) {
       res.status(401).json({ success: false, message: 'Usuario no autenticado' });
       return;
@@ -383,7 +416,7 @@ export async function updateUserPreferences(req: Request, res: Response): Promis
 
 export async function updateProfile(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     if (!userId) {
       res.status(401).json({ success: false, message: 'Usuario no autenticado' });
       return;
@@ -420,5 +453,3 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
     res.status(500).json({ success: false, message: error.message });
   }
 }
-
-

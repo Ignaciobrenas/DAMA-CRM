@@ -16,6 +16,11 @@ import {
   signPublicQuote,
   recordInvoicePayment,
   getAgingReport,
+  listRecurringInvoices,
+  createRecurringInvoice,
+  updateRecurringInvoiceStatus,
+  generateInvoiceFromRecurring,
+  deleteRecurringInvoice,
 } from './invoices.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -41,6 +46,13 @@ router.patch('/:id/status', requirePermission('invoices', 'update'), updateInvoi
 router.post('/:id/payments', requirePermission('invoices', 'update'), recordInvoicePayment);
 router.get('/:id/pdf', requirePermission('invoices', 'read'), downloadInvoicePdf);
 router.delete('/:id', requirePermission('invoices', 'delete'), deleteInvoice);
+
+// Recurring Invoices / Subscriptions
+router.get('/recurring/all', requirePermission('invoices', 'read'), listRecurringInvoices);
+router.post('/recurring', requirePermission('invoices', 'create'), createRecurringInvoice);
+router.patch('/recurring/:id/status', requirePermission('invoices', 'update'), updateRecurringInvoiceStatus);
+router.post('/recurring/:id/generate', requirePermission('invoices', 'create'), generateInvoiceFromRecurring);
+router.delete('/recurring/:id', requirePermission('invoices', 'delete'), deleteRecurringInvoice);
 
 // Quotes
 router.get('/quotes/all', requirePermission('quotes', 'read'), listQuotes);

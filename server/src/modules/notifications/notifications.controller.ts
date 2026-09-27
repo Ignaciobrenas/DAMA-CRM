@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { NotificationService } from './notifications.service';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export const getNotifications = async (req: Request, res: Response): Promise<void> => {
   try {
-    const tenantId = (req as any).tenantId || (req as any).user?.tenantId || 'master';
-    const userId = (req as any).user?.id;
+    const tenantId = getRequestTenant(req);
+    const userId = req.user?.id;
+    const isSuper = isGodSuperAdmin(req);
     const unreadOnly = req.query.unreadOnly === 'true';
     const type = req.query.type as string | undefined;
     const limit = Math.min(Number(req.query.limit) || 30, 100);
@@ -14,7 +16,7 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
 
     const where: any = {
       tenantId,
-      ...(userId ? { OR: [{ userId }, { userId: null }] } : {}),
+      ...(userId && !isSuper ? { OR: [{ userId }, { userId: null }] } : {}),
       ...(unreadOnly ? { read: false } : {}),
       ...(type && type !== 'all' ? { type } : {}),
     };
@@ -30,7 +32,7 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
       prisma.notification.count({
         where: {
           tenantId,
-          ...(userId ? { OR: [{ userId }, { userId: null }] } : {}),
+          ...(userId && !isSuper ? { OR: [{ userId }, { userId: null }] } : {}),
           read: false,
         },
       }),
@@ -44,7 +46,7 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
         total,
         page,
         limit,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / limit) || 1,
       },
     });
   } catch (error: any) {
@@ -54,13 +56,14 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
 
 export const getUnreadCount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const tenantId = (req as any).tenantId || (req as any).user?.tenantId || 'master';
-    const userId = (req as any).user?.id;
+    const tenantId = getRequestTenant(req);
+    const userId = req.user?.id;
+    const isSuper = isGodSuperAdmin(req);
 
     const unreadCount = await prisma.notification.count({
       where: {
         tenantId,
-        ...(userId ? { OR: [{ userId }, { userId: null }] } : {}),
+        ...(userId && !isSuper ? { OR: [{ userId }, { userId: null }] } : {}),
         read: false,
       },
     });
@@ -74,10 +77,11 @@ export const getUnreadCount = async (req: Request, res: Response): Promise<void>
 export const markAsRead = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const tenantId = (req as any).tenantId || (req as any).user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const notification = await prisma.notification.findFirst({
-      where: { id, tenantId },
+      where: isSuper ? { id } : { id, tenantId },
     });
 
     if (!notification) {
@@ -101,12 +105,13 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
 
 export const markAllAsRead = async (req: Request, res: Response): Promise<void> => {
   try {
-    const tenantId = (req as any).tenantId || (req as any).user?.tenantId || 'master';
-    const userId = (req as any).user?.id;
+    const tenantId = getRequestTenant(req);
+    const userId = req.user?.id;
+    const isSuper = isGodSuperAdmin(req);
 
     const where: any = {
       tenantId,
-      ...(userId ? { OR: [{ userId }, { userId: null }] } : {}),
+      ...(userId && !isSuper ? { OR: [{ userId }, { userId: null }] } : {}),
       read: false,
     };
 
@@ -127,10 +132,11 @@ export const markAllAsRead = async (req: Request, res: Response): Promise<void> 
 export const deleteNotification = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const tenantId = (req as any).tenantId || (req as any).user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const notification = await prisma.notification.findFirst({
-      where: { id, tenantId },
+      where: isSuper ? { id } : { id, tenantId },
     });
 
     if (!notification) {
@@ -147,12 +153,13 @@ export const deleteNotification = async (req: Request, res: Response): Promise<v
 
 export const clearReadNotifications = async (req: Request, res: Response): Promise<void> => {
   try {
-    const tenantId = (req as any).tenantId || (req as any).user?.tenantId || 'master';
-    const userId = (req as any).user?.id;
+    const tenantId = getRequestTenant(req);
+    const userId = req.user?.id;
+    const isSuper = isGodSuperAdmin(req);
 
     const where: any = {
       tenantId,
-      ...(userId ? { OR: [{ userId }, { userId: null }] } : {}),
+      ...(userId && !isSuper ? { OR: [{ userId }, { userId: null }] } : {}),
       read: true,
     };
 
@@ -165,7 +172,7 @@ export const clearReadNotifications = async (req: Request, res: Response): Promi
 
 export const createNotification = async (req: Request, res: Response): Promise<void> => {
   try {
-    const tenantId = (req as any).tenantId || (req as any).user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const { title, message, type, priority, actionUrl, metadata, userId } = req.body;
 
     if (!title || !message) {
@@ -175,7 +182,7 @@ export const createNotification = async (req: Request, res: Response): Promise<v
 
     const created = await NotificationService.dispatch({
       tenantId,
-      userId: userId || (req as any).user?.id,
+      userId: userId || req.user?.id,
       title,
       message,
       type,

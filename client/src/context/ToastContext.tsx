@@ -109,8 +109,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ToastContext.Provider value={{ showToast, success, error, warning, info, dismiss }}>
       {children}
 
-      {/* Floating Animated Toast Container */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-3 sm:px-0">
+      {/* Floating Animated Toast Container with Mobile & Desktop Ergonomics */}
+      <div className="fixed sm:top-4 sm:right-4 sm:bottom-auto bottom-20 left-4 right-4 sm:left-auto z-50 flex flex-col gap-2.5 max-w-sm w-auto sm:w-full pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => {
             const Icon = toastIcons[toast.type];
@@ -120,13 +120,20 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               <motion.div
                 key={toast.id}
                 layout
-                initial={{ opacity: 0, y: -20, scale: 0.92, x: 20 }}
-                animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
-                exit={{ opacity: 0, scale: 0.85, x: 40, transition: { duration: 0.2 } }}
+                initial={{ opacity: 0, y: 20, scale: 0.94 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85, x: 50, transition: { duration: 0.2 } }}
                 transition={{ type: 'spring', stiffness: 450, damping: 28 }}
-                className={`pointer-events-auto relative overflow-hidden rounded-xl border shadow-lg ${colors.bg} ${colors.border} p-3.5 flex items-start space-x-3`}
+                drag="x"
+                dragConstraints={{ left: 0, right: 150 }}
+                onDragEnd={(_, info) => {
+                  if (info.offset.x > 80 || info.velocity.x > 400) {
+                    dismiss(toast.id);
+                  }
+                }}
+                className={`pointer-events-auto relative overflow-hidden rounded-2xl border shadow-xl ${colors.bg} ${colors.border} p-3.5 flex items-start space-x-3 backdrop-blur-md`}
               >
-                <div className={`p-1.5 rounded-lg shrink-0 ${colors.iconBg}`}>
+                <div className={`p-2 rounded-xl shrink-0 ${colors.iconBg}`}>
                   <Icon className="w-4 h-4" />
                 </div>
 
@@ -135,7 +142,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     {toast.title}
                   </div>
                   {toast.message && (
-                    <div className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5 leading-snug">
+                    <div className="text-[11px] text-gray-600 dark:text-slate-300 mt-0.5 leading-snug">
                       {toast.message}
                     </div>
                   )}
@@ -144,14 +151,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 <button
                   type="button"
                   onClick={() => dismiss(toast.id)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-0.5 rounded-md"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-1 rounded-lg"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
 
                 {/* Animated progress bar */}
                 <motion.div
-                  className={`absolute bottom-0 left-0 right-0 h-0.5 ${colors.bar}`}
+                  className={`absolute bottom-0 left-0 right-0 h-1 ${colors.bar}`}
                   initial={{ width: '100%' }}
                   animate={{ width: '0%' }}
                   transition={{ duration: (toast.duration || 4000) / 1000, ease: 'linear' }}
