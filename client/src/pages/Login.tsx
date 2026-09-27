@@ -61,6 +61,24 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [invitedRole, setInvitedRole] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prefillEmail = params.get('inviteEmail') || localStorage.getItem('dama_prefill_email');
+    if (prefillEmail) {
+      setEmail(prefillEmail);
+      localStorage.removeItem('dama_prefill_email');
+    }
+    const roleParam = params.get('inviteRole');
+    if (roleParam) {
+      setInvitedRole(roleParam);
+    }
+    const tenantParam = params.get('tenant');
+    if (tenantParam && tenantParam !== 'master') {
+      localStorage.setItem('dama_switch_tenant', tenantParam);
+    }
+  }, []);
 
   // Clear messages when mode changes
   const switchMode = (newMode: AuthMode) => {
@@ -275,6 +293,13 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
           <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400 animate-in fade-in duration-200">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {invitedRole && (
+          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-200">
+            <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
+            <span>Invitación activa para unirte con rol <strong>{invitedRole}</strong>. Inicia sesión o introduce tu contraseña para activar tu acceso.</span>
           </div>
         )}
 

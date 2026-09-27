@@ -165,12 +165,27 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
     }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (!generatedInviteLink) return;
-    navigator.clipboard.writeText(generatedInviteLink);
-    setIsCopied(true);
-    toast.success('Enlace copiado al portapapeles');
-    setTimeout(() => setIsCopied(false), 2500);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(generatedInviteLink);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = generatedInviteLink;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setIsCopied(true);
+      toast.success('Enlace copiado al portapapeles', 'Puedes pegarlo donde desees (WhatsApp, correo, etc.)');
+      setTimeout(() => setIsCopied(false), 2500);
+    } catch {
+      toast.error('Selecciona el texto del enlace y cópialo con Ctrl+C');
+    }
   };
 
   const handleToggleStatus = async (tenant: Tenant) => {

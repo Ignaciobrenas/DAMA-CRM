@@ -19,6 +19,12 @@ import {
   Shield,
   Calendar,
   Key,
+  Copy,
+  Check,
+  Link as LinkIcon,
+  Send,
+  Share2,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -104,6 +110,62 @@ export const UsersSettings: React.FC = () => {
   const [auditTrailData, setAuditTrailData] = useState<{ logins: any[]; changes: any[]; user?: any } | null>(null);
   const [isAuditLoading, setIsAuditLoading] = useState(false);
   const [auditTab, setAuditTab] = useState<'logins' | 'changes' | 'permissions'>('logins');
+
+  // User Invitation Link Modal
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRoleId, setInviteRoleId] = useState('');
+  const [generatedUserInviteLink, setGeneratedUserInviteLink] = useState('');
+  const [isUserInviteCopied, setIsUserInviteCopied] = useState(false);
+  const [isGeneratingUserInvite, setIsGeneratingUserInvite] = useState(false);
+
+  const handleOpenInviteModal = () => {
+    setInviteEmail('');
+    setInviteRoleId(roles[0]?.id || '');
+    setGeneratedUserInviteLink('');
+    setIsUserInviteCopied(false);
+    setIsInviteModalOpen(true);
+  };
+
+  const handleGenerateUserInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsGeneratingUserInvite(true);
+    try {
+      const selectedRole = roles.find((r) => r.id === inviteRoleId)?.name || 'EMPLOYEE';
+      const origin = window.location.origin;
+      const tenantSlug = user?.tenantId || 'master';
+      const inviteUrl = `${origin}/login?inviteEmail=${encodeURIComponent(inviteEmail)}&inviteRole=${encodeURIComponent(selectedRole)}&tenant=${encodeURIComponent(tenantSlug)}&mode=register`;
+      setGeneratedUserInviteLink(inviteUrl);
+      toast.success('Enlace de invitación generado', 'Copia el enlace para enviarlo por WhatsApp o correo');
+    } catch {
+      toast.error('Error al generar enlace de invitación');
+    } finally {
+      setIsGeneratingUserInvite(false);
+    }
+  };
+
+  const handleCopyUserInvite = async () => {
+    if (!generatedUserInviteLink) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(generatedUserInviteLink);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = generatedUserInviteLink;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setIsUserInviteCopied(true);
+      toast.success('Enlace copiado al portapapeles', 'Puedes pegarlo donde desees (WhatsApp, correo, etc.)');
+      setTimeout(() => setIsUserInviteCopied(false), 2500);
+    } catch {
+      toast.error('Selecciona el enlace y cópialo con Ctrl+C');
+    }
+  };
 
   const openAuditModal = async (targetUser: UserItem) => {
     setSelectedAuditUser(targetUser);
@@ -298,18 +360,29 @@ export const UsersSettings: React.FC = () => {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
-            setUserModalError('');
-            setIsUserModalOpen(true);
-          }}
-          className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors shrink-0"
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          <span>{t('settings.newUserBtn', 'Nuevo Usuario')}</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleOpenInviteModal}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+            title="Generar y copiar un enlace de invitación para nuevos compañeros de equipo"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>{t('settings.inviteLinkBtn', 'Invitar por Enlace')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
+              setUserModalError('');
+              setIsUserModalOpen(true);
+            }}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>{t('settings.newUserBtn', 'Nuevo Usuario')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Sorting Controls */}
@@ -1040,6 +1113,143 @@ export const UsersSettings: React.FC = () => {
                   type="button"
                   onClick={() => setIsAuditModalOpen(false)}
                   className="px-4 py-1.5 bg-gray-900 hover:bg-black text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-bold transition"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Invite User Link Generator */}
+        {isInviteModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsInviteModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs cursor-pointer"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto cursor-default m-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                      {t('settings.inviteModalTitle', 'Invitar Usuario con Enlace')}
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
+                      {t('settings.inviteModalDesc', 'Genera un enlace directo para que tu compañero se registre al instante')}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleGenerateUserInvite} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Correo Electrónico del Invitado (Opcional)
+                  </label>
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="ejemplo@tuempresa.com"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Si lo indicas, el campo de correo vendrá prerrellenado en el formulario de registro.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Rol Asignado por Defecto *
+                  </label>
+                  <select
+                    value={inviteRoleId}
+                    onChange={(e) => setInviteRoleId(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={isGeneratingUserInvite}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5"
+                  >
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    <span>{isGeneratingUserInvite ? 'Generando...' : 'Generar Enlace'}</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Generated Link Display Box */}
+              {generatedUserInviteLink && (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-2.5 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      Enlace de Invitación Listo para Compartir
+                    </span>
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Válido para tu empresa</span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={generatedUserInviteLink}
+                      className="flex-1 px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-xl text-slate-800 dark:text-slate-200 font-mono select-all focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyUserInvite}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shrink-0 shadow-xs transition"
+                      title="Copiar enlace al portapapeles"
+                    >
+                      {isUserInviteCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>{isUserInviteCopied ? '¡Copiado!' : 'Copiar'}</span>
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                    💡 <strong>Copia y pega este enlace</strong> en WhatsApp, Slack, Teams o correo para que tu compañero se dé de alta directamente con el rol seleccionado.
+                  </p>
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div className="pt-2 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition"
                 >
                   Cerrar
                 </button>
