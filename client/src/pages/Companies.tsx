@@ -20,7 +20,16 @@ import {
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
-import { isValidEmail, isValidPhone } from '../utils/validators';
+import {
+  isValidEmail,
+  isValidPhone,
+  validateEmail,
+  validatePhone,
+  validateUrl,
+  validateRequired,
+  validateSpanishTaxId,
+} from '../utils/validators';
+import { ValidatedInput } from '../components/common/ValidatedInput';
 import { exportToCSV } from '../utils/exportUtils';
 
 export const Companies: React.FC = () => {
@@ -605,87 +614,64 @@ export const Companies: React.FC = () => {
             )}
 
             <form onSubmit={handleCreateCompany} className="mt-4 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Nombre Comercial <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej. Acme Corp SL"
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                />
-              </div>
+              <ValidatedInput
+                label="Nombre Comercial / Razón Social"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                validator={(val) => validateRequired(val, 'La razón social')}
+                placeholder="Ej. Acme Corp SL"
+              />
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.sector')}</label>
-                <input
-                  type="text"
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  placeholder="Ej: Software, Logística, Salud"
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+              <ValidatedInput
+                label={t('companies.sector', 'Sector / Industria')}
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                placeholder="Ej: Software, Logística, Salud"
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <ValidatedInput
+                  label={t('companies.city', 'Ciudad')}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Madrid"
+                />
+                <ValidatedInput
+                  label={t('companies.revenue', 'Facturación (€)')}
+                  type="number"
+                  value={annualRevenue}
+                  onChange={(e) => setAnnualRevenue(e.target.value)}
+                  placeholder="250000"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.city')}</label>
-                  <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="Madrid"
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.revenue')}</label>
-                  <input
-                    type="number"
-                    value={annualRevenue}
-                    onChange={(e) => setAnnualRevenue(e.target.value)}
-                    placeholder="250000"
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.website')}</label>
-                  <input
-                    type="text"
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.phone')}</label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+34 912 345 678"
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.email')}</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="contacto@empresa.com"
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                <ValidatedInput
+                  label={t('companies.website', 'Sitio Web')}
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  validator={validateUrl}
+                  placeholder="https://..."
+                />
+                <ValidatedInput
+                  label={t('companies.phone', 'Teléfono')}
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  validator={validatePhone}
+                  placeholder="+34 912 345 678"
                 />
               </div>
+
+              <ValidatedInput
+                label={t('companies.email', 'Email Corporativo')}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                validator={(val) => (!val ? { isValid: true } : validateEmail(val))}
+                placeholder="contacto@empresa.com"
+              />
 
               <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
                 <button
@@ -727,80 +713,57 @@ export const Companies: React.FC = () => {
             )}
 
             <form onSubmit={handleUpdateCompany} className="mt-4 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Nombre Comercial <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                />
-              </div>
+              <ValidatedInput
+                label="Nombre Comercial / Razón Social"
+                required
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                validator={(val) => validateRequired(val, 'La razón social')}
+              />
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.sector')}</label>
-                <input
-                  type="text"
-                  value={editIndustry}
-                  onChange={(e) => setEditIndustry(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+              <ValidatedInput
+                label={t('companies.sector', 'Sector / Industria')}
+                value={editIndustry}
+                onChange={(e) => setEditIndustry(e.target.value)}
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <ValidatedInput
+                  label={t('companies.city', 'Ciudad')}
+                  value={editCity}
+                  onChange={(e) => setEditCity(e.target.value)}
+                />
+                <ValidatedInput
+                  label={t('companies.revenue', 'Facturación (€)')}
+                  type="number"
+                  value={editAnnualRevenue}
+                  onChange={(e) => setEditAnnualRevenue(e.target.value)}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.city')}</label>
-                  <input
-                    type="text"
-                    value={editCity}
-                    onChange={(e) => setEditCity(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.revenue')}</label>
-                  <input
-                    type="number"
-                    value={editAnnualRevenue}
-                    onChange={(e) => setEditAnnualRevenue(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.website')}</label>
-                  <input
-                    type="text"
-                    value={editWebsite}
-                    onChange={(e) => setEditWebsite(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.phone')}</label>
-                  <input
-                    type="text"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('companies.email')}</label>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
+                <ValidatedInput
+                  label={t('companies.website', 'Sitio Web')}
+                  value={editWebsite}
+                  onChange={(e) => setEditWebsite(e.target.value)}
+                  validator={validateUrl}
+                />
+                <ValidatedInput
+                  label={t('companies.phone', 'Teléfono')}
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  validator={validatePhone}
                 />
               </div>
+
+              <ValidatedInput
+                label={t('companies.email', 'Email Corporativo')}
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                validator={(val) => (!val ? { isValid: true } : validateEmail(val))}
+              />
 
               <div className="pt-3 flex justify-end space-x-2 border-t border-gray-200 dark:border-slate-800">
                 <button
