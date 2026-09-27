@@ -2,6 +2,7 @@ export type ConnectorType =
   | 'odoo'
   | 'woocommerce'
   | 'shopify'
+  | 'opencart'
   | 'n8n'
   | 'unopim'
   | 'whatsapp'
@@ -134,6 +135,35 @@ export interface Sage50Config {
   lastError?: string;
 }
 
+export type ConnectorType =
+  | 'odoo'
+  | 'woocommerce'
+  | 'shopify'
+  | 'opencart'
+  | 'n8n'
+  | 'unopim'
+  | 'whatsapp'
+  | 'stripe'
+  | 'zapier'
+  | 'google_calendar'
+  | 'sage_one'
+  | 'sage_50'
+  | 'sage_200';
+
+export interface OpenCartConfig {
+  enabled: boolean;
+  storeUrl: string;
+  apiUsername: string;
+  apiKey?: string;
+  hasApiKey?: boolean;
+  syncProducts: boolean;
+  syncOrders: boolean;
+  syncCustomers: boolean;
+  status: IntegrationStatus;
+  lastSyncAt?: string;
+  lastError?: string;
+}
+
 export interface Sage200Config {
   enabled: boolean;
   baseUrl: string;
@@ -151,10 +181,22 @@ export interface Sage200Config {
   lastError?: string;
 }
 
+export interface ProductAttributeMapping {
+  unopim?: Record<string, any>;
+  opencart?: Record<string, any>;
+  sage?: Record<string, any>;
+  odoo?: Record<string, any>;
+  shopify?: Record<string, any>;
+  woocommerce?: Record<string, any>;
+  custom?: Record<string, any>;
+  lastAutoMappedAt?: string;
+}
+
 export interface IntegrationsConfig {
   odoo: OdooConfig;
   woocommerce: WooCommerceConfig;
   shopify: ShopifyConfig;
+  opencart?: OpenCartConfig;
   n8n: N8nConfig;
   stripe?: StripeConfig;
   zapier?: ZapierConfig;
@@ -163,3 +205,4 @@ export interface IntegrationsConfig {
   sage_50?: Sage50Config;
   sage_200?: Sage200Config;
 }
+

@@ -456,6 +456,65 @@ describe('DAMA-CRM Core Unit Tests', () => {
       });
       assert.strictEqual(zapierRes.handled, true);
     });
+
+    it('should test and validate OpenCart connector configuration', async () => {
+      const testRes = await IntegrationsService.testOpenCart({
+        storeUrl: 'https://demo.opencart.com',
+        apiUsername: 'admin_oc',
+        apiKey: 'oc_test_key_123',
+      });
+      assert.strictEqual(testRes.success, true);
+      assert.ok(testRes.message.includes('OpenCart'));
+
+      const syncRes = await IntegrationsService.syncOpenCart();
+      assert.strictEqual(syncRes.success, true);
+      assert.ok(syncRes.count! >= 1);
+    });
+
+    it('should automatically map multi-app product attributes across all 6 platforms', () => {
+      const mockProduct = {
+        sku: 'PORT-GAMING-01',
+        name: 'Portátil Gaming ASUS ROG',
+        description: 'Potente portátil con pantalla 165Hz y RTX 5060',
+        price: 1499.99,
+        costPrice: 950.00,
+        stock: 12,
+        minStock: 3,
+        category: 'Portátiles',
+        brand: 'ASUS',
+        barcode: '8435123456789',
+        location: 'Pasillo A-04',
+        supplierName: 'ASUS España',
+        dimensions: '35x25x2 cm',
+        weight: 2.3,
+        taxRate: 21,
+      };
+
+      const mapped = IntegrationsService.autoMapProductAttributes(mockProduct);
+      assert.ok(mapped.unopim);
+      assert.strictEqual(mapped.unopim.family, 'port_tiles');
+      assert.strictEqual(mapped.unopim.completeness, 100);
+
+      assert.ok(mapped.opencart);
+      assert.strictEqual(mapped.opencart.model, 'PORT-GAMING-01');
+      assert.strictEqual(mapped.opencart.ean, '8435123456789');
+
+      assert.ok(mapped.sage);
+      assert.strictEqual(mapped.sage.nominal_code, '4000.0000');
+      assert.strictEqual(mapped.sage.purchase_code, '5000.0000');
+      assert.strictEqual(mapped.sage.tax_code, 'IVA21');
+
+      assert.ok(mapped.odoo);
+      assert.strictEqual(mapped.odoo.default_code, 'PORT-GAMING-01');
+      assert.strictEqual(mapped.odoo.barcode, '8435123456789');
+
+      assert.ok(mapped.shopify);
+      assert.strictEqual(mapped.shopify.vendor, 'ASUS');
+      assert.strictEqual(mapped.shopify.product_type, 'Portátiles');
+
+      assert.ok(mapped.woocommerce);
+      assert.strictEqual(mapped.woocommerce.manage_stock, true);
+    });
   });
 
   describe('ISO-Compliant PDF Engine & Dynamic Pagination', () => {

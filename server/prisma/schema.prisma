@@ -603,6 +603,7 @@ model Product {
   isSync         Boolean         @default(false)
   lastSyncedAt   DateTime?
   tenantId       String?         @default("master")
+  attributes     String?         @default("{}") // Mapped multi-app attributes (unopim, opencart, sage, odoo, shopify, woocommerce)
   stockMovements StockMovement[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
