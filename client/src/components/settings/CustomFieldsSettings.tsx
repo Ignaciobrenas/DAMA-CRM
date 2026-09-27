@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { apiRequest } from '../../services/api';
 
 interface CustomFieldItem {
@@ -50,6 +51,7 @@ const FIELD_TYPES = [
 export const CustomFieldsSettings: React.FC = () => {
   const { t } = useLanguage();
   const toast = useToast();
+  const { confirm } = useConfirm();
 
   const [fields, setFields] = useState<CustomFieldItem[]>([]);
   const [selectedEntity, setSelectedEntity] = useState<string>('CONTACT');
@@ -190,9 +192,15 @@ export const CustomFieldsSettings: React.FC = () => {
   };
 
   const handleDelete = async (field: CustomFieldItem) => {
-    if (!window.confirm(`¿Estás seguro de eliminar el campo "${field.label}"? Se perderán los valores registrados.`)) {
-      return;
-    }
+    const isConfirmed = await confirm({
+      title: '¿Eliminar campo personalizado?',
+      description: `¿Estás seguro de eliminar el campo "${field.label}"? Se perderán los valores registrados para esta entidad.`,
+      entityName: field.label,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!isConfirmed) return;
 
     try {
       const res = await apiRequest(`/custom-fields/${field.id}`, {

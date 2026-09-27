@@ -25,6 +25,7 @@ import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { RecordDrawer } from '../components/crm/RecordDrawer';
 import { Modal } from '../components/common/Modal';
 import { PermissionGate } from '../components/common/PermissionGate';
@@ -38,6 +39,7 @@ export const Contacts: React.FC = () => {
   const { t } = useLanguage();
   const { hasPermission } = useAuth();
   const toast = useToast();
+  const { confirm } = useConfirm();
   const [contacts, setContacts] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -145,8 +147,15 @@ export const Contacts: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    const confirmMsg = t('bulk.confirmDelete').replace('{count}', String(selectedIds.size));
-    if (!window.confirm(confirmMsg)) return;
+    const isConfirmed = await confirm({
+      title: '¿Eliminar contactos seleccionados?',
+      description: `¿Estás seguro de que deseas eliminar permanentemente ${selectedIds.size} contactos seleccionados?`,
+      entityName: `${selectedIds.size} contactos`,
+      confirmText: 'Eliminar todos',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!isConfirmed) return;
 
     const res = await apiRequest('/contacts/bulk-delete', {
       method: 'POST',
@@ -350,7 +359,15 @@ export const Contacts: React.FC = () => {
   };
 
   const handleDeleteContact = async (id: string, name: string) => {
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar el contacto ${name}?`)) return;
+    const isConfirmed = await confirm({
+      title: '¿Eliminar contacto?',
+      description: `¿Estás seguro de que deseas eliminar el contacto "${name}"? Esta acción no se puede deshacer.`,
+      entityName: name,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!isConfirmed) return;
     const res = await apiRequest(`/contacts/${id}`, { method: 'DELETE' });
     if (res.success) {
       toast.success(t('success'), `Contacto ${name} eliminado`);

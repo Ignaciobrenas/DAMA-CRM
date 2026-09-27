@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { WalletCards, Download, Plus, FileSpreadsheet, FileText } from 'lucide-react';
 import { useTranslation } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { api, downloadFile } from '../services/api';
 import { Expense, ExpenseTable } from '../components/expenses/ExpenseTable';
 import { PnLData, ExpenseKpis } from '../components/expenses/ExpenseKpis';
@@ -12,6 +13,7 @@ import { LoadingScreen } from '../components/common/Loading';
 export const Expenses: React.FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
+  const { confirm } = useConfirm();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [pnl, setPnl] = useState<PnLData | null>(null);
@@ -56,7 +58,14 @@ export const Expenses: React.FC = () => {
   }, [searchQuery, categoryFilter, statusFilter]);
 
   const handleDeleteExpense = async (id: string) => {
-    if (!window.confirm(t('expenses.confirmDelete'))) return;
+    const isConfirmed = await confirm({
+      title: t('expenses.confirmDelete') || '¿Eliminar gasto?',
+      description: '¿Estás seguro de que deseas eliminar este registro de gasto? Esta acción modificará el balance de pérdidas y ganancias.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       const res = await api.delete(`/expenses/${id}`);
       if (res.data?.success) {
