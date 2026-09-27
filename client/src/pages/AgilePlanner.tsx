@@ -101,8 +101,24 @@ export const AgilePlanner: React.FC = () => {
       apiRequest('/users'),
     ]);
 
-    if (resTasks.success) setTasks(resTasks.data || []);
-    if (resMyTasks.success) setMyTasks(resMyTasks.data || []);
+    if (resTasks.success && Array.isArray(resTasks.data)) {
+      const seen = new Set();
+      const uniqueTasks = resTasks.data.filter((t: any) => {
+        if (!t || !t.id || seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
+      setTasks(uniqueTasks);
+    }
+    if (resMyTasks.success && Array.isArray(resMyTasks.data)) {
+      const seen = new Set();
+      const uniqueMyTasks = resMyTasks.data.filter((t: any) => {
+        if (!t || !t.id || seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
+      setMyTasks(uniqueMyTasks);
+    }
     if (resUsers.success) setWorkspaceUsers(resUsers.data || []);
     if (resProjects.success) {
       setProjects(resProjects.data || []);
@@ -124,31 +140,48 @@ export const AgilePlanner: React.FC = () => {
     { id: 'DONE', label: t('done'), color: '#10B981' },
   ];
 
-  const handleDragStart = (taskId: string) => {
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    e.stopPropagation();
+    try {
+      e.dataTransfer.setData('text/plain', taskId);
+    } catch {
+      // Ignore if dataTransfer is unavailable
+    }
     setDraggedTaskId(taskId);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
   };
 
-  const handleDrop = async (status: string) => {
-    if (!draggedTaskId) return;
+  const handleDrop = async (e: React.DragEvent, status: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const taskId = draggedTaskId || e.dataTransfer.getData('text/plain');
+    if (!taskId) return;
 
-    // Optimistic UI Update
-    setTasks((prev) =>
-      prev.map((t) => (t.id === draggedTaskId ? { ...t, status } : t))
-    );
-
-    const taskId = draggedTaskId;
-    setDraggedTaskId(null);
-
-    await apiRequest(`/projects/tasks/${taskId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
+    // Optimistic UI Update with strict deduplication
+    setTasks((prev) => {
+      const updated = prev.map((t) => (t.id === taskId ? { ...t, status } : t));
+      const seen = new Set();
+      return updated.filter((item) => {
+        if (!item || !item.id || seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
     });
 
-    loadData();
+    setDraggedTaskId(null);
+
+    try {
+      await apiRequest(`/projects/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+    } catch (err) {
+      console.error('Failed to update task status:', err);
+    }
   };
 
   const handleOpenTaskDetails = async (task: any) => {
@@ -415,12 +448,12 @@ export const AgilePlanner: React.FC = () => {
       {activeTab === 'board' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
           {columns.map((col) => {
-            const colTasks = tasks.filter((t) => t.status === col.id);
+            const colTasks = tasks.filter((t, idx, arr) => t.status === col.id && arr.findIndex((x) => x.id === t.id) === idx);
             return (
               <div
                 key={col.id}
                 onDragOver={handleDragOver}
-                onDrop={() => handleDrop(col.id)}
+                onDrop={(e) => handleDrop(e, col.id)}
                 className="bg-gray-100/70 dark:bg-slate-900/60 rounded-xl p-3 border border-gray-200 dark:border-slate-800 min-h-[460px] flex flex-col"
               >
                 {/* Column Header */}
@@ -445,7 +478,7 @@ export const AgilePlanner: React.FC = () => {
                     <div
                       key={task.id}
                       draggable
-                      onDragStart={() => handleDragStart(task.id)}
+                      onDragStart={(e) => handleDragStart(e, task.id)}
                       onClick={() => handleOpenTaskDetails(task)}
                       className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700/80 shadow-xs hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer transition-all space-y-2 group"
                     >
