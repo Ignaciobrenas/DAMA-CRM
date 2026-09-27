@@ -1402,5 +1402,6 @@
   "invoicing.reminderSent": "督促通知を送信しました",
   "invoicing.sendReminder": "支払督促",
   "loginWithGoogle": "Google でログイン",
-  "orWithCredentials": "またはメールアドレスでログイン"
+  "orWithCredentials": "またはメールアドレスでログイン",
+  "calendar": "カレンダーとスケジュール"
 }

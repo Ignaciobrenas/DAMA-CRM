@@ -1402,5 +1402,6 @@
   "invoicing.reminderSent": "催款通知发送成功",
   "invoicing.sendReminder": "发送催款",
   "loginWithGoogle": "使用 Google 继续",
-  "orWithCredentials": "或使用电子邮件继续"
+  "orWithCredentials": "或使用电子邮件继续",
+  "calendar": "日历与日程"
 }

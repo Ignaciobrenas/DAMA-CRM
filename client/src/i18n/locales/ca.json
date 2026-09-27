@@ -1402,5 +1402,6 @@
   "invoicing.reminderSent": "Recordatori de cobrament enviat amb èxit",
   "invoicing.sendReminder": "Reclamar Pagament",
   "loginWithGoogle": "Continuar amb Google",
-  "orWithCredentials": "o continuar amb correu"
+  "orWithCredentials": "o continuar amb correu",
+  "calendar": "Calendari i Agenda"
 }

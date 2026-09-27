@@ -103,21 +103,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         } ${isCollapsed ? 'w-16' : 'w-60'}`}
       >
         {/* Brand Header */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} h-16 border-b border-gray-200 dark:border-slate-800`}>
-          <div className="flex items-center space-x-2.5 truncate">
-            <img
-              src={getLogo('symbol')}
-              alt={branding.companyName}
-              className="w-8 h-8 rounded-lg object-contain bg-white/90 dark:bg-slate-800/90 p-1 border border-gray-200 dark:border-slate-700 shrink-0 shadow-xs"
-            />
+        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-3.5'} h-16 border-b border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50`}>
+          <div className="flex items-center space-x-3 truncate">
+            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 p-1.5 border border-slate-200 dark:border-slate-700 shadow-md ring-2 ring-blue-500/20 dark:ring-blue-400/30 flex items-center justify-center shrink-0 transition-all hover:scale-105">
+              <img
+                src={getLogo('symbol')}
+                alt={branding.companyName}
+                className="w-full h-full object-contain filter drop-shadow-xs"
+              />
+            </div>
             {!isCollapsed && (
-              <div className="truncate">
-                <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white truncate block">
+              <div className="truncate min-w-0">
+                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white truncate block">
                   {branding.companyName}
                 </span>
                 <span
-                  className="block text-[9px] font-semibold uppercase tracking-wider"
-                  style={{ color: branding.primaryColor }}
+                  className="block text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: branding.primaryColor || '#2563EB' }}
                 >
                   {t('enterpriseCrm')}
                 </span>
@@ -128,7 +130,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed && (
             <button
               onClick={onClose}
-              className="p-1 rounded-md md:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="p-1.5 rounded-lg md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              aria-label={t('close')}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
