@@ -38,6 +38,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { integrationsService } from '../services/integrations.service';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -71,6 +72,7 @@ export interface ProductItem {
   notes?: string | null;
   isSync: boolean;
   lastSyncedAt?: string | null;
+  attributes?: string | Record<string, any> | null;
   createdAt: string;
   updatedAt: string;
   stockMovements?: StockMovementItem[];
@@ -117,15 +119,21 @@ export const Inventory: React.FC = () => {
   const [syncStatusMsg, setSyncStatusMsg] = useState('');
 
   // View & Filter States
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [stockFilter, setStockFilter] = useState<'ALL' | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'>('ALL');
+  const [connectorFilter, setConnectorFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('name_asc');
+
+  // Multi-App Attribute Auto-Mapping State
+  const [isBulkMapping, setIsBulkMapping] = useState(false);
+  const [isProductMapping, setIsProductMapping] = useState(false);
+  const [copiedRawJson, setCopiedRawJson] = useState(false);
 
   // Detail Pop-up Modal State
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
-  const [detailTab, setDetailTab] = useState<'general' | 'financials' | 'movements' | 'supplier'>('general');
+  const [detailTab, setDetailTab] = useState<'general' | 'financials' | 'attributes' | 'movements' | 'supplier'>('general');
   const [loadingMovements, setLoadingMovements] = useState(false);
   const [productMovements, setProductMovements] = useState<StockMovementItem[]>([]);
 
@@ -198,6 +206,71 @@ export const Inventory: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const parseProductAttributes = (product?: ProductItem | null): Record<string, any> => {
+    if (!product || !product.attributes) return {};
+    if (typeof product.attributes === 'object') return product.attributes;
+    try {
+      return JSON.parse(product.attributes);
+    } catch {
+      return {};
+    }
+  };
+
+  const handleBulkAutoMap = async () => {
+    try {
+      setIsBulkMapping(true);
+      soundService.play('action');
+      const res = await integrationsService.bulkAutoMapAttributes();
+      if (res.success) {
+        soundService.play('success');
+        toast.success(
+          t('inventory.bulkAutoMapSuccess', 'Mapeo masivo completado'),
+          res.message || `${res.mappedCount} productos actualizados con éxito`
+        );
+        loadData();
+      } else {
+        soundService.play('error');
+        toast.error('Error en mapeo masivo', res.message || 'No se pudo completar el mapeo');
+      }
+    } catch (err: any) {
+      soundService.play('error');
+      toast.error('Error en mapeo masivo', err.message);
+    } finally {
+      setIsBulkMapping(false);
+    }
+  };
+
+  const handleSingleAutoMap = async (productId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      setIsProductMapping(true);
+      soundService.play('action');
+      const res = await integrationsService.autoMapProductAttributes(productId);
+      if (res.success) {
+        soundService.play('success');
+        toast.success(
+          t('inventory.autoMapSuccess', 'Atributos Multi-App mapeados'),
+          res.message || 'Atributos sincronizados para UnoPIM, OpenCart, Sage, Odoo, Shopify y WooCommerce'
+        );
+        if (selectedProduct && selectedProduct.id === productId) {
+          setSelectedProduct({
+            ...selectedProduct,
+            attributes: res.attributes || res.data?.attributes,
+          });
+        }
+        loadData();
+      } else {
+        soundService.play('error');
+        toast.error('Error al mapear atributos', res.message);
+      }
+    } catch (err: any) {
+      soundService.play('error');
+      toast.error('Error al mapear atributos', err.message);
+    } finally {
+      setIsProductMapping(false);
+    }
+  };
 
   // Fetch product movements when detail modal opens
   const openDetailModal = async (product: ProductItem) => {
@@ -499,6 +572,18 @@ export const Inventory: React.FC = () => {
         if (stockFilter === 'IN_STOCK' && p.stock <= 0) return false;
         if (stockFilter === 'LOW_STOCK' && (p.stock <= 0 || p.stock > (p.minStock ?? 5))) return false;
 
+        // Connector / Platform filter
+        if (connectorFilter !== 'ALL') {
+          const attrs = parseProductAttributes(p);
+          if (connectorFilter === 'unopim') {
+            if (!attrs?.unopim && !p.isSync) return false;
+          } else if (connectorFilter === 'sage') {
+            if (!attrs?.sage && !attrs?.sage_one && !attrs?.sage_50 && !attrs?.sage_200) return false;
+          } else {
+            if (!attrs || !attrs[connectorFilter]) return false;
+          }
+        }
+
         return true;
       })
       .sort((a, b) => {
@@ -519,7 +604,7 @@ export const Inventory: React.FC = () => {
             return a.name.localeCompare(b.name);
         }
       });
-  }, [products, search, categoryFilter, stockFilter, sortBy]);
+  }, [products, search, categoryFilter, stockFilter, connectorFilter, sortBy]);
 
   const getStockBadge = (stock: number, minStock = 5) => {
     if (stock <= 0) {
@@ -567,6 +652,16 @@ export const Inventory: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleBulkAutoMap}
+            disabled={isBulkMapping}
+            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Mapea atributos y metadatos automáticamente para UnoPim, OpenCart, Sage, Odoo, Shopify y WooCommerce"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${isBulkMapping ? 'animate-spin' : ''}`} />
+            <span>{isBulkMapping ? t('inventory.mappingInProgress', 'Mapeando...') : t('inventory.bulkAutoMap', 'Mapeo Masivo Multi-App')}</span>
+          </button>
+
           <button
             onClick={handleExportCsv}
             className="px-3.5 py-2 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-gray-700 dark:text-slate-200 flex items-center gap-2 transition-colors active:scale-95 shadow-2xs"
@@ -688,6 +783,22 @@ export const Inventory: React.FC = () => {
 
         {/* Filters */}
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
+          {/* Multi-App Connector Filter */}
+          <select
+            value={connectorFilter}
+            onChange={(e) => setConnectorFilter(e.target.value)}
+            className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title="Filtrar por conexión con aplicaciones"
+          >
+            <option value="ALL">Todas las Apps ({products.length})</option>
+            <option value="unopim">UnoPIM (Catálogo/PIM)</option>
+            <option value="opencart">OpenCart Store</option>
+            <option value="sage">Sage ERP (1 / 50 / 200)</option>
+            <option value="odoo">Odoo ERP</option>
+            <option value="shopify">Shopify Store</option>
+            <option value="woocommerce">WooCommerce</option>
+          </select>
+
           {/* Category Filter */}
           <select
             value={categoryFilter}
@@ -738,7 +849,7 @@ export const Inventory: React.FC = () => {
                   ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-2xs'
                   : 'text-gray-400 hover:text-gray-600 dark:hover:text-slate-300'
               }`}
-              title="Vista de Tabla"
+              title={t('inventory.viewTable', 'Vista de Tabla')}
             >
               <TableIcon className="w-3.5 h-3.5" />
             </button>
@@ -749,7 +860,7 @@ export const Inventory: React.FC = () => {
                   ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-2xs'
                   : 'text-gray-400 hover:text-gray-600 dark:hover:text-slate-300'
               }`}
-              title="Vista de Cuadrícula Visual"
+              title={t('inventory.viewGrid', 'Vista de Cuadrícula Visual (Cajas)')}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
@@ -916,84 +1027,226 @@ export const Inventory: React.FC = () => {
       ) : (
         /* GRID VIEW */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredProducts.map((product) => (
-            <motion.div
-              key={product.id}
-              layout
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={() => openDetailModal(product)}
-              className="group cursor-pointer rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col"
-            >
-              {/* Product Image Area */}
-              <div className="h-44 w-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden flex items-center justify-center">
-                {product.imageUrl ? (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <Package className="w-12 h-12 text-slate-300 dark:text-slate-600" />
-                )}
-                <div className="absolute top-2.5 right-2.5">
-                  {getStockBadge(product.stock, product.minStock)}
-                </div>
-                {product.category && (
-                  <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold">
-                    {product.category}
-                  </div>
-                )}
-              </div>
+          {filteredProducts.map((product) => {
+            const attrs = parseProductAttributes(product);
+            const marginAmount = product.price - (product.costPrice || 0);
+            const marginPct = product.price > 0 ? (marginAmount / product.price) * 100 : 0;
+            const targetMax = product.maxStock || Math.max(product.stock * 1.5, product.minStock * 3, 20);
+            const stockPct = Math.min(100, Math.max(3, (product.stock / targetMax) * 100));
+            const hasUnoPim = Boolean(attrs?.unopim || product.isSync);
+            const hasOpenCart = Boolean(attrs?.opencart);
+            const hasSage = Boolean(attrs?.sage || attrs?.sage_one || attrs?.sage_50 || attrs?.sage_200);
+            const hasOdoo = Boolean(attrs?.odoo);
+            const hasShopify = Boolean(attrs?.shopify);
+            const hasWoo = Boolean(attrs?.woocommerce);
 
-              {/* Product Info */}
-              <div className="p-4 flex-1 flex flex-col justify-between">
+            return (
+              <motion.div
+                key={product.id}
+                layout
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => openDetailModal(product)}
+                className="group cursor-pointer rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-600 transition-all flex flex-col justify-between"
+              >
                 <div>
-                  <div className="text-[11px] font-mono text-gray-400 dark:text-slate-500 mb-0.5">
-                    {product.sku}
+                  {/* Product Image Area */}
+                  <div className="h-48 w-full bg-slate-100 dark:bg-slate-800/80 relative overflow-hidden flex items-center justify-center">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1.5 text-slate-400 dark:text-slate-600">
+                        <Package className="w-12 h-12" />
+                        <span className="text-[10px] font-mono uppercase">{product.sku}</span>
+                      </div>
+                    )}
+
+                    {/* Stock Status Badge Top Right */}
+                    <div className="absolute top-2.5 right-2.5">
+                      {getStockBadge(product.stock, product.minStock)}
+                    </div>
+
+                    {/* Category Pill Top Left */}
+                    {product.category && (
+                      <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold flex items-center gap-1">
+                        <Tag className="w-2.5 h-2.5" />
+                        <span>{product.category}</span>
+                      </div>
+                    )}
+
+                    {/* Brand Pill Bottom Left */}
+                    {product.brand && (
+                      <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-white/90 dark:bg-slate-900/90 text-gray-800 dark:text-slate-200 text-[10px] font-bold shadow-xs">
+                        {product.brand}
+                      </div>
+                    )}
                   </div>
-                  <h3 className="font-bold text-sm text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-1">
-                    {product.name}
-                  </h3>
-                  {product.description && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400 line-clamp-2 mt-1">
-                      {product.description}
-                    </p>
-                  )}
+
+                  {/* Product Info Section */}
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-mono text-gray-400 dark:text-slate-500 mb-1">
+                        <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded">
+                          {product.sku}
+                        </span>
+                        {product.barcode && (
+                          <span className="flex items-center gap-1 text-[10px]">
+                            <Barcode className="w-3 h-3" />
+                            {product.barcode}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-sm text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-1 transition-colors">
+                        {product.name}
+                      </h3>
+                      {product.description && (
+                        <p className="text-xs text-gray-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                          {product.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Stock Progress Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] text-gray-500 dark:text-slate-400 font-medium">
+                        <span>{t('inventory.stockLevel', 'Existencias')}: <strong className="text-gray-900 dark:text-white">{product.stock} {product.unit}</strong></span>
+                        <span>Mín: {product.minStock}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            product.stock <= 0
+                              ? 'bg-rose-500'
+                              : product.stock <= (product.minStock ?? 5)
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                          }`}
+                          style={{ width: `${stockPct}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Multi-App Connector Sync Indicators */}
+                    <div className="pt-2 border-t border-gray-100 dark:border-slate-800/80">
+                      <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-500 block mb-1.5">
+                        {t('inventory.connectedApps', 'Apps & Conectores')}:
+                      </span>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            hasUnoPim
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                              : 'bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500'
+                          }`}
+                          title="UnoPIM Catálogo"
+                        >
+                          UnoPim
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            hasOpenCart
+                              ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800'
+                              : 'bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500'
+                          }`}
+                          title="OpenCart Store"
+                        >
+                          OpenCart
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            hasSage
+                              ? 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800'
+                              : 'bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500'
+                          }`}
+                          title="Sage ERP (1/50/200)"
+                        >
+                          Sage
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            hasOdoo
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                              : 'bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500'
+                          }`}
+                          title="Odoo ERP"
+                        >
+                          Odoo
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            hasShopify
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                              : 'bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500'
+                          }`}
+                          title="Shopify Store"
+                        >
+                          Shopify
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            hasWoo
+                              ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                              : 'bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500'
+                          }`}
+                          title="WooCommerce"
+                        >
+                          Woo
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="pt-3 border-t border-gray-100 dark:border-slate-800 mt-3 flex items-center justify-between">
+                {/* Card Footer: Pricing & Action Buttons */}
+                <div className="p-4 pt-3 border-t border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-gray-900 dark:text-white">
+                    <div className="text-sm font-bold text-gray-900 dark:text-white">
                       {product.price.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                     </div>
-                    {product.costPrice ? (
-                      <div className="text-[10px] text-gray-400">
-                        Coste: {product.costPrice.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                      </div>
-                    ) : null}
+                    <div className="flex items-center gap-1.5 text-[10px]">
+                      {product.costPrice ? (
+                        <span className="text-gray-400">
+                          Coste: {product.costPrice.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                        </span>
+                      ) : null}
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        +{marginPct.toFixed(0)}%
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
+                      onClick={(e) => handleSingleAutoMap(product.id, e)}
+                      disabled={isProductMapping}
+                      className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-purple-600 dark:text-purple-400 rounded-lg transition"
+                      title={t('inventory.autoMapProduct', 'Auto-mapear atributos multi-app')}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={(e) => openQuickMovementModal(product, e)}
-                      className="p-1.5 hover:bg-blue-50 dark:hover:bg-slate-800 text-blue-600 rounded-lg"
-                      title="Ajustar stock"
+                      className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg transition"
+                      title={t('inventory.adjustStock', 'Ajustar stock')}
                     >
                       <ArrowUpDown className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={(e) => openEditModal(product, e)}
-                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 rounded-lg"
-                      title="Editar"
+                      className="p-1.5 hover:bg-gray-200 dark:hover:bg-slate-800 text-gray-500 rounded-lg transition"
+                      title={t('common.edit', 'Editar')}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
@@ -1067,6 +1320,7 @@ export const Inventory: React.FC = () => {
                 {[
                   { id: 'general', label: 'General & Ficha', icon: Info },
                   { id: 'financials', label: 'Precios & Rentabilidad', icon: DollarSign },
+                  { id: 'attributes', label: 'Atributos Multi-App', icon: Sparkles },
                   { id: 'movements', label: `Movimientos (${productMovements.length})`, icon: History },
                   { id: 'supplier', label: 'Proveedor & Notas', icon: Building2 },
                 ].map((tab) => {
@@ -1213,6 +1467,232 @@ export const Inventory: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                {/* TAB: Multi-App Attributes */}
+                {detailTab === 'attributes' && (() => {
+                  const attrs = parseProductAttributes(selectedProduct);
+                  const unopim = attrs.unopim || {};
+                  const opencart = attrs.opencart || {};
+                  const sage = attrs.sage || attrs.sage_one || attrs.sage_50 || attrs.sage_200 || {};
+                  const odoo = attrs.odoo || {};
+                  const shopify = attrs.shopify || {};
+                  const woocommerce = attrs.woocommerce || {};
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Top Action Banner */}
+                      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-200/60 dark:border-blue-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 rounded-xl bg-blue-600 text-white shrink-0">
+                            <Sparkles className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                              Mapeo Inteligente de Atributos & Metadatos Multi-App
+                            </h4>
+                            <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                              Esquema sincronizado y mapeado automáticamente con UnoPIM, OpenCart, Sage, Odoo, Shopify y WooCommerce
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleSingleAutoMap(selectedProduct.id)}
+                          disabled={isProductMapping}
+                          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition disabled:opacity-50 shrink-0"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isProductMapping ? 'animate-spin' : ''}`} />
+                          <span>{isProductMapping ? 'Mapeando...' : 'Auto-Mapear Ahora'}</span>
+                        </button>
+                      </div>
+
+                      {/* 6 Connector Cards Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        {/* 1. UnoPim PIM */}
+                        <div className="p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/20 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-blue-500" />
+                              <span className="text-xs font-bold text-blue-900 dark:text-blue-300">UnoPIM (Catálogo / PIM)</span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200">
+                              {unopim.family || 'Default Family'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-blue-100 dark:border-blue-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Familia PIM</span>
+                              <span className="font-semibold text-gray-800 dark:text-slate-200">{unopim.family || selectedProduct.category || 'General'}</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-blue-100 dark:border-blue-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Completitud</span>
+                              <span className="font-bold text-emerald-600">{unopim.completeness ?? 100}%</span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-gray-500 dark:text-slate-400">
+                            Marketing: {unopim.description_marketing ? 'Definida' : 'Generada a partir del catálogo'}
+                          </div>
+                        </div>
+
+                        {/* 2. OpenCart Store */}
+                        <div className="p-4 rounded-2xl border border-sky-100 dark:border-sky-900/40 bg-sky-50/30 dark:bg-sky-950/20 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-sky-500" />
+                              <span className="text-xs font-bold text-sky-900 dark:text-sky-300">OpenCart Store</span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200">
+                              Model: {opencart.model || selectedProduct.sku}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-sky-100 dark:border-sky-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">EAN / UPC</span>
+                              <span className="font-mono font-semibold text-gray-800 dark:text-slate-200">{opencart.ean || selectedProduct.barcode || 'N/D'}</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-sky-100 dark:border-sky-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Ubicación / Stock</span>
+                              <span className="font-semibold text-gray-800 dark:text-slate-200">{opencart.location || selectedProduct.location || 'Principal'}</span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-gray-500 dark:text-slate-400">
+                            Clase de peso: {opencart.weight_class_id || '1 (Kilogram)'} | Restar stock: {opencart.subtract !== false ? 'Sí' : 'No'}
+                          </div>
+                        </div>
+
+                        {/* 3. Sage Business ERP */}
+                        <div className="p-4 rounded-2xl border border-teal-100 dark:border-teal-900/40 bg-teal-50/30 dark:bg-teal-950/20 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-teal-500" />
+                              <span className="text-xs font-bold text-teal-900 dark:text-teal-300">Sage ERP (Sage One / 50 / 200)</span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200">
+                              {sage.tax_code || 'IVA21'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-teal-100 dark:border-teal-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Subcuenta Ventas</span>
+                              <span className="font-mono font-bold text-gray-800 dark:text-slate-200">{sage.nominal_code || '4000.0000'}</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-teal-100 dark:border-teal-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Subcuenta Compras</span>
+                              <span className="font-mono font-bold text-gray-800 dark:text-slate-200">{sage.purchase_code || '5000.0000'}</span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-gray-500 dark:text-slate-400">
+                            Código Arancelario / Intrastat: <code className="font-mono text-teal-700 dark:text-teal-300">{sage.intrastat_code || '8471.30.00'}</code>
+                          </div>
+                        </div>
+
+                        {/* 4. Odoo ERP */}
+                        <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-purple-500" />
+                              <span className="text-xs font-bold text-purple-900 dark:text-purple-300">Odoo ERP (Community/Enterprise)</span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200">
+                              product.product
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-purple-100 dark:border-purple-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Default Code</span>
+                              <span className="font-mono font-semibold text-gray-800 dark:text-slate-200">{odoo.default_code || selectedProduct.sku}</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-purple-100 dark:border-purple-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Ruta Logística</span>
+                              <span className="font-semibold text-gray-800 dark:text-slate-200">{Array.isArray(odoo.route_ids) ? odoo.route_ids.join(', ') : 'Comprar (Buy)'}</span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-gray-500 dark:text-slate-400">
+                            Tipo: Almacenable (product) | Impuestos: 21% IVA
+                          </div>
+                        </div>
+
+                        {/* 5. Shopify Store */}
+                        <div className="p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300">Shopify Store</span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">
+                              Handle: {shopify.handle || selectedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-100 dark:border-emerald-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Vendor / Proveedor</span>
+                              <span className="font-semibold text-gray-800 dark:text-slate-200">{shopify.vendor || selectedProduct.supplierName || 'DAMA CRM'}</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-100 dark:border-emerald-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Tipo Producto</span>
+                              <span className="font-semibold text-gray-800 dark:text-slate-200">{shopify.product_type || selectedProduct.category || 'General'}</span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-gray-500 dark:text-slate-400">
+                            Tags: <span className="font-mono text-emerald-700 dark:text-emerald-300">{shopify.tags || selectedProduct.tags || 'crm, synced'}</span>
+                          </div>
+                        </div>
+
+                        {/* 6. WooCommerce */}
+                        <div className="p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-950/20 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                              <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300">WooCommerce REST</span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200">
+                              Tax: {woocommerce.tax_class || 'standard'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-indigo-100 dark:border-indigo-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Gestión de Stock</span>
+                              <span className="font-semibold text-gray-800 dark:text-slate-200">{woocommerce.manage_stock !== false ? 'Habilitado (true)' : 'Deshabilitado'}</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-indigo-100 dark:border-indigo-900/30">
+                              <span className="text-gray-400 block text-[9px] uppercase font-bold">Dimensiones</span>
+                              <span className="font-semibold text-gray-800 dark:text-slate-200">{woocommerce.dimensions ? `${woocommerce.dimensions.length}x${woocommerce.dimensions.width}x${woocommerce.dimensions.height}` : (selectedProduct.dimensions || 'N/D')}</span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-gray-500 dark:text-slate-400">
+                            Estado catálogo: Publicado | Visibilidad: Visible en catálogo & búsqueda
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Raw JSON viewer */}
+                      <div className="p-4 rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/80 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <Layers className="w-3.5 h-3.5 text-blue-500" />
+                            <span>Payload JSON de Atributos Multi-App</span>
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(JSON.stringify(attrs, null, 2));
+                              setCopiedRawJson(true);
+                              soundService.play('action');
+                              toast.success('Copiado', 'JSON de atributos copiado al portapapeles');
+                              setTimeout(() => setCopiedRawJson(false), 2000);
+                            }}
+                            className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+                          >
+                            {copiedRawJson ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Layers className="w-3.5 h-3.5" />}
+                            <span>{copiedRawJson ? 'Copiado' : 'Copiar JSON'}</span>
+                          </button>
+                        </div>
+                        <pre className="p-3 bg-black/90 text-emerald-400 rounded-xl font-mono text-[11px] overflow-x-auto max-h-48 leading-tight select-all">
+                          {JSON.stringify(attrs, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* TAB 3: Movements & History */}
                 {detailTab === 'movements' && (
