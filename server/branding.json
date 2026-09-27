@@ -1,0 +1,19 @@
+{
+  "companyName": "DAMA Cloud Solutions",
+  "logoUrl": "",
+  "logoLightUrl": "",
+  "logoDarkUrl": "",
+  "primaryColor": "#EA580C",
+  "borderRadius": "full",
+  "companyTaxId": "B-12345678",
+  "companyAddress": "Avenida Tecnológica 42, 28046 Madrid, España",
+  "companyEmail": "contacto@dama-crm.com",
+  "companyPhone": "+34 910 000 000",
+  "companyWebsite": "https://damacrm.com",
+  "currency": "EUR",
+  "defaultTaxRate": 21,
+  "invoicePrefix": "FAC-2026-",
+  "quotePrefix": "PRE-2026-",
+  "paymentTerms": "Transferencia bancaria a 30 días",
+  "bankAccount": "ES91 2100 0418 4502 0005 1332"
+}

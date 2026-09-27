@@ -135,6 +135,8 @@ model Company {
   quotes         Quote[]
   invoices       Invoice[]
   tickets        Ticket[]
+  recurringInvoices RecurringInvoice[]
+  contracts      Contract[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -159,6 +161,8 @@ model Contact {
   quotes       Quote[]
   invoices     Invoice[]
   tickets      Ticket[]
+  recurringInvoices RecurringInvoice[]
+  contracts    Contract[]
   omniMessages OmniMessage[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -342,6 +346,73 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
+model RecurringInvoice {
+  id            String                 @id @default(uuid())
+  title         String
+  frequency     String                 @default("MONTHLY") // WEEKLY, MONTHLY, QUARTERLY, BIANNUAL, YEARLY
+  status        String                 @default("ACTIVE")  // ACTIVE, PAUSED, CANCELLED
+  startDate     DateTime               @default(now())
+  nextIssueDate DateTime
+  endDate       DateTime?
+  lastIssuedAt  DateTime?
+  subtotal      Float                  @default(0.0)
+  taxRate       Float                  @default(21.0)
+  taxAmount     Float                  @default(0.0)
+  total         Float                  @default(0.0)
+  currency      String                 @default("EUR")
+  notes         String?
+  autoSendEmail Boolean                @default(true)
+  tenantId      String?                @default("master")
+  companyId     String?
+  company       Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contactId     String?
+  contact       Contact?               @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  items         RecurringInvoiceItem[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@map("recurring_invoices")
+}
+
+model RecurringInvoiceItem {
+  id                 String           @id @default(uuid())
+  recurringInvoiceId String
+  recurringInvoice   RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+  description        String
+  quantity           Float            @default(1.0)
+  unitPrice          Float            @default(0.0)
+  amount             Float            @default(0.0)
+
+  @@map("recurring_invoice_items")
+}
+
+model Contract {
+  id               String    @id @default(uuid())
+  contractNumber   String    @unique
+  title            String
+  type             String    @default("SERVICE") // SERVICE, SLA, NDA, LICENSE, EMPLOYMENT, PARTNERSHIP
+  status           String    @default("ACTIVE")  // DRAFT, PENDING_SIGNATURE, ACTIVE, EXPIRED, TERMINATED
+  startDate        DateTime  @default(now())
+  endDate          DateTime?
+  value            Float?    @default(0.0)
+  currency         String    @default("EUR")
+  autoRenew        Boolean   @default(false)
+  noticePeriodDays Int       @default(30)
+  terms            String?
+  signedAt         DateTime?
+  signerName       String?
+  signatureData    String?
+  companyId        String?
+  company          Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contactId        String?
+  contact          Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  tenantId         String?   @default("master")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("contracts")
+}
+
 model Expense {
   id            String    @id @default(uuid())
   expenseNumber String    @unique // e.g. EXP-2026-0001
@@ -411,27 +482,64 @@ model TicketMessage {
 }
 
 // -----------------------------------------------------------------------------
-// Inventory Module: Products & UnoPIM Catalog Integration
+// Inventory Module: Products, Stock Movements & UnoPIM Catalog Integration
 // -----------------------------------------------------------------------------
 
 model Product {
-  id           String    @id @default(uuid())
-  externalId   String?   @unique // UnoPIM ID for bidirectional sync
-  sku          String    @unique
-  name         String
-  description  String?
-  price        Float     @default(0.0)
-  costPrice    Float?    @default(0.0)
-  stock        Int       @default(0)
-  category     String?
-  barcode      String?
-  isSync       Boolean   @default(false)
-  lastSyncedAt DateTime?
-  tenantId     String?   @default("master")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String          @id @default(uuid())
+  externalId     String?         @unique // UnoPIM ID for bidirectional sync
+  sku            String          @unique
+  name           String
+  description    String?
+  price          Float           @default(0.0)
+  costPrice      Float?          @default(0.0)
+  stock          Int             @default(0)
+  minStock       Int             @default(5)
+  maxStock       Int?
+  unit           String          @default("UNIT") // UNIT, KG, METER, LITER, PACK, HOUR, SERVICE
+  category       String?
+  barcode        String?
+  imageUrl       String?
+  images         String?         @default("[]") // JSON array of image URLs
+  location       String?         // Warehouse shelf/aisle e.g. "Pasillo A - Est. 3"
+  supplierName   String?
+  supplierSku    String?
+  taxRate        Float           @default(21.0)
+  weight         Float?
+  dimensions     String?         // e.g. "20x15x10 cm"
+  brand          String?
+  tags           String?
+  isActive       Boolean         @default(true)
+  notes          String?
+  isSync         Boolean         @default(false)
+  lastSyncedAt   DateTime?
+  tenantId       String?         @default("master")
+  stockMovements StockMovement[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
+  @@index([tenantId, category])
+  @@index([tenantId, sku])
   @@map("products")
+}
+
+model StockMovement {
+  id            String   @id @default(uuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type          String   // INBOUND, OUTBOUND, ADJUSTMENT, TRANSFER, RETURN
+  quantity      Int      // Delta quantity (positive or negative)
+  previousStock Int
+  newStock      Int
+  reason        String?
+  reference     String?
+  performedBy   String?
+  tenantId      String?  @default("master")
+  createdAt     DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("stock_movements")
 }
 
 // -----------------------------------------------------------------------------

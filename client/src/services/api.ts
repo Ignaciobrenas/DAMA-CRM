@@ -36,6 +36,11 @@ export async function apiRequest<T = any>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  const switchTenant = localStorage.getItem('dama_switch_tenant');
+  if (switchTenant && !headers.has('X-Switch-Tenant-ID')) {
+    headers.set('X-Switch-Tenant-ID', switchTenant);
+  }
+
   let fullUrl = `${API_BASE}${endpoint}`;
   if (options.params) {
     const searchParams = new URLSearchParams();

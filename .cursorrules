@@ -1,11 +1,144 @@
-# DAMA-CRM Coding & Architecture Standards
+# DAMA-CRM — Official Architecture & Engineering Guidelines
 
-## Strict Internationalization (i18n) Rules
-1. **Zero Hardcoded Strings**: All user-facing strings, button texts, table headers, placeholders, error alerts, and modal dialog texts MUST be translation variables accessed via `t('key')` from `useLanguage()`.
-2. **Translation File**: All keys must be declared in `client/src/i18n/index.ts` within the `translations` dictionary.
-3. **Primary Languages**: Every new key must at least have definitions for `es` (Spanish) and `en` (English).
+## 1. Project Directory Map & Organization
 
-## Design & UI System
-1. Modern glassmorphism & Tailwind CSS design system with full Light & Dark mode parity (`dark:` classes).
-2. All modals must use `<Modal>` with ESC key handling, backdrop dismissal, and body scroll lock.
-3. All write actions (creation, deletion, status change) must be guarded with `<PermissionGate>`.
+```
+DAMA-CRM/
+├── client/                     # Frontend Application (React 18 + Vite + TailwindCSS + Framer Motion)
+│   ├── src/
+│   │   ├── components/         # Reusable UI & Layout Components
+│   │   │   ├── common/         # Buttons, Badges, Modals, Loading spinners, Empty states
+│   │   │   ├── layout/         # Header, Sidebar, MobileBottomNav, MainLayout
+│   │   │   ├── notifications/  # NotificationCenter, NotificationBadge
+│   │   │   ├── invoices/       # RecurringInvoicesTab, ContractsTab, InvoicePDF
+│   │   │   └── ui/             # Glassmorphism cards, AnimatedIcon
+│   │   ├── context/            # Global React Contexts
+│   │   │   ├── AuthContext.tsx       # Authentication, Google Sign-In, Session, RBAC
+│   │   │   ├── LanguageContext.tsx   # Internationalization (i18n)
+│   │   │   ├── ThemeContext.tsx      # Dark / Light theme toggle
+│   │   │   ├── BrandingContext.tsx   # Custom logo, colors, and white-label settings
+│   │   │   └── ToastContext.tsx      # Mobile-ergonomic toast notifications & sound chimes
+│   │   ├── hooks/              # Custom React Hooks (useDebounce, usePermission, etc.)
+│   │   ├── i18n/               # Full Translation Dictionaries (11 supported languages)
+│   │   │   └── index.ts        # All localized string keys (Zero hardcoded text rule)
+│   │   ├── pages/              # Top-level Page Views
+│   │   │   ├── Dashboard.tsx   # Executive CRM KPIs, Pipeline, Charts
+│   │   │   ├── Contacts.tsx    # Customer and lead management
+│   │   │   ├── Deals.tsx       # Kanban Deal Board & Pipeline
+│   │   │   ├── Invoicing.tsx   # Invoices, Quotes, Subscriptions, Contracts
+│   │   │   ├── Inventory.tsx   # Products, Stock, UnoPIM connector
+│   │   │   ├── Tasks.tsx       # Agile Sprint Board & Task Management
+│   │   │   ├── Integrations.tsx# ERP & Third-party connectors (Odoo, Sage, WC, Shopify...)
+│   │   │   ├── Omnichannel.tsx # WhatsApp, Email, Live Chat Hub
+│   │   │   ├── Analytics.tsx   # Revenue, conversion, sales metrics
+│   │   │   ├── Reports.tsx     # Custom report builder & CSV/PDF exporter
+│   │   │   ├── Settings.tsx    # System configuration & Users/Roles
+│   │   │   └── Login.tsx       # Authentication, Google Login, 2FA, Recovery
+│   │   └── services/           # Frontend API Clients
+│   │       ├── api.ts          # Centralized Fetch client with JWT & interceptors
+│   │       ├── websocket.ts    # Real-time WebSocket connection
+│   │       ├── sound.ts        # Synthesized audio feedback engine
+│   │       └── integrations.service.ts # Connectors API
+│   └── package.json
+│
+├── server/                     # Backend API Service (Node.js + Express + Prisma ORM)
+│   ├── prisma/                 # Database Schema & Migrations
+│   │   ├── schema.prisma       # PostgreSQL Database Schema (Primary)
+│   │   ├── schema.sqlite.prisma# SQLite Schema (Development fallback)
+│   │   └── migrations/         # Database Migration History (Prisma)
+│   ├── src/
+│   │   ├── config/             # Environment & System Configuration
+│   │   ├── middlewares/        # Express Middlewares (Auth, Multi-tenant, Rate-limit, Roles)
+│   │   ├── modules/            # Domain-driven Modules (Routes, Controllers, Services)
+│   │   │   ├── auth/           # Login, Google OAuth, 2FA, JWT
+│   │   │   ├── contacts/       # Contacts & Leads
+│   │   │   ├── deals/          # Deals, Pipelines, Stages
+│   │   │   ├── invoices/       # Invoices, Recurring Invoices, Payments
+│   │   │   ├── contracts/      # Digital Contracts & Signatures
+│   │   │   ├── inventory/      # Products, Stock, UnoPIM Webhooks
+│   │   │   ├── tasks/          # Sprints, Tasks, Agile Kanban
+│   │   │   ├── integrations/   # Connectors (Odoo, Sage 1, Sage 50, Sage 200, Shopify, WC, n8n, Stripe, Zapier, GCal)
+│   │   │   ├── omnichannel/    # WhatsApp Cloud, Chats, Conversations
+│   │   │   ├── notifications/  # Notification center & push alerts
+│   │   │   └── audit/          # Security Audit Trail Logging
+│   │   ├── services/           # Shared backend services (WebSockets, Cron, Emails)
+│   │   └── server.ts           # HTTP server initialization & route mounting
+│   ├── tests/                  # Unit & Integration Test Suites
+│   │   ├── unit.test.ts        # Fast Unit Tests
+│   │   └── integration.test.ts # API Integration Tests
+│   └── integrations.json       # Persisted Integration Connectors Configuration
+└── docker-compose.yml          # Docker PostgreSQL (5433) & Redis (6379)
+```
+
+---
+
+## 2. Database & Prisma Migration Rules
+
+1. **Explicit Migrations Requirement**:
+   Whenever a database schema change is made (adding models, columns, indexes, or relations), **you must generate and deploy a Prisma migration**.
+2. **Schema Dual Parity**:
+   Update both `server/prisma/schema.prisma` (PostgreSQL) and `server/prisma/schema.sqlite.prisma` (SQLite).
+3. **Migration Command Procedure (Windows / CI Non-interactive Safe)**:
+   ```bash
+   # 1. Create migration SQL script using prisma migrate diff
+   npx prisma migrate diff --from-url "postgresql://crm_user:crm_password@localhost:5433/dama_crm?schema=public" --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/<YYYYMMDDHHMMSS>_<migration_name>/migration.sql
+
+   # 2. Deploy migration cleanly
+   npx prisma migrate deploy --schema prisma/schema.prisma
+
+   # 3. Regenerate client bindings
+   npm --prefix server run prisma:generate:pg
+   ```
+
+---
+
+## 3. Multi-Tenant Security & Data Isolation
+
+1. **Tenant Scoping**:
+   All core business entities (`Contact`, `Deal`, `Invoice`, `RecurringInvoice`, `Contract`, `Task`, `Product`, `Activity`) must carry a `tenantId`.
+2. **Strict Query Filtering**:
+   Never perform raw database searches or deletions without filtering by the authenticated user's `tenantId`.
+3. **Cross-Tenant Prevention**:
+   The `authMiddleware` injects the verified `tenantId` into `req.user`. Controller handlers must enforce that cross-tenant IDs return `403 Forbidden` or `404 Not Found`.
+
+---
+
+## 4. ERP & Accounting Integrations (Sage, Odoo, WooCommerce, Shopify)
+
+1. **Supported Sage Connectors**:
+   - **Sage One (Sage Business Cloud Accounting)**: REST API v3.1 (`/contacts`, `/products`, `/sales_invoices`).
+   - **Sage 50 (Sage 50cloud / Desktop)**: SData Protocol & Desktop Engine for Subcuentas (430), facturas emitidas y existencias.
+   - **Sage 200 (Sage 200 Advanced Enterprise)**: REST API v1 / SData v2.0 Enterprise para clientes corporativos, facturación multidivisa y libros mayores.
+2. **Security & Secrets Handling**:
+   - Secret keys (`apiKey`, `password`, `consumerSecret`, `clientSecret`, `subscriptionKey`) are **never sent in plaintext to the frontend**.
+   - `getPublicConfig()` masks all secrets with `••••••••`.
+   - `updateConnectorConfig()` preserves existing secrets when `••••••••` or empty strings are received.
+
+---
+
+## 5. Mobile & Tablet UX Design Guidelines
+
+1. **Navigation**:
+   - Use `MobileBottomNav` for quick 1-tap navigation on mobile and tablet (`< 1024px`).
+   - Add safe bottom padding (`pb-20 lg:pb-6`) on all scrollable page containers so content is never obscured by the bottom bar.
+2. **Ergonomic Toasts**:
+   - Floating toasts display with bottom-up mobile ergonomics, swipe-to-dismiss gestures, and matching audio chimes.
+3. **Responsive Drawers & Modals**:
+   - All dropdowns and modal panels must fit within viewport constraints (`max-w-[95vw]` / responsive modal containers).
+
+---
+
+## 6. Strict Internationalization (i18n)
+
+1. **Zero Hardcoding Policy**:
+   No hardcoded customer-facing Spanish or English strings in JSX or alert messages. Always use `t('key')` from `useLanguage()`.
+2. **Dictionary Maintenance**:
+   Declare all string keys in `client/src/i18n/index.ts` across all 11 supported languages (`es`, `en`, `fr`, `de`, `it`, `pt`, `ca`, `eu`, `gl`, `zh`, `ar`).
+
+---
+
+## 7. Quality Assurance & Verification
+
+- Run test suite: `npm --prefix server test` or `node --test tests/unit.test.ts tests/integration.test.ts`.
+- Check TypeScript builds: `npm run build:server` and `npm run build:client`.
+- Maintain 100% test pass rate with zero regression.
