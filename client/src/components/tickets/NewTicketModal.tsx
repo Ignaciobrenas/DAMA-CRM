@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
@@ -79,8 +80,14 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-scale-up">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-scale-up"
+      >
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">
             {t('tickets.newTicket')}
@@ -89,7 +96,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 

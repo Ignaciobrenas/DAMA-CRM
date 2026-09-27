@@ -31,6 +31,11 @@ import expensesRoutes from './modules/expenses/expenses.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
 import employeesRoutes from './modules/employees/employees.routes';
 import modulesRoutes from './modules/modules/modules.routes';
+import contractsRoutes from './modules/contracts/contracts.routes';
+import onboardingRoutes from './modules/onboarding/onboarding.routes';
+import calendarRoutes from './modules/calendar/calendar.routes';
+import appointmentsRoutes from './modules/appointments/appointments.routes';
+import logisticsRoutes from './modules/logistics/logistics.routes';
 
 const app = express();
 
@@ -47,18 +52,28 @@ const allowedOriginPatterns = [
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
   /\.damacrm\.com$/,
   /\.damacrm\.local$/,
+  /\.dama\.com$/,
+  /^https?:\/\/([a-zA-Z0-9-]+\.)?dama\.com(:\d+)?$/,
+  /^https?:\/\/([a-zA-Z0-9-]+\.)?damacrm\.local(:\d+)?$/,
+  /^https?:\/\/([a-zA-Z0-9-]+\.)?localhost(:\d+)?$/,
 ];
+
+const customOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      const isAllowed = allowedOriginPatterns.some((pattern) => pattern.test(origin));
-      if (isAllowed || config.env === 'development') {
+      const isPatternAllowed = allowedOriginPatterns.some((pattern) => pattern.test(origin));
+      const isCustomAllowed = customOrigins.includes(origin);
+      if (isPatternAllowed || isCustomAllowed || config.env === 'development') {
         callback(null, true);
       } else {
-        callback(null, true); // Fallback permissive for self-hosted domain flexibility
+        callback(null, false);
       }
     },
     credentials: true,
@@ -163,6 +178,11 @@ app.use('/api/expenses', expensesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/employees', employeesRoutes);
 app.use('/api/modules', modulesRoutes);
+app.use('/api/contracts', contractsRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/logistics', logisticsRoutes);
 
 // Explicit third-party integrations catalog endpoint
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';

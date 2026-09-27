@@ -28,7 +28,7 @@ export interface BrandingConfig {
 }
 
 export const DEFAULT_BRANDING: BrandingConfig = {
-  companyName: 'DAMA CRM Soluciones S.L.',
+  companyName: 'DAMA CRM',
   logoUrl: '',
   logoLightUrl: '',
   logoDarkUrl: '',
@@ -61,7 +61,25 @@ export function getBrandingConfig(): BrandingConfig {
 
 export async function getBranding(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = (req as any).user?.tenantId || (req.headers['x-tenant-id'] as string) || 'master';
+    const hostHeader = (req.headers['x-forwarded-host'] || req.headers.host || '') as string;
+    let hostSlug = '';
+    if (hostHeader) {
+      const cleanHost = hostHeader.split(':')[0].toLowerCase();
+      if (cleanHost.endsWith('.dama.com') || cleanHost.endsWith('.damacrm.local') || cleanHost.endsWith('.localhost')) {
+        const parts = cleanHost.split('.');
+        if (parts.length >= 3 && parts[0] !== 'app' && parts[0] !== 'www' && parts[0] !== 'api') {
+          hostSlug = parts[0];
+        }
+      }
+    }
+
+    const tenantId =
+      (req as any).user?.tenantId ||
+      (req.headers['x-switch-tenant-id'] as string) ||
+      (req.headers['x-tenant-slug'] as string) ||
+      (req.headers['x-tenant-id'] as string) ||
+      hostSlug ||
+      'master';
     
     // Attempt to load from Tenant in DB
     try {

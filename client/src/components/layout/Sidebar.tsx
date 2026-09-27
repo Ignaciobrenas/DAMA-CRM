@@ -23,6 +23,11 @@ import {
   Ticket,
   WalletCards,
   UserCheck,
+  Clock,
+  Calendar,
+  Settings,
+  CalendarCheck,
+  Truck,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -61,6 +66,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     animation?: IconAnimationVariant;
   }> = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/', animation: 'bounce' },
+    { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', animation: 'bounce' },
+    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Servicios'), icon: CalendarCheck, route: '/appointments', moduleKey: 'appointments', animation: 'bounce' },
+    { id: 'logistics', label: t('sidebar.logistics', 'Logística & Paquetería'), icon: Truck, route: '/logistics', moduleKey: 'logistics', animation: 'tilt' },
+    { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', animation: 'pulse' },
     { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', moduleKey: 'portalEmpleado', animation: 'float' },
     { id: 'tickets', label: t('sidebar.tickets'), icon: Ticket, route: '/tickets', resource: 'tickets', moduleKey: 'tickets', animation: 'tilt' },
     { id: 'expenses', label: t('sidebar.expenses'), icon: WalletCards, route: '/expenses', resource: 'expenses', moduleKey: 'expenses', animation: 'float' },
@@ -75,7 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'integrations', label: t('integrations'), icon: Blocks, route: '/integrations', moduleKey: 'integrations', animation: 'spin' },
     { id: 'lead-capture', label: t('leadCapture'), icon: Zap, route: '/lead-capture', moduleKey: 'leadCapture', animation: 'glow' },
     { id: 'reports', label: t('reportsBI'), icon: BarChart3, route: '/reports', resource: 'reports', moduleKey: 'reports', animation: 'bounce' },
-    { id: 'settings', label: t('settings'), icon: ShieldCheck, route: '/settings', resource: 'users', animation: 'spin' },
+    { id: 'settings', label: t('settings'), icon: Settings, route: '/settings', resource: 'users', animation: 'spin' },
     { id: 'portal', label: t('clientPortal'), icon: ExternalLink, route: '/portal', resource: 'invoices', moduleKey: 'clientPortal', animation: 'float' },
     { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq', animation: 'bounce' },
     { id: 'privacy', label: t('privacyPolicy'), icon: Lock, route: '/privacy', animation: 'tilt' },
@@ -93,26 +102,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-all duration-200 ease-in-out md:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 bg-slate-50/95 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-200 ease-in-out md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${isCollapsed ? 'w-16' : 'w-60'}`}
       >
         {/* Brand Header */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} h-14 border-b border-gray-200 dark:border-slate-800`}>
-          <div className="flex items-center space-x-2.5 truncate">
-            <img
-              src={getLogo('symbol')}
-              alt={branding.companyName}
-              className="w-8 h-8 rounded-lg object-contain bg-white/90 dark:bg-slate-800/90 p-1 border border-gray-200 dark:border-slate-700 shrink-0 shadow-xs"
-            />
+        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-3.5'} h-16 border-b border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50`}>
+          <div className="flex items-center space-x-3 truncate">
+            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 p-1.5 border border-slate-200 dark:border-slate-700 shadow-md ring-2 ring-blue-500/20 dark:ring-blue-400/30 flex items-center justify-center shrink-0 transition-all hover:scale-105">
+              <img
+                src={getLogo('symbol')}
+                alt={branding.companyName}
+                className="w-full h-full object-contain filter drop-shadow-xs"
+              />
+            </div>
             {!isCollapsed && (
-              <div className="truncate">
-                <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white truncate block">
+              <div className="truncate min-w-0">
+                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white truncate block">
                   {branding.companyName}
                 </span>
                 <span
-                  className="block text-[9px] font-semibold uppercase tracking-wider"
-                  style={{ color: branding.primaryColor }}
+                  className="block text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: branding.primaryColor || '#2563EB' }}
                 >
                   {t('enterpriseCrm')}
                 </span>
@@ -123,7 +134,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed && (
             <button
               onClick={onClose}
-              className="p-1 rounded-md md:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="p-1.5 rounded-lg md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              aria-label={t('close')}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -133,18 +145,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation Items */}
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            // Check resource RBAC permissions
-            if (item.resource && !hasPermission(item.resource, 'read')) {
+            const isGod =
+              user?.tenantId === 'god' ||
+              user?.role === 'GOD' ||
+              user?.role === 'ADMIN' ||
+              user?.email === 'ignaciobrenas@gmail.com' ||
+              user?.email === 'admin@dama-crm.local';
+
+            // Check resource RBAC permissions (God / SuperAdmin bypasses)
+            if (!isGod && item.resource && !hasPermission(item.resource, 'read')) {
               return null;
             }
 
-            // Check if module is enabled by company admin
-            if (item.moduleKey && !isModuleEnabled(item.moduleKey)) {
+            // Check if module is enabled by company admin (God / SuperAdmin bypasses)
+            if (!isGod && item.moduleKey && !isModuleEnabled(item.moduleKey)) {
               return null;
             }
 
             // Check if user has customized pinned items
-            if (pinnedRoutes && Array.isArray(pinnedRoutes) && pinnedRoutes.length > 0) {
+            if (!isGod && pinnedRoutes && Array.isArray(pinnedRoutes) && pinnedRoutes.length > 0) {
               if (item.route !== '/settings' && item.route !== '/' && !pinnedRoutes.includes(item.route)) {
                 return null;
               }

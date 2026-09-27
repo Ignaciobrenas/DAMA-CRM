@@ -23,11 +23,11 @@ export interface BrandingConfig {
 }
 
 const DEFAULT_BRANDING: BrandingConfig = {
-  companyName: 'DAMA CRM Soluciones S.L.',
+  companyName: 'DAMA CRM',
   logoUrl: '',
   logoDarkUrl: '',
   logoLightUrl: '',
-  primaryColor: '#072053',
+  primaryColor: '#2563EB',
   borderRadius: 'md',
   companyTaxId: 'B-12345678',
   companyAddress: 'Avenida Tecnológica 42, 28046 Madrid, España',
@@ -176,14 +176,14 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return branding.logoUrl;
       }
 
-      // Default DAMA logo placeholders
+      // Default DAMA logo placeholders (Permanent official assets from client/public/assets/logos)
       if (variant === 'full') {
-        return dark ? '/assets/logos/dama-logo-white.svg' : '/assets/logos/dama-logo-dark.svg';
+        return dark ? '/assets/logos/dama-logo-white.png' : '/assets/logos/dama-logo-dark.png';
       }
       if (variant === 'vertical') {
-        return dark ? '/assets/logos/dama-logo-vertical-white.svg' : '/assets/logos/dama-logo-vertical-dark.svg';
+        return dark ? '/assets/logos/dama-logo-vertical-white.png' : '/assets/logos/dama-logo-vertical-dark.png';
       }
-      return dark ? '/assets/logos/dama-symbol-white.svg' : '/assets/logos/dama-symbol-dark.svg';
+      return dark ? '/assets/logos/dama-symbol-white.png' : '/assets/logos/dama-symbol-dark.png';
     },
     [branding, isDarkMode]
   );

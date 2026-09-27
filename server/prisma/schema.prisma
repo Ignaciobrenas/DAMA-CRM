@@ -53,6 +53,12 @@ model User {
   employee         Employee?
   auditLogs        AuditLog[]
   twoFactorTokens  TwoFactorToken[]
+  taskComments     TaskComment[]
+  taskWorkLogs     TaskWorkLog[]
+  projectMembers   ProjectMember[]
+  calendarEvents   CalendarEvent[]
+  calendarReminders CalendarReminder[]
+  calendarIntegrations CalendarIntegration[]
 
   @@index([tenantId, isActive])
   @@index([email])
@@ -135,6 +141,8 @@ model Company {
   quotes         Quote[]
   invoices       Invoice[]
   tickets        Ticket[]
+  recurringInvoices RecurringInvoice[]
+  contracts      Contract[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -159,7 +167,11 @@ model Contact {
   quotes       Quote[]
   invoices     Invoice[]
   tickets      Ticket[]
+  recurringInvoices RecurringInvoice[]
+  contracts    Contract[]
   omniMessages OmniMessage[]
+  calendarEvents CalendarEvent[]
+  appointments Appointment[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -199,6 +211,8 @@ model Deal {
   notes             String?
   tenantId          String?   @default("master")
   projects          Project[]
+  calendarEvents    CalendarEvent[]
+  shipments         Shipment[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -210,23 +224,38 @@ model Deal {
 // -----------------------------------------------------------------------------
 
 model Project {
-  id          String    @id @default(uuid())
+  id          String          @id @default(uuid())
   name        String
   description String?
-  status      String    @default("ACTIVE") // PLANNING, ACTIVE, COMPLETED, ON_HOLD
-  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      String          @default("ACTIVE") // PLANNING, ACTIVE, COMPLETED, ON_HOLD
+  priority    String          @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
   dealId      String?
-  deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  deal        Deal?           @relation(fields: [dealId], references: [id], onDelete: SetNull)
   startDate   DateTime?
   endDate     DateTime?
   budget      Float?
-  tenantId    String?   @default("master")
+  tenantId    String?         @default("master")
   sprints     Sprint[]
   tasks       Task[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  members     ProjectMember[]
+  calendarEvents CalendarEvent[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("MEMBER") // LEAD, MEMBER, VIEWER
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
 }
 
 model Sprint {
@@ -246,25 +275,59 @@ model Sprint {
 }
 
 model Task {
-  id             String    @id @default(uuid())
+  id             String        @id @default(uuid())
   projectId      String
-  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sprintId       String?
-  sprint         Sprint?   @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  sprint         Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   title          String
   description    String?
-  status         String    @default("TODO") // TODO, IN_PROGRESS, REVIEW, DONE
-  priority       String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  storyPoints    Int?      @default(1)
-  estimatedHours Float?    @default(0)
-  loggedHours    Float?    @default(0)
+  status         String        @default("TODO") // TODO, IN_PROGRESS, REVIEW, DONE
+  priority       String        @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  storyPoints    Int?          @default(1)
+  estimatedHours Float?        @default(0)
+  loggedHours    Float?        @default(0)
   assigneeId     String?
-  assignee       User?     @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assignee       User?         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   dueDate        DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  comments       TaskComment[]
+  workLogs       TaskWorkLog[]
+  calendarEvents CalendarEvent[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName  String?
+  content   String   // Markdown support
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
+  @@map("task_comments")
+}
+
+model TaskWorkLog {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName    String?
+  hours       Float    @default(0.0)
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([taskId, date])
+  @@map("task_work_logs")
 }
 
 // -----------------------------------------------------------------------------
@@ -272,58 +335,73 @@ model Task {
 // -----------------------------------------------------------------------------
 
 model Quote {
-  id            String        @id @default(uuid())
-  quoteNumber   String        @unique
-  contactId     String?
-  contact       Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  companyId     String?
-  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  issueDate     DateTime      @default(now())
-  expiryDate    DateTime?
-  status        String        @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED
-  subtotal      Float         @default(0.0)
-  taxRate       Float         @default(21.0)
-  taxAmount     Float         @default(0.0)
-  total         Float         @default(0.0)
-  currency      String        @default("EUR")
-  notes         String?
-  signatureData String?       // Base64 PNG signature from digital acceptance canvas
-  signedAt      DateTime?
-  signedBy      String?       // Signer's full name or email
-  publicToken   String?       @unique // Unique secure token for customer self-service portal / quote view
-  tenantId      String?       @default("master")
-  items         InvoiceItem[]
-  invoices      Invoice[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  quoteNumber     String        @unique
+  contactId       String?
+  contact         Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId       String?
+  company         Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  issueDate       DateTime      @default(now())
+  expiryDate      DateTime?
+  status          String        @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED
+  subtotal        Float         @default(0.0)
+  discountPercent Float         @default(0.0)
+  discountAmount  Float         @default(0.0)
+  taxRate         Float         @default(21.0)
+  taxAmount       Float         @default(0.0)
+  irpfRate        Float         @default(0.0)
+  irpfAmount      Float         @default(0.0)
+  total           Float         @default(0.0)
+  currency        String        @default("EUR")
+  paymentTerms    String        @default("IMMEDIATE") // IMMEDIATE, DAYS_15, DAYS_30, DAYS_60, END_OF_MONTH
+  notes           String?
+  signatureData   String?       // Base64 PNG signature from digital acceptance canvas
+  signedAt        DateTime?
+  signedBy        String?       // Signer's full name or email
+  publicToken     String?       @unique // Unique secure token for customer self-service portal / quote view
+  tenantId        String?       @default("master")
+  items           InvoiceItem[]
+  invoices        Invoice[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@map("quotes")
 }
 
 model Invoice {
-  id            String        @id @default(uuid())
-  invoiceNumber String        @unique
-  quoteId       String?
-  quote         Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
-  contactId     String?
-  contact       Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  companyId     String?
-  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  issueDate     DateTime      @default(now())
-  dueDate       DateTime?
-  status        String        @default("DRAFT") // DRAFT, SENT, PAID, PARTIAL, OVERDUE, CANCELLED
-  subtotal      Float         @default(0.0)
-  taxRate       Float         @default(21.0)
-  taxAmount     Float         @default(0.0)
-  total         Float         @default(0.0)
-  paidAmount    Float         @default(0.0) // For partial payment / dunning tracking
-  currency      String        @default("EUR")
-  notes         String?
-  paidAt        DateTime?
-  tenantId      String?       @default("master")
-  items         InvoiceItem[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                 String        @id @default(uuid())
+  invoiceNumber      String        @unique
+  quoteId            String?
+  quote              Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  contactId          String?
+  contact            Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId          String?
+  company            Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  issueDate          DateTime      @default(now())
+  dueDate            DateTime?
+  status             String        @default("DRAFT") // DRAFT, SENT, PAID, PARTIAL, OVERDUE, CANCELLED
+  subtotal           Float         @default(0.0)
+  discountPercent    Float         @default(0.0)
+  discountAmount     Float         @default(0.0)
+  taxRate            Float         @default(21.0)
+  taxAmount          Float         @default(0.0)
+  irpfRate           Float         @default(0.0)
+  irpfAmount         Float         @default(0.0)
+  total              Float         @default(0.0)
+  paidAmount         Float         @default(0.0) // For partial payment / dunning tracking
+  currency           String        @default("EUR")
+  paymentTerms       String        @default("IMMEDIATE") // IMMEDIATE, DAYS_15, DAYS_30, DAYS_60, END_OF_MONTH
+  isRectifying       Boolean       @default(false)
+  rectifiesInvoiceId String?
+  rectifyingReason   String?
+  proforma           Boolean       @default(false)
+  notes              String?
+  paidAt             DateTime?
+  tenantId           String?       @default("master")
+  items              InvoiceItem[]
+  shipments          Shipment[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   @@map("invoices")
 }
@@ -337,9 +415,94 @@ model InvoiceItem {
   description String
   quantity    Float    @default(1.0)
   unitPrice   Float    @default(0.0)
+  discount    Float    @default(0.0) // Line-item discount percent
   amount      Float    @default(0.0)
 
   @@map("invoice_items")
+}
+
+model TenantInvitation {
+  id          String    @id @default(uuid())
+  token       String    @unique
+  email       String
+  tenantSlug  String?
+  companyName String?
+  role        String    @default("ADMIN")
+  status      String    @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  expiresAt   DateTime
+  metadata    String?   @default("{}") // JSON config
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("tenant_invitations")
+}
+
+model RecurringInvoice {
+  id            String                 @id @default(uuid())
+  title         String
+  frequency     String                 @default("MONTHLY") // WEEKLY, MONTHLY, QUARTERLY, BIANNUAL, YEARLY
+  status        String                 @default("ACTIVE")  // ACTIVE, PAUSED, CANCELLED
+  startDate     DateTime               @default(now())
+  nextIssueDate DateTime
+  endDate       DateTime?
+  lastIssuedAt  DateTime?
+  subtotal      Float                  @default(0.0)
+  taxRate       Float                  @default(21.0)
+  taxAmount     Float                  @default(0.0)
+  total         Float                  @default(0.0)
+  currency      String                 @default("EUR")
+  notes         String?
+  autoSendEmail Boolean                @default(true)
+  tenantId      String?                @default("master")
+  companyId     String?
+  company       Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contactId     String?
+  contact       Contact?               @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  items         RecurringInvoiceItem[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@map("recurring_invoices")
+}
+
+model RecurringInvoiceItem {
+  id                 String           @id @default(uuid())
+  recurringInvoiceId String
+  recurringInvoice   RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+  description        String
+  quantity           Float            @default(1.0)
+  unitPrice          Float            @default(0.0)
+  amount             Float            @default(0.0)
+
+  @@map("recurring_invoice_items")
+}
+
+model Contract {
+  id               String    @id @default(uuid())
+  contractNumber   String    @unique
+  title            String
+  type             String    @default("SERVICE") // SERVICE, SLA, NDA, LICENSE, EMPLOYMENT, PARTNERSHIP
+  status           String    @default("ACTIVE")  // DRAFT, PENDING_SIGNATURE, ACTIVE, EXPIRED, TERMINATED
+  startDate        DateTime  @default(now())
+  endDate          DateTime?
+  value            Float?    @default(0.0)
+  currency         String    @default("EUR")
+  autoRenew        Boolean   @default(false)
+  noticePeriodDays Int       @default(30)
+  terms            String?
+  signedAt         DateTime?
+  signerName       String?
+  signatureData    String?
+  companyId        String?
+  company          Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contactId        String?
+  contact          Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  tenantId         String?   @default("master")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("contracts")
 }
 
 model Expense {
@@ -411,27 +574,65 @@ model TicketMessage {
 }
 
 // -----------------------------------------------------------------------------
-// Inventory Module: Products & UnoPIM Catalog Integration
+// Inventory Module: Products, Stock Movements & UnoPIM Catalog Integration
 // -----------------------------------------------------------------------------
 
 model Product {
-  id           String    @id @default(uuid())
-  externalId   String?   @unique // UnoPIM ID for bidirectional sync
-  sku          String    @unique
-  name         String
-  description  String?
-  price        Float     @default(0.0)
-  costPrice    Float?    @default(0.0)
-  stock        Int       @default(0)
-  category     String?
-  barcode      String?
-  isSync       Boolean   @default(false)
-  lastSyncedAt DateTime?
-  tenantId     String?   @default("master")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String          @id @default(uuid())
+  externalId     String?         @unique // UnoPIM ID for bidirectional sync
+  sku            String          @unique
+  name           String
+  description    String?
+  price          Float           @default(0.0)
+  costPrice      Float?          @default(0.0)
+  stock          Int             @default(0)
+  minStock       Int             @default(5)
+  maxStock       Int?
+  unit           String          @default("UNIT") // UNIT, KG, METER, LITER, PACK, HOUR, SERVICE
+  category       String?
+  barcode        String?
+  imageUrl       String?
+  images         String?         @default("[]") // JSON array of image URLs
+  location       String?         // Warehouse shelf/aisle e.g. "Pasillo A - Est. 3"
+  supplierName   String?
+  supplierSku    String?
+  taxRate        Float           @default(21.0)
+  weight         Float?
+  dimensions     String?         // e.g. "20x15x10 cm"
+  brand          String?
+  tags           String?
+  isActive       Boolean         @default(true)
+  notes          String?
+  isSync         Boolean         @default(false)
+  lastSyncedAt   DateTime?
+  tenantId       String?         @default("master")
+  attributes     String?         @default("{}") // Mapped multi-app attributes (unopim, opencart, sage, odoo, shopify, woocommerce)
+  stockMovements StockMovement[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
+  @@index([tenantId, category])
+  @@index([tenantId, sku])
   @@map("products")
+}
+
+model StockMovement {
+  id            String   @id @default(uuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type          String   // INBOUND, OUTBOUND, ADJUSTMENT, TRANSFER, RETURN
+  quantity      Int      // Delta quantity (positive or negative)
+  previousStock Int
+  newStock      Int
+  reason        String?
+  reference     String?
+  performedBy   String?
+  tenantId      String?  @default("master")
+  createdAt     DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("stock_movements")
 }
 
 // -----------------------------------------------------------------------------
@@ -652,6 +853,225 @@ model TimeRecord {
   @@index([tenantId, clockIn])
   @@index([employeeId, clockIn])
   @@map("time_records")
+}
+
+// -----------------------------------------------------------------------------
+// Calendar Module: Personal & Company Calendars, Events, Alerts & Sync
+// -----------------------------------------------------------------------------
+
+model CalendarEvent {
+  id               String             @id @default(uuid())
+  tenantId         String?            @default("master")
+  userId           String
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  startDate        DateTime
+  endDate          DateTime
+  allDay           Boolean            @default(false)
+  location         String?
+  color            String?            @default("#3B82F6")
+  type             String             @default("EVENT") // EVENT, MEETING, DEADLINE, MILESTONE, REMINDER, CALL, TIME_BLOCK
+  isCompanyWide    Boolean            @default(false)
+  status           String             @default("CONFIRMED") // CONFIRMED, TENTATIVE, CANCELLED
+  projectId        String?
+  project          Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  taskId           String?
+  task             Task?              @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  dealId           String?
+  deal             Deal?              @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contactId        String?
+  contact          Contact?           @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  externalSyncId   String?
+  externalProvider String?            // GOOGLE, APPLE, ICAL
+  recurrence       String?            @default("NONE") // NONE, DAILY, WEEKLY, MONTHLY, YEARLY
+  reminders        CalendarReminder[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([tenantId, startDate])
+  @@index([userId, startDate])
+  @@index([projectId])
+  @@index([isCompanyWide])
+  @@map("calendar_events")
+}
+
+model CalendarReminder {
+  id            String        @id @default(uuid())
+  eventId       String
+  event         CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tenantId      String?       @default("master")
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  minutesBefore Int           @default(15) // 0, 5, 10, 15, 30, 60, 1440
+  method        String        @default("NOTIFICATION") // NOTIFICATION, EMAIL, SOUND, ALL
+  isDismissed   Boolean       @default(false)
+  remindAt      DateTime
+  createdAt     DateTime      @default(now())
+
+  @@index([userId, remindAt, isDismissed])
+  @@map("calendar_reminders")
+}
+
+model CalendarIntegration {
+  id          String    @id @default(uuid())
+  tenantId    String?   @default("master")
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String    // GOOGLE, APPLE, OUTLOOK
+  isEnabled   Boolean   @default(false)
+  syncToken   String?   // token or iCal feed secret
+  calendarId  String?
+  lastSyncAt  DateTime?
+  config      String?   @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, provider])
+  @@map("calendar_integrations")
+}
+
+// -----------------------------------------------------------------------------
+// Appointments & Professional Booking Engine (Universal: Advisory, Tech, Health, Services)
+// -----------------------------------------------------------------------------
+
+model AppointmentService {
+  id          String   @id @default(uuid())
+  tenantId    String?  @default("master")
+  name        String
+  category    String   @default("CONSULTATION") // CONSULTATION, TECHNICAL, ADVISORY, SERVICE, TREATMENT, OTHER
+  durationMin Int      @default(30)
+  price       Float    @default(0.0)
+  supplyCost  Float    @default(0.0)
+  description String?
+  isPopular   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, category])
+  @@map("appointment_services")
+}
+
+model Appointment {
+  id              String   @id @default(uuid())
+  tenantId        String?  @default("master")
+  clientName      String
+  clientPhone     String?
+  clientEmail     String?
+  contactId       String?
+  contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  staffId         String?
+  staffName       String   @default("Especialista")
+  serviceIds      String?  @default("[]") // JSON Array of service IDs
+  servicesDetails String?  @default("[]") // JSON Array of full service item objects
+  startTime       DateTime
+  endTime         DateTime
+  durationMin     Int      @default(30)
+  totalPrice      Float    @default(0.0)
+  totalSupplyCost Float    @default(0.0)
+  estimatedProfit Float    @default(0.0)
+  status          String   @default("SCHEDULED") // SCHEDULED, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW
+  paymentStatus   String   @default("PENDING")   // PENDING, PAID, REFUNDED
+  paymentMethod   String?  // CASH, CARD, BIZUM, TRANSFER
+  notes           String?
+  invoiceId       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId, startTime])
+  @@index([tenantId, status])
+  @@index([contactId])
+  @@map("appointments")
+}
+
+// -----------------------------------------------------------------------------
+// Logistics & Multi-Carrier Courier Tracking Engine (GLS, NACEX, Amazon, Correos, DHL, SEUR)
+// -----------------------------------------------------------------------------
+
+model Shipment {
+  id               String               @id @default(uuid())
+  tenantId         String?              @default("master")
+  trackingNumber   String
+  carrier          String               @default("GLS") // GLS, NACEX, AMAZON, CORREOS, DHL, SEUR, FEDEX, UPS
+  recipientName    String
+  recipientAddress String
+  recipientCity    String
+  recipientPhone   String?
+  recipientEmail   String?
+  status           String               @default("PENDING") // PENDING, PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, EXCEPTION, RETURNED
+  origin           String               @default("Almacén Central")
+  destination      String
+  estimatedDelivery DateTime?
+  actualDelivery   DateTime?
+  dealId           String?
+  deal             Deal?                @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  invoiceId        String?
+  invoice          Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  weightKg         Float?               @default(1.0)
+  notes            String?
+  checkpoints      ShipmentCheckpoint[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@unique([tenantId, trackingNumber])
+  @@index([tenantId, carrier])
+  @@index([tenantId, status])
+  @@map("shipments")
+}
+
+model ShipmentCheckpoint {
+  id          String   @id @default(uuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status      String
+  location    String
+  description String
+  timestamp   DateTime @default(now())
+
+  @@index([shipmentId, timestamp])
+  @@map("shipment_checkpoints")
+}
+
+// -----------------------------------------------------------------------------
+// Internal Team Chat & Department Channels
+// -----------------------------------------------------------------------------
+
+model InternalChatChannel {
+  id          String                @id @default(uuid())
+  tenantId    String?               @default("master")
+  name        String
+  type        String                @default("DEPARTMENT") // DEPARTMENT, DIRECT, PROJECT, ANNOUNCEMENT
+  description String?
+  isPrivate   Boolean               @default(false)
+  members     String?               @default("[]") // JSON array of user IDs
+  messages    InternalChatMessage[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([tenantId, type])
+  @@map("internal_chat_channels")
+}
+
+model InternalChatMessage {
+  id          String               @id @default(uuid())
+  channelId   String
+  channel     InternalChatChannel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  tenantId    String?              @default("master")
+  senderId    String
+  senderName  String
+  senderAvatar String?
+  text        String
+  attachments String?              @default("[]") // JSON Array of attachments
+  reactions   String?              @default("{}") // JSON map of emoji -> userIds
+  isPinned    Boolean              @default(false)
+  replyToId   String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([channelId, createdAt])
+  @@index([tenantId, senderId])
+  @@map("internal_chat_messages")
 }
 
 

@@ -507,6 +507,7 @@ export const Workflows: React.FC = () => {
                     <option value="create_project">{t('workflows.actionCreateProject')}</option>
                     <option value="send_email">{t('workflows.actionSendEmailNotif')}</option>
                     <option value="create_task">{t('workflows.actionCreateTechTask')}</option>
+                    <option value="n8n_trigger">{t('workflows.actionTriggerN8n') || 'Disparar Workflow en n8n'}</option>
                     <option value="webhook_dispatch">{t('workflows.actionTriggerWebhook')}</option>
                   </select>
                 </div>
@@ -605,6 +606,7 @@ export const Workflows: React.FC = () => {
                     <option value="create_project">{t('workflows.actionCreateProject')}</option>
                     <option value="send_email">{t('workflows.actionSendEmailNotif')}</option>
                     <option value="create_task">{t('workflows.actionCreateTechTask')}</option>
+                    <option value="n8n_trigger">{t('workflows.actionTriggerN8n') || 'Disparar Workflow en n8n'}</option>
                     <option value="webhook_dispatch">{t('workflows.actionTriggerWebhook')}</option>
                   </select>
                 </div>

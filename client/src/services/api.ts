@@ -36,6 +36,34 @@ export async function apiRequest<T = any>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  const switchTenant = localStorage.getItem('dama_switch_tenant');
+  if (switchTenant && !headers.has('X-Switch-Tenant-ID')) {
+    headers.set('X-Switch-Tenant-ID', switchTenant);
+  }
+
+  // Automatic Subdomain Tenant Detection (e.g. god.dama.com -> 'god')
+  try {
+    if (typeof window !== 'undefined') {
+      const hostParts = window.location.hostname.toLowerCase().split('.');
+      if (
+        (window.location.hostname.endsWith('.dama.com') ||
+          window.location.hostname.endsWith('.damacrm.local') ||
+          window.location.hostname.endsWith('.localhost')) &&
+        hostParts.length >= 3
+      ) {
+        const sub = hostParts[0];
+        if (sub && sub !== 'app' && sub !== 'www' && sub !== 'api') {
+          if (!headers.has('X-Tenant-Slug')) {
+            headers.set('X-Tenant-Slug', sub);
+          }
+          if (!headers.has('X-Switch-Tenant-ID') && !switchTenant) {
+            headers.set('X-Switch-Tenant-ID', sub);
+          }
+        }
+      }
+    }
+  } catch {}
+
   let fullUrl = `${API_BASE}${endpoint}`;
   if (options.params) {
     const searchParams = new URLSearchParams();
@@ -146,5 +174,34 @@ export const api = {
     apiRequest(url, { ...options, method: 'PATCH', body: data ? JSON.stringify(data) : undefined }),
   delete: (url: string, options?: ApiOptions) => apiRequest(url, { ...options, method: 'DELETE' }),
 };
+
+export async function downloadFile(endpoint: string, fallbackFilename: string): Promise<boolean> {
+  try {
+    const token = localStorage.getItem('dama_token');
+    const switchTenant = localStorage.getItem('dama_switch_tenant');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (switchTenant) headers['X-Switch-Tenant-ID'] = switchTenant;
+
+    const fullUrl = `${API_BASE}${endpoint}`;
+    const res = await fetch(fullUrl, { headers });
+
+    if (!res.ok) throw new Error('Error al descargar archivo');
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fallbackFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    return true;
+  } catch (err) {
+    console.error('Download failed:', err);
+    return false;
+  }
+}
 
 

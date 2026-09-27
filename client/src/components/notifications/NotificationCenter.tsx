@@ -17,6 +17,8 @@ import {
   Sparkles,
   Inbox,
   Filter,
+  Zap,
+  X,
 } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 import { api } from '../../services/api';
@@ -251,94 +253,131 @@ export const NotificationCenter: React.FC = () => {
         )}
       </button>
 
-      {/* Dropdown Panel */}
+      {/* Centered Notification Center Modal */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.97 }}
-            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className="absolute right-0 mt-2 w-96 max-w-[92vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 flex flex-col z-50 overflow-hidden"
-            style={{ maxHeight: '85vh' }}
+          <div
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
           >
-            {/* Header */}
-            <div className="p-3.5 border-b border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">
-                    {t('notifications.title')}
-                  </span>
-                  {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                      {unreadCount} {t('notifications.unreadBadge')}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col z-50 overflow-hidden max-h-[85vh]"
+            >
+              {/* Header */}
+              <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {t('notifications.title')}
                     </span>
-                  )}
-                </div>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        {unreadCount} {t('notifications.unreadBadge')}
+                      </span>
+                    )}
+                  </div>
 
-                <div className="flex items-center space-x-1">
-                  {unreadCount > 0 && (
+                  <div className="flex items-center space-x-1.5">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllAsRead}
+                        className="px-2.5 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition flex items-center space-x-1"
+                        title={t('notifications.markAllRead')}
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>{t('notifications.markAllRead')}</span>
+                      </button>
+                    )}
+                    {notifications.some((n) => n.read) && (
+                      <button
+                        onClick={handleClearRead}
+                        className="p-1 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
+                        title={t('notifications.clearRead')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
-                      onClick={handleMarkAllAsRead}
-                      className="px-2 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition flex items-center space-x-1"
-                      title={t('notifications.markAllRead')}
+                      onClick={() => setIsOpen(false)}
+                      className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition ml-1"
+                      aria-label={t('close')}
                     >
-                      <CheckCheck className="w-3.5 h-3.5" />
-                      <span>{t('notifications.markAllRead')}</span>
+                      <X className="w-4 h-4" />
                     </button>
-                  )}
-                  {notifications.some((n) => n.read) && (
+                  </div>
+                </div>
+
+              {/* Tabs & Category Filter Controls */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex p-0.5 bg-slate-200/80 dark:bg-slate-800 rounded-lg text-xs">
                     <button
-                      onClick={handleClearRead}
-                      className="p-1 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
-                      title={t('notifications.clearRead')}
+                      onClick={() => setActiveTab('unread')}
+                      className={`px-2.5 py-1 rounded-md font-semibold text-xs transition ${
+                        activeTab === 'unread'
+                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      {t('notifications.tabUnread')} {unreadCount > 0 && `(${unreadCount})`}
                     </button>
-                  )}
-                </div>
-              </div>
+                    <button
+                      onClick={() => setActiveTab('all')}
+                      className={`px-2.5 py-1 rounded-md font-semibold text-xs transition ${
+                        activeTab === 'all'
+                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {t('notifications.tabAll')} ({notifications.length})
+                    </button>
+                  </div>
 
-              {/* Tabs: Unread vs All */}
-              <div className="flex items-center justify-between">
-                <div className="flex p-0.5 bg-gray-200/60 dark:bg-slate-800 rounded-lg text-xs">
-                  <button
-                    onClick={() => setActiveTab('unread')}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${
-                      activeTab === 'unread'
-                        ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-xs'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    {t('notifications.tabUnread')} {unreadCount > 0 && `(${unreadCount})`}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('all')}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${
-                      activeTab === 'all'
-                        ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-xs'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    {t('notifications.tabAll')} ({notifications.length})
-                  </button>
+                  {/* Styled Category Dropdown Pill */}
+                  <div className="flex items-center space-x-1.5 px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-lg text-xs shadow-2xs">
+                    <Filter className="w-3 h-3 text-blue-500 shrink-0" />
+                    <select
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value)}
+                      className="text-[11px] font-semibold bg-transparent text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                    >
+                      <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterAll')}</option>
+                      <option value="ticket" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterTickets')}</option>
+                      <option value="invoice" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterInvoices')}</option>
+                      <option value="quote" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterQuotes')}</option>
+                      <option value="deal" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterDeals')}</option>
+                      <option value="stock" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterStock')}</option>
+                    </select>
+                  </div>
                 </div>
 
-                {/* Category filter select */}
-                <div className="flex items-center space-x-1 text-xs">
-                  <Filter className="w-3 h-3 text-gray-400" />
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="text-[11px] bg-transparent border-0 font-medium text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer"
-                  >
-                    <option value="all">{t('notifications.filterAll')}</option>
-                    <option value="ticket">{t('notifications.filterTickets')}</option>
-                    <option value="invoice">{t('notifications.filterInvoices')}</option>
-                    <option value="quote">{t('notifications.filterQuotes')}</option>
-                    <option value="deal">{t('notifications.filterDeals')}</option>
-                    <option value="stock">{t('notifications.filterStock')}</option>
-                  </select>
+                {/* Quick Category Chips */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                  {[
+                    { id: 'all', label: t('notifications.filterAll') },
+                    { id: 'ticket', label: t('notifications.filterTickets') },
+                    { id: 'invoice', label: t('notifications.filterInvoices') },
+                    { id: 'deal', label: t('notifications.filterDeals') },
+                    { id: 'stock', label: t('notifications.filterStock') },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setTypeFilter(cat.id)}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition shrink-0 ${
+                        typeFilter === cat.id
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200/60 dark:border-slate-700/60'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -415,14 +454,16 @@ export const NotificationCenter: React.FC = () => {
             {/* Footer */}
             {notifications.length > 0 && (
               <div className="p-2 border-t border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-center">
-                <span className="text-[10px] text-gray-400 dark:text-slate-500">
-                  ⚡ {t('notifications.realtimeConnected')}
+                <span className="inline-flex items-center space-x-1 text-[10px] text-gray-400 dark:text-slate-500">
+                  <Zap className="w-3 h-3 text-amber-500" />
+                  <span>{t('notifications.realtimeConnected')}</span>
                 </span>
               </div>
             )}
           </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+        </div>
+      )}
+    </AnimatePresence>
+  </div>
+);
 };

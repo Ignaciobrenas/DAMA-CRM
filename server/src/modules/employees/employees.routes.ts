@@ -19,6 +19,8 @@ import {
   getClockStatus,
   getTimeHistory,
   syncWithOdooAttendance,
+  exportTimeRecordsCsv,
+  exportTimeRecordsPdf,
 } from './time-tracking.controller';
 
 const router = Router();
@@ -26,6 +28,8 @@ const router = Router();
 router.use(authMiddleware);
 
 // --- Time Tracking & Fichajes Endpoints ---
+router.get('/time-tracking/export/csv', exportTimeRecordsCsv);
+router.get('/time-tracking/export/pdf', exportTimeRecordsPdf);
 router.post('/time-tracking/clock-in', clockIn);
 router.post('/time-tracking/clock-out', clockOut);
 router.get('/time-tracking/status', getClockStatus);

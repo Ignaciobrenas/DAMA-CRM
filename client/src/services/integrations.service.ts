@@ -30,6 +30,14 @@ export interface IntegrationsResponseData {
     hasApiSecretKey: boolean;
     webhookSecret?: string;
   };
+  opencart?: ConnectorPublicConfig & {
+    storeUrl: string;
+    apiUsername?: string;
+    hasApiKey: boolean;
+    syncProducts?: boolean;
+    syncOrders?: boolean;
+    syncCustomers?: boolean;
+  };
   n8n: ConnectorPublicConfig & {
     webhookUrl: string;
     hasApiKey: boolean;
@@ -50,11 +58,41 @@ export interface IntegrationsResponseData {
     email?: string;
     hasClientSecret?: boolean;
   };
+  sage_one?: ConnectorPublicConfig & {
+    apiUrl: string;
+    businessId?: string;
+    hasApiKey?: boolean;
+    hasClientSecret?: boolean;
+    syncContacts: boolean;
+    syncInvoices: boolean;
+    syncProducts: boolean;
+  };
+  sage_50?: ConnectorPublicConfig & {
+    endpointUrl: string;
+    companyName: string;
+    username?: string;
+    hasPassword?: boolean;
+    hasApiKey?: boolean;
+    fiscalYear?: string;
+    syncCustomers: boolean;
+    syncInvoices: boolean;
+    syncStock: boolean;
+  };
+  sage_200?: ConnectorPublicConfig & {
+    baseUrl: string;
+    companyId?: string;
+    hasSubscriptionKey?: boolean;
+    hasClientSecret?: boolean;
+    syncCustomers: boolean;
+    syncInvoices: boolean;
+    syncLedgers: boolean;
+  };
 }
 
 export interface IntegrationsEndpoints {
   woocommerceWebhook: string;
   shopifyWebhook: string;
+  opencartWebhook?: string;
   n8nActionEndpoint: string;
   unopimWebhook: string;
   whatsappWebhook: string;
@@ -129,6 +167,25 @@ export const integrationsService = {
       method: 'POST',
       body: JSON.stringify(payload || {}),
     });
+    return res as any;
+  },
+
+  async autoMapProductAttributes(productId: string): Promise<{ success: boolean; data: any; attributes: any; message: string }> {
+    const res = await apiRequest(`/inventory/${productId}/auto-map-attributes`, {
+      method: 'POST',
+    });
+    return res as any;
+  },
+
+  async bulkAutoMapAttributes(): Promise<{ success: boolean; mappedCount: number; message?: string }> {
+    const res = await apiRequest('/integrations/attributes/auto-map-bulk', {
+      method: 'POST',
+    });
+    return res as any;
+  },
+
+  async getAttributesSchema(): Promise<{ success: boolean; data: Record<string, any> }> {
+    const res = await apiRequest('/integrations/attributes/schema');
     return res as any;
   },
 };

@@ -21,6 +21,8 @@ export interface CompanyModulesConfig {
   leadCapture: boolean;
   reports: boolean;
   clientPortal: boolean;
+  appointments: boolean;
+  logistics: boolean;
 }
 
 export const DEFAULT_MODULES: CompanyModulesConfig = {
@@ -39,6 +41,8 @@ export const DEFAULT_MODULES: CompanyModulesConfig = {
   leadCapture: true,
   reports: true,
   clientPortal: true,
+  appointments: true,
+  logistics: true,
 };
 
 interface ModulesContextType {
@@ -101,7 +105,16 @@ export const ModulesProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [t, toast]);
 
+  const isGodUser =
+    user?.tenantId === 'god' ||
+    user?.role === 'GOD' ||
+    user?.role === 'ADMIN' ||
+    user?.email === 'ignaciobrenas@gmail.com' ||
+    user?.email === 'admin@dama-crm.local';
+
   const isModuleEnabled = (moduleKey: keyof CompanyModulesConfig | string): boolean => {
+    // God mode slug and SuperAdmins always have 100% of modules active
+    if (isGodUser) return true;
     if (!(moduleKey in modules)) return true;
     return Boolean(modules[moduleKey as keyof CompanyModulesConfig]);
   };

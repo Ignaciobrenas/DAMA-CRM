@@ -97,6 +97,28 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
         },
       },
       {
+        id: 'opencart',
+        nombre: 'OpenCart eCommerce',
+        categoria: 'Comercio Electrónico & Catálogo',
+        tipo: 'REST API v3/v4 & Webhooks',
+        estado: config.opencart?.status || 'disconnected',
+        activo: config.opencart?.enabled || false,
+        descripcion: 'Sincronización bidireccional de catálogo, mapeo automático de atributos de producto, control de existencias y pedidos de OpenCart.',
+        capacidades: ['Catálogo', 'Atributos Multi-App', 'Pedidos', 'Clientes', 'Mapeo Automático'],
+        documentacion: 'https://docs.opencart.com/en-gb/system/users/api/',
+        webhookUrl: `${baseUrl}/api/integrations/opencart/webhook`,
+        eventosSoportados: ['product.created', 'product.updated', 'order.created'],
+        configuracion: {
+          storeUrl: config.opencart?.storeUrl,
+          apiUsername: config.opencart?.apiUsername,
+          tieneApiKey: config.opencart?.hasApiKey,
+          sincronizarProductos: config.opencart?.syncProducts,
+          sincronizarPedidos: config.opencart?.syncOrders,
+          sincronizarClientes: config.opencart?.syncCustomers,
+          ultimaSincronizacion: config.opencart?.lastSyncAt || null,
+        },
+      },
+      {
         id: 'n8n',
         nombre: 'n8n Workflow Automation',
         categoria: 'Automatización & Flujos',
@@ -187,6 +209,67 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
           ultimaSincronizacion: config.google_calendar?.lastSyncAt || null,
         },
       },
+      {
+        id: 'sage_one',
+        nombre: 'Sage Business Cloud Accounting (Sage 1)',
+        categoria: 'ERP & Contabilidad Cloud',
+        tipo: 'REST API v3.1 / OAuth 2.0',
+        estado: config.sage_one?.status || 'disconnected',
+        activo: config.sage_one?.enabled || false,
+        descripcion: 'Conexión oficial con Sage Business Cloud (Sage One) para sincronización en tiempo real de contactos, clientes, catálogo y facturación.',
+        capacidades: ['Clientes (Sales Ledger)', 'Facturas de Venta', 'Catálogo de Artículos', 'Impuestos SII'],
+        documentacion: 'https://developer.sage.com/accounting/reference/',
+        configuracion: {
+          apiUrl: config.sage_one?.apiUrl,
+          tieneApiKey: config.sage_one?.hasApiKey,
+          businessId: config.sage_one?.businessId,
+          sincronizarContactos: config.sage_one?.syncContacts,
+          sincronizarFacturas: config.sage_one?.syncInvoices,
+          sincronizarProductos: config.sage_one?.syncProducts,
+          ultimaSincronizacion: config.sage_one?.lastSyncAt || null,
+        },
+      },
+      {
+        id: 'sage_50',
+        nombre: 'Sage 50cloud / Desktop',
+        categoria: 'ERP & Contabilidad PYME',
+        tipo: 'SData Protocol & Desktop Engine',
+        estado: config.sage_50?.status || 'disconnected',
+        activo: config.sage_50?.enabled || false,
+        descripcion: 'Enlace contable y comercial directo con Sage 50. Gestión de subcuentas de clientes (430), facturas y control de existencias.',
+        capacidades: ['Subcuentas 430', 'Facturas Expedidas', 'Control de Stock', 'Asientos Contables'],
+        documentacion: 'https://developer.sage.com/50-cloud/',
+        configuracion: {
+          endpointUrl: config.sage_50?.endpointUrl,
+          empresa: config.sage_50?.companyName,
+          ejercicioFiscal: config.sage_50?.fiscalYear,
+          tieneApiKey: config.sage_50?.hasApiKey,
+          sincronizarClientes: config.sage_50?.syncCustomers,
+          sincronizarFacturas: config.sage_50?.syncInvoices,
+          sincronizarStock: config.sage_50?.syncStock,
+          ultimaSincronizacion: config.sage_50?.lastSyncAt || null,
+        },
+      },
+      {
+        id: 'sage_200',
+        nombre: 'Sage 200 Advanced Enterprise',
+        categoria: 'ERP Empresarial & Fabricación',
+        tipo: 'REST API v1 / SData v2.0 Enterprise',
+        estado: config.sage_200?.status || 'disconnected',
+        activo: config.sage_200?.enabled || false,
+        descripcion: 'Integración avanzada con la suite Sage 200 para sincronización multidivisa, contabilidad analítica, pedidos y clientes corporativos.',
+        capacidades: ['Sales Ledger Accounts', 'Financial Journals', 'Facturación Multidivisa', 'Almacenes Múltiples'],
+        documentacion: 'https://developer.sage.com/sage-200/',
+        configuracion: {
+          baseUrl: config.sage_200?.baseUrl,
+          tieneSubscriptionKey: config.sage_200?.hasSubscriptionKey,
+          companyId: config.sage_200?.companyId,
+          sincronizarClientes: config.sage_200?.syncCustomers,
+          sincronizarFacturas: config.sage_200?.syncInvoices,
+          sincronizarLibros: config.sage_200?.syncLedgers,
+          ultimaSincronizacion: config.sage_200?.lastSyncAt || null,
+        },
+      },
     ];
 
     res.json({
@@ -204,7 +287,19 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
 export function updateIntegration(req: Request, res: Response): void {
   try {
     const { connector } = req.params;
-    const allowed: ConnectorType[] = ['odoo', 'woocommerce', 'shopify', 'n8n', 'stripe', 'zapier', 'google_calendar'];
+    const allowed: ConnectorType[] = [
+      'odoo',
+      'woocommerce',
+      'shopify',
+      'opencart',
+      'n8n',
+      'stripe',
+      'zapier',
+      'google_calendar',
+      'sage_one',
+      'sage_50',
+      'sage_200',
+    ];
     if (!allowed.includes(connector as ConnectorType)) {
       res.status(400).json({ success: false, message: `Conector inválido: ${connector}` });
       return;
@@ -236,6 +331,9 @@ export async function testIntegration(req: Request, res: Response): Promise<void
       case 'shopify':
         result = await IntegrationsService.testShopify(req.body);
         break;
+      case 'opencart':
+        result = await IntegrationsService.testOpenCart(req.body);
+        break;
       case 'n8n':
         result = await IntegrationsService.testN8n(req.body);
         break;
@@ -247,6 +345,15 @@ export async function testIntegration(req: Request, res: Response): Promise<void
         break;
       case 'google_calendar':
         result = await IntegrationsService.testGoogleCalendar(req.body);
+        break;
+      case 'sage_one':
+        result = await IntegrationsService.testSageOne(req.body);
+        break;
+      case 'sage_50':
+        result = await IntegrationsService.testSage50(req.body);
+        break;
+      case 'sage_200':
+        result = await IntegrationsService.testSage200(req.body);
         break;
       case 'unopim':
       case 'whatsapp':
@@ -266,7 +373,7 @@ export async function testIntegration(req: Request, res: Response): Promise<void
 export async function syncIntegration(req: Request, res: Response): Promise<void> {
   try {
     const { connector } = req.params;
-    const allowed = ['odoo', 'woocommerce', 'shopify', 'stripe', 'google_calendar'];
+    const allowed = ['odoo', 'woocommerce', 'shopify', 'opencart', 'stripe', 'google_calendar', 'sage_one', 'sage_50', 'sage_200'];
     if (!allowed.includes(connector)) {
       res.status(400).json({ success: false, message: `La sincronización manual solo aplica a: ${allowed.join(', ')}` });
       return;
@@ -329,6 +436,18 @@ export async function handleShopifyWebhook(req: Request, res: Response): Promise
 
 export async function handleN8nAction(req: Request, res: Response): Promise<void> {
   try {
+    const n8nConfig = IntegrationsService.loadConfig().n8n;
+    if (n8nConfig.apiKey && n8nConfig.apiKey.trim()) {
+      const authHeader = req.headers.authorization;
+      const apiKeyHeader = req.headers['x-api-key'];
+      const bodyApiKey = req.body?.apiKey;
+      const providedKey = apiKeyHeader || bodyApiKey || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader);
+      if (providedKey !== n8nConfig.apiKey) {
+        res.status(401).json({ success: false, message: 'Clave API de n8n no válida o no proporcionada' });
+        return;
+      }
+    }
+
     const { action, payload } = req.body;
     if (!action) {
       res.status(400).json({ success: false, message: 'El parámetro action es obligatorio' });
@@ -350,3 +469,67 @@ export async function triggerN8nTest(req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, message: err.message });
   }
 }
+
+export async function handleOpenCartWebhook(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = (req.headers['x-tenant-id'] as string) || 'master';
+    const result = await IntegrationsService.handleOpenCartWebhook(req.body, tenantId);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export function getAttributesSchema(req: Request, res: Response): void {
+  try {
+    const schema = IntegrationsService.getConnectorsAttributesSchema();
+    res.json({
+      success: true,
+      data: schema,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function bulkAutoMapAttributes(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = (req.headers['x-tenant-id'] as string) || 'master';
+    const result = await IntegrationsService.bulkAutoMapProducts(tenantId);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function sendTestEmail(req: Request, res: Response): Promise<void> {
+  try {
+    const { to, template, variables } = req.body;
+    const tenantId = (req as any).user?.tenantId || (req.headers['x-tenant-id'] as string) || 'master';
+    const { EmailService } = await import('../../services/email.service');
+    const result = await EmailService.sendEmail({
+      to: to || 'admin@dama-crm.local',
+      subject: req.body.subject,
+      template: template || '2fa_otp',
+      variables: variables || {},
+      tenantId,
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function previewEmailTemplate(req: Request, res: Response): Promise<void> {
+  try {
+    const { template, variables } = req.body;
+    const tenantId = (req as any).user?.tenantId || (req.headers['x-tenant-id'] as string) || 'master';
+    const { EmailService } = await import('../../services/email.service');
+    const branding = await EmailService.getTenantBranding(tenantId);
+    const result = EmailService.renderTemplate(template || '2fa_otp', variables || {}, branding);
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+

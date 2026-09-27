@@ -9,7 +9,7 @@
     "syncInvoices": true,
     "syncProducts": true,
     "status": "connected",
-    "lastSyncAt": "2026-09-26T18:23:07.134Z"
+    "lastSyncAt": "2026-09-27T15:45:40.024Z"
   },
   "woocommerce": {
     "enabled": false,
@@ -18,7 +18,7 @@
     "consumerSecret": "",
     "webhookSecret": "",
     "status": "connected",
-    "lastSyncAt": "2026-09-26T18:23:07.145Z"
+    "lastSyncAt": "2026-09-27T15:45:40.050Z"
   },
   "shopify": {
     "enabled": false,
@@ -27,6 +27,17 @@
     "apiSecretKey": "",
     "webhookSecret": "",
     "status": "disconnected"
+  },
+  "opencart": {
+    "enabled": true,
+    "storeUrl": "https://demo.opencart.com",
+    "apiUsername": "admin_oc",
+    "apiKey": "oc_test_key_123",
+    "syncProducts": true,
+    "syncOrders": true,
+    "syncCustomers": true,
+    "status": "connected",
+    "lastSyncAt": "2026-09-27T15:45:40.077Z"
   },
   "n8n": {
     "enabled": false,
@@ -47,7 +58,7 @@
     "publishableKey": "pk_test_sample",
     "secretKey": "sk_test_sample",
     "webhookSecret": "whsec_sample",
-    "lastSyncAt": "2026-09-26T18:23:07.147Z"
+    "lastSyncAt": "2026-09-27T15:45:40.057Z"
   },
   "zapier": {
     "enabled": false,
@@ -61,5 +72,45 @@
     "email": "agenda@example.com",
     "clientId": "",
     "clientSecret": ""
+  },
+  "sage_one": {
+    "enabled": true,
+    "apiUrl": "https://api.accounting.sage.com/v3.1",
+    "apiKey": "sage_one_demo_token",
+    "clientId": "",
+    "clientSecret": "",
+    "businessId": "SBC-ES-00123",
+    "syncContacts": true,
+    "syncInvoices": true,
+    "syncProducts": true,
+    "status": "connected",
+    "lastSyncAt": "2026-09-27T15:44:16.294Z"
+  },
+  "sage_50": {
+    "enabled": false,
+    "endpointUrl": "http://localhost:5493/sdata/sage50",
+    "companyName": "Empresa Sage 50 S.L.",
+    "username": "admin",
+    "password": "sage50_demo_password",
+    "apiKey": "",
+    "fiscalYear": "2026",
+    "syncCustomers": true,
+    "syncInvoices": true,
+    "syncStock": true,
+    "status": "connected",
+    "lastSyncAt": "2026-09-27T08:16:27.725Z"
+  },
+  "sage_200": {
+    "enabled": false,
+    "baseUrl": "https://api.sage.com/sage200/v1",
+    "subscriptionKey": "sage_200_demo_sub_key",
+    "clientId": "",
+    "clientSecret": "",
+    "companyId": "SAGE200-CORP-ES",
+    "syncCustomers": true,
+    "syncInvoices": true,
+    "syncLedgers": true,
+    "status": "connected",
+    "lastSyncAt": "2026-09-27T08:16:27.730Z"
   }
 }

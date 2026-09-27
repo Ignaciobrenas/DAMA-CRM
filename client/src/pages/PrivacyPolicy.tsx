@@ -92,9 +92,9 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
         downloadAnchor.click();
         downloadAnchor.remove();
 
-        setExportMessage('✅ Tus datos han sido recopilados y descargados en formato estructurado JSON.');
+        setExportMessage('Tus datos han sido recopilados y descargados en formato estructurado JSON.');
       } else {
-        setExportMessage('⚠️ No se encontraron registros asociados al correo electrónico indicado.');
+        setExportMessage('No se encontraron registros asociados al correo electrónico indicado.');
       }
     } catch {
       setIsExporting(false);

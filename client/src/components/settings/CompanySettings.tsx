@@ -20,6 +20,7 @@ import {
 import { useBranding, BrandingConfig } from '../../context/BrandingContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const COLOR_PRESETS = [
   { name: 'Azul DAMA', hex: '#072053' },
@@ -44,6 +45,7 @@ export const CompanySettings: React.FC = () => {
   const { branding, updateBranding, resetBranding } = useBranding();
   const { t } = useLanguage();
   const toast = useToast();
+  const { confirm } = useConfirm();
 
   const [form, setForm] = useState<BrandingConfig>(branding);
   const [isSaving, setIsSaving] = useState(false);
@@ -69,7 +71,14 @@ export const CompanySettings: React.FC = () => {
   };
 
   const handleReset = async () => {
-    if (window.confirm('¿Deseas restablecer la identidad corporativa y datos a los valores predeterminados?')) {
+    const isConfirmed = await confirm({
+      title: '¿Restablecer identidad corporativa?',
+      description: '¿Deseas restablecer la identidad corporativa y datos a los valores predeterminados del CRM?',
+      confirmText: 'Restablecer',
+      cancelText: 'Cancelar',
+      variant: 'warning',
+    });
+    if (isConfirmed) {
       await resetBranding();
       toast.info('Valores Restablecidos', 'Se han restaurado los valores por defecto del CRM.');
     }

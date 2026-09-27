@@ -1,9 +1,9 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
 import { config } from '../config';
 
-let transporter: nodemailer.Transporter | null = null;
+let transporter: Transporter | null = null;
 
-export function getMailer(): nodemailer.Transporter {
+export function getMailer(): Transporter {
   if (!transporter) {
     transporter = nodemailer.createTransport({
       host: config.smtp.host,

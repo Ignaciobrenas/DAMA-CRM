@@ -258,3 +258,264 @@ export function validatePhoneFormat(phone: string): { isValid: boolean; error?: 
     error: !result.success ? result.error.errors[0]?.message : undefined,
   };
 }
+
+export interface ValidationResult {
+  isValid: boolean;
+  message?: string;
+  type?: string;
+}
+
+export function validateEmail(email: string): ValidationResult {
+  if (!email || !email.trim()) {
+    return { isValid: false, message: 'El correo electrónico es obligatorio' };
+  }
+
+  const trimmed = email.trim();
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
+  if (!emailRegex.test(trimmed)) {
+    return { isValid: false, message: 'Formato de correo electrónico inválido (ej. usuario@empresa.com)' };
+  }
+
+  const parts = trimmed.split('@');
+  if (parts.length !== 2) {
+    return { isValid: false, message: 'El correo debe contener un único @' };
+  }
+
+  const [local, domain] = parts;
+  if (local.length > 64) {
+    return { isValid: false, message: 'La parte local del correo es demasiado larga' };
+  }
+
+  const domainParts = domain.split('.');
+  const tld = domainParts[domainParts.length - 1];
+  if (tld.length < 2) {
+    return { isValid: false, message: 'El dominio del correo debe tener una extensión válida (ej. .es, .com)' };
+  }
+
+  return { isValid: true };
+}
+
+export function validatePhone(phone: string): ValidationResult {
+  if (!phone || !phone.trim()) {
+    return { isValid: true };
+  }
+
+  const clean = phone.trim().replace(/[\s\-\(\)\.]/g, '');
+
+  if (clean.startsWith('+')) {
+    if (clean.length < 8 || clean.length > 16 || !/^\+[0-9]+$/.test(clean)) {
+      return { isValid: false, message: 'Número internacional inválido (ej. +34 600 000 000)' };
+    }
+    return { isValid: true };
+  }
+
+  if (/^[6789][0-9]{8}$/.test(clean)) {
+    return { isValid: true, type: 'ES' };
+  }
+
+  if (/^[0-9]{7,15}$/.test(clean)) {
+    return { isValid: true };
+  }
+
+  return { isValid: false, message: 'Número de teléfono no válido (debe tener entre 9 y 15 dígitos)' };
+}
+
+export function validateSpanishTaxId(value: string): ValidationResult {
+  if (!value || !value.trim()) {
+    return { isValid: false, message: 'El CIF / NIF / NIE es requerido' };
+  }
+
+  const clean = value.trim().toUpperCase().replace(/[\s\-\.]/g, '');
+  const nifLetters = 'TRWAGMYFPDXBNJZSQVHLCKE';
+
+  const nifRegex = /^([0-9]{8})([A-Z])$/;
+  if (nifRegex.test(clean)) {
+    const match = clean.match(nifRegex)!;
+    const number = parseInt(match[1], 10);
+    const letter = match[2];
+    const expectedLetter = nifLetters.charAt(number % 23);
+    if (letter === expectedLetter) {
+      return { isValid: true, type: 'NIF' };
+    }
+    return { isValid: false, message: `Letra de NIF incorrecta (esperada: ${expectedLetter})` };
+  }
+
+  const nieRegex = /^([XYZ])([0-9]{7})([A-Z])$/;
+  if (nieRegex.test(clean)) {
+    const match = clean.match(nieRegex)!;
+    const prefix = match[1];
+    const numberStr = match[2];
+    const letter = match[3];
+
+    let prefixNumber = '0';
+    if (prefix === 'Y') prefixNumber = '1';
+    if (prefix === 'Z') prefixNumber = '2';
+
+    const fullNumber = parseInt(prefixNumber + numberStr, 10);
+    const expectedLetter = nifLetters.charAt(fullNumber % 23);
+    if (letter === expectedLetter) {
+      return { isValid: true, type: 'NIE' };
+    }
+    return { isValid: false, message: `Letra de NIE incorrecta (esperada: ${expectedLetter})` };
+  }
+
+  const cifRegex = /^([ABCDEFGHJNPQRSUVW])([0-9]{7})([0-9A-J])$/;
+  if (cifRegex.test(clean)) {
+    const match = clean.match(cifRegex)!;
+    const letter = match[1];
+    const digits = match[2];
+    const control = match[3];
+
+    let evenSum = 0;
+    let oddSum = 0;
+
+    for (let i = 0; i < digits.length; i++) {
+      const d = parseInt(digits[i], 10);
+      if (i % 2 === 0) {
+        const doubled = d * 2;
+        oddSum += Math.floor(doubled / 10) + (doubled % 10);
+      } else {
+        evenSum += d;
+      }
+    }
+
+    const totalSum = evenSum + oddSum;
+    const unitDigit = totalSum % 10;
+    const controlDigit = unitDigit === 0 ? 0 : 10 - unitDigit;
+    const controlLetter = String.fromCharCode(64 + controlDigit);
+
+    const letterControlOnly = /^[PQSKW]/.test(letter);
+    const digitControlOnly = /^[ABEH]/.test(letter);
+
+    if (letterControlOnly && control === controlLetter) {
+      return { isValid: true, type: 'CIF' };
+    }
+    if (digitControlOnly && control === String(controlDigit)) {
+      return { isValid: true, type: 'CIF' };
+    }
+    if (control === String(controlDigit) || control === controlLetter) {
+      return { isValid: true, type: 'CIF' };
+    }
+
+    return { isValid: false, message: 'Dígito de control de CIF inválido' };
+  }
+
+  if (/^[A-Z]{2}[0-9A-Z]{5,15}$/.test(clean)) {
+    return { isValid: true, type: 'VAT_INTL' };
+  }
+
+  return { isValid: false, message: 'CIF/NIF/NIE no válido (ej. B12345678 o 12345678Z)' };
+}
+
+export function validateUrl(url: string): ValidationResult {
+  if (!url || !url.trim()) {
+    return { isValid: true };
+  }
+
+  const trimmed = url.trim();
+  let candidate = trimmed;
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+
+  try {
+    const parsed = new URL(candidate);
+    if (!parsed.hostname || !parsed.hostname.includes('.')) {
+      return { isValid: false, message: 'Formato de dominio web inválido (ej. www.miempresa.com)' };
+    }
+    return { isValid: true };
+  } catch {
+    return { isValid: false, message: 'URL o sitio web no válido' };
+  }
+}
+
+export function validateNumber(
+  value: number | string,
+  options?: { min?: number; max?: number; integer?: boolean; fieldName?: string }
+): ValidationResult {
+  const { min, max, integer, fieldName = 'El valor' } = options || {};
+
+  if (value === '' || value === null || value === undefined) {
+    return { isValid: false, message: `${fieldName} es requerido` };
+  }
+
+  const num = typeof value === 'number' ? value : parseFloat(String(value));
+
+  if (isNaN(num)) {
+    return { isValid: false, message: `${fieldName} debe ser un número válido` };
+  }
+
+  if (integer && !Number.isInteger(num)) {
+    return { isValid: false, message: `${fieldName} debe ser un número entero` };
+  }
+
+  if (min !== undefined && num < min) {
+    return { isValid: false, message: `${fieldName} debe ser como mínimo ${min}` };
+  }
+
+  if (max !== undefined && num > max) {
+    return { isValid: false, message: `${fieldName} no puede superar ${max}` };
+  }
+
+  return { isValid: true };
+}
+
+export function validateIban(iban: string): ValidationResult {
+  if (!iban || !iban.trim()) {
+    return { isValid: true };
+  }
+
+  const clean = iban.trim().toUpperCase().replace(/[\s\-]/g, '');
+
+  if (clean.length < 15 || clean.length > 34 || !/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(clean)) {
+    return { isValid: false, message: 'Formato de cuenta IBAN inválido (ej. ES91 2100 0418 4502 0005 1332)' };
+  }
+
+  const rearranged = clean.slice(4) + clean.slice(0, 4);
+
+  let numericString = '';
+  for (let i = 0; i < rearranged.length; i++) {
+    const charCode = rearranged.charCodeAt(i);
+    if (charCode >= 65 && charCode <= 90) {
+      numericString += (charCode - 55).toString();
+    } else {
+      numericString += rearranged[i];
+    }
+  }
+
+  let remainder = 0;
+  for (let i = 0; i < numericString.length; i += 7) {
+    const chunk = remainder.toString() + numericString.substring(i, i + 7);
+    remainder = parseInt(chunk, 10) % 97;
+  }
+
+  if (remainder !== 1) {
+    return { isValid: false, message: 'Dígitos de control de IBAN incorrectos' };
+  }
+
+  return { isValid: true };
+}
+
+export function validateRequired(
+  value: string | null | undefined,
+  fieldName = 'Este campo',
+  minLength = 1,
+  maxLength = 255
+): ValidationResult {
+  if (!value || !value.trim()) {
+    return { isValid: false, message: `${fieldName} es obligatorio` };
+  }
+
+  const len = value.trim().length;
+  if (len < minLength) {
+    return { isValid: false, message: `${fieldName} debe tener al menos ${minLength} caracteres` };
+  }
+
+  if (len > maxLength) {
+    return { isValid: false, message: `${fieldName} no puede superar los ${maxLength} caracteres` };
+  }
+
+  return { isValid: true };
+}
+

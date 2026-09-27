@@ -5,16 +5,19 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { BrandingProvider, useBranding } from './context/BrandingContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { ModulesProvider, useModules } from './context/ModulesContext';
 import { AppearanceProvider } from './context/AppearanceContext';
 import { wsClient } from './services/websocket';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
 import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
 import { PermissionGate, AccessDenied, ModuleDisabled } from './components/common/PermissionGate';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { analytics } from './services/analytics';
 
 // Views
@@ -40,11 +43,19 @@ import { Tickets } from './pages/Tickets';
 import { Expenses } from './pages/Expenses';
 import { PublicQuoteSign } from './pages/PublicQuoteSign';
 import { EmployeePortal } from './pages/EmployeePortal';
+import { MyTime } from './pages/MyTime';
+import { CalendarPage } from './pages/Calendar';
+import { Appointments } from './pages/Appointments';
+import { Logistics } from './pages/Logistics';
 
 const normalizeRoute = (pathname: string): string => {
   const p = pathname.toLowerCase();
   if (p.startsWith('/quote/sign/')) return pathname;
+  if (p === '/calendar') return '/calendar';
+  if (p === '/appointments') return '/appointments';
+  if (p === '/logistics') return '/logistics';
   if (p === '/portal-empleado') return '/portal-empleado';
+  if (p === '/my-time') return '/my-time';
   if (p === '/tickets') return '/tickets';
   if (p === '/expenses') return '/expenses';
   if (p === '/pipeline') return '/pipeline';
@@ -71,18 +82,28 @@ const AppContent: React.FC = () => {
   const { branding } = useBranding();
   const { t } = useLanguage();
   const { isModuleEnabled } = useModules();
-  const [currentRoute, setCurrentRoute] = useState<string>(() => {
+  
+  const resolveCurrentRoute = (): string => {
+    if (window.location.hash && window.location.hash.startsWith('#/')) {
+      return normalizeRoute(window.location.hash.slice(1));
+    }
     return normalizeRoute(window.location.pathname);
-  });
+  };
+
+  const [currentRoute, setCurrentRoute] = useState<string>(resolveCurrentRoute);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentRoute(normalizeRoute(window.location.pathname));
+    const handleRouteChange = () => {
+      setCurrentRoute(resolveCurrentRoute());
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handleRouteChange);
+    window.addEventListener('hashchange', handleRouteChange);
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+      window.removeEventListener('hashchange', handleRouteChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -102,7 +123,10 @@ const AppContent: React.FC = () => {
 
   const navigateTo = (route: string) => {
     const target = normalizeRoute(route);
-    if (window.location.pathname !== target) {
+    const isLocalProtocol = window.location.protocol === 'file:' || window.location.protocol.startsWith('capacitor');
+    if (isLocalProtocol) {
+      window.location.hash = '#' + target;
+    } else if (window.location.pathname !== target) {
       window.history.pushState(null, '', target);
     }
     setCurrentRoute(target);
@@ -131,6 +155,9 @@ const AppContent: React.FC = () => {
 
   // Mandatory authentication guard for all protected workspace routes
   if (!isAuthenticated) {
+    if (currentRoute === '/onboarding') {
+      return <Onboarding onComplete={() => navigateTo('/')} />;
+    }
     return (
       <Login
         onNavigatePrivacy={() => navigateTo('/privacy')}
@@ -154,6 +181,8 @@ const AppContent: React.FC = () => {
         ) : (
           <ModuleDisabled moduleKey="portalEmpleado" onGoBack={() => navigateTo('/')} />
         );
+      case '/my-time':
+        return <MyTime />;
       case '/tickets':
         return (
           <PermissionGate resource="tickets" action="read" fallback={<AccessDenied resource="tickets" onGoBack={() => navigateTo('/')} />}>
@@ -236,6 +265,12 @@ const AppContent: React.FC = () => {
         );
       case '/faq':
         return <FAQ onNavigate={navigateTo} />;
+      case '/calendar':
+        return <CalendarPage />;
+      case '/appointments':
+        return isModuleEnabled('appointments') ? <Appointments /> : <ModuleDisabled moduleKey="appointments" onGoBack={() => navigateTo('/')} />;
+      case '/logistics':
+        return isModuleEnabled('logistics') ? <Logistics /> : <ModuleDisabled moduleKey="logistics" onGoBack={() => navigateTo('/')} />;
       default:
         return <Dashboard onNavigate={navigateTo} />;
     }
@@ -244,7 +279,7 @@ const AppContent: React.FC = () => {
   const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 flex">
+    <div className="min-h-screen bg-slate-300/80 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
       {/* Sidebar */}
       <Sidebar
         currentRoute={currentRoute}
@@ -254,13 +289,14 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 pb-16 md:pb-0 ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onNavigate={navigateTo}
         />
 
-        <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 max-w-7xl w-full mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentRoute}
@@ -281,7 +317,7 @@ const AppContent: React.FC = () => {
             <span>&copy; {new Date().getFullYear()} {branding.companyName}. {t('allRightsReserved')}</span>
             <span className="text-gray-300 dark:text-slate-700 hidden sm:inline">|</span>
             <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 font-semibold border border-gray-200 dark:border-slate-700">
-              {t('runningVersion')}: v1.2.0-staging (Build 2026.09.26)
+              {t('runningVersion')}: v1.6.0-enterprise
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4">
@@ -307,6 +343,13 @@ const AppContent: React.FC = () => {
         </footer>
       </div>
 
+      {/* Mobile Bottom Navigation Bar (Visible on Mobile & Tablets) */}
+      <MobileBottomNav
+        currentRoute={currentRoute}
+        onNavigate={navigateTo}
+        onOpenMenu={() => setIsSidebarOpen(true)}
+      />
+
       {/* Global Command Menu (Cmd+K) */}
       <CommandMenu
         isOpen={isSearchOpen}
@@ -325,21 +368,25 @@ const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <BrandingProvider>
-          <AuthProvider>
-            <AppearanceProvider>
-              <ModulesProvider>
-                <ToastProvider>
-                  <AppContent />
-                </ToastProvider>
-              </ModulesProvider>
-            </AppearanceProvider>
-          </AuthProvider>
-        </BrandingProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <LanguageProvider>
+          <BrandingProvider>
+            <ToastProvider>
+              <ConfirmProvider>
+                <AuthProvider>
+                  <AppearanceProvider>
+                    <ModulesProvider>
+                      <AppContent />
+                    </ModulesProvider>
+                  </AppearanceProvider>
+                </AuthProvider>
+              </ConfirmProvider>
+            </ToastProvider>
+          </BrandingProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

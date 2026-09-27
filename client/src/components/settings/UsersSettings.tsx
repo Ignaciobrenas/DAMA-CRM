@@ -12,12 +12,26 @@ import {
   Save,
   CheckCircle2,
   AlertTriangle,
+  History,
+  Activity,
+  LogIn,
+  Globe,
+  Shield,
+  Calendar,
+  Key,
+  Copy,
+  Check,
+  Link as LinkIcon,
+  Send,
+  Share2,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { apiRequest } from '../../services/api';
-import { checkPasswordStrength, isValidEmail } from '../../utils/validators';
+import { checkPasswordStrength, isValidEmail, validateEmail, validateRequired } from '../../utils/validators';
+import { ValidatedInput } from '../common/ValidatedInput';
 
 interface UserItem {
   id: string;
@@ -89,6 +103,84 @@ export const UsersSettings: React.FC = () => {
   // Delete Modal
   const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+
+  // Audit & Login History Modal
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [selectedAuditUser, setSelectedAuditUser] = useState<UserItem | null>(null);
+  const [auditTrailData, setAuditTrailData] = useState<{ logins: any[]; changes: any[]; user?: any } | null>(null);
+  const [isAuditLoading, setIsAuditLoading] = useState(false);
+  const [auditTab, setAuditTab] = useState<'logins' | 'changes' | 'permissions'>('logins');
+
+  // User Invitation Link Modal
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRoleId, setInviteRoleId] = useState('');
+  const [generatedUserInviteLink, setGeneratedUserInviteLink] = useState('');
+  const [isUserInviteCopied, setIsUserInviteCopied] = useState(false);
+  const [isGeneratingUserInvite, setIsGeneratingUserInvite] = useState(false);
+
+  const handleOpenInviteModal = () => {
+    setInviteEmail('');
+    setInviteRoleId(roles[0]?.id || '');
+    setGeneratedUserInviteLink('');
+    setIsUserInviteCopied(false);
+    setIsInviteModalOpen(true);
+  };
+
+  const handleGenerateUserInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsGeneratingUserInvite(true);
+    try {
+      const selectedRole = roles.find((r) => r.id === inviteRoleId)?.name || 'EMPLOYEE';
+      const origin = window.location.origin;
+      const tenantSlug = user?.tenantId || 'master';
+      const inviteUrl = `${origin}/login?inviteEmail=${encodeURIComponent(inviteEmail)}&inviteRole=${encodeURIComponent(selectedRole)}&tenant=${encodeURIComponent(tenantSlug)}&mode=register`;
+      setGeneratedUserInviteLink(inviteUrl);
+      toast.success('Enlace de invitación generado', 'Copia el enlace para enviarlo por WhatsApp o correo');
+    } catch {
+      toast.error('Error al generar enlace de invitación');
+    } finally {
+      setIsGeneratingUserInvite(false);
+    }
+  };
+
+  const handleCopyUserInvite = async () => {
+    if (!generatedUserInviteLink) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(generatedUserInviteLink);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = generatedUserInviteLink;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setIsUserInviteCopied(true);
+      toast.success('Enlace copiado al portapapeles', 'Puedes pegarlo donde desees (WhatsApp, correo, etc.)');
+      setTimeout(() => setIsUserInviteCopied(false), 2500);
+    } catch {
+      toast.error('Selecciona el enlace y cópialo con Ctrl+C');
+    }
+  };
+
+  const openAuditModal = async (targetUser: UserItem) => {
+    setSelectedAuditUser(targetUser);
+    setIsAuditModalOpen(true);
+    setIsAuditLoading(true);
+    setAuditTab('logins');
+
+    const res = await apiRequest(`/users/${targetUser.id}/audit-trail`);
+    if (res.success && res.data) {
+      setAuditTrailData(res.data);
+    } else {
+      setAuditTrailData({ logins: [], changes: [], user: targetUser });
+    }
+    setIsAuditLoading(false);
+  };
 
   const loadData = async () => {
     const [resUsers, resRoles] = await Promise.all([
@@ -268,18 +360,29 @@ export const UsersSettings: React.FC = () => {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
-            setUserModalError('');
-            setIsUserModalOpen(true);
-          }}
-          className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors shrink-0"
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          <span>{t('settings.newUserBtn', 'Nuevo Usuario')}</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleOpenInviteModal}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+            title="Generar y copiar un enlace de invitación para nuevos compañeros de equipo"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>{t('settings.inviteLinkBtn', 'Invitar por Enlace')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
+              setUserModalError('');
+              setIsUserModalOpen(true);
+            }}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>{t('settings.newUserBtn', 'Nuevo Usuario')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Sorting Controls */}
@@ -412,6 +515,15 @@ export const UsersSettings: React.FC = () => {
                       <div className="flex items-center justify-end space-x-1.5">
                         <button
                           type="button"
+                          onClick={() => openAuditModal(u)}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-300 rounded text-[11px] font-semibold transition-colors"
+                          title="Ver historial de inicios de sesión y registro de cambios"
+                        >
+                          <History className="w-3 h-3" />
+                          <span>Auditoría</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openEditUserModal(u)}
                           className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded text-[11px] font-semibold transition-colors"
                         >
@@ -483,33 +595,24 @@ export const UsersSettings: React.FC = () => {
               )}
 
               <form onSubmit={handleCreateUser} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Nombre Completo *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newUserForm.name}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                    placeholder="Ej. Laura Gómez"
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  label="Nombre Completo"
+                  required
+                  value={newUserForm.name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                  validator={(val) => validateRequired(val, 'El nombre completo')}
+                  placeholder="Ej. Laura Gómez"
+                />
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Correo Electrónico *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={newUserForm.email}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                    placeholder="laura.gomez@empresa.com"
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  label="Correo Electrónico"
+                  type="email"
+                  required
+                  value={newUserForm.email}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                  validator={validateEmail}
+                  placeholder="laura.gomez@empresa.com"
+                />
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
@@ -518,7 +621,7 @@ export const UsersSettings: React.FC = () => {
                   <select
                     value={newUserForm.roleId}
                     onChange={(e) => setNewUserForm({ ...newUserForm, roleId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                   >
                     {roles.map((r) => (
                       <option key={r.id} value={r.id}>
@@ -528,19 +631,15 @@ export const UsersSettings: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Contraseña Temporal *
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={newUserForm.password}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  label="Contraseña Temporal"
+                  type="password"
+                  required
+                  value={newUserForm.password}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                  validator={(val) => validateRequired(val, 'La contraseña temporal', 6)}
+                  placeholder="••••••••"
+                />
 
                 <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
                   <button
@@ -612,31 +711,22 @@ export const UsersSettings: React.FC = () => {
 
               <form onSubmit={handleUpdateUser} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                      Nombre Completo *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editUserForm.name}
-                      onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  <ValidatedInput
+                    label="Nombre Completo"
+                    required
+                    value={editUserForm.name}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                    validator={(val) => validateRequired(val, 'El nombre')}
+                  />
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                      Correo Electrónico *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={editUserForm.email}
-                      onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  <ValidatedInput
+                    label="Correo Electrónico"
+                    type="email"
+                    required
+                    value={editUserForm.email}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                    validator={validateEmail}
+                  />
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
@@ -645,7 +735,7 @@ export const UsersSettings: React.FC = () => {
                     <select
                       value={editUserForm.roleId}
                       onChange={(e) => setEditUserForm({ ...editUserForm, roleId: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                     >
                       {roles.map((r) => (
                         <option key={r.id} value={r.id}>
@@ -662,7 +752,7 @@ export const UsersSettings: React.FC = () => {
                     <select
                       value={editUserForm.isActive ? 'active' : 'inactive'}
                       onChange={(e) => setEditUserForm({ ...editUserForm, isActive: e.target.value === 'active' })}
-                      className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                     >
                       <option value="active">Activo (Permite acceso)</option>
                       <option value="inactive">Desactivado (Bloqueado)</option>
@@ -670,18 +760,13 @@ export const UsersSettings: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Nueva Contraseña (Opcional)
-                  </label>
-                  <input
-                    type="password"
-                    value={editUserForm.password}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
-                    placeholder="Dejar en blanco para mantener la contraseña actual"
-                    className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  label="Nueva Contraseña (Opcional)"
+                  type="password"
+                  value={editUserForm.password}
+                  onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+                  placeholder="Dejar en blanco para mantener la contraseña actual"
+                />
 
                 {/* Custom Permissions Matrix */}
                 <div className="pt-2 border-t border-gray-100 dark:border-slate-800 space-y-2">
@@ -755,9 +840,9 @@ export const UsersSettings: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Modal: Delete Confirmation */}
+      {/* Modal: User Audit & Login History */}
       <AnimatePresence>
-        {userToDelete && (
+        {isAuditModalOpen && selectedAuditUser && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -768,42 +853,405 @@ export const UsersSettings: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 p-6 space-y-4"
+              className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[88vh]"
             >
-              <div className="flex items-center space-x-3 text-red-600 dark:text-red-400">
-                <div className="p-2 rounded-xl bg-red-50 dark:bg-red-950/60">
-                  <Trash2 className="w-5 h-5" />
+              {/* Modal Header */}
+              <div className="p-5 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-gray-50/50 dark:bg-slate-800/40">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold text-sm">
+                    {selectedAuditUser.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                        {selectedAuditUser.name}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                        {selectedAuditUser.role}
+                      </span>
+                      {selectedAuditUser.twoFactorEnabled && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                          2FA Activo
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-500">{selectedAuditUser.email}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                    {t('settings.deleteUserModalTitle', 'Eliminar Cuenta de Usuario')}
-                  </h3>
-                  <p className="text-[11px] text-gray-500">
-                    {t('settings.deleteUserModalDesc', 'Esta acción no se puede deshacer')}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAuditModalOpen(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <p className="text-xs text-gray-600 dark:text-slate-300">
-                ¿Estás seguro de que deseas eliminar permanentemente a{' '}
-                <strong className="text-gray-900 dark:text-white">{userToDelete.name}</strong> ({userToDelete.email})?
-              </p>
-
-              <div className="flex items-center justify-end space-x-2 pt-2">
+              {/* Sub-tabs */}
+              <div className="flex items-center space-x-2 px-5 pt-3 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <button
                   type="button"
-                  onClick={() => setUserToDelete(null)}
-                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  onClick={() => setAuditTab('logins')}
+                  className={`px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 flex items-center space-x-1.5 transition ${
+                    auditTab === 'logins'
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
+                      : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                  }`}
                 >
-                  Cancelar
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Inicios de Sesión</span>
+                  <span className="ml-1 px-1.5 py-0.2 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-[10px]">
+                    {auditTrailData?.logins?.length || 0}
+                  </span>
                 </button>
+
                 <button
                   type="button"
-                  disabled={isDeletingUser}
-                  onClick={handleDeleteUser}
-                  className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                  onClick={() => setAuditTab('changes')}
+                  className={`px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 flex items-center space-x-1.5 transition ${
+                    auditTab === 'changes'
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
+                      : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                  }`}
                 >
-                  {isDeletingUser ? 'Eliminando...' : 'Eliminar'}
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Registro de Cambios Realizados</span>
+                  <span className="ml-1 px-1.5 py-0.2 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full text-[10px]">
+                    {auditTrailData?.changes?.length || 0}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAuditTab('permissions')}
+                  className={`px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 flex items-center space-x-1.5 transition ${
+                    auditTab === 'permissions'
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30'
+                      : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Permisos Activos</span>
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+                {isAuditLoading ? (
+                  <div className="py-12 text-center text-gray-500 dark:text-slate-400">
+                    <Activity className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                    <p>Cargando registros de auditoría y sesiones...</p>
+                  </div>
+                ) : auditTab === 'logins' ? (
+                  /* Tab: Logins */
+                  <div className="space-y-3">
+                    {auditTrailData?.logins && auditTrailData.logins.length > 0 ? (
+                      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-800">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
+                            <tr>
+                              <th className="px-3.5 py-2">Fecha y Hora</th>
+                              <th className="px-3.5 py-2">Evento</th>
+                              <th className="px-3.5 py-2">Dirección IP</th>
+                              <th className="px-3.5 py-2">Dispositivo / Método</th>
+                              <th className="px-3.5 py-2 text-right">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                            {auditTrailData.logins.map((log: any) => {
+                              let parsedDetails: any = {};
+                              try {
+                                parsedDetails = JSON.parse(log.details || '{}');
+                              } catch {}
+
+                              const authMethod =
+                                log.action === 'LOGIN_GOOGLE'
+                                  ? 'Google Workspace OAuth'
+                                  : log.action === '2FA_VERIFIED'
+                                  ? '2FA OTP Verificado'
+                                  : parsedDetails.authMethod || 'Contraseña Segura';
+
+                              return (
+                                <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/40">
+                                  <td className="px-3.5 py-2 font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                                    {new Date(log.createdAt).toLocaleString()}
+                                  </td>
+                                  <td className="px-3.5 py-2">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                                      {log.action}
+                                    </span>
+                                  </td>
+                                  <td className="px-3.5 py-2 text-gray-600 dark:text-slate-300 font-mono text-[11px]">
+                                    {log.ipAddress || '127.0.0.1'}
+                                  </td>
+                                  <td className="px-3.5 py-2 text-gray-600 dark:text-slate-400">
+                                    {parsedDetails.browser || authMethod}
+                                  </td>
+                                  <td className="px-3.5 py-2 text-right">
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                                      ✓ Autorizado
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-gray-400">
+                        <LogIn className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-slate-700" />
+                        <p>No se registran inicios de sesión previos para este usuario.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : auditTab === 'changes' ? (
+                  /* Tab: Changes / Audit Trail */
+                  <div className="space-y-3">
+                    {auditTrailData?.changes && auditTrailData.changes.length > 0 ? (
+                      <div className="space-y-2">
+                        {auditTrailData.changes.map((log: any) => {
+                          let detailsStr = '';
+                          try {
+                            const d = JSON.parse(log.details || '{}');
+                            detailsStr = Object.entries(d)
+                              .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+                              .join(' | ');
+                          } catch {
+                            detailsStr = log.details || '';
+                          }
+
+                          return (
+                            <div
+                              key={log.id}
+                              className="p-3 bg-gray-50 dark:bg-slate-800/60 rounded-xl border border-gray-200 dark:border-slate-800 space-y-1"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      log.action.includes('CREATE')
+                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                        : log.action.includes('DELETE')
+                                        ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                    }`}
+                                  >
+                                    {log.action}
+                                  </span>
+                                  <span className="font-bold text-gray-900 dark:text-white">
+                                    {log.entity} {log.entityId ? `#${log.entityId.slice(0, 8)}` : ''}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-gray-500">
+                                  {new Date(log.createdAt).toLocaleString()}
+                                </span>
+                              </div>
+
+                              {detailsStr && (
+                                <p className="text-[11px] text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900/80 p-2 rounded-lg font-mono border border-gray-100 dark:border-slate-800">
+                                  {detailsStr}
+                                </p>
+                              )}
+
+                              <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1">
+                                <span>IP: {log.ipAddress || '127.0.0.1'}</span>
+                                <span>Tenant: {log.tenantId || 'master'}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-gray-400">
+                        <Activity className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-slate-700" />
+                        <p>No se registran cambios o modificaciones realizadas por este usuario todavía.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Tab: Permissions */
+                  <div className="space-y-4">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900">
+                      <h4 className="font-bold text-blue-900 dark:text-blue-200">
+                        Rol Principal: {selectedAuditUser.role}
+                      </h4>
+                      <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
+                        {selectedAuditUser.role === 'ADMIN'
+                          ? 'Acceso total y sin restricciones a todos los recursos del CRM.'
+                          : 'Permisos asignados automáticamente según el perfil del rol corporativo.'}
+                      </p>
+                    </div>
+
+                    {selectedAuditUser.customPermissions && selectedAuditUser.customPermissions.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-bold text-gray-900 dark:text-white">
+                          Permisos Personalizados Adicionales ({selectedAuditUser.customPermissions.length})
+                        </h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {selectedAuditUser.customPermissions.map((cp: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className="p-2 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-lg flex items-center justify-between"
+                            >
+                              <span className="font-medium text-purple-900 dark:text-purple-200">{cp.resource}</span>
+                              <span className="px-1.5 py-0.5 bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-[10px] font-bold">
+                                {cp.action}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAuditModalOpen(false)}
+                  className="px-4 py-1.5 bg-gray-900 hover:bg-black text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-bold transition"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Invite User Link Generator */}
+        {isInviteModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsInviteModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs cursor-pointer"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 max-h-[90vh] overflow-y-auto cursor-default m-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                      {t('settings.inviteModalTitle', 'Invitar Usuario con Enlace')}
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
+                      {t('settings.inviteModalDesc', 'Genera un enlace directo para que tu compañero se registre al instante')}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleGenerateUserInvite} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Correo Electrónico del Invitado (Opcional)
+                  </label>
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="ejemplo@tuempresa.com"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Si lo indicas, el campo de correo vendrá prerrellenado en el formulario de registro.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Rol Asignado por Defecto *
+                  </label>
+                  <select
+                    value={inviteRoleId}
+                    onChange={(e) => setInviteRoleId(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={isGeneratingUserInvite}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5"
+                  >
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    <span>{isGeneratingUserInvite ? 'Generando...' : 'Generar Enlace'}</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Generated Link Display Box */}
+              {generatedUserInviteLink && (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-2.5 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      Enlace de Invitación Listo para Compartir
+                    </span>
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Válido para tu empresa</span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={generatedUserInviteLink}
+                      className="flex-1 px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-xl text-slate-800 dark:text-slate-200 font-mono select-all focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyUserInvite}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shrink-0 shadow-xs transition"
+                      title="Copiar enlace al portapapeles"
+                    >
+                      {isUserInviteCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>{isUserInviteCopied ? '¡Copiado!' : 'Copiar'}</span>
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                    💡 <strong>Copia y pega este enlace</strong> en WhatsApp, Slack, Teams o correo para que tu compañero se dé de alta directamente con el rol seleccionado.
+                  </p>
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div className="pt-2 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition"
+                >
+                  Cerrar
                 </button>
               </div>
             </motion.div>

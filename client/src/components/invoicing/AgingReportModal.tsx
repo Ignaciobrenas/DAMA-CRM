@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BarChart3, X, CheckCircle } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
@@ -76,13 +77,20 @@ export const AgingReportModal: React.FC<AgingReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-up"
+      >
         {/* Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              📊 {t('dunning.agingReportTitle')}
+              <BarChart3 className="w-5 h-5 text-amber-500" />
+              <span>{t('dunning.agingReportTitle')}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {t('dunning.agingReportSubtitle')}
@@ -92,7 +100,7 @@ export const AgingReportModal: React.FC<AgingReportModalProps> = ({
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -160,8 +168,9 @@ export const AgingReportModal: React.FC<AgingReportModalProps> = ({
                 </h4>
 
                 {data.invoices.length === 0 ? (
-                  <p className="text-sm text-slate-400 py-6 text-center">
-                    🎉 {t('dunning.noOverdueInvoices')}
+                  <p className="text-sm text-slate-400 py-6 text-center flex items-center justify-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    <span>{t('dunning.noOverdueInvoices')}</span>
                   </p>
                 ) : (
                   <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
@@ -185,14 +194,14 @@ export const AgingReportModal: React.FC<AgingReportModalProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-400 mt-1">
+                              <div className="text-xs text-slate-500 dark:text-slate-300 mt-1 font-medium">
                                 {t('dunning.total')}: {inv.total.toFixed(2)} € • {t('dunning.paid')}: {inv.paidAmount.toFixed(2)} €
                               </div>
                             </div>
 
                             <div className="text-right flex items-center gap-3">
                               <div>
-                                <span className="text-xs text-slate-400 block">{t('dunning.pendingBalance')}</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-300 block">{t('dunning.pendingBalance')}</span>
                                 <span className="text-base font-bold text-slate-900 dark:text-white">
                                   {inv.remainingBalance.toFixed(2)} €
                                 </span>

@@ -272,7 +272,7 @@ export function generatePdfBuffer(data: InvoicePdfData): Promise<Buffer> {
 
       // Left Column: EMISOR
       doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#64748B').text('DATOS DEL EMISOR', margin, infoY);
-      doc.fontSize(10).font('Helvetica-Bold').fillColor('#0F172A').text(data.companyName || 'DAMA CRM Soluciones S.L.', margin, infoY + 14);
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#0F172A').text(data.companyName || 'DAMA CRM', margin, infoY + 14);
 
       let issuerCursor = infoY + 28;
       doc.fontSize(8.5).font('Helvetica').fillColor('#475569');
@@ -473,7 +473,7 @@ export function generatePdfBuffer(data: InvoicePdfData): Promise<Buffer> {
 
         // Legal compliance & Company identification
         doc.fontSize(7).font('Helvetica').fillColor('#94A3B8');
-        const legalLine1 = `${data.companyName || 'DAMA CRM Soluciones S.L.'} · CIF/NIF: ${data.companyTaxId || 'B-12345678'}${data.companyWebsite ? ' · ' + data.companyWebsite : ''}`;
+        const legalLine1 = `${data.companyName || 'DAMA CRM'} · CIF/NIF: ${data.companyTaxId || 'B-12345678'}${data.companyWebsite ? ' · ' + data.companyWebsite : ''}`;
         const legalLine2 = `Documento mercantil normalizado conforme a ISO 216, ISO 8601, ISO 4217 e ISO 19005. Generado electrónicamente por DAMA-CRM.`;
 
         doc.text(`${legalLine1}\n${legalLine2}`, margin, footerY + 8, {

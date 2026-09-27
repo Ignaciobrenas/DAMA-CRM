@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Ticket as TicketIcon, LayoutGrid, Table, Plus, FileSpreadsheet, FileText } from 'lucide-react';
 import { useTranslation } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
-import { api } from '../services/api';
+import { api, downloadFile } from '../services/api';
 import { wsService } from '../services/websocket';
 import { Ticket, TicketListTable } from '../components/tickets/TicketListTable';
 import { TicketKanbanBoard } from '../components/tickets/TicketKanbanBoard';
@@ -15,7 +16,7 @@ export const Tickets: React.FC = () => {
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -57,6 +58,24 @@ export const Tickets: React.FC = () => {
       toast.error(t('tickets.fetchError'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      await downloadFile('/tickets/export/csv', `tickets_${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success(t('tickets.exportSuccess', 'Tickets exportados correctamente a Excel/CSV'));
+    } catch (err) {
+      toast.error(t('tickets.exportError', 'Error al exportar tickets'));
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      await downloadFile('/tickets/export/pdf', `informe_tickets_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success(t('tickets.exportPdfSuccess', 'Informe PDF generado correctamente'));
+    } catch (err) {
+      toast.error(t('tickets.exportError', 'Error al generar informe PDF'));
     }
   };
 
@@ -116,43 +135,67 @@ export const Tickets: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            🎫 {t('tickets.pageTitle')}
+            <TicketIcon className="w-6 h-6 text-blue-500" />
+            <span>{t('tickets.pageTitle')}</span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {t('tickets.pageSubtitle')}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* View Mode Toggle */}
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
               onClick={() => setViewMode('kanban')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'kanban'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              📊 {t('tickets.viewKanban')}
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>{t('tickets.viewKanban')}</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'table'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              📋 {t('tickets.viewTable')}
+              <Table className="w-3.5 h-3.5" />
+              <span>{t('tickets.viewTable')}</span>
+            </button>
+          </div>
+
+          {/* Export buttons */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Exportar a Excel (CSV)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Descargar Informe PDF"
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-600" />
+              <span>PDF</span>
             </button>
           </div>
 
           <button
             onClick={() => setShowNewModal(true)}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs transition flex items-center gap-1.5"
           >
-            <span>+ {t('tickets.newTicket')}</span>
+            <Plus className="w-4 h-4" />
+            <span>{t('tickets.newTicket')}</span>
           </button>
         </div>
       </div>

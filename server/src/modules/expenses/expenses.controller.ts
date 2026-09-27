@@ -1,12 +1,18 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 // 1. GET /api/expenses - List expenses with filters and search
 export async function getExpenses(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { category, status, search, from, to } = req.query;
 
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
 
     if (category) {
       where.category = category as string;
@@ -23,10 +29,10 @@ export async function getExpenses(req: Request, res: Response): Promise<void> {
     if (search && typeof search === 'string' && search.trim()) {
       const q = search.trim();
       where.OR = [
-        { expenseNumber: { contains: q } },
-        { supplierName: { contains: q } },
-        { supplierTaxId: { contains: q } },
-        { notes: { contains: q } },
+        { expenseNumber: { contains: q, mode: 'insensitive' } },
+        { supplierName: { contains: q, mode: 'insensitive' } },
+        { supplierTaxId: { contains: q, mode: 'insensitive' } },
+        { notes: { contains: q, mode: 'insensitive' } },
       ];
     }
 
@@ -39,14 +45,15 @@ export async function getExpenses(req: Request, res: Response): Promise<void> {
       success: true,
       data: expenses,
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al obtener gastos de la empresa', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al obtener gastos de la empresa', error: error.message });
   }
 }
 
 // 2. POST /api/expenses - Create new expense
 export async function createExpense(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const {
       supplierName,
       supplierTaxId,
@@ -61,7 +68,7 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
       receiptUrl,
     } = req.body;
 
-    if (!supplierName) {
+    if (!supplierName || !supplierName.trim()) {
       res.status(400).json({ success: false, message: 'El nombre del proveedor es obligatorio' });
       return;
     }
@@ -71,8 +78,8 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
     const taxAmount = Number(((sub * rate) / 100).toFixed(2));
     const total = Number((sub + taxAmount).toFixed(2));
 
-    // Generate unique sequential expense number
-    const count = await prisma.expense.count();
+    // Generate unique sequential expense number scoped per tenant
+    const count = await prisma.expense.count({ where: { tenantId } });
     const year = new Date().getFullYear();
     const seq = String(count + 1).padStart(4, '0');
     const expenseNumber = `EXP-${year}-${seq}`;
@@ -80,8 +87,8 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
     const expense = await prisma.expense.create({
       data: {
         expenseNumber,
-        supplierName,
-        supplierTaxId: supplierTaxId || null,
+        supplierName: supplierName.trim(),
+        supplierTaxId: supplierTaxId?.trim() || null,
         category: category.toUpperCase(),
         issueDate: issueDate ? new Date(issueDate) : new Date(),
         dueDate: dueDate ? new Date(dueDate) : null,
@@ -91,8 +98,9 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
         total,
         status: status.toUpperCase(),
         paymentMethod: paymentMethod.toUpperCase(),
-        notes: notes || null,
+        notes: notes?.trim() || null,
         receiptUrl: receiptUrl || null,
+        tenantId,
       },
     });
 
@@ -103,6 +111,7 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
         action: 'CREATE_EXPENSE',
         entity: 'Expense',
         entityId: expense.id,
+        tenantId,
         details: JSON.stringify({ expenseNumber: expense.expenseNumber, total: expense.total, supplier: expense.supplierName }),
       },
     });
@@ -112,8 +121,8 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
       data: expense,
       message: 'Gasto registrado correctamente',
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al registrar gasto', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al registrar gasto', error: error.message });
   }
 }
 
@@ -121,6 +130,20 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
 export async function updateExpense(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existing = await prisma.expense.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Gasto no encontrado' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar este gasto' });
+      return;
+    }
+
     const {
       supplierName,
       supplierTaxId,
@@ -135,21 +158,15 @@ export async function updateExpense(req: Request, res: Response): Promise<void> 
       receiptUrl,
     } = req.body;
 
-    const existing = await prisma.expense.findUnique({ where: { id } });
-    if (!existing) {
-      res.status(404).json({ success: false, message: 'Gasto no encontrado' });
-      return;
-    }
-
     const data: any = {};
-    if (supplierName !== undefined) data.supplierName = supplierName;
-    if (supplierTaxId !== undefined) data.supplierTaxId = supplierTaxId;
+    if (supplierName !== undefined) data.supplierName = supplierName.trim();
+    if (supplierTaxId !== undefined) data.supplierTaxId = supplierTaxId?.trim() || null;
     if (category !== undefined) data.category = category.toUpperCase();
     if (issueDate !== undefined) data.issueDate = new Date(issueDate);
     if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
     if (status !== undefined) data.status = status.toUpperCase();
     if (paymentMethod !== undefined) data.paymentMethod = paymentMethod.toUpperCase();
-    if (notes !== undefined) data.notes = notes;
+    if (notes !== undefined) data.notes = notes?.trim() || null;
     if (receiptUrl !== undefined) data.receiptUrl = receiptUrl;
 
     if (subtotal !== undefined || taxRate !== undefined) {
@@ -171,8 +188,8 @@ export async function updateExpense(req: Request, res: Response): Promise<void> 
       data: updated,
       message: 'Gasto actualizado correctamente',
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al actualizar gasto', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al actualizar gasto', error: error.message });
   }
 }
 
@@ -180,10 +197,17 @@ export async function updateExpense(req: Request, res: Response): Promise<void> 
 export async function deleteExpense(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existing = await prisma.expense.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Gasto no encontrado' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar este gasto' });
       return;
     }
 
@@ -193,17 +217,25 @@ export async function deleteExpense(req: Request, res: Response): Promise<void> 
       success: true,
       message: 'Gasto eliminado correctamente',
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al eliminar gasto', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al eliminar gasto', error: error.message });
   }
 }
 
 // 5. GET /api/expenses/pnl/summary - P&L Profit & Loss Calculation and Tax Balance
 export async function getPnLSummary(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
     const [invoices, expenses] = await Promise.all([
-      prisma.invoice.findMany({ select: { subtotal: true, taxAmount: true, total: true, status: true } }),
-      prisma.expense.findMany({ select: { subtotal: true, taxAmount: true, total: true, status: true, category: true } }),
+      prisma.invoice.findMany({ where, select: { subtotal: true, taxAmount: true, total: true, status: true } }),
+      prisma.expense.findMany({ where, select: { subtotal: true, taxAmount: true, total: true, status: true, category: true } }),
     ]);
 
     const totalInvoiced = invoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
@@ -255,7 +287,132 @@ export async function getPnLSummary(req: Request, res: Response): Promise<void> 
         categoryBreakdown,
       },
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error al calcular resumen P&L', error });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al calcular resumen P&L', error: error.message });
+  }
+}
+
+/**
+ * GET /api/expenses/export/csv
+ * Export official Tax Expenses Ledger to CSV / Excel
+ */
+export async function exportExpensesCsv(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { generateCsvBuffer } = await import('../../services/report-exporter.service');
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
+    const expenses = await prisma.expense.findMany({
+      where,
+      orderBy: { issueDate: 'desc' },
+    });
+
+    const headers = [
+      'Nº Gasto / Factura',
+      'Proveedor',
+      'NIF / CIF Proveedor',
+      'Categoría',
+      'Fecha Emisión',
+      'Fecha Vencimiento',
+      'Base Imponible (€)',
+      'Tipo IVA (%)',
+      'Cuota IVA (€)',
+      'Importe Total (€)',
+      'Método de Pago',
+      'Estado',
+      'Notas',
+    ];
+
+    const rows = expenses.map((e) => [
+      e.expenseNumber,
+      e.supplierName,
+      e.supplierTaxId || '',
+      e.category,
+      new Date(e.issueDate).toLocaleDateString('es-ES'),
+      e.dueDate ? new Date(e.dueDate).toLocaleDateString('es-ES') : '',
+      e.subtotal.toFixed(2),
+      e.taxRate.toFixed(1),
+      e.taxAmount.toFixed(2),
+      e.total.toFixed(2),
+      e.paymentMethod || 'TRANSFERENCIA',
+      e.status,
+      e.notes || '',
+    ]);
+
+    const csvBuf = generateCsvBuffer(headers, rows);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=libro_gastos_${tenantId}_${Date.now()}.csv`);
+    res.send(csvBuf);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al exportar gastos en CSV', error: error.message });
+  }
+}
+
+/**
+ * GET /api/expenses/export/pdf
+ * Export official AEAT Modelo 303 & Tax Expenses PDF Report
+ */
+export async function exportExpensesPdf(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const { generateReportPdf } = await import('../../services/report-exporter.service');
+
+    const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
+    const [expenses, invoices] = await Promise.all([
+      prisma.expense.findMany({ where, orderBy: { issueDate: 'desc' } }),
+      prisma.invoice.findMany({ where, select: { total: true, subtotal: true, taxAmount: true, status: true } }),
+    ]);
+
+    const totalExpenses = expenses.reduce((acc, e) => acc + e.total, 0);
+    const deductibleVat = expenses.reduce((acc, e) => acc + e.taxAmount, 0);
+    const totalInvoiced = invoices.reduce((acc, i) => acc + i.total, 0);
+    const outputVat = invoices.reduce((acc, i) => acc + i.taxAmount, 0);
+    const netVatBalance = outputVat - deductibleVat;
+
+    const tableHeaders = ['Nº Gasto', 'Proveedor', 'Fecha', 'Base (€)', 'IVA (€)', 'Total (€)'];
+    const tableRows = expenses.slice(0, 45).map((e) => [
+      e.expenseNumber,
+      e.supplierName.slice(0, 24),
+      new Date(e.issueDate).toLocaleDateString('es-ES'),
+      `${e.subtotal.toFixed(2)}€`,
+      `${e.taxAmount.toFixed(2)}€ (${e.taxRate}%)`,
+      `${e.total.toFixed(2)}€`,
+    ]);
+
+    const pdfBuf = await generateReportPdf({
+      title: 'Libro Registro de Gastos & Modelo 303',
+      subtitle: 'Liquidación fiscal de IVA soportado deducible y desglose de proveedores',
+      companyName: 'DAMA-CRM Fiscal & Tax',
+      dateRange: `Ejercicio Fiscal ${new Date().getFullYear()}`,
+      kpis: [
+        { label: 'Total Gastos', value: `${totalExpenses.toFixed(2)}€`, color: '#EF4444' },
+        { label: 'IVA Soportado Deducible', value: `${deductibleVat.toFixed(2)}€`, color: '#10B981' },
+        { label: 'IVA Repercutido (Ventas)', value: `${outputVat.toFixed(2)}€`, color: '#3B82F6' },
+        { label: 'Saldo IVA a Liquidar', value: `${netVatBalance.toFixed(2)}€`, color: netVatBalance >= 0 ? '#F59E0B' : '#10B981' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        '* Libro de facturas recibidas y gastos deducibles conforme al Reglamento de Facturación y AEAT.',
+        '* Todos los importes en euros (€) con desglose de cuotas soportadas.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=libro_gastos_modelo303_${tenantId}_${Date.now()}.pdf`);
+    res.send(pdfBuf);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al exportar informe de gastos en PDF', error: error.message });
   }
 }

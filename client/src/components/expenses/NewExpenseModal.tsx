@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { X } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
@@ -82,7 +83,7 @@ export const NewExpenseModal: React.FC<NewExpenseModalProps> = ({
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 

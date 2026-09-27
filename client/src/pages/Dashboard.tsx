@@ -21,6 +21,10 @@ import {
   CheckCircle2,
   Clock,
   Layers,
+  Sun,
+  Sunset,
+  Moon,
+  Calendar,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
@@ -718,8 +722,76 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
     }
   };
 
+  const getGreetingData = () => {
+    const hours = new Date().getHours();
+    const formattedDate = new Intl.DateTimeFormat('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(new Date());
+
+    if (hours >= 6 && hours < 13) {
+      return {
+        greeting: 'Buenos días',
+        message: 'Que tengas una jornada productiva y llena de éxitos.',
+        icon: Sun,
+        colorClass: 'text-amber-500 dark:text-amber-400',
+        bgClass: 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-900/40',
+        date: formattedDate,
+      };
+    } else if (hours >= 13 && hours < 21) {
+      return {
+        greeting: 'Buenas tardes',
+        message: 'Aquí tienes el resumen actualizado de la actividad de tu empresa hoy.',
+        icon: Sunset,
+        colorClass: 'text-orange-500 dark:text-orange-400',
+        bgClass: 'bg-orange-50/80 dark:bg-orange-950/30 border-orange-200/70 dark:border-orange-900/40',
+        date: formattedDate,
+      };
+    } else {
+      return {
+        greeting: 'Buenas noches',
+        message: 'Revisa los últimos avances y métricas antes de cerrar el día.',
+        icon: Moon,
+        colorClass: 'text-indigo-500 dark:text-indigo-400',
+        bgClass: 'bg-indigo-50/80 dark:bg-indigo-950/30 border-indigo-200/70 dark:border-indigo-900/40',
+        date: formattedDate,
+      };
+    }
+  };
+
+  const greetingInfo = getGreetingData();
+  const GreetingIcon = greetingInfo.icon;
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Usuario';
+
   return (
     <div className="space-y-6">
+      {/* Time-Aware Local Greeting Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs ${greetingInfo.bgClass}`}
+      >
+        <div className="flex items-center space-x-3.5">
+          <div className={`p-2.5 rounded-xl bg-white dark:bg-slate-900 shadow-xs border border-gray-100 dark:border-slate-800 ${greetingInfo.colorClass}`}>
+            <GreetingIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white tracking-tight">
+              {greetingInfo.greeting}, <span className="text-blue-600 dark:text-blue-400">{firstName}</span>
+            </h2>
+            <p className="text-xs text-gray-600 dark:text-slate-300 font-medium">
+              {greetingInfo.message}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 text-xs font-semibold text-gray-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-slate-800 self-end sm:self-auto capitalize">
+          <Calendar className="w-3.5 h-3.5 text-blue-500" />
+          <span>{greetingInfo.date}</span>
+        </div>
+      </motion.div>
+
       {/* Header with Quick Actions, Timeframe & Drag Info */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>

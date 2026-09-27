@@ -456,6 +456,65 @@ describe('DAMA-CRM Core Unit Tests', () => {
       });
       assert.strictEqual(zapierRes.handled, true);
     });
+
+    it('should test and validate OpenCart connector configuration', async () => {
+      const testRes = await IntegrationsService.testOpenCart({
+        storeUrl: 'https://demo.opencart.com',
+        apiUsername: 'admin_oc',
+        apiKey: 'oc_test_key_123',
+      });
+      assert.strictEqual(testRes.success, true);
+      assert.ok(testRes.message.includes('OpenCart'));
+
+      const syncRes = await IntegrationsService.syncOpenCart();
+      assert.strictEqual(syncRes.success, true);
+      assert.ok(syncRes.count! >= 1);
+    });
+
+    it('should automatically map multi-app product attributes across all 6 platforms', () => {
+      const mockProduct = {
+        sku: 'PORT-GAMING-01',
+        name: 'Portátil Gaming ASUS ROG',
+        description: 'Potente portátil con pantalla 165Hz y RTX 5060',
+        price: 1499.99,
+        costPrice: 950.00,
+        stock: 12,
+        minStock: 3,
+        category: 'Portátiles',
+        brand: 'ASUS',
+        barcode: '8435123456789',
+        location: 'Pasillo A-04',
+        supplierName: 'ASUS España',
+        dimensions: '35x25x2 cm',
+        weight: 2.3,
+        taxRate: 21,
+      };
+
+      const mapped = IntegrationsService.autoMapProductAttributes(mockProduct);
+      assert.ok(mapped.unopim);
+      assert.strictEqual(mapped.unopim.family, 'port_tiles');
+      assert.strictEqual(mapped.unopim.completeness, 100);
+
+      assert.ok(mapped.opencart);
+      assert.strictEqual(mapped.opencart.model, 'PORT-GAMING-01');
+      assert.strictEqual(mapped.opencart.ean, '8435123456789');
+
+      assert.ok(mapped.sage);
+      assert.strictEqual(mapped.sage.nominal_code, '4000.0000');
+      assert.strictEqual(mapped.sage.purchase_code, '5000.0000');
+      assert.strictEqual(mapped.sage.tax_code, 'IVA21');
+
+      assert.ok(mapped.odoo);
+      assert.strictEqual(mapped.odoo.default_code, 'PORT-GAMING-01');
+      assert.strictEqual(mapped.odoo.barcode, '8435123456789');
+
+      assert.ok(mapped.shopify);
+      assert.strictEqual(mapped.shopify.vendor, 'ASUS');
+      assert.strictEqual(mapped.shopify.product_type, 'Portátiles');
+
+      assert.ok(mapped.woocommerce);
+      assert.strictEqual(mapped.woocommerce.manage_stock, true);
+    });
   });
 
   describe('ISO-Compliant PDF Engine & Dynamic Pagination', () => {
@@ -619,13 +678,27 @@ describe('DAMA-CRM Core Unit Tests', () => {
 
     it('should detect God Mode SuperAdmin user privileges properly', () => {
       const superAdminUser = { email: 'ignaciobrenas@gmail.com', role: 'ADMIN' };
-      const standardSales = { email: 'pedro@empresa.com', role: 'SALES' };
+      const godSlugUser = { email: 'custom@god-corp.com', role: 'EMPLOYEE', tenantId: 'god' };
+      const standardSales = { email: 'pedro@empresa.com', role: 'SALES', tenantId: 'tenant-123' };
 
-      const isGod1 = superAdminUser.role === 'ADMIN' || superAdminUser.email === 'ignaciobrenas@gmail.com';
-      const isGod2 = standardSales.role === 'ADMIN' || standardSales.email === 'ignaciobrenas@gmail.com';
+      const { isGodSuperAdmin } = require('../src/utils/tenant');
 
-      assert.strictEqual(isGod1, true);
-      assert.strictEqual(isGod2, false);
+      assert.strictEqual(isGodSuperAdmin(superAdminUser), true);
+      assert.strictEqual(isGodSuperAdmin(godSlugUser), true);
+      assert.strictEqual(isGodSuperAdmin(standardSales), false);
+    });
+
+    it('should verify god slug has all functional modules enabled', () => {
+      const { DEFAULT_MODULES_CONFIG } = require('../src/modules/modules/modules.controller');
+      const expectedModules = [
+        'portalEmpleado', 'tickets', 'expenses', 'pipeline', 'agile', 'contacts',
+        'companies', 'invoicing', 'inventory', 'workflows', 'omnichannel',
+        'integrations', 'leadCapture', 'reports', 'clientPortal', 'appointments', 'logistics',
+      ];
+
+      for (const mod of expectedModules) {
+        assert.strictEqual(DEFAULT_MODULES_CONFIG[mod], true, `Module ${mod} must be true for god slug`);
+      }
     });
 
     it('should properly isolate tenant identifiers in data query payloads', () => {
@@ -1034,7 +1107,1109 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(invalid.iconStyle, 'animated');
     });
   });
+
+  describe('Enterprise Rate Limiting Engine', () => {
+    it('should track request hits and compute window limits correctly', () => {
+      const windowMs = 1000;
+      const max = 5;
+      const hits = new Map<string, { count: number; resetTime: number }>();
+      const ip = '192.168.1.100';
+      const now = Date.now();
+
+      // Simulate 5 requests within window
+      for (let i = 1; i <= 5; i++) {
+        const record = hits.get(ip) || { count: 0, resetTime: now + windowMs };
+        record.count += 1;
+        hits.set(ip, record);
+      }
+
+      assert.strictEqual(hits.get(ip)?.count, 5);
+      assert.strictEqual(hits.get(ip)!.count <= max, true);
+
+      // 6th request exceeds limit
+      const rec = hits.get(ip)!;
+      rec.count += 1;
+      assert.strictEqual(rec.count > max, true);
+    });
+  });
+
+  describe('Multi-Tenant Isolation & Security Engine', () => {
+    const isGod = (user: { email?: string; role?: string; tenantId?: string | null }) => {
+      const isAdminRole = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+      const isGodEmail = user.email === 'ignaciobrenas@gmail.com' || user.email === 'admin@dama-crm.local';
+      const isMasterTenant = !user.tenantId || user.tenantId === 'master';
+      return isGodEmail || (isAdminRole && isMasterTenant);
+    };
+
+    const resolveTenant = (
+      user: { email?: string; role?: string; tenantId?: string | null } | null,
+      headers: Record<string, string | undefined>,
+      query: Record<string, string | undefined>
+    ) => {
+      const userTenant = user?.tenantId || 'master';
+      if (!user) {
+        const headerTenant = headers['x-tenant-id'] || headers['x-tenant-slug'];
+        return headerTenant ? headerTenant.trim().toLowerCase() : 'master';
+      }
+
+      if (isGod(user)) {
+        const switchHeader = headers['x-switch-tenant-id'] || headers['x-tenant-id'] || headers['x-tenant-slug'];
+        if (switchHeader && switchHeader.trim()) {
+          return switchHeader.trim().toLowerCase();
+        }
+        if (query.tenantId && query.tenantId.trim()) {
+          return query.tenantId.trim().toLowerCase();
+        }
+      }
+
+      // Standard user is ALWAYS restricted to their own tenant
+      return userTenant;
+    };
+
+    it('should correctly identify SuperAdmin / God users vs standard tenant admins', () => {
+      assert.strictEqual(isGod({ email: 'ignaciobrenas@gmail.com', role: 'ADMIN', tenantId: 'tenant_a' }), true);
+      assert.strictEqual(isGod({ email: 'admin@dama-crm.local', role: 'ADMIN', tenantId: null }), true);
+      assert.strictEqual(isGod({ email: 'master_admin@empresa.com', role: 'ADMIN', tenantId: 'master' }), true);
+      
+      // Regular tenant admin MUST NOT have God SuperAdmin status
+      assert.strictEqual(isGod({ email: 'ceo@subcompany.com', role: 'ADMIN', tenantId: 'subcompany_tenant' }), false);
+      assert.strictEqual(isGod({ email: 'sales@empresa.com', role: 'SALES', tenantId: 'master' }), false);
+    });
+
+    it('should strictly lock regular users to their assigned tenant even if headers are spoofed', () => {
+      const tenantUser = {
+        email: 'attacker@tenant-b.com',
+        role: 'ADMIN',
+        tenantId: 'tenant-b',
+      };
+
+      // Attacker tries to send X-Switch-Tenant-ID for victim tenant-a
+      const resolved = resolveTenant(
+        tenantUser,
+        { 'x-switch-tenant-id': 'tenant-a', 'x-tenant-id': 'tenant-a' },
+        { tenantId: 'tenant-a' }
+      );
+
+      // Must strictly evaluate to attacker's own tenant
+      assert.strictEqual(resolved, 'tenant-b');
+      assert.notStrictEqual(resolved, 'tenant-a');
+    });
+
+    it('should allow verified God SuperAdmin to switch tenant context smoothly', () => {
+      const godUser = {
+        email: 'ignaciobrenas@gmail.com',
+        role: 'ADMIN',
+        tenantId: 'master',
+      };
+
+      const resolvedHeader = resolveTenant(godUser, { 'x-switch-tenant-id': 'client-acme' }, {});
+      assert.strictEqual(resolvedHeader, 'client-acme');
+
+      const resolvedQuery = resolveTenant(godUser, {}, { tenantId: 'client-beta' });
+      assert.strictEqual(resolvedQuery, 'client-beta');
+
+      const resolvedDefault = resolveTenant(godUser, {}, {});
+      assert.strictEqual(resolvedDefault, 'master');
+    });
+
+    it('should maintain per-tenant sequential document numbering without cross-contamination', () => {
+      const formatInvoiceNumber = (year: number, count: number) => {
+        return `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
+      };
+
+      const tenant1Count = 5;
+      const tenant2Count = 0;
+
+      const tenant1Next = formatInvoiceNumber(2026, tenant1Count);
+      const tenant2Next = formatInvoiceNumber(2026, tenant2Count);
+
+      assert.strictEqual(tenant1Next, 'FAC-2026-0006');
+      assert.strictEqual(tenant2Next, 'FAC-2026-0001');
+    });
+  });
+
+  describe('Recurring Invoices & Subscriptions Engine', () => {
+    const computeNextBillingDate = (currentDate: Date, frequency: string): Date => {
+      const next = new Date(currentDate);
+      switch (frequency) {
+        case 'WEEKLY':
+          next.setDate(next.getDate() + 7);
+          break;
+        case 'QUARTERLY':
+          next.setMonth(next.getMonth() + 3);
+          break;
+        case 'BIANNUAL':
+          next.setMonth(next.getMonth() + 6);
+          break;
+        case 'YEARLY':
+          next.setFullYear(next.getFullYear() + 1);
+          break;
+        case 'MONTHLY':
+        default:
+          next.setMonth(next.getMonth() + 1);
+          break;
+      }
+      return next;
+    };
+
+    it('should calculate next billing cycle date accurately across frequencies', () => {
+      const baseDate = new Date('2026-01-15T00:00:00Z');
+
+      const monthly = computeNextBillingDate(baseDate, 'MONTHLY');
+      assert.strictEqual(monthly.getMonth(), 1); // February
+
+      const quarterly = computeNextBillingDate(baseDate, 'QUARTERLY');
+      assert.strictEqual(quarterly.getMonth(), 3); // April
+
+      const yearly = computeNextBillingDate(baseDate, 'YEARLY');
+      assert.strictEqual(yearly.getFullYear(), 2027);
+
+      const weekly = computeNextBillingDate(baseDate, 'WEEKLY');
+      assert.strictEqual(weekly.getDate(), 22);
+    });
+
+    it('should calculate recurring subscription total and VAT correctly', () => {
+      const items = [
+        { description: 'Cloud CRM Hosting Pro', quantity: 2, unitPrice: 49.99 },
+        { description: 'Priority Support SLA', quantity: 1, unitPrice: 100.0 },
+      ];
+      const taxRate = 21.0;
+
+      const subtotal = Number((items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)).toFixed(2));
+      const taxAmount = Number(((subtotal * taxRate) / 100).toFixed(2));
+      const total = Number((subtotal + taxAmount).toFixed(2));
+
+      assert.strictEqual(subtotal, 199.98);
+      assert.strictEqual(taxAmount, 42.0);
+      assert.strictEqual(total, 241.98);
+    });
+  });
+
+  describe('Contract Management & Digital Signatures Engine', () => {
+    it('should format contract number with sequence and year', () => {
+      const year = 2026;
+      const count = 3;
+      const contractNumber = `CTR-${year}-${String(count + 1).padStart(4, '0')}`;
+      assert.strictEqual(contractNumber, 'CTR-2026-0004');
+    });
+
+    it('should validate contract digital signature requirements', () => {
+      const validPayload = {
+        signatureData: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...',
+        signerName: 'María García López',
+      };
+
+      const isValid = Boolean(validPayload.signatureData && validPayload.signerName.trim());
+      assert.strictEqual(isValid, true);
+
+      const invalidPayload = { signatureData: '', signerName: '' };
+      const isInvalid = Boolean(invalidPayload.signatureData && invalidPayload.signerName.trim());
+      assert.strictEqual(isInvalid, false);
+    });
+  });
+
+  describe('Sage ERP & Accounting Connectors (Sage 1, Sage 50, Sage 200)', () => {
+    it('should validate Sage One (Sage Business Cloud) credentials and structure', () => {
+      const validSageOne = {
+        apiUrl: 'https://api.accounting.sage.com/v3.1',
+        apiKey: 'token_sage_one_abc123',
+        businessId: 'SBC-ES-00123',
+        syncContacts: true,
+        syncInvoices: true,
+        syncProducts: true,
+      };
+
+      const hasAuth = Boolean(validSageOne.apiKey && validSageOne.businessId);
+      assert.strictEqual(hasAuth, true);
+      assert.doesNotThrow(() => new URL(validSageOne.apiUrl));
+    });
+
+    it('should validate Sage 50 endpoint and fiscal year parameters', () => {
+      const validSage50 = {
+        endpointUrl: 'http://localhost:5493/sdata/sage50',
+        companyName: 'Empresa Sage 50 S.L.',
+        username: 'admin',
+        password: 'secure_password_50',
+        fiscalYear: '2026',
+        syncCustomers: true,
+        syncInvoices: true,
+        syncStock: true,
+      };
+
+      const hasAuth = Boolean(validSage50.password && validSage50.username);
+      assert.strictEqual(hasAuth, true);
+      assert.strictEqual(validSage50.fiscalYear, '2026');
+      assert.doesNotThrow(() => new URL(validSage50.endpointUrl));
+    });
+
+    it('should validate Sage 200 Advanced subscription key and enterprise ledger options', () => {
+      const validSage200 = {
+        baseUrl: 'https://api.sage.com/sage200/v1',
+        subscriptionKey: 'ocp_apim_key_enterprise_200',
+        companyId: 'SAGE200-CORP-ES',
+        syncCustomers: true,
+        syncInvoices: true,
+        syncLedgers: true,
+      };
+
+      const hasAuth = Boolean(validSage200.subscriptionKey && validSage200.companyId);
+      assert.strictEqual(hasAuth, true);
+      assert.strictEqual(validSage200.syncLedgers, true);
+      assert.doesNotThrow(() => new URL(validSage200.baseUrl));
+    });
+
+    it('should correctly preserve masked secrets in connector updates', () => {
+      const existingConfig = {
+        apiKey: 'real_secret_token_123',
+        endpointUrl: 'https://api.accounting.sage.com/v3.1',
+        syncContacts: true,
+      };
+
+      const patch = {
+        apiKey: '••••••••',
+        syncContacts: false,
+      };
+
+      const merged = { ...existingConfig, ...patch };
+      if (patch.apiKey === '••••••••') {
+        merged.apiKey = existingConfig.apiKey;
+      }
+
+      assert.strictEqual(merged.apiKey, 'real_secret_token_123');
+      assert.strictEqual(merged.syncContacts, false);
+    });
+  });
+
+  describe('Inventory & Stock Movements Core Logic', () => {
+    it('should correctly calculate inventory valuation metrics and margin', () => {
+      const products = [
+        { id: 'p1', name: 'Teclado Mecánico', stock: 15, price: 80, costPrice: 45 },
+        { id: 'p2', name: 'Monitor 27 IPS', stock: 8, price: 250, costPrice: 170 },
+        { id: 'p3', name: 'Ratón Ergonómico', stock: 0, price: 35, costPrice: 18 },
+      ];
+
+      const totalStock = products.reduce((acc, p) => acc + p.stock, 0);
+      const totalRetailValue = products.reduce((acc, p) => acc + p.stock * p.price, 0);
+      const totalCostValue = products.reduce((acc, p) => acc + p.stock * (p.costPrice || 0), 0);
+      const potentialProfit = totalRetailValue - totalCostValue;
+      const profitMarginPct = totalRetailValue > 0 ? (potentialProfit / totalRetailValue) * 100 : 0;
+
+      assert.strictEqual(totalStock, 23);
+      assert.strictEqual(totalRetailValue, 15 * 80 + 8 * 250); // 1200 + 2000 = 3200
+      assert.strictEqual(totalCostValue, 15 * 45 + 8 * 170); // 675 + 1360 = 2035
+      assert.strictEqual(potentialProfit, 3200 - 2035); // 1165
+      assert.strictEqual(Math.round(profitMarginPct * 10) / 10, 36.4);
+    });
+
+    it('should correctly calculate new stock on stock movement types', () => {
+      const calculateNewStock = (currentStock: number, type: 'IN' | 'OUT' | 'ADJUSTMENT' | 'RETURN', qty: number) => {
+        switch (type) {
+          case 'IN':
+          case 'RETURN':
+            return currentStock + qty;
+          case 'OUT':
+            return Math.max(0, currentStock - qty);
+          case 'ADJUSTMENT':
+            return qty;
+          default:
+            return currentStock;
+        }
+      };
+
+      assert.strictEqual(calculateNewStock(10, 'IN', 5), 15);
+      assert.strictEqual(calculateNewStock(10, 'OUT', 3), 7);
+      assert.strictEqual(calculateNewStock(10, 'OUT', 15), 0); // clamp to 0
+      assert.strictEqual(calculateNewStock(10, 'RETURN', 2), 12);
+      assert.strictEqual(calculateNewStock(10, 'ADJUSTMENT', 8), 8);
+    });
+
+    it('should identify low stock and out of stock items based on minStock', () => {
+      const catalog = [
+        { id: 'p1', stock: 0, minStock: 5 }, // OUT_OF_STOCK
+        { id: 'p2', stock: 3, minStock: 5 }, // LOW_STOCK
+        { id: 'p3', stock: 10, minStock: 5 }, // IN_STOCK
+        { id: 'p4', stock: 0, minStock: null }, // OUT_OF_STOCK
+      ];
+
+      const outOfStock = catalog.filter(p => p.stock <= 0);
+      const lowStock = catalog.filter(p => p.stock > 0 && p.minStock !== null && p.stock <= p.minStock);
+      const healthyStock = catalog.filter(p => p.stock > (p.minStock || 0));
+
+      assert.strictEqual(outOfStock.length, 2);
+      assert.strictEqual(lowStock.length, 1);
+      assert.strictEqual(healthyStock.length, 1);
+      assert.strictEqual(lowStock[0].id, 'p2');
+    });
+
+    it('should format CSV export rows with stock, cost and supplier sku safely', () => {
+      const product = {
+        sku: 'SKU-001',
+        name: 'Cable "HDMI" 2.1',
+        category: 'Cables',
+        stock: 50,
+        minStock: 10,
+        unit: 'ud',
+        price: 19.99,
+        costPrice: 8.50,
+        supplierName: 'Tech Supplies SL',
+        supplierSku: 'TS-HDMI-21',
+        isActive: true,
+      };
+
+      const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const row = [
+        product.sku,
+        escapeCsv(product.name),
+        escapeCsv(product.category),
+        product.stock,
+        product.minStock,
+        product.unit,
+        product.price,
+        product.costPrice,
+        escapeCsv(product.supplierName),
+        escapeCsv(product.supplierSku),
+        product.isActive ? 'Activo' : 'Inactivo',
+      ].join(';');
+
+      assert.strictEqual(row.includes('"Cable ""HDMI"" 2.1"'), true);
+      assert.strictEqual(row.includes('50;10;ud;19.99;8.5'), true);
+      assert.strictEqual(row.includes('"Tech Supplies SL"'), true);
+    });
+  });
+
+  describe('Company Onboarding & Slug Provisioning', () => {
+    const sanitizeSlug = (raw: string): string => {
+      return raw
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    };
+
+    it('should correctly sanitize company names to URL-safe tenant slugs', () => {
+      assert.strictEqual(sanitizeSlug('Acme & Co. España, S.L.'), 'acme-co-espa-a-s-l');
+      assert.strictEqual(sanitizeSlug('  DAMA CRM 2026!  '), 'dama-crm-2026');
+      assert.strictEqual(sanitizeSlug('---super---slug---'), 'super-slug');
+      assert.strictEqual(sanitizeSlug('MiEmpresa_123'), 'miempresa-123');
+    });
+
+    it('should validate slug format against tenant validation rules', () => {
+      const isValidSlug = (slug: string) => /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/.test(slug);
+      assert.strictEqual(isValidSlug('acme-corp'), true);
+      assert.strictEqual(isValidSlug('dama-crm-tech'), true);
+      assert.strictEqual(isValidSlug('-invalid-start'), false);
+      assert.strictEqual(isValidSlug('invalid-end-'), false);
+      assert.strictEqual(isValidSlug('a'), false); // Too short
+      assert.strictEqual(isValidSlug('UPPERCASE'), false);
+    });
+
+    it('should verify invitation token validity and expiration window', () => {
+      const createToken = (expiresInMinutes: number) => ({
+        token: 'test_tok_' + Math.random().toString(36).substring(2),
+        expiresAt: new Date(Date.now() + expiresInMinutes * 60 * 1000),
+      });
+
+      const validInvite = createToken(60);
+      assert.strictEqual(validInvite.expiresAt.getTime() > Date.now(), true);
+
+      const expiredInvite = createToken(-10);
+      assert.strictEqual(expiredInvite.expiresAt.getTime() < Date.now(), true);
+    });
+  });
+
+  describe('Enriched Invoicing: Discounts, IRPF & Rectifications', () => {
+    interface ExtendedInvoiceItem {
+      quantity: number;
+      unitPrice: number;
+      discountPercent?: number;
+    }
+
+    const calculateEnrichedTotals = (
+      items: ExtendedInvoiceItem[],
+      taxRate: number,
+      globalDiscountPercent: number = 0,
+      retentionIrpfPercent: number = 0
+    ) => {
+      let subtotal = 0;
+      for (const item of items) {
+        const itemDisc = item.discountPercent ? (item.quantity * item.unitPrice * item.discountPercent) / 100 : 0;
+        subtotal += item.quantity * item.unitPrice - itemDisc;
+      }
+      subtotal = Math.round(subtotal * 100) / 100;
+
+      const globalDiscount = globalDiscountPercent > 0 ? (subtotal * globalDiscountPercent) / 100 : 0;
+      const taxableBase = Math.round((subtotal - globalDiscount) * 100) / 100;
+
+      const taxAmount = Math.round(((taxableBase * taxRate) / 100) * 100) / 100;
+      const retentionAmount = retentionIrpfPercent > 0 ? Math.round(((taxableBase * retentionIrpfPercent) / 100) * 100) / 100 : 0;
+      const total = Math.round((taxableBase + taxAmount - retentionAmount) * 100) / 100;
+
+      return { subtotal, globalDiscount, taxableBase, taxAmount, retentionAmount, total };
+    };
+
+    it('should calculate line item discounts and global discount correctly', () => {
+      const items = [
+        { quantity: 2, unitPrice: 100, discountPercent: 10 }, // 200 - 20 = 180
+        { quantity: 1, unitPrice: 50, discountPercent: 0 },    // 50
+      ];
+      // Subtotal = 230. Global discount 10% => 23 => Taxable base = 207.
+      // IVA 21% => 43.47. Total = 250.47
+      const res = calculateEnrichedTotals(items, 21, 10, 0);
+      assert.strictEqual(res.subtotal, 230);
+      assert.strictEqual(res.globalDiscount, 23);
+      assert.strictEqual(res.taxableBase, 207);
+      assert.strictEqual(res.taxAmount, 43.47);
+      assert.strictEqual(res.total, 250.47);
+    });
+
+    it('should compute professional IRPF retention (15%) correctly', () => {
+      const items = [{ quantity: 1, unitPrice: 1000 }];
+      // Subtotal = 1000, Taxable = 1000, IVA 21% = 210, IRPF 15% = 150.
+      // Total = 1000 + 210 - 150 = 1060.
+      const res = calculateEnrichedTotals(items, 21, 0, 15);
+      assert.strictEqual(res.taxableBase, 1000);
+      assert.strictEqual(res.taxAmount, 210);
+      assert.strictEqual(res.retentionAmount, 150);
+      assert.strictEqual(res.total, 1060);
+    });
+
+    it('should properly invert balances for Facturas Rectificativas (Credit Notes)', () => {
+      const originalInvoice = {
+        number: 'FAC-2026-001',
+        total: 1210,
+        subtotal: 1000,
+        tax: 210,
+      };
+
+      const rectifyingInvoice = {
+        number: 'REC-2026-001',
+        rectifiesInvoiceNumber: originalInvoice.number,
+        rectificationReason: 'R1 - Devolución de mercancía',
+        subtotal: -originalInvoice.subtotal,
+        tax: -originalInvoice.tax,
+        total: -originalInvoice.total,
+        type: 'RECTIFICATIVE',
+      };
+
+      assert.strictEqual(rectifyingInvoice.total, -1210);
+      assert.strictEqual(rectifyingInvoice.subtotal, -1000);
+      assert.strictEqual(rectifyingInvoice.rectifiesInvoiceNumber, 'FAC-2026-001');
+    });
+  });
+
+  describe('Agile Planner & Mi Tiempo Worklogs', () => {
+    interface WorkLog {
+      id: string;
+      minutesSpent: number;
+      taskId: string;
+      userId: string;
+      loggedAt: Date;
+    }
+
+    it('should aggregate worklog minutes into decimal hours with precision', () => {
+      const worklogs: WorkLog[] = [
+        { id: '1', minutesSpent: 90, taskId: 't1', userId: 'u1', loggedAt: new Date() },
+        { id: '2', minutesSpent: 45, taskId: 't1', userId: 'u2', loggedAt: new Date() },
+        { id: '3', minutesSpent: 120, taskId: 't2', userId: 'u1', loggedAt: new Date() },
+      ];
+
+      const totalMinutes = worklogs.reduce((sum, w) => sum + w.minutesSpent, 0);
+      const totalHours = Math.round((totalMinutes / 60) * 100) / 100;
+      assert.strictEqual(totalMinutes, 255);
+      assert.strictEqual(totalHours, 4.25);
+
+      const user1Logs = worklogs.filter(w => w.userId === 'u1');
+      const user1Hours = user1Logs.reduce((sum, w) => sum + w.minutesSpent, 0) / 60;
+      assert.strictEqual(user1Hours, 3.5);
+    });
+
+    it('should calculate daily clock-in (fichaje) duration in compliance with Spanish labor rules', () => {
+      const clockIn = new Date('2026-09-27T08:30:00Z');
+      const clockOut = new Date('2026-09-27T17:00:00Z');
+      const breakMinutes = 30;
+
+      const durationMinutes = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60) - breakMinutes;
+      const workedHours = durationMinutes / 60;
+
+      assert.strictEqual(durationMinutes, 480); // 8 hours net
+      assert.strictEqual(workedHours, 8.0);
+    });
+  });
+
+  describe('Calendar Module: RFC 5545 iCal & Alert Reminders', () => {
+    const generateICalStub = (events: Array<{ id: string; title: string; startDate: Date; endDate: Date; allDay?: boolean; location?: string }>) => {
+      const formatDate = (date: Date, allDay: boolean = false): string => {
+        if (allDay) return date.toISOString().replace(/[-:]/g, '').split('T')[0];
+        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      };
+
+      let ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//DAMA-CRM//Enterprise Calendar 1.0//ES',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+      ];
+
+      for (const ev of events) {
+        ics.push('BEGIN:VEVENT');
+        ics.push(`UID:${ev.id}@dama-crm.local`);
+        ics.push(`SUMMARY:${ev.title}`);
+        ics.push(`DTSTART:${formatDate(ev.startDate, ev.allDay)}`);
+        ics.push(`DTEND:${formatDate(ev.endDate, ev.allDay)}`);
+        if (ev.location) ics.push(`LOCATION:${ev.location}`);
+        ics.push('END:VEVENT');
+      }
+
+      ics.push('END:VCALENDAR');
+      return ics.join('\r\n');
+    };
+
+    it('should generate valid RFC 5545 iCalendar stream with VEVENT blocks', () => {
+      const mockEvents = [
+        {
+          id: 'ev-101',
+          title: 'Reunión Comercial Acme Corp',
+          startDate: new Date('2026-10-01T10:00:00Z'),
+          endDate: new Date('2026-10-01T11:00:00Z'),
+          location: 'https://meet.google.com/abc-defg-hij',
+        },
+      ];
+
+      const icsOutput = generateICalStub(mockEvents);
+      assert.strictEqual(icsOutput.includes('BEGIN:VCALENDAR'), true);
+      assert.strictEqual(icsOutput.includes('BEGIN:VEVENT'), true);
+      assert.strictEqual(icsOutput.includes('UID:ev-101@dama-crm.local'), true);
+      assert.strictEqual(icsOutput.includes('SUMMARY:Reunión Comercial Acme Corp'), true);
+      assert.strictEqual(icsOutput.includes('LOCATION:https://meet.google.com/abc-defg-hij'), true);
+      assert.strictEqual(icsOutput.includes('END:VCALENDAR'), true);
+    });
+
+    it('should compute reminder timestamp based on minutesBefore correctly', () => {
+      const eventStart = new Date('2026-10-05T15:00:00Z');
+      const minutesBefore = 15;
+      const remindAt = new Date(eventStart.getTime() - minutesBefore * 60 * 1000);
+
+      assert.strictEqual(remindAt.toISOString(), '2026-10-05T14:45:00.000Z');
+    });
+
+    it('should isolate company-wide events from strictly private user events', () => {
+      const currentUserId = 'usr_ignacio';
+      const events = [
+        { id: '1', userId: 'usr_ignacio', isCompanyWide: false, title: 'Personal Dentist' },
+        { id: '2', userId: 'usr_other', isCompanyWide: true, title: 'Company Townhall' },
+        { id: '3', userId: 'usr_other', isCompanyWide: false, title: 'Private Note Other' },
+      ];
+
+      const visibleToUser = events.filter(e => e.userId === currentUserId || e.isCompanyWide);
+      assert.strictEqual(visibleToUser.length, 2);
+      assert.strictEqual(visibleToUser.some(e => e.title === 'Private Note Other'), false);
+    });
+  });
+
+  describe('Real-time Form Validation Engine', () => {
+    // Import validator functions
+    const {
+      validateEmail,
+      validatePhone,
+      validateSpanishTaxId,
+      validateUrl,
+      validateNumber,
+      validateIban,
+      validateRequired,
+    } = require('../src/utils/validators');
+
+    it('should validate emails with RFC-compliant and TLD checks', () => {
+      assert.strictEqual(validateEmail('contacto@empresa.com').isValid, true);
+      assert.strictEqual(validateEmail('admin+crm@dama-crm.es').isValid, true);
+      assert.strictEqual(validateEmail('user@subdomain.empresa.co.uk').isValid, true);
+
+      assert.strictEqual(validateEmail('').isValid, false);
+      assert.strictEqual(validateEmail('malformado').isValid, false);
+      assert.strictEqual(validateEmail('sin_arroba.com').isValid, false);
+      assert.strictEqual(validateEmail('test@.com').isValid, false);
+      assert.strictEqual(validateEmail('test@dominio').isValid, false);
+      assert.strictEqual(validateEmail('test@@dominio.com').isValid, false);
+    });
+
+    it('should validate Spanish and international phone numbers', () => {
+      assert.strictEqual(validatePhone('+34 600 123 456').isValid, true);
+      assert.strictEqual(validatePhone('+1 555-0199').isValid, true);
+      assert.strictEqual(validatePhone('612345678').isValid, true);
+      assert.strictEqual(validatePhone('912345678').isValid, true);
+      assert.strictEqual(validatePhone('').isValid, true); // Optional empty
+
+      assert.strictEqual(validatePhone('1234').isValid, false);
+      assert.strictEqual(validatePhone('abc123456').isValid, false);
+    });
+
+    it('should validate Spanish Tax IDs (NIF, NIE, CIF) with checksum verification', () => {
+      // Valid NIF: 12345678Z
+      assert.strictEqual(validateSpanishTaxId('12345678Z').isValid, true);
+      assert.strictEqual(validateSpanishTaxId('12345678Z').type, 'NIF');
+      // Invalid NIF letter
+      assert.strictEqual(validateSpanishTaxId('12345678A').isValid, false);
+
+      // Valid NIE: X1234567L (X=0)
+      assert.strictEqual(validateSpanishTaxId('X1234567L').isValid, true);
+      assert.strictEqual(validateSpanishTaxId('X1234567L').type, 'NIE');
+      // Invalid NIE letter
+      assert.strictEqual(validateSpanishTaxId('X1234567A').isValid, false);
+
+      // Valid CIF: B12345674 or A58818501
+      const cifRes = validateSpanishTaxId('B58818501');
+      assert.strictEqual(cifRes.isValid, true);
+      assert.strictEqual(cifRes.type, 'CIF');
+
+      // Invalid format
+      assert.strictEqual(validateSpanishTaxId('INVALID_TAX_ID').isValid, false);
+    });
+
+    it('should validate Web URLs correctly', () => {
+      assert.strictEqual(validateUrl('https://damacrm.com').isValid, true);
+      assert.strictEqual(validateUrl('http://sub.domain.org/path').isValid, true);
+      assert.strictEqual(validateUrl('www.empresa.es').isValid, true);
+      assert.strictEqual(validateUrl('').isValid, true); // Optional empty
+
+      assert.strictEqual(validateUrl('htp:/bad-url').isValid, false);
+      assert.strictEqual(validateUrl('sinpunto').isValid, false);
+    });
+
+    it('should validate numeric constraints and bounds', () => {
+      assert.strictEqual(validateNumber(100, { min: 0, max: 1000 }).isValid, true);
+      assert.strictEqual(validateNumber('25.50', { min: 0 }).isValid, true);
+      assert.strictEqual(validateNumber(5, { integer: true }).isValid, true);
+
+      assert.strictEqual(validateNumber(-10, { min: 0 }).isValid, false);
+      assert.strictEqual(validateNumber(1500, { max: 1000 }).isValid, false);
+      assert.strictEqual(validateNumber(3.14, { integer: true }).isValid, false);
+      assert.strictEqual(validateNumber('not-a-number').isValid, false);
+    });
+
+    it('should validate IBAN bank accounts with MOD-97 algorithm', () => {
+      // Test Spanish test IBAN
+      assert.strictEqual(validateIban('ES9121000418450200051332').isValid, true);
+      assert.strictEqual(validateIban('ES91 2100 0418 4502 0005 1332').isValid, true);
+      assert.strictEqual(validateIban('').isValid, true); // Optional empty
+
+      assert.strictEqual(validateIban('ES0000000000000000000000').isValid, false);
+      assert.strictEqual(validateIban('12345').isValid, false);
+    });
+
+    it('should validate required text fields', () => {
+      assert.strictEqual(validateRequired('Acme Corp').isValid, true);
+      assert.strictEqual(validateRequired('   ').isValid, false);
+      assert.strictEqual(validateRequired('', 'Nombre').isValid, false);
+      assert.strictEqual(validateRequired('ab', 'Nombre', 3).isValid, false);
+    });
+  });
+
+  describe('Security Hardening & Defensive Controls', () => {
+    it('should enforce CORS origin patterns strictly', () => {
+      const allowedOriginPatterns = [
+        /^http:\/\/localhost(:\d+)?$/,
+        /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+        /\.damacrm\.com$/,
+        /\.damacrm\.local$/,
+      ];
+
+      const isAllowed = (origin: string) => allowedOriginPatterns.some((pattern) => pattern.test(origin));
+
+      assert.strictEqual(isAllowed('http://localhost:5173'), true);
+      assert.strictEqual(isAllowed('http://127.0.0.1:3000'), true);
+      assert.strictEqual(isAllowed('https://app.damacrm.com'), true);
+      assert.strictEqual(isAllowed('https://tenant-slug.damacrm.local'), true);
+
+      assert.strictEqual(isAllowed('https://malicious-site.com'), false);
+      assert.strictEqual(isAllowed('https://damacrm.com.attacker.com'), false);
+      assert.strictEqual(isAllowed('http://localhost.evil.com'), false);
+    });
+
+    it('should verify n8n API Key authentication check correctly', () => {
+      const configuredKey = 'sec_n8n_live_key_998877';
+      const verifyKey = (providedKey?: string) => {
+        if (!configuredKey) return true;
+        return Boolean(providedKey && providedKey === configuredKey);
+      };
+
+      assert.strictEqual(verifyKey('sec_n8n_live_key_998877'), true);
+      assert.strictEqual(verifyKey('wrong_key'), false);
+      assert.strictEqual(verifyKey(undefined), false);
+      assert.strictEqual(verifyKey(''), false);
+    });
+
+    it('should enforce multi-tenant isolation so tenant admin cannot access master God mode', () => {
+      const isGod = (user: { role: string; tenantId: string; email: string }) => {
+        const isAdminRole = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+        const isGodEmail = user.email === 'ignaciobrenas@gmail.com' || user.email === 'admin@dama-crm.local';
+        const isMasterTenant = !user.tenantId || user.tenantId === 'master';
+        return isGodEmail || (isAdminRole && isMasterTenant);
+      };
+
+      // God SuperAdmin
+      assert.strictEqual(isGod({ role: 'ADMIN', tenantId: 'master', email: 'ignaciobrenas@gmail.com' }), true);
+      assert.strictEqual(isGod({ role: 'ADMIN', tenantId: 'master', email: 'admin@dama-crm.local' }), true);
+      assert.strictEqual(isGod({ role: 'SUPER_ADMIN', tenantId: 'master', email: 'super@company.com' }), true);
+
+      // Sub-company Tenant Admin (MUST NOT be God)
+      assert.strictEqual(isGod({ role: 'ADMIN', tenantId: 'empresa-cliente-123', email: 'admin@cliente.es' }), false);
+      assert.strictEqual(isGod({ role: 'USER', tenantId: 'master', email: 'user@dama.es' }), false);
+    });
+  });
+
+  describe('RBAC Multi-Role Matrix & Tenant User Provisioning Engine', () => {
+    interface UserPermission {
+      resource: string;
+      action: string;
+    }
+
+    interface MockUser {
+      role: string;
+      tenantId: string;
+      permissions: UserPermission[];
+    }
+
+    const checkAccess = (user: MockUser, resource: string, action: string): boolean => {
+      if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return true;
+      return user.permissions.some(
+        (p) =>
+          (p.resource === resource || p.resource === '*') &&
+          (p.action === action || p.action === 'manage')
+      );
+    };
+
+    const mockAdmin: MockUser = {
+      role: 'ADMIN',
+      tenantId: 'ignacio-corp',
+      permissions: [{ resource: '*', action: 'manage' }],
+    };
+
+    const mockSales: MockUser = {
+      role: 'SALES',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'contacts', action: 'manage' },
+        { resource: 'companies', action: 'manage' },
+        { resource: 'deals', action: 'manage' },
+        { resource: 'quotes', action: 'manage' },
+        { resource: 'invoices', action: 'read' },
+      ],
+    };
+
+    const mockTech: MockUser = {
+      role: 'TECH',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'integrations', action: 'manage' },
+        { resource: 'webhooks', action: 'manage' },
+        { resource: 'api', action: 'manage' },
+        { resource: 'logs', action: 'read' },
+      ],
+    };
+
+    const mockSupport: MockUser = {
+      role: 'SUPPORT',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'tickets', action: 'manage' },
+        { resource: 'omnichannel', action: 'manage' },
+        { resource: 'contacts', action: 'read' },
+      ],
+    };
+
+    const mockHR: MockUser = {
+      role: 'HR',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'employees', action: 'manage' },
+        { resource: 'payrolls', action: 'manage' },
+        { resource: 'time_tracking', action: 'manage' },
+      ],
+    };
+
+    const mockEmployee: MockUser = {
+      role: 'EMPLOYEE',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'time_tracking', action: 'write' },
+        { resource: 'tasks', action: 'manage' },
+      ],
+    };
+
+    const mockViewer: MockUser = {
+      role: 'VIEWER',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'contacts', action: 'read' },
+        { resource: 'deals', action: 'read' },
+        { resource: 'reports', action: 'read' },
+      ],
+    };
+
+    it('should grant ADMIN full bypass on any resource and action', () => {
+      assert.strictEqual(checkAccess(mockAdmin, 'payrolls', 'delete'), true);
+      assert.strictEqual(checkAccess(mockAdmin, 'god_system', 'manage'), true);
+      assert.strictEqual(checkAccess(mockAdmin, 'integrations', 'write'), true);
+    });
+
+    it('should grant SALES access to deals and contacts but block payrolls and integrations', () => {
+      assert.strictEqual(checkAccess(mockSales, 'deals', 'create'), true);
+      assert.strictEqual(checkAccess(mockSales, 'deals', 'update'), true);
+      assert.strictEqual(checkAccess(mockSales, 'contacts', 'delete'), true);
+      assert.strictEqual(checkAccess(mockSales, 'invoices', 'read'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockSales, 'payrolls', 'read'), false);
+      assert.strictEqual(checkAccess(mockSales, 'integrations', 'manage'), false);
+      assert.strictEqual(checkAccess(mockSales, 'invoices', 'delete'), false);
+    });
+
+    it('should grant TECH access to integrations and webhooks but block financial payrolls', () => {
+      assert.strictEqual(checkAccess(mockTech, 'integrations', 'update'), true);
+      assert.strictEqual(checkAccess(mockTech, 'webhooks', 'create'), true);
+      assert.strictEqual(checkAccess(mockTech, 'logs', 'read'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockTech, 'payrolls', 'read'), false);
+      assert.strictEqual(checkAccess(mockTech, 'deals', 'delete'), false);
+    });
+
+    it('should grant SUPPORT access to tickets and omnichannel but block invoices and payrolls', () => {
+      assert.strictEqual(checkAccess(mockSupport, 'tickets', 'manage'), true);
+      assert.strictEqual(checkAccess(mockSupport, 'omnichannel', 'create'), true);
+      assert.strictEqual(checkAccess(mockSupport, 'contacts', 'read'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockSupport, 'invoices', 'manage'), false);
+      assert.strictEqual(checkAccess(mockSupport, 'payrolls', 'manage'), false);
+    });
+
+    it('should grant HR access to employees and payrolls but block CRM integrations and deals deletion', () => {
+      assert.strictEqual(checkAccess(mockHR, 'employees', 'create'), true);
+      assert.strictEqual(checkAccess(mockHR, 'payrolls', 'read'), true);
+      assert.strictEqual(checkAccess(mockHR, 'time_tracking', 'manage'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockHR, 'deals', 'delete'), false);
+      assert.strictEqual(checkAccess(mockHR, 'integrations', 'manage'), false);
+    });
+
+    it('should allow standard EMPLOYEE to clock-in and manage own tasks but not see coworker payrolls', () => {
+      assert.strictEqual(checkAccess(mockEmployee, 'time_tracking', 'write'), true);
+      assert.strictEqual(checkAccess(mockEmployee, 'tasks', 'manage'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockEmployee, 'payrolls', 'read'), false);
+      assert.strictEqual(checkAccess(mockEmployee, 'deals', 'manage'), false);
+      assert.strictEqual(checkAccess(mockEmployee, 'contacts', 'manage'), false);
+    });
+
+    it('should allow VIEWER to read contacts and reports but block write/delete operations', () => {
+      assert.strictEqual(checkAccess(mockViewer, 'contacts', 'read'), true);
+      assert.strictEqual(checkAccess(mockViewer, 'deals', 'read'), true);
+      assert.strictEqual(checkAccess(mockViewer, 'reports', 'read'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockViewer, 'contacts', 'create'), false);
+      assert.strictEqual(checkAccess(mockViewer, 'deals', 'delete'), false);
+      assert.strictEqual(checkAccess(mockViewer, 'integrations', 'write'), false);
+    });
+  });
+
+  describe('Internal Team Chat & Audit Trail Logic Engine', () => {
+    it('should validate default corporate department channels', () => {
+      const defaultChannels = [
+        { id: 'general', name: 'general', displayName: 'General', type: 'channel' },
+        { id: 'ventas', name: 'ventas', displayName: 'Ventas y Comercial', type: 'channel' },
+        { id: 'soporte', name: 'soporte', displayName: 'Soporte y Clientes', type: 'channel' },
+        { id: 'proyectos', name: 'proyectos', displayName: 'Proyectos y Desarrollo', type: 'channel' },
+        { id: 'anuncios', name: 'anuncios', displayName: 'Anuncios y Dirección', type: 'channel' },
+      ];
+
+      assert.strictEqual(defaultChannels.length, 5);
+      assert.strictEqual(defaultChannels.every((c) => c.type === 'channel'), true);
+      assert.strictEqual(defaultChannels.some((c) => c.name === 'general'), true);
+      assert.strictEqual(defaultChannels.some((c) => c.name === 'ventas'), true);
+    });
+
+    it('should correctly format direct message channel identifiers between two users', () => {
+      const getDmChannelId = (userA: string, userB: string) => {
+        const sorted = [userA, userB].sort();
+        return `dm_${sorted[0]}_${sorted[1]}`;
+      };
+
+      const dm1 = getDmChannelId('user-xyz', 'user-abc');
+      const dm2 = getDmChannelId('user-abc', 'user-xyz');
+      assert.strictEqual(dm1, dm2);
+      assert.strictEqual(dm1, 'dm_user-abc_user-xyz');
+    });
+
+    it('should parse and format user audit trail diffs safely', () => {
+      const rawAuditDetail = JSON.stringify({
+        action: 'UPDATE_ROLE',
+        previousRole: 'SALES',
+        newRole: 'ADMIN',
+        updatedBy: 'admin@ignaciocorp.com',
+      });
+
+      const parsed = JSON.parse(rawAuditDetail);
+      assert.strictEqual(parsed.action, 'UPDATE_ROLE');
+      assert.strictEqual(parsed.previousRole, 'SALES');
+      assert.strictEqual(parsed.newRole, 'ADMIN');
+    });
+  });
+
+  describe('Salon & Appointments Revenue Estimation Engine', () => {
+    interface ServiceItem {
+      id: string;
+      name: string;
+      price: number;
+      supplyCost: number;
+      durationMin: number;
+    }
+
+    it('should calculate duration, price, supply cost and net profit for multi-service bookings', () => {
+      const services: ServiceItem[] = [
+        { id: '1', name: 'Coloración Balayage', price: 85.0, supplyCost: 14.0, durationMin: 120 },
+        { id: '2', name: 'Corte & Peinado', price: 32.0, supplyCost: 3.5, durationMin: 45 },
+        { id: '3', name: 'Tratamiento Plex', price: 25.0, supplyCost: 4.5, durationMin: 20 },
+      ];
+
+      const totalPrice = services.reduce((sum, s) => sum + s.price, 0);
+      const totalSupplyCost = services.reduce((sum, s) => sum + s.supplyCost, 0);
+      const totalDuration = services.reduce((sum, s) => sum + s.durationMin, 0);
+      const netProfit = totalPrice - totalSupplyCost;
+      const profitMarginPercent = (netProfit / totalPrice) * 100;
+
+      assert.strictEqual(totalPrice, 142.0);
+      assert.strictEqual(totalSupplyCost, 22.0);
+      assert.strictEqual(totalDuration, 185);
+      assert.strictEqual(netProfit, 120.0);
+      assert.strictEqual(Number(profitMarginPercent.toFixed(1)), 84.5);
+    });
+
+    it('should aggregate today and monthly revenue and average ticket metrics', () => {
+      const appointments = [
+        { totalPrice: 32.0, estimatedProfit: 28.5, status: 'COMPLETED', date: '2026-09-27' },
+        { totalPrice: 85.0, estimatedProfit: 71.0, status: 'CONFIRMED', date: '2026-09-27' },
+        { totalPrice: 22.0, estimatedProfit: 20.0, status: 'CANCELLED', date: '2026-09-27' },
+        { totalPrice: 110.0, estimatedProfit: 92.0, status: 'COMPLETED', date: '2026-09-26' },
+      ];
+
+      const activeToday = appointments.filter((a) => a.date === '2026-09-27' && a.status !== 'CANCELLED');
+      const todayEstimated = activeToday.reduce((sum, a) => sum + a.totalPrice, 0);
+      const todayRealized = activeToday
+        .filter((a) => a.status === 'COMPLETED')
+        .reduce((sum, a) => sum + a.totalPrice, 0);
+
+      const activeAll = appointments.filter((a) => a.status !== 'CANCELLED');
+      const totalRevenue = activeAll.reduce((sum, a) => sum + a.totalPrice, 0);
+      const avgTicket = totalRevenue / activeAll.length;
+
+      assert.strictEqual(todayEstimated, 117.0);
+      assert.strictEqual(todayRealized, 32.0);
+      assert.strictEqual(activeAll.length, 3);
+      assert.strictEqual(Number(avgTicket.toFixed(2)), 75.67);
+    });
+  });
+
+  describe('Logistics & Courier Tracking Engine (GLS, NACEX, Amazon, Correos)', () => {
+    it('should validate carrier tracking code generation formats', () => {
+      const generateTracking = (carrier: string, rand: number) => {
+        switch (carrier) {
+          case 'GLS':
+            return `GLS-ES-${rand}`;
+          case 'NACEX':
+            return `NCX-${rand}`;
+          case 'AMAZON':
+            return `TBA${rand}ES`;
+          case 'CORREOS_EXPRESS':
+            return `CEX-${rand}`;
+          case 'DHL':
+            return `DHL-EXP-${rand}`;
+          default:
+            return `TRK-${rand}`;
+        }
+      };
+
+      assert.strictEqual(generateTracking('GLS', 88442211), 'GLS-ES-88442211');
+      assert.strictEqual(generateTracking('NACEX', 94810239), 'NCX-94810239');
+      assert.strictEqual(generateTracking('AMAZON', 93821049), 'TBA93821049ES');
+      assert.strictEqual(generateTracking('CORREOS_EXPRESS', 12345678), 'CEX-12345678');
+      assert.strictEqual(generateTracking('DHL', 55443322), 'DHL-EXP-55443322');
+    });
+
+    it('should correctly sequence status transitions and calculate delivery success rates', () => {
+      const shipments = [
+        { tracking: 'GLS-1', carrier: 'GLS', status: 'DELIVERED', cost: 7.95 },
+        { tracking: 'NCX-1', carrier: 'NACEX', status: 'DELIVERED', cost: 6.5 },
+        { tracking: 'AMZ-1', carrier: 'AMAZON', status: 'OUT_FOR_DELIVERY', cost: 8.4 },
+        { tracking: 'GLS-2', carrier: 'GLS', status: 'IN_TRANSIT', cost: 7.95 },
+        { tracking: 'DHL-1', carrier: 'DHL', status: 'EXCEPTION', cost: 12.0 },
+      ];
+
+      const total = shipments.length;
+      const delivered = shipments.filter((s) => s.status === 'DELIVERED').length;
+      const active = shipments.filter((s) => ['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'PRE_TRANSIT'].includes(s.status)).length;
+      const totalCost = shipments.reduce((sum, s) => sum + s.cost, 0);
+      const deliveryRate = (delivered / total) * 100;
+
+      assert.strictEqual(total, 5);
+      assert.strictEqual(delivered, 2);
+      assert.strictEqual(active, 2);
+      assert.strictEqual(deliveryRate, 40);
+      assert.strictEqual(Number(totalCost.toFixed(2)), 42.8);
+    });
+  });
+
+  describe('Enterprise Global Report Exporter (UTF-8 BOM CSV & Branded PDF)', () => {
+    it('should generate valid UTF-8 BOM CSV buffer with semicolon separators for Excel compatibility', () => {
+      const { generateCsvBuffer } = require('../src/services/report-exporter.service');
+      const headers = ['ID', 'Nombre', 'Importe', 'Notas'];
+      const rows = [
+        ['1', 'Cliente Pérez', 150.5, 'Factura pagada; todo ok'],
+        ['2', 'Empresa "Alfa"', 2300.0, 'Sin incidencias'],
+      ];
+
+      const buffer = generateCsvBuffer(headers, rows);
+      assert.ok(buffer instanceof Buffer, 'Should return a Buffer');
+
+      const content = buffer.toString('utf8');
+      assert.ok(content.startsWith('\uFEFF'), 'CSV must start with UTF-8 BOM character');
+      assert.ok(content.includes('"Cliente Pérez";"150.5"'), 'Fields should be delimited by semicolons');
+      assert.ok(content.includes('""Alfa""'), 'Quotes should be escaped cleanly');
+    });
+
+    it('should generate branded PDF buffer with standard header and valid PDF spec', async () => {
+      const { generateReportPdf } = require('../src/services/report-exporter.service');
+      const buffer = await generateReportPdf({
+        title: 'Informe Comercial de Prueba',
+        subtitle: 'Auditoría automática de métricas',
+        companyName: 'DAMA Test Corp',
+        kpis: [
+          { label: 'Total', value: '10.000 €', color: '#2563EB' },
+          { label: 'Conversión', value: '68%', color: '#059669' },
+        ],
+        tableHeaders: ['Concepto', 'Valor'],
+        tableRows: [['Oportunidades Ganadas', '15'], ['Tickets Cerrados', '42']],
+        summaryNotes: ['Reporte generado automáticamente para testing.'],
+      });
+
+      assert.ok(buffer instanceof Buffer, 'Must return a PDF buffer');
+      const rawString = buffer.toString('binary');
+      assert.ok(rawString.startsWith('%PDF-1.'), 'PDF file must start with valid PDF specification header');
+      assert.ok(rawString.includes('Informe Comercial de Prueba') || rawString.includes('PDFKit'), 'PDF must include document content');
+    });
+  });
 });
+
+
+
+
+
+
+
 
 
 

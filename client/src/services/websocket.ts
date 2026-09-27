@@ -24,7 +24,7 @@ class WebSocketClient {
 
       this.ws.onopen = () => {
         this.isConnected = true;
-        console.log('⚡ Conectado a WebSockets DAMA-CRM');
+        console.log('[WebSockets] Conectado a DAMA-CRM');
         this.emit('connection:change', { connected: true });
       };
 

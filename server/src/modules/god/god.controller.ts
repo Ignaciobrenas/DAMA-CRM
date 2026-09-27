@@ -1,15 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
-
-// Helper to check if current user is SuperAdmin
-export function isGodSuperAdmin(req: Request): boolean {
-  if (!req.user) return false;
-  return (
-    req.user.role === 'ADMIN' ||
-    req.user.email === 'ignaciobrenas@gmail.com' ||
-    req.user.email === 'admin@dama-crm.local'
-  );
-}
+import { isGodSuperAdmin } from '../../utils/tenant';
 
 // 1. GET /api/god/tenants - List all tenants with summary statistics
 export async function getTenants(req: Request, res: Response): Promise<void> {
@@ -19,7 +10,42 @@ export async function getTenants(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const tenants = await prisma.tenant.findMany({
+    let tenants = await prisma.tenant.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Ensure master and god root tenants exist
+    await prisma.tenant.upsert({
+      where: { slug: 'master' },
+      update: { isGodTenant: true },
+      create: {
+        slug: 'master',
+        name: 'DAMA Master Enterprise',
+        isGodTenant: true,
+        status: 'ACTIVE',
+        plan: 'ENTERPRISE',
+        maxUsers: 999,
+        domain: 'master.damacrm.com',
+        branding: JSON.stringify({ companyName: 'DAMA CRM Enterprise' }),
+      },
+    });
+
+    await prisma.tenant.upsert({
+      where: { slug: 'god' },
+      update: { isGodTenant: true },
+      create: {
+        slug: 'god',
+        name: 'DAMA God Root SuperAdmin',
+        isGodTenant: true,
+        status: 'ACTIVE',
+        plan: 'ENTERPRISE',
+        maxUsers: 999,
+        domain: 'god.damacrm.com',
+        branding: JSON.stringify({ companyName: 'DAMA God SuperAdmin' }),
+      },
+    });
+
+    tenants = await prisma.tenant.findMany({
       orderBy: { createdAt: 'desc' },
     });
 

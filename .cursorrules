@@ -1,11 +1,21 @@
-# DAMA-CRM Coding & Architecture Standards
+# DAMA-CRM Project Rules
 
-## Strict Internationalization (i18n) Rules
-1. **Zero Hardcoded Strings**: All user-facing strings, button texts, table headers, placeholders, error alerts, and modal dialog texts MUST be translation variables accessed via `t('key')` from `useLanguage()`.
-2. **Translation File**: All keys must be declared in `client/src/i18n/index.ts` within the `translations` dictionary.
-3. **Primary Languages**: Every new key must at least have definitions for `es` (Spanish) and `en` (English).
+## Permanent Logo Assets Rule
+- The official and immutable logos of DAMA-CRM are in `client/public/assets/logos/`:
+  - `dama-symbol-dark.png`
+  - `dama-symbol-white.png`
+  - `dama-symbol-color.png`
+  - `dama-logo-dark.png`
+  - `dama-logo-white.png`
+  - `dama-logo-color.png`
+  - `dama-logo-black.png`
+  - `dama-logo-vertical-dark.png`
+  - `dama-logo-vertical-white.png`
+  - `sample-company-logo.svg`
+- NEVER delete, modify, or replace these logos. Always use these PNG files for branding.
 
-## Design & UI System
-1. Modern glassmorphism & Tailwind CSS design system with full Light & Dark mode parity (`dark:` classes).
-2. All modals must use `<Modal>` with ESC key handling, backdrop dismissal, and body scroll lock.
-3. All write actions (creation, deletion, status change) must be guarded with `<PermissionGate>`.
+## Light Mode Theme Scale
+- Light mode MUST always use a comfortable grayscale / slate scale (`bg-slate-100/90` / `#F1F5F9`) instead of blinding pure white backgrounds.
+
+## Centered Popups and Modals
+- All popups, dialogs, and modals (Language modal, Tenant switcher, Onboarding wizard, Time tracking / Clock-in, User Profile) MUST be centered in the screen (`fixed inset-0 flex items-center justify-center p-4 m-auto`), NEVER positioned at the top of the screen.

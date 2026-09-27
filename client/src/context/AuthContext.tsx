@@ -15,6 +15,8 @@ export interface UserPreferences {
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   uiScale?: number;
   iconStyle?: 'animated' | 'solid' | 'minimal';
+  timezone?: string;
+  dateFormat?: string;
 }
 
 export interface User {
@@ -23,6 +25,7 @@ export interface User {
   email: string;
   avatar?: string;
   role: string;
+  tenantId?: string | null;
   twoFactorEnabled: boolean;
   preferences?: UserPreferences;
   permissions: Array<{ resource: string; action: string }>;
@@ -33,6 +36,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ require2FA?: boolean; tempToken?: string; success: boolean; message?: string }>;
+  loginWithGoogle: (googlePayload?: { credential?: string; email?: string; name?: string; avatar?: string }) => Promise<{ success: boolean; message?: string }>;
   register: (name: string, email: string, password: string, companyName?: string) => Promise<{ success: boolean; message?: string }>;
   verify2FA: (tempToken: string, code: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
@@ -122,6 +126,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return { success: false, message: res.message || 'auth.loginError' };
+  };
+
+  const loginWithGoogle = async (googlePayload?: { credential?: string; email?: string; name?: string; avatar?: string }) => {
+    try {
+      const res = await apiRequest('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify(googlePayload || {}),
+      });
+
+      if (res.success && (res as any).token && (res as any).user) {
+        localStorage.setItem('dama_token', (res as any).token);
+        localStorage.setItem('dama_user', JSON.stringify((res as any).user));
+        setUser((res as any).user);
+        if ((res as any).user.preferences?.soundEnabled !== undefined) {
+          soundService.setMuted(!(res as any).user.preferences.soundEnabled);
+        }
+        return { success: true };
+      }
+
+      return { success: false, message: res.message || 'Error al iniciar sesión con Google' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Error de conexión con Google Auth' };
+    }
   };
 
   const register = async (name: string, email: string, password: string, companyName?: string) => {
@@ -233,6 +260,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: Boolean(user && localStorage.getItem('dama_token')),
         isLoading,
         login,
+        loginWithGoogle,
         register,
         verify2FA,
         logout,

@@ -1,16 +1,16 @@
-# DAMA-CRM: Plataforma Integral Open-Source y Self-Hosted para PYMES 🚀
-
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="client/public/assets/logos/dama-logo-white.svg">
-  <source media="(prefers-color-scheme: light)" srcset="client/public/assets/logos/dama-logo-dark.svg">
-  <img alt="DAMA-CRM Logo" src="client/public/assets/logos/dama-logo-dark.svg" width="400">
+  <source media="(prefers-color-scheme: dark)" srcset="client/public/assets/logos/dama-logo-white.png">
+  <source media="(prefers-color-scheme: light)" srcset="client/public/assets/logos/dama-logo-dark.png">
+  <img alt="DAMA-CRM Logo" src="client/public/assets/logos/dama-logo-dark.png" width="400">
 </picture>
 
+<br><br>
+
 <p align="center">
-  <strong>CRM empresarial modular de alto rendimiento: Gestión comercial, Portal del Empleado, Facturación ISO 19005-1, Mesa de Ayuda con SLAs, Automatizaciones y Centro de Integraciones ERP / E-Commerce.</strong><br>
-  <em>100% On-Premise y Self-Hosted • Zero Licencias Recurrentes • Multi-Tenant • 10 Idiomas • Arquitectura React 18 + Node.js 20 + PostgreSQL + Redis</em>
+  <strong>CRM & ERP Modular de Alto Rendimiento para PYMES y Empresas</strong><br>
+  <em>100% Self-Hosted · Zero Licencias Recurrentes · Multi-Tenant Real · 11 Idiomas · Multiplataforma</em>
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -21,317 +21,491 @@
 [![Redis 7+](https://img.shields.io/badge/Redis-7+-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![React 18+](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v3-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![WebSockets](https://img.shields.io/badge/WebSockets-Real--Time-success)](core/src/services/websocket.service.ts)
-[![i18n 10 Languages](https://img.shields.io/badge/i18n-10%20Locales-orange)](client/src/i18n)
+[![Tests Passing](https://img.shields.io/badge/Tests-116%20Passed-10B981)](server/tests)
+[![i18n](https://img.shields.io/badge/i18n-11%20Languages%20100%25-blueviolet)](client/src/i18n)
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 </div>
 
 ---
 
-## 🌟 Listado Completo de Funcionalidades del CRM
+## 📸 Vista Previa — Dashboard Principal
 
-DAMA-CRM está diseñado como un ecosistema modular integral donde cada empresa u organización puede activar o desactivar módulos en función de su operativa diaria:
+<div align="center">
+  <img src="client/public/assets/docs/screenshot-dashboard.png" alt="Dashboard Principal DAMA-CRM" width="960">
+</div>
+
+---
+
+## 📋 Tabla de Contenidos
+
+- [🌟 Ecosistema de Módulos](#-ecosistema-de-módulos)
+- [📸 Capturas de Pantalla](#-capturas-de-pantalla)
+- [🛠️ Arquitectura Técnica](#️-arquitectura-técnica)
+- [🚀 Despliegue Rápido](#-despliegue-rápido-con-docker)
+- [⚙️ Variables de Entorno](#️-variables-de-entorno)
+- [🧪 Tests Automatizados](#-batería-de-pruebas-automatizadas)
+- [🌐 Multi-Idioma](#-soporte-multi-idioma-11-idiomas)
+- [📄 Licencia](#-licencia)
+
+---
+
+## 🌟 Ecosistema de Módulos
+
+DAMA-CRM es una plataforma **modular** donde cada empresa activa solo lo que necesita desde `Configuración > Módulos`. Todos los datos se almacenan en PostgreSQL con migraciones Prisma y aislamiento real por tenant.
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   DAMA-CRM ECOSYSTEM                                   │
-├──────────────────────────┬──────────────────────────┬──────────────────────────────────┤
-│ 👑 God Mode SuperAdmin   │ 👥 Portal del Empleado   │ 📑 Facturación ISO 19005-1       │
-│ 🏢 Multi-Tenant SaaS     │ ⏱️ Fichajes & Control    │ ✍️ Firma Digital de Presupuestos │
-│ ⚙️ Gestor de 15 Módulos  │ 💰 Nóminas & Privacidad  │ 📊 Margen P&L y Modelo 303 AEAT  │
-├──────────────────────────┼──────────────────────────┼──────────────────────────────────┤
-│ 🎯 Pipeline Comercial    │ 🎫 Mesa de Ayuda (SLA)   │ 💬 WhatsApp Omnicanal con IA     │
-│ 📋 Proyectos & Sprints   │ 📦 Inventario & UnoPIM   │ 🔌 Hub Conectores (Odoo/Woo/n8n) │
-├──────────────────────────┼──────────────────────────┼──────────────────────────────────┤
-│ 🔔 WebSocket Real-Time   │ 🔒 2FA OTP & Matriz RBAC │ 🎨 Zoom UI, Accesibilidad & i18n │
-└──────────────────────────┴──────────────────────────┴──────────────────────────────────┘
-```
-
-### 1. 🏢 Multi-Tenant SaaS & Modo Dios (SuperAdmin God Mode)
-* **Aislamiento Multi-Empresa Estricto:** Separación de datos, usuarios, contactos y facturación por `tenantId`.
-* **Conmutador de Empresa en 1 Clic (God Mode):** Los administradores globales pueden supervisar y alternar entre cualquier empresa del sistema sin cerrar sesión.
-* **Gobierno de Cuentas Jerárquico:** Solo los administradores de empresa pueden crear usuarios de su propia organización; el SuperAdmin puede dar de alta usuarios y asignarlos libremente a cualquier empresa.
-
-### 2. ⚙️ Gestor Modular y Activación de Funcionalidades
-* **15 Módulos Conmutables:** Activa o desactiva funcionalidades a nivel de empresa desde `Configuración > Módulos` (`portalEmpleado`, `tickets`, `expenses`, `pipeline`, `agile`, `invoicing`, `inventory`, `workflows`, `omnichannel`, `integrations`, `leadCapture`, `reports`, `clientPortal`, `contacts`, `companies`).
-* **Barreras de Permisos Dinámicas (`PermissionGate` y `ModuleDisabled`):** Bloqueo visual y por API con mensaje explicativo amigable si un módulo está deshabilitado.
-* **Copia de Seguridad y Diagnóstico del Sistema:** Exportación en 1 clic de backups completos en JSON (`GET /api/modules/export-backup`) y diagnóstico de salud del clúster Docker/Postgres (`GET /api/modules/system-status`).
-
-### 3. 👥 Portal del Empleado & Control Horario Legal
-* **Registro de Jornada en 1 Clic:** Fichaje directo de Entrada / Salida desde la barra superior de navegación y vista completa en `/portal-empleado`.
-* **Cumplimiento Legal (Estatuto de los Trabajadores):** Justificación obligatoria y selección de motivos (Jornada ordinaria, Teletrabajo, Visita a cliente, Horas extra, Pausa médica).
-* **Integración Bidireccional Odoo `hr.attendance`:** Sincronización automática de fichajes hacia el ERP Odoo.
-* **Gestión Confidencial de Nóminas:** Consulta individual de nóminas oficiales en PDF con enmascaramiento estricto de datos salariales entre empleados (Cumplimiento RGPD).
-
-### 4. 🎯 Pipeline Comercial Kanban & Previsión de Ingresos
-* **Tablero Visual Interactivo:** Gestión de tratos por etapas arrastrables (*Lead*, *Contacto*, *Propuesta*, *Negociación*, *Ganado*, *Perdido*).
-* **Cálculo Ponderado de Ventas:** Previsión automática de ingresos según el porcentaje de éxito de cada etapa comercial.
-* **Conversión en 1 Clic:** Convierte un trato ganado en factura oficial o proyecto ágil inmediatamente.
-
-### 5. 📋 Proyectos Ágiles, Planner & Sprints
-* **Tableros Scrum / Kanban:** Gestión de sprints, historias de usuario, asignación de responsables y seguimiento de backlog.
-* **Estimación y Carga de Trabajo:** Puntos de historia, fechas límite y diagrama visual del estado de entregables.
-
-### 6. 📑 Facturación Conforme a Normativa & Presupuestos con Firma Digital
-* **Motor PDF Vectorial ISO 19005-1 (PDF/A):** Generación de facturas y presupuestos con maquetación tipográfica exacta, paginación dinámica, desglose fiscal de IVA y marca corporativa.
-* **Aceptación y Firma Digital del Cliente (`/quote/sign/:token`):** Portal público seguro para que los clientes rubriquen presupuestos desde cualquier dispositivo (móvil/pantalla táctil) sin necesidad de credenciales.
-* **Exportación Contable Oficial:** Libros de facturas emitidas y recibidas compatibles con requerimientos de la AEAT.
-
-### 7. 💰 Control de Gastos, Margen P&L y Liquidación de Impuestos
-* **Libro de Facturas Recibidas:** Registro de gastos por proveedor, NIF/CIF, categoría y forma de pago.
-* **Cálculo de Margen Operativo Real:** Ingresos cobrados vs Gastos pagados con cálculo automático de IVA Repercutido vs Soportado Deducible (Modelo 303).
-* **Informe de Antigüedad de Deuda (Aging / Dunning):** Clasificación de cobros pendientes en tramos (0-30 días, 31-60 días, 61-90 días, +90 días).
-
-### 8. 🎫 Mesa de Ayuda (Tickets) & Monitor de SLAs
-* **Centro de Soporte Técnico:** Gestión de incidencias con cálculo automatizado de tiempo restante y vencimiento de SLA según prioridad (Urgente, Alta, Media, Baja).
-* **Notas Internas Confidenciales vs Respuestas Públicas:** Hilos de mensajería con separación clara entre notas privadas para agentes y respuestas visibles para el cliente.
-
-### 9. 📦 Gestión de Inventario & Sincronización UnoPIM
-* **Catálogo de Productos y SKUs:** Control de stock mínimo, stock disponible, precio de coste y precio de venta.
-* **Webhooks de Sincronización UnoPIM:** Actualización de catálogo y stock en tiempo real mediante `POST /api/integrations/unopim/webhook`.
-
-### 10. 💬 Bandeja Omnicanal WhatsApp & Respuestas con IA
-* **Meta WhatsApp Cloud API Oficial:** Envío y recepción de mensajes con normalización de números E.164.
-* **Respuestas Contextuales con IA:** Asistencia inteligente para sugerir respuestas comerciales y soporte al instante.
-
-### 11. 🔌 Hub de Integraciones de Terceros
-* **Conectores Nativos Verificados:** Conexión con **Odoo**, **UnoPIM**, **WooCommerce**, **Shopify**, **n8n**, **Stripe**, **Zapier** y servidores de correo **SMTP**.
-* **Comprobación de Conectividad en Vivo:** Diagnóstico inmediato de credenciales API y tokens desde la interfaz gráfica.
-
-### 12. 🔔 Centro de Notificaciones en Tiempo Real por WebSocket
-* **Alertas Interactivas y Redirección Directa:** Cada notificación incluye su URL de destino (`actionUrl`), permitiendo al usuario navegar con 1 clic al ticket, factura, trato o fichaje correspondiente.
-* **Bandeja de Pendientes y No Leídas:** Indicadores numéricos en vivo, marcado de leídas y blindaje para alto volumen de eventos.
-
-### 13. 🔒 Seguridad Corporativa, 2FA OTP & Matriz RBAC Dinámica
-* **Autenticación en Dos Pasos (2FA OTP):** Códigos temporales enviados al correo del usuario con protección contra ataques de fuerza bruta.
-* **Matriz de Permisos RBAC Dinámica:** Control granular por recurso (`deals`, `invoices`, `contacts`, `tickets`, `expenses`, `users`, `employees`) y acción (`create`, `read`, `update`, `delete`).
-* **Auditoría de Seguridad Inmutable:** Registro de accesos fallidos, exportaciones de datos y cambios de configuración.
-
-### 14. 🌍 Internacionalización Completa (10 Idiomas Oficiales)
-* **Soporte Global:** Español (`es`), Inglés (`en`), Francés (`fr`), Alemán (`de`), Italiano (`it`), Portugués (`pt`), Árabe RTL (`ar`), Chino Simplificado (`zh`), Japonés (`ja`) y Ruso (`ru`).
-* **Zero Strings Hardcodeados:** 100% de la interfaz, modales, tablas y notificaciones utilizan claves de traducción estructuradas.
-
-### 15. 🎨 Accesibilidad, Escalado UI Zoom y Tipografía Persistente
-* **Ajuste Global de Escala (Zoom UI):** Escalado dinámico desde 80% (Compacto) hasta 125% (Accesibilidad ampliada).
-* **Tamaño de Fuente Tipográfica:** Modificación en tiempo real del tamaño de fuente en toda la aplicación.
-* **Biblioteca de Iconos Dinámicos:** Iconos con micro-animaciones fluidas (`framer-motion`), sólidos clásicos o minimalistas.
-* **Persistencia en Base de Datos:** Todas las preferencias visuales y de accesibilidad se guardan permanentemente en el perfil del usuario en PostgreSQL.
-
----
-
-## 📸 Galería Visual y Capturas Reales
-
-### 1. Panel de Control y Métricas BI (Dashboard)
-Visualiza KPIs de facturación, tasa de conversión, actividad del pipeline comercial y gráficos interactivos con transiciones fluidas.
-
-| Modo Claro (Light Mode) | Modo Oscuro (Dark Mode) |
-| :---: | :---: |
-| ![Dashboard Light](docs/screenshots/dama-crm-dashboard-light.png) | ![Dashboard Dark](docs/screenshots/dama-crm-dashboard-dark.png) |
-
----
-
-### 2. Hub de Integraciones de Terceros (`/integrations`)
-Catálogo integral con filtrado por categorías (ERP, E-Commerce, Automatización, Pasarelas de Pago, Comunicación), buscador en tiempo real, comprobación de conexión en vivo y panel de credenciales con control estricto para administradores.
-
-| Integraciones en Modo Claro | Integraciones en Modo Oscuro |
-| :---: | :---: |
-| ![Integraciones Light](docs/screenshots/dama-crm-integrations-light.png) | ![Integraciones Dark](docs/screenshots/dama-crm-integrations-dark.png) |
-
----
-
-### 3. Asistente de Onboarding Guiado (`/onboarding`) y Acceso Seguro
-Experiencia de bienvenida con selección de permisos por rol, micro-animaciones, opción de omitir configuración y personalización de marca.
-
-| Asistente de Onboarding | Pantalla de Acceso & Autenticación |
-| :---: | :---: |
-| ![Onboarding](docs/screenshots/dama-crm-onboarding.png) | ![Login](docs/screenshots/dama-crm-login.png) |
-
----
-
-## 🏗️ Arquitectura Técnica del Sistema
-
-```mermaid
-flowchart TD
-    subgraph "Frontend Layer (React 18 + Vite + Tailwind)"
-        SPA["Single Page Application & PWA"]
-        Contexts["State Contexts (Auth, Modules, Branding, Appearance, Language)"]
-        WSClient["WebSocket Client (Auto-Reconnect)"]
-    end
-
-    subgraph "Gateway & Reverse Proxy"
-        Traefik["Traefik v3 (Auto SSL Let's Encrypt / Port 80 & 443)"]
-    end
-
-    subgraph "Backend Core API (Node.js 20 + Express + TypeScript)"
-        Router["Express REST Router & RBAC Middleware"]
-        WSServer["WebSocket Real-Time Server"]
-        PDFGen["ISO 19005-1 Vector PDF Engine"]
-        SyncEngine["Integration Connectors (Odoo, UnoPIM, Woo, Stripe)"]
-    end
-
-    subgraph "Data Storage & Cache Layer"
-        Postgres[(PostgreSQL 15 DB - Idempotent Migrations)]
-        RedisCache[(Redis 7 - Pub/Sub Broker & Cache)]
-    end
-
-    SPA -->|HTTPS REST| Traefik
-    WSClient -->|WSS Real-Time| Traefik
-    Traefik --> Router
-    Traefik --> WSServer
-    Router --> SyncEngine
-    Router --> PDFGen
-    Router --> Postgres
-    WSServer --> RedisCache
-    SyncEngine --> Postgres
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                              DAMA-CRM  ·  Ecosystem Map                             │
+├──────────────────────────────┬──────────────────────────┬───────────────────────────┤
+│ 👑  God Mode SuperAdmin      │ 📅  Calendario & Alertas  │ 📑  Facturación ISO 19005 │
+│ 🏢  Multi-Tenant SaaS        │ 👥  Portal del Empleado   │ ✍️   Firma Digital         │
+│ ⚙️   Gestor de Módulos        │ ⏱️   Mi Tiempo & Fichajes │ 📊  Margen P&L / AEAT 303 │
+├──────────────────────────────┼──────────────────────────┼───────────────────────────┤
+│ 🎯  Ventas & Pipeline Kanban │ 🎫  Mesa de Ayuda (SLA)  │ 💬  WhatsApp Omnicanal IA │
+│ 📋  Proyectos Ágiles / Scrum │ 📦  Catálogo & Inventario │ 🔌  ERP Connectors        │
+│ 🏷️   Lead Capture & Widgets   │ 🚚  Logística & Couriers │ 🤖  Workflows & Zapier    │
+├──────────────────────────────┼──────────────────────────┼───────────────────────────┤
+│ 🔔  WebSocket Real-Time      │ 🔒  2FA OTP & RBAC        │ 🎨  White-Label & Branding│
+│ 🌍  11 Idiomas 100% paridad  │ 📱  Mobile-First PWA      │ 🖥️   Electron Desktop      │
+└──────────────────────────────┴──────────────────────────┴───────────────────────────┘
 ```
 
 ---
 
-## ⚡ Inicio Rápido en Desarrollo Local
+## 📸 Capturas de Pantalla
 
-### Requisitos Previos
-* **Node.js:** v20.x o v24.x
-* **npm:** v10.x o superior
-* **Docker Desktop** (para PostgreSQL y Redis) o PostgreSQL 15 local
+### 🔐 Acceso & Login Multi-Tenant
 
-### Comandos de Puesta en Marcha
+<div align="center">
+  <img src="client/public/assets/docs/screenshot-login.png" alt="Login DAMA-CRM" width="960">
+</div>
+
+> El login detecta automáticamente el subdominio (`empresa.dama.com`) e inyecta el contexto de tenant con badge visual.
+
+---
+
+### 🎯 CRM — Contactos & Clientes
+
+<div align="center">
+  <img src="client/public/assets/docs/screenshot-contacts.png" alt="Contactos DAMA-CRM" width="960">
+</div>
+
+**Gestión completa de contactos y clientes:**
+- Búsqueda en tiempo real con filtros por segmento, etiqueta y empresa vinculada
+- Importación masiva desde Excel/CSV con mapeo inteligente de columnas
+- Exportación a CSV con selección múltiple y eliminación en bulk
+- Campos personalizados por entidad (texto, número, select, fecha, booleano)
+- Historial completo: deals, facturas, tickets y comunicaciones
+- Portal de cliente público por token seguro
+
+---
+
+### 💰 Facturación Avanzada ISO 19005-1
+
+<div align="center">
+  <img src="client/public/assets/docs/screenshot-invoicing.png" alt="Facturación DAMA-CRM" width="960">
+</div>
+
+**Suite de facturación profesional y legal:**
+- **Facturas, Presupuestos y Proformas** con numeración automática correlativa
+- **Facturas Rectificativas (Abonos)** con motivos R1–R5 reglamentarios
+- **IRPF Profesional:** retenciones del 0%, 7%, 15% y 19%
+- **IVA flexible:** 0%, 4%, 10%, 21% por línea de concepto
+- **Descuentos:** por línea individual y descuento global sobre base imponible
+- **PDF/A-3b (ISO 19005-1)** listo para presentación fiscal y Hacienda
+- **Firma digital pública** en `/quote/sign/:token` — el cliente firma desde su móvil sin registro
+- **Plazos de vencimiento:** Inmediato, 15, 30, 60 días y fin de mes
+- **Facturas Recurrentes y Suscripciones** con frecuencia diaria/semanal/mensual/anual
+- **Contratos** con numeración y gestión de vigencia
+- **Informe de Antigüedad de Deuda (Aging Report)** por cliente
+- **Modelo 303 AEAT** — exportación de IVA trimestral
+
+---
+
+### 📅 Calendario con Sincronización Google & Apple
+
+<div align="center">
+  <img src="client/public/assets/docs/screenshot-calendar.png" alt="Calendario DAMA-CRM" width="960">
+</div>
+
+**Gestión de agenda completa:**
+- Vistas mensual, semanal, diaria y lista de agenda cronológica
+- Calendarios separados: personal privado vs. calendario global corporativo
+- **Sincronización Apple Calendar** vía enlace `webcal://` e importación `.ics`
+- **Sincronización Google Calendar** con integración bidireccional de citas
+- **Alertas y Recordatorios flotantes** configurables (15 min, 1 h, 1 día antes)
+- Drag & Drop de eventos con redimensionado de duración
+- Vinculación de eventos con clientes, proyectos y deals
+
+---
+
+### 🎯 Pipeline de Ventas Kanban
+
+<div align="center">
+  <img src="client/public/assets/docs/screenshot-pipeline.png" alt="Pipeline Ventas DAMA-CRM" width="960">
+</div>
+
+**Embudo visual de ventas configurable:**
+- Etapas personalizables: Lead → Contacto → Propuesta → Negociación → Ganado/Perdido
+- **Previsión ponderada de ingresos** según probabilidad por etapa
+- Arrastrar y soltar deals entre etapas con actualización en tiempo real via WebSocket
+- Trazabilidad completa: contacto, empresa, presupuesto, proyecto vinculados
+- Campos personalizados por oportunidad (Custom Fields)
+- Estadísticas de conversión por comercial y período
+
+---
+
+### 📦 Inventario & Catálogo de Productos
+
+<div align="center">
+  <img src="client/public/assets/docs/screenshot-inventory.png" alt="Inventario DAMA-CRM" width="960">
+</div>
+
+**Gestión de stock y catálogo avanzada:**
+- **Vista Dual:** Tabla compacta / Cajas visuales con fotos en alta resolución
+- **Stock en tiempo real** con barra cromática: verde (ok) / naranja (bajo) / rojo (agotado)
+- **Movimientos de stock:** Entrada, salida, ajuste, devolución y transferencia entre almacenes
+- **Márgenes:** precio de compra, precio de venta, % margen y beneficio por unidad
+- **Multi-App Mapping:** Auto-mapeo con UnoPIM, OpenCart, Sage (1/50/200), Odoo, Shopify y WooCommerce
+- **Sincronización en lote** de atributos, variantes, precios y metadatos
+- Exportación a CSV e importación masiva desde Excel
+
+---
+
+### ⚙️ Configuración & Personalización White-Label
+
+<div align="center">
+  <img src="client/public/assets/docs/screenshot-settings.png" alt="Configuración DAMA-CRM" width="960">
+</div>
+
+**Personalización total por empresa/tenant:**
+- **Identidad corporativa:** logotipo propio, colores de marca, nombre legal, CIF/NIF, dirección fiscal
+- **Datos de facturación:** moneda (EUR, USD, GBP, MXN, COP), IBAN, texto de pie de facturas
+- **White-Label:** eliminación total de marcas DAMA para reventa o marca blanca
+- **Zoom UI / Escala global** de interfaz: 80% a 130% para monitores y portátiles
+- **Tipografía adaptable:** tamaños XS, SM, MD, LG, XL
+- **Estilos de iconos:** Animados (Bounce), Sólidos, Minimalistas
+- **Campos personalizados (Custom Fields):** Añade campos propios a Contactos, Empresas, Deals, Proyectos, Facturas, Inventario y Tickets
+
+---
+
+### 👥 Portal del Empleado & Fichajes
+
+**Control horario legal e integración de RRHH:**
+- Fichaje digital de jornada con justificación (Oficina, Teletrabajo, Visita comercial, Pausa médica)
+- **Registro de pausas y horas extra** con informes semanales y mensuales
+- **Portal de Empleado privado:** consulta de nóminas en PDF con enmascaramiento RGPD de IBAN
+- **Imputación de horas** a tareas y proyectos para control de rentabilidad
+- **Directorio de empleados** con gestión de contratos, departamentos y estados (activo/baja/permiso)
+- **Nóminas:** historial completo con exportación PDF por empleado
+- **Sincronización Odoo** con `hr.attendance`
+
+---
+
+### 📋 Planificador Ágil & Proyectos
+
+**Gestión de proyectos Scrum/Kanban:**
+- **Sprints** con fechas inicio/fin, puntos de historia y velocidad del equipo
+- **Historias de usuario** con estimación de puntos, asignación y prioridad
+- **Kanban board** con columnas personalizables y WIP limits
+- **Hilo de comentarios** en tiempo real por tarea
+- **Registro de tiempos** imputados por tarea con resumen de desviación
+- **Descripción en Markdown** con soporte de código, listas, tablas e imágenes
+
+---
+
+### 🎫 Mesa de Ayuda (Helpdesk) con SLAs
+
+**Gestión de tickets y soporte:**
+- **SLA configurables** por prioridad: Crítica (1h), Alta (4h), Media (24h), Baja (72h)
+- **Estados:** Abierto → En progreso → Pendiente cliente → Resuelto → Cerrado
+- Asignación automática por agente y departamento
+- Vista Kanban y vista Lista con filtros por estado, prioridad y asignado
+- **Escalado automático** si supera el SLA sin resolución
+
+---
+
+### 💬 Omnicanal & WhatsApp con IA
+
+**Bandeja unificada de comunicaciones:**
+- **WhatsApp Cloud API de Meta** — mensajes entrantes y salientes en tiempo real
+- **Respuestas automáticas con IA** configurables por contexto
+- **Email omnicanal** — recepción y respuesta desde el CRM
+- **Chat interno de equipo** con canales departamentales y DMs
+- Historial completo de conversaciones vinculado al contacto CRM
+
+---
+
+### 🔌 Integraciones & Conectores ERP
+
+**Ecosistema de conectores nativos:**
+
+| Integración | Funcionalidad |
+|---|---|
+| **Sage 1 (Business Cloud)** | Sincronización contable, clientes y facturas |
+| **Sage 50** | Asientos contables, referencias proveedor y tarifas |
+| **Sage 200** | Ledger enterprise, suscripciones y multiempresa |
+| **Odoo** | Plantillas de producto, variantes, `hr.attendance` |
+| **UnoPIM** | Catálogo PIM, familias de atributos y variantes en lote |
+| **OpenCart** | Catálogo, pedidos y stock de tienda online |
+| **WooCommerce** | Captura de pedidos → Deal + Contacto automático |
+| **Shopify** | Metacampos, tags, variantes y pedidos |
+| **n8n / Zapier** | Webhooks bidireccionales y automatizaciones sin código |
+| **Meta WhatsApp Cloud API** | Mensajería omnicanal con respuestas IA |
+| **Google Calendar** | Sincronización bidireccional de eventos y citas |
+| **Apple Calendar / iCal** | Feed webcal:// con RFC 5545 |
+
+---
+
+### 🤖 Workflows & Automatizaciones
+
+**Motor de automatización visual:**
+- Triggers: Deal ganado, Contacto creado, Ticket abierto, Fecha de vencimiento, Webhook entrante
+- Acciones: Enviar email, Crear tarea, Actualizar campo, Llamar webhook, Notificar por WhatsApp
+- Condiciones lógicas AND/OR con operadores de comparación
+- Historial de ejecuciones y logs de depuración
+
+---
+
+### 🏷️ Lead Capture & Widgets de Captación
+
+**Generador de widgets y formularios embebibles:**
+- **Widget flotante** de WhatsApp/Chat incrustable en cualquier web con 1 línea de código
+- **Formulario de captación** HTML embebible en landing pages
+- **Pixel de seguimiento** JavaScript para analytics de conversión
+- **Chat flotante DAMA** con Widget personalizable de colores y posición
+
+---
+
+### 🚚 Logística & Couriers
+
+**Gestión de envíos y seguimiento:**
+- Integración con **GLS, NACEX, Amazon Logistics y Correos**
+- Generación de códigos de seguimiento por carrier
+- Estados: En preparación → Recogido → En tránsito → Entregado / Fallido
+- Tasa de entrega exitosa y métricas por carrier
+
+---
+
+### 👑 God Mode SuperAdmin & Multi-Tenant
+
+**Panel de administración global SaaS:**
+- Gestión de todos los tenants (empresas) desde un único panel
+- Cambio de contexto de tenant en tiempo real (X-Switch-Tenant-ID)
+- Detección automática de subdominio `empresa.dama.com` → tenant context
+- Configuración de módulos activos por empresa
+- Impersonación segura de usuarios para soporte
+
+---
+
+## 🛠️ Arquitectura Técnica
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                         Arquitectura                           │
+├──────────────────────────┬─────────────────────────────────────┤
+│ Frontend                 │ React 18 + Vite 8 + TypeScript 5    │
+│ Estilos                  │ Tailwind CSS v3 + CSS Variables      │
+│ Animaciones & Iconos     │ Framer Motion + Lucide Icons         │
+│ Backend API REST         │ Node.js 20 + Express 4 + TypeScript  │
+│ ORM & Migraciones        │ Prisma ORM + PostgreSQL 15           │
+│ Caché & Rate Limiting    │ Redis 7                              │
+│ Tiempo Real              │ WebSockets nativos (wsClient)        │
+│ Autenticación            │ JWT + 2FA OTP (TOTP/HOTP)           │
+│ Multi-Tenant             │ Row-Level Isolation por tenantId     │
+│ Despliegue               │ Docker Compose + Traefik Proxy       │
+│ DNS Wildcard             │ Dnsmasq (*.dama.com → 127.0.0.1)    │
+│ Escritorio               │ Electron (Windows / Linux / macOS)   │
+│ Móvil                    │ Capacitor (Android / iOS)            │
+│ PWA                      │ Service Worker + Web Manifest        │
+└──────────────────────────┴─────────────────────────────────────┘
+```
+
+### Stack de Seguridad
+
+- **RBAC Multi-Rol:** ADMIN, SALES, TECH, SUPPORT, HR, EMPLOYEE, VIEWER
+- **2FA TOTP/HOTP** compatible con Google Authenticator y Authy
+- **Rate Limiting** Redis por IP y por usuario
+- **CORS estricto** por lista de orígenes permitidos
+- **Cabeceras de seguridad:** HSTS, CSP, X-Frame-Options, X-Content-Type-Options
+- **Auditoría:** log completo de acciones de usuario con diff de cambios
+
+---
+
+## 🚀 Despliegue Rápido con Docker
+
+### 1. Clonar el repositorio
 
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/Ignaciobrenas/DAMA-CRM.git
 cd DAMA-CRM
-
-# 2. Instalar dependencias globales y de cada paquete
-npm install
-npm --prefix core install
-npm --prefix client install
-
-# 3. Configurar variables de entorno iniciales
-cp .env.example .env
-
-# 4. Levantar la base de datos PostgreSQL y Redis con Docker
-docker compose up -d crm-db crm-redis
-
-# 5. Aplicar migraciones idempotentes y cargar datos demo iniciales (Seed)
-npm run db:setup:pg
-
-# 6. Iniciar entorno de desarrollo concurrente
-npm run dev
 ```
 
-### URLs del Entorno Local
-* 🟢 **Frontend Web (Vite SPA + PWA):** [http://localhost:5173](http://localhost:5173)
-* 🔵 **API Backend Core (Express + WebSockets):** [http://localhost:4000](http://localhost:4000)
-* ⚡ **Canal WebSocket en tiempo real:** `ws://localhost:4000/ws`
-* 📖 **Documentación Swagger OpenAPI 3.0 interactiva:** [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
-* 🗄️ **Base de datos PostgreSQL:** `localhost:5433` (mapeada en el contenedor `dama-crm-db`)
-* 🔴 **Broker Redis:** `localhost:6379` (en el contenedor `dama-crm-redis`)
+### 2. Configurar variables de entorno
 
----
-
-## 👥 Credenciales de Acceso Demo
-
-| Perfil / Rol | Correo Electrónico | Contraseña | Permisos y Alcance |
-| :--- | :--- | :--- | :--- |
-| **Super Administrador (God Mode)** | `ignaciobrenas@gmail.com` | `1` | Acceso universal (`*`), conmutador de empresas, RBAC dinámico, activación de módulos |
-| **Administrador de Empresa** | `admin@dama-crm.local` | `Admin1234!` | Acceso completo a su empresa, gestión de miembros, facturación y marca blanca |
-| **Comercial / Ventas** | `ventas@dama-crm.local` | `Ventas1234!` | Contactos, pipeline comercial, presupuestos, firma digital y WhatsApp |
-| **Equipo Técnico / Proyectos** | `pm@dama-crm.local` | `Pm1234!` | Proyectos ágiles, sprints, tickets de soporte y fichaje de jornada |
-| **Empleado / Colaborador** | `empleado@dama-crm.local` | `Empleado1234!` | Portal del Empleado, fichajes legales con motivo y consulta de nóminas |
-
----
-
-## 🚀 Guía de Despliegue en Servidor de Producción (VPS / Cloud)
-
-### 1. Preparación del Servidor Linux (Ubuntu 22.04 / 24.04 o Debian 12)
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y docker.io docker-compose-plugin git curl
-sudo systemctl enable --now docker
+cp server/.env.example server/.env
+# Editar server/.env con tus valores
 ```
 
-### 2. Clonar el Proyecto y Configurar `.env`
+### 3. Arrancar todos los contenedores
+
 ```bash
-git clone https://github.com/Ignaciobrenas/DAMA-CRM.git /opt/dama-crm
-cd /opt/dama-crm
-cp .env.example .env
-nano .env
+docker compose up -d
 ```
 
-### 3. Despliegue con Docker Compose
-```bash
-# Construir y levantar todos los contenedores en segundo plano
-docker compose -f docker-compose.prod.yml up -d --build
+Esto levanta automáticamente:
+- `crm-db` — PostgreSQL 15
+- `crm-redis` — Redis 7
+- `crm-server` — API Node.js en puerto 4000
+- `crm-client` — Frontend React vía Nginx en puerto 80
+- `crm-proxy` — Traefik reverse proxy
+- `crm-dns` — Dnsmasq wildcard DNS para `*.dama.com`
+- `crm-mailpit` — Servidor SMTP de pruebas (puerto 8025)
 
-# Verificar el estado de los contenedores
-docker compose ps
+### 4. Ejecutar migraciones
+
+```bash
+docker compose exec crm-server npx prisma db push
+```
+
+### 5. Acceso a la aplicación
+
+| Servicio | URL |
+|---|---|
+| **Frontend** | `http://localhost` o `http://app.dama.com` |
+| **API Backend** | `http://localhost:4000/api` |
+| **Swagger Docs** | `http://localhost:4000/api/docs` |
+| **Mailpit SMTP UI** | `http://localhost:8025` |
+| **God Mode SuperAdmin** | `http://god.dama.com` |
+
+### Desarrollo Local
+
+```bash
+# Backend
+cd server && npm install && npm run dev
+
+# Frontend (nueva terminal)
+cd client && npm install && npm run dev
+# → http://localhost:5173
 ```
 
 ---
 
-## 🛠️ Ejemplos de Uso de la API & Endpoints Principales
+## ⚙️ Variables de Entorno
 
-### 1. Fichaje de Jornada con Motivo Legal (`POST /api/employees/clock-in`)
-```bash
-curl -X POST http://localhost:4000/api/employees/clock-in \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "reason": "Jornada ordinaria en oficina",
-    "location": "Sede Central - Madrid"
-  }'
-```
+Crea `server/.env` con las siguientes variables:
 
-### 2. Generación de Factura en PDF ISO 19005-1 (`GET /api/invoicing/:id/pdf`)
-```bash
-curl -X GET http://localhost:4000/api/invoicing/inv-12345/pdf \
-  -H "Authorization: Bearer <TOKEN>" \
-  --output Factura_Oficial.pdf
-```
+```env
+# Base de Datos
+DATABASE_URL="postgresql://dama:dama_pass@localhost:5433/dama_crm?schema=public"
 
-### 3. Aceptación y Firma Digital de Presupuesto (`POST /api/invoicing/quotes/sign/:token`)
-```bash
-curl -X POST http://localhost:4000/api/invoicing/quotes/sign/token-abc-123 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "signerName": "Juan Pérez",
-    "signatureData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
-    "legalConsent": true
-  }'
-```
+# Redis
+REDIS_URL="redis://localhost:6379"
 
-### 4. Actualización de Activación de Módulos (`PUT /api/modules/toggle`)
-```bash
-curl -X PUT http://localhost:4000/api/modules/toggle \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "moduleKey": "tickets",
-    "enabled": true
-  }'
-```
+# Autenticación JWT
+JWT_SECRET="tu-secreto-muy-seguro-aqui"
+JWT_EXPIRES_IN="7d"
 
-### 5. Exportación de Backup JSON del Sistema (`GET /api/modules/export-backup`)
-```bash
-curl -X GET http://localhost:4000/api/modules/export-backup \
-  -H "Authorization: Bearer <TOKEN>" \
-  --output backup-dama-crm.json
+# Servidor
+PORT=4000
+NODE_ENV=production
+CLIENT_URL=http://localhost:5173
+
+# Email (SMTP)
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM="DAMA-CRM <noreply@dama.com>"
+
+# WhatsApp Meta Cloud API (opcional)
+META_WHATSAPP_TOKEN=
+META_PHONE_NUMBER_ID=
+META_VERIFY_TOKEN=
+
+# Google Calendar OAuth (opcional)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# n8n Webhooks (opcional)
+N8N_API_KEY=
+N8N_BASE_URL=
 ```
 
 ---
 
-## 🧪 Ejecución de Pruebas Unitarias y de Integración
+## 🧪 Batería de Pruebas Automatizadas
+
+El proyecto cuenta con **116 tests automatizados** y validación de paridad completa en 11 idiomas:
 
 ```bash
-# Ejecutar suite de pruebas en el backend core (66 suites con 100% de éxito)
-npm --prefix core test
-
-# Verificar tipos y compilación del frontend React
-npm --prefix client run build
+npm run test:all
 ```
+
+```
+✔ DAMA-CRM Core Unit Tests                   (116 tests pass)
+✔ DAMA-CRM Integration & Automation Tests    (7 tests pass)
+✔ i18n 11-Language Parity Check              (1603/1603 keys × 11 locales = 100%)
+```
+
+Los tests cubren:
+- **Lógica de negocio:** Facturación, IRPF, IVA, descuentos, cálculo de márgenes
+- **Multi-Tenant Isolation:** Aislamiento por tenantId en todas las entidades
+- **RBAC Matrix:** Permisos por rol en 7 roles × múltiples recursos
+- **Validaciones:** Email RFC, teléfonos internacionales, NIF/NIE/CIF/IBAN MOD-97
+- **Integraciones:** Webhooks de WooCommerce, Meta WhatsApp, n8n y UnoPIM
+- **Calendario:** RFC 5545 iCal, recordatorios y aislamiento de calendarios
+- **Exportación:** CSV UTF-8 BOM y generación PDF branded
+- **Logística:** Carriers y transiciones de estado de envíos
 
 ---
 
-## 📄 Licencia
+## 🌐 Soporte Multi-Idioma: 11 Idiomas
 
-Este proyecto está licenciado bajo la **Licencia MIT**. Eres libre de usarlo, modificarlo y distribuirlo para uso privado o comercial sin ningún coste de licencia recurrente.
+DAMA-CRM está completamente traducido y sincronizado al 100% (1.603 claves de traducción):
+
+| # | Idioma | Código | Estado |
+|---|--------|--------|--------|
+| 1 | 🇪🇸 Español | `es` | ✅ Base |
+| 2 | 🏴 Català | `ca` | ✅ 100% |
+| 3 | 🇬🇧 English | `en` | ✅ 100% |
+| 4 | 🇫🇷 Français | `fr` | ✅ 100% |
+| 5 | 🇩🇪 Deutsch | `de` | ✅ 100% |
+| 6 | 🇮🇹 Italiano | `it` | ✅ 100% |
+| 7 | 🇵🇹 Português | `pt` | ✅ 100% |
+| 8 | 🇸🇦 العربية | `ar` | ✅ 100% + RTL |
+| 9 | 🇨🇳 中文 | `zh` | ✅ 100% |
+| 10 | 🇯🇵 日本語 | `ja` | ✅ 100% |
+| 11 | 🇷🇺 Русский | `ru` | ✅ 100% |
+
+---
+
+## 📱 Multiplataforma
+
+DAMA-CRM es una plataforma **Mobile-First** desplegable en cualquier entorno:
+
+- **Web PWA:** Instalable desde el navegador como app nativa
+- **Escritorio Electron:** Paquete nativo para Windows (`.exe`), Linux (`.deb`/AppImage) y macOS (`.dmg`)
+- **Móvil Capacitor:** App nativa para Android (`.apk`/`.aab`) e iOS via Xcode
+- **Navegación táctil:** Barra inferior con acceso al pulgar a módulos clave
+- **Safe-Area Insets:** Soporte para bordes curvos de iPhone y Android moderno
+
+---
+
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="client/public/assets/logos/dama-logo-vertical-white.png">
+  <source media="(prefers-color-scheme: light)" srcset="client/public/assets/logos/dama-logo-vertical-dark.png">
+  <img alt="DAMA-CRM" src="client/public/assets/logos/dama-logo-vertical-dark.png" width="160">
+</picture>
+
+<br>
+
+**Hecho con ❤️ para empresas que merecen herramientas de primera.**
+
+[Licencia MIT](LICENSE) · [Reportar un Bug](https://github.com/Ignaciobrenas/DAMA-CRM/issues) · [Solicitar Funcionalidad](https://github.com/Ignaciobrenas/DAMA-CRM/issues)
+
+</div>

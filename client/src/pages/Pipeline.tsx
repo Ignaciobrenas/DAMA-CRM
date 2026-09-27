@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, DollarSign, Building2, User, Calendar, X, AlertCircle, Search, Filter } from 'lucide-react';
+import { Plus, DollarSign, Building2, User, Calendar, X, AlertCircle, Search, Filter, FileSpreadsheet, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { apiRequest } from '../services/api';
+import { apiRequest, downloadFile } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { RecordDrawer } from '../components/crm/RecordDrawer';
@@ -110,7 +110,7 @@ export const Pipeline: React.FC = () => {
         spread: 70,
         origin: { y: 0.6 },
       });
-      toast.success('¡Negocio Ganado! 🎉', 'Oportunidad cerrada satisfactoriamente');
+      toast.success('¡Negocio Ganado!', 'Oportunidad cerrada satisfactoriamente');
     }
 
     // Server PATCH mutation
@@ -166,6 +166,24 @@ export const Pipeline: React.FC = () => {
     });
   };
 
+  const handleExportCSV = async () => {
+    try {
+      await downloadFile('/deals/export/csv', `pipeline_ventas_${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success(t('success', 'Éxito'), t('pipeline.exportCsvSuccess', 'Pipeline exportado a Excel correctamente'));
+    } catch {
+      toast.error(t('error', 'Error'), t('pipeline.exportError', 'Error al exportar'));
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      await downloadFile('/deals/export/pdf', `informe_pipeline_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success(t('success', 'Éxito'), t('pipeline.exportPdfSuccess', 'Informe PDF generado correctamente'));
+    } catch {
+      toast.error(t('error', 'Error'), t('pipeline.exportError', 'Error al exportar'));
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Header */}
@@ -179,15 +197,37 @@ export const Pipeline: React.FC = () => {
           </p>
         </div>
 
-        <PermissionGate resource="deals" action="create">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t('newDeal')}</span>
-          </button>
-        </PermissionGate>
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          {/* Export buttons */}
+          <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-lg border border-gray-200 dark:border-slate-700">
+            <button
+              onClick={handleExportCSV}
+              className="px-2.5 py-1 rounded text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Exportar Pipeline a Excel (CSV)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="px-2.5 py-1 rounded text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Descargar Informe PDF de Pipeline"
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-600" />
+              <span>PDF</span>
+            </button>
+          </div>
+
+          <PermissionGate resource="deals" action="create">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('newDeal')}</span>
+            </button>
+          </PermissionGate>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -267,7 +307,7 @@ export const Pipeline: React.FC = () => {
                   <span className="text-[11px] font-mono font-bold text-gray-900 dark:text-white block">
                     {columnTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
                   </span>
-                  <span className="text-[10px] text-gray-400 dark:text-slate-500">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                     {visibleDeals.length} tratos
                   </span>
                 </div>
@@ -284,7 +324,7 @@ export const Pipeline: React.FC = () => {
                     className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700/80 shadow-xs hover:shadow-md cursor-grab active:cursor-grabbing transition-all space-y-2 group"
                   >
                     <div className="flex items-start justify-between gap-1">
-                      <span className="text-xs font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-blue-600 transition-colors">
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {deal.title}
                       </span>
                       <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -292,23 +332,23 @@ export const Pipeline: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                    <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
                       {deal.company && (
                         <div className="flex items-center space-x-1.5 truncate">
-                          <Building2 className="w-3 h-3 text-gray-400 shrink-0" />
+                          <Building2 className="w-3 h-3 text-slate-400 dark:text-slate-400 shrink-0" />
                           <span className="truncate">{deal.company.name}</span>
                         </div>
                       )}
                       {deal.contact && (
                         <div className="flex items-center space-x-1.5 truncate">
-                          <User className="w-3 h-3 text-gray-400 shrink-0" />
+                          <User className="w-3 h-3 text-slate-400 dark:text-slate-400 shrink-0" />
                           <span className="truncate">{deal.contact.firstName} {deal.contact.lastName}</span>
                         </div>
                       )}
                     </div>
 
                     {deal.expectedCloseDate && (
-                      <div className="pt-2 border-t border-gray-100 dark:border-slate-700/60 flex items-center justify-between text-[10px] text-gray-400">
+                      <div className="pt-2 border-t border-gray-100 dark:border-slate-700/60 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                         <div className="flex items-center space-x-1">
                           <Calendar className="w-3 h-3" />
                           <span>{new Date(deal.expectedCloseDate).toLocaleDateString()}</span>

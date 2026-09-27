@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Lock, X } from 'lucide-react';
 import { Ticket } from './TicketListTable';
 import { useTranslation } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
@@ -77,8 +78,14 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs animate-fade-in">
-      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 h-full shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col animate-slide-left">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl bg-white dark:bg-slate-900 h-full shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col animate-slide-left"
+      >
         {/* Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/30">
           <div>
@@ -102,7 +109,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
             onClick={onClose}
             className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -174,8 +181,9 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                       {msg.senderName}
                     </span>
                     {isInternalNote && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
-                        🔒 {t('tickets.confidentialInternalNote')}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
+                        <Lock className="w-3 h-3" />
+                        <span>{t('tickets.confidentialInternalNote')}</span>
                       </span>
                     )}
                     {msg.senderType === 'AGENT' && !isInternalNote && (
@@ -206,8 +214,9 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 onChange={(e) => setIsInternal(e.target.checked)}
                 className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
               />
-              <span className={isInternal ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}>
-                🔒 {t('tickets.postAsInternalNote')}
+              <span className={`flex items-center gap-1 ${isInternal ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}>
+                <Lock className="w-3 h-3" />
+                <span>{t('tickets.postAsInternalNote')}</span>
               </span>
             </label>
           </div>

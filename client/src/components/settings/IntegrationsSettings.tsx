@@ -38,6 +38,9 @@ export const IntegrationsSettings: React.FC = () => {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, Record<string, string>>>({
     odoo: { url: 'https://odoo.miempresa.com', db: 'odoo_db', username: 'admin', apiKey: '••••••••••••' },
+    sage_one: { apiUrl: 'https://api.accounting.sage.com/v3.1', apiKey: '••••••••••••', clientId: 'dama_sage_one_client', clientSecret: '••••••••••••', businessId: 'SAGE-BIZ-ES-01' },
+    sage_50: { endpointUrl: 'http://localhost:5493/sdata/sage50', companyName: 'Empresa Sage 50 S.L.', username: 'admin', password: '••••••••••••', apiKey: '••••••••••••', fiscalYear: '2026' },
+    sage_200: { baseUrl: 'https://api.sage.com/sage200/v1', subscriptionKey: '••••••••••••', clientId: 'dama_sage_200_client', clientSecret: '••••••••••••', companyId: 'SAGE200-CORP-ES' },
     unopim: { webhookSecret: 'uno_sec_987413289741', endpoint: 'https://pim.miempresa.com/api' },
     whatsapp: { phoneNumberId: '109283746192834', accessToken: 'EAAB••••••••••••', verifyToken: 'dama_webhook_verify_2026' },
     woocommerce: { storeUrl: 'https://tienda.miempresa.com', consumerKey: 'ck_••••••••••••', consumerSecret: 'cs_••••••••••••' },
@@ -49,6 +52,43 @@ export const IntegrationsSettings: React.FC = () => {
     const res = await apiRequest('/integrations');
     if (res.success && res.data) {
       setIntegrations(res.data);
+      if (res.data.sage_one) {
+        setFormData((prev) => ({
+          ...prev,
+          sage_one: {
+            apiUrl: res.data.sage_one.apiUrl || prev.sage_one.apiUrl,
+            apiKey: res.data.sage_one.apiKey || prev.sage_one.apiKey,
+            clientId: res.data.sage_one.clientId || prev.sage_one.clientId,
+            clientSecret: res.data.sage_one.clientSecret || prev.sage_one.clientSecret,
+            businessId: res.data.sage_one.businessId || prev.sage_one.businessId,
+          },
+        }));
+      }
+      if (res.data.sage_50) {
+        setFormData((prev) => ({
+          ...prev,
+          sage_50: {
+            endpointUrl: res.data.sage_50.endpointUrl || prev.sage_50.endpointUrl,
+            companyName: res.data.sage_50.companyName || prev.sage_50.companyName,
+            username: res.data.sage_50.username || prev.sage_50.username,
+            password: res.data.sage_50.password || prev.sage_50.password,
+            apiKey: res.data.sage_50.apiKey || prev.sage_50.apiKey,
+            fiscalYear: res.data.sage_50.fiscalYear || prev.sage_50.fiscalYear,
+          },
+        }));
+      }
+      if (res.data.sage_200) {
+        setFormData((prev) => ({
+          ...prev,
+          sage_200: {
+            baseUrl: res.data.sage_200.baseUrl || prev.sage_200.baseUrl,
+            subscriptionKey: res.data.sage_200.subscriptionKey || prev.sage_200.subscriptionKey,
+            clientId: res.data.sage_200.clientId || prev.sage_200.clientId,
+            clientSecret: res.data.sage_200.clientSecret || prev.sage_200.clientSecret,
+            companyId: res.data.sage_200.companyId || prev.sage_200.companyId,
+          },
+        }));
+      }
     }
   };
 
@@ -122,6 +162,48 @@ export const IntegrationsSettings: React.FC = () => {
         { key: 'db', label: 'Base de Datos', placeholder: 'odoo_production' },
         { key: 'username', label: 'Usuario / Email de Servicio', placeholder: 'api_user@empresa.com' },
         { key: 'apiKey', label: 'Clave API / Token RPC', placeholder: '••••••••••••', isSecret: true },
+      ],
+    },
+    {
+      id: 'sage_one',
+      name: 'Sage One / Business Cloud',
+      desc: 'Sincronización cloud de clientes, facturas de venta y catálogo de productos con Sage Accounting.',
+      icon: Boxes,
+      color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
+      fields: [
+        { key: 'apiUrl', label: 'URL Endpoint API Sage One', placeholder: 'https://api.accounting.sage.com/v3.1' },
+        { key: 'apiKey', label: 'API Key / Token de Acceso', placeholder: '••••••••••••', isSecret: true },
+        { key: 'clientId', label: 'Client ID OAuth', placeholder: 'dama_sage_one_client' },
+        { key: 'clientSecret', label: 'Client Secret', placeholder: '••••••••••••', isSecret: true },
+        { key: 'businessId', label: 'Business / Company ID', placeholder: 'SAGE-BIZ-ES-01' },
+      ],
+    },
+    {
+      id: 'sage_50',
+      name: 'Sage 50 Cloud Asesoría & Pymes',
+      desc: 'Conector SData / REST para sincronizar cartera de clientes, facturación y stock físico.',
+      icon: Boxes,
+      color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
+      fields: [
+        { key: 'endpointUrl', label: 'Endpoint SData / REST', placeholder: 'http://localhost:5493/sdata/sage50' },
+        { key: 'companyName', label: 'Razón Social en Sage 50', placeholder: 'Empresa Sage 50 S.L.' },
+        { key: 'username', label: 'Usuario del Conector', placeholder: 'admin' },
+        { key: 'password', label: 'Contraseña del Conector', placeholder: '••••••••••••', isSecret: true },
+        { key: 'fiscalYear', label: 'Ejercicio Fiscal Activo', placeholder: '2026' },
+      ],
+    },
+    {
+      id: 'sage_200',
+      name: 'Sage 200 Advanced Enterprise ERP',
+      desc: 'Integración empresarial de gran escala con libro mayor contable, impuestos y asientos.',
+      icon: Boxes,
+      color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
+      fields: [
+        { key: 'baseUrl', label: 'Base URL API Sage 200', placeholder: 'https://api.sage.com/sage200/v1' },
+        { key: 'subscriptionKey', label: 'Ocp-Apim-Subscription-Key', placeholder: '••••••••••••', isSecret: true },
+        { key: 'clientId', label: 'Client ID', placeholder: 'dama_sage_200_client' },
+        { key: 'clientSecret', label: 'Client Secret', placeholder: '••••••••••••', isSecret: true },
+        { key: 'companyId', label: 'ID de Empresa / Grupo', placeholder: 'SAGE200-CORP-ES' },
       ],
     },
     {
@@ -201,7 +283,7 @@ export const IntegrationsSettings: React.FC = () => {
                   Conectores & Integraciones Externas
                 </h2>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                  6 Conectores Listos
+                  9 Conectores Listos (Sage 1, 50, 200 incluidos)
                 </span>
               </div>
               <p className="text-xs text-gray-500 dark:text-slate-400">

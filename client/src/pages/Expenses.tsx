@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { WalletCards, Download, Plus, FileSpreadsheet, FileText } from 'lucide-react';
 import { useTranslation } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
-import { api } from '../services/api';
+import { useConfirm } from '../context/ConfirmContext';
+import { api, downloadFile } from '../services/api';
 import { Expense, ExpenseTable } from '../components/expenses/ExpenseTable';
 import { PnLData, ExpenseKpis } from '../components/expenses/ExpenseKpis';
 import { PnLBreakdown } from '../components/expenses/PnLBreakdown';
@@ -11,6 +13,7 @@ import { LoadingScreen } from '../components/common/Loading';
 export const Expenses: React.FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
+  const { confirm } = useConfirm();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [pnl, setPnl] = useState<PnLData | null>(null);
@@ -55,7 +58,14 @@ export const Expenses: React.FC = () => {
   }, [searchQuery, categoryFilter, statusFilter]);
 
   const handleDeleteExpense = async (id: string) => {
-    if (!window.confirm(t('expenses.confirmDelete'))) return;
+    const isConfirmed = await confirm({
+      title: t('expenses.confirmDelete') || '¿Eliminar gasto?',
+      description: '¿Estás seguro de que deseas eliminar este registro de gasto? Esta acción modificará el balance de pérdidas y ganancias.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       const res = await api.delete(`/expenses/${id}`);
       if (res.data?.success) {
@@ -76,6 +86,24 @@ export const Expenses: React.FC = () => {
       }
     } catch (err) {
       toast.error(t('expenses.updateError'));
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      await downloadFile('/expenses/export/csv', `gastos_${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success(t('expenses.exportSuccess', 'Gastos exportados correctamente'));
+    } catch (err) {
+      toast.error(t('expenses.exportError', 'Error al exportar gastos'));
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      await downloadFile('/expenses/export/pdf', `informe_gastos_${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success(t('expenses.exportPdfSuccess', 'Informe PDF generado correctamente'));
+    } catch (err) {
+      toast.error(t('expenses.exportError', 'Error al generar informe PDF'));
     }
   };
 
@@ -111,7 +139,8 @@ export const Expenses: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            💸 {t('expenses.pageTitle')}
+            <WalletCards className="w-6 h-6 text-emerald-500" />
+            <span>{t('expenses.pageTitle')}</span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {t('expenses.pageSubtitle')}
@@ -119,29 +148,52 @@ export const Expenses: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* General Exporters */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Exportar Gastos a Excel (CSV)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Descargar Informe de Gastos en PDF"
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-600" />
+              <span>PDF</span>
+            </button>
+          </div>
+
           {/* Export AEAT Tax Books */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
               onClick={() => handleExportTaxBooks('tax-issued')}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
               title="Exportar Libro Registro de Facturas Expedidas (Ventas)"
             >
-              📥 {t('expenses.exportIssued')}
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{t('expenses.exportIssued')}</span>
             </button>
             <button
               onClick={() => handleExportTaxBooks('tax-received')}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
               title="Exportar Libro Registro de Facturas Recibidas (Gastos/Compras)"
             >
-              📥 {t('expenses.exportReceived')}
+              <Download className="w-3.5 h-3.5 text-blue-600" />
+              <span>{t('expenses.exportReceived')}</span>
             </button>
           </div>
 
           <button
             onClick={() => setShowNewModal(true)}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs transition flex items-center gap-1.5"
           >
-            <span>+ {t('expenses.newExpense')}</span>
+            <Plus className="w-4 h-4" />
+            <span>{t('expenses.newExpense')}</span>
           </button>
         </div>
       </div>

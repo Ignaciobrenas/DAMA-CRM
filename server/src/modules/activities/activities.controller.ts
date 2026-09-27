@@ -1,11 +1,19 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export async function listActivities(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { contactId, dealId, type } = req.query;
+
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
+
     if (contactId) where.contactId = String(contactId);
     if (dealId) where.dealId = String(dealId);
     if (type) where.type = String(type);
@@ -30,6 +38,7 @@ export async function listActivities(req: Request, res: Response): Promise<void>
 
 export async function createActivity(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const { type, subject, title, description, durationMinutes, outcome, isCompleted, scheduledAt, contactId, dealId } = req.body;
     const finalSubject = subject || title;
 
@@ -43,8 +52,8 @@ export async function createActivity(req: Request, res: Response): Promise<void>
     const activity = await prisma.activity.create({
       data: {
         type,
-        subject: finalSubject,
-        description,
+        subject: finalSubject.trim(),
+        description: description?.trim() || null,
         durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 15,
         outcome: completed ? (outcome || 'COMPLETED') : null,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
@@ -52,10 +61,11 @@ export async function createActivity(req: Request, res: Response): Promise<void>
         contactId: contactId || null,
         dealId: dealId || null,
         userId: req.user?.id || null,
+        tenantId,
       },
     });
 
-    await logAudit(req.user?.id || null, 'CREATE', 'Activity', activity.id, { type: activity.type, subject: activity.subject }, req.ip);
+    await logAudit(req.user?.id || null, 'CREATE', 'Activity', activity.id, { type: activity.type, subject: activity.subject, tenantId }, req.ip);
 
     const formatted = {
       ...activity,
@@ -72,11 +82,25 @@ export async function createActivity(req: Request, res: Response): Promise<void>
 export async function updateActivity(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existing = await prisma.activity.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Actividad no encontrada' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar esta actividad' });
+      return;
+    }
+
     const { subject, title, description, durationMinutes, outcome, isCompleted, completedAt } = req.body;
 
     const data: any = {};
-    if (subject || title) data.subject = subject || title;
-    if (description !== undefined) data.description = description;
+    if (subject || title) data.subject = (subject || title).trim();
+    if (description !== undefined) data.description = description?.trim() || null;
     if (durationMinutes !== undefined) data.durationMinutes = parseInt(durationMinutes, 10);
     
     if (isCompleted !== undefined) {

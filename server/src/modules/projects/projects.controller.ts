@@ -1,11 +1,136 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import { generateCsvBuffer, generateReportPdf } from '../../services/report-exporter.service';
+
+export async function exportProjectsCSV(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const projects = await prisma.project.findMany({
+      where: !isSuper ? { tenantId } : undefined,
+      include: {
+        deal: { select: { title: true } },
+        tasks: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const headers = [
+      'ID',
+      'Nombre Proyecto',
+      'Prioridad',
+      'Estado',
+      'Presupuesto (€)',
+      'Total Tareas',
+      'Tareas Completadas',
+      'Progreso (%)',
+      'Horas Estimadas',
+      'Horas Imputadas',
+      'Fecha Creación',
+    ];
+
+    const rows = projects.map((p) => {
+      const totalTasks = p.tasks.length;
+      const doneTasks = p.tasks.filter((t) => t.status === 'DONE').length;
+      const progress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+      const estHours = p.tasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
+      const logHours = p.tasks.reduce((sum, t) => sum + (t.loggedHours || 0), 0);
+
+      return [
+        p.id,
+        p.name,
+        p.priority,
+        p.status,
+        p.budget || 0,
+        totalTasks,
+        doneTasks,
+        `${progress}%`,
+        estHours,
+        logHours,
+        new Date(p.createdAt).toLocaleDateString('es-ES'),
+      ];
+    });
+
+    const csvBuffer = generateCsvBuffer(headers, rows);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="proyectos_agile_${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csvBuffer);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function exportProjectsPDF(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const projects = await prisma.project.findMany({
+      where: !isSuper ? { tenantId } : undefined,
+      include: {
+        tasks: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalBudget = projects.reduce((acc, p) => acc + (p.budget || 0), 0);
+    const totalTasks = projects.reduce((acc, p) => acc + p.tasks.length, 0);
+    const totalLoggedHours = projects.reduce((acc, p) => acc + p.tasks.reduce((s, t) => s + (t.loggedHours || 0), 0), 0);
+
+    const tableHeaders = ['Proyecto', 'Prioridad', 'Estado', 'Progreso', 'Horas Imputadas', 'Presupuesto'];
+    const tableRows = projects.slice(0, 50).map((p) => {
+      const done = p.tasks.filter((t) => t.status === 'DONE').length;
+      const pct = p.tasks.length > 0 ? Math.round((done / p.tasks.length) * 100) : 0;
+      const hours = p.tasks.reduce((s, t) => s + (t.loggedHours || 0), 0);
+
+      return [
+        p.name,
+        p.priority,
+        p.status,
+        `${pct}% (${done}/${p.tasks.length})`,
+        `${hours.toFixed(1)}h`,
+        `${(p.budget || 0).toLocaleString('es-ES')} €`,
+      ];
+    });
+
+    const pdfBuffer = await generateReportPdf({
+      title: 'Informe de Proyectos & Planificación Ágil',
+      subtitle: 'Avance de sprints, tareas, imputaciones horarias y presupuestos',
+      kpis: [
+        { label: 'Proyectos Activos', value: projects.length, color: '#2563EB' },
+        { label: 'Tareas Globales', value: totalTasks, color: '#0F172A' },
+        { label: 'Horas Imputadas', value: `${totalLoggedHours.toFixed(1)}h`, color: '#7C3AED' },
+        { label: 'Presupuesto Total', value: `${totalBudget.toLocaleString('es-ES')} €`, color: '#059669' },
+      ],
+      tableHeaders,
+      tableRows,
+      summaryNotes: [
+        'Las horas imputadas provienen de los partes de trabajo (worklogs) de cada tarea asociada.',
+        'El porcentaje de progreso refleja el ratio de tareas finalizadas en estado DONE.',
+      ],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="informe_proyectos_${new Date().toISOString().slice(0, 10)}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
 
 export async function listProjects(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { status } = req.query;
+
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.tenantId = tenantId;
+    }
     if (status) where.status = String(status);
 
     const projects = await prisma.project.findMany({
@@ -48,6 +173,9 @@ export async function listProjects(req: Request, res: Response): Promise<void> {
 export async function getProject(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
@@ -68,6 +196,11 @@ export async function getProject(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    if (!isSuper && project.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a este proyecto' });
+      return;
+    }
+
     res.json({ success: true, data: project });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -76,11 +209,21 @@ export async function getProject(req: Request, res: Response): Promise<void> {
 
 export async function createProject(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const { name, description, status, priority, dealId, startDate, endDate, budget } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       res.status(400).json({ success: false, message: 'El nombre del proyecto es obligatorio' });
       return;
+    }
+
+    // Verify deal belongs to same tenant
+    if (dealId) {
+      const deal = await prisma.deal.findUnique({ where: { id: dealId } });
+      if (!deal || (!isGodSuperAdmin(req) && deal.tenantId !== tenantId)) {
+        res.status(400).json({ success: false, message: 'La oportunidad comercial seleccionada no pertenece a su organización' });
+        return;
+      }
     }
 
     const project = await prisma.project.create({
@@ -92,11 +235,12 @@ export async function createProject(req: Request, res: Response): Promise<void> 
         dealId: dealId || null,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
-        budget: budget ? parseFloat(budget) : null,
+        budget: budget !== undefined && budget !== '' ? parseFloat(budget) : null,
+        tenantId,
       },
     });
 
-    await logAudit((req as any).user?.id || null, 'CREATE', 'Project', project.id, { name: project.name }, req.ip);
+    await logAudit(req.user?.id || null, 'CREATE', 'Project', project.id, { name: project.name, tenantId }, req.ip);
 
     res.status(201).json({ success: true, data: project });
   } catch (error: any) {
@@ -107,13 +251,21 @@ export async function createProject(req: Request, res: Response): Promise<void> 
 export async function updateProject(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { name, description, status, priority, dealId, startDate, endDate, budget } = req.body;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Proyecto no encontrado' });
       return;
     }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar este proyecto' });
+      return;
+    }
+
+    const { name, description, status, priority, dealId, startDate, endDate, budget } = req.body;
 
     const updated = await prisma.project.update({
       where: { id },
@@ -125,16 +277,16 @@ export async function updateProject(req: Request, res: Response): Promise<void> 
         dealId: dealId !== undefined ? (dealId || null) : undefined,
         startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
         endDate: endDate !== undefined ? (endDate ? new Date(endDate) : null) : undefined,
-        budget: budget !== undefined ? (budget ? parseFloat(budget) : null) : undefined,
+        budget: budget !== undefined ? (budget !== '' ? parseFloat(budget) : null) : undefined,
       },
     });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'UPDATE',
       'Project',
       updated.id,
-      { name: updated.name },
+      { name: updated.name, tenantId },
       req.ip
     );
 
@@ -147,10 +299,17 @@ export async function updateProject(req: Request, res: Response): Promise<void> 
 export async function deleteProject(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Proyecto no encontrado' });
+      return;
+    }
+
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar este proyecto' });
       return;
     }
 
@@ -160,11 +319,11 @@ export async function deleteProject(req: Request, res: Response): Promise<void> 
     await prisma.project.delete({ where: { id } });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'DELETE',
       'Project',
       id,
-      { name: existing.name },
+      { name: existing.name, tenantId },
       req.ip
     );
 
@@ -177,9 +336,18 @@ export async function deleteProject(req: Request, res: Response): Promise<void> 
 export async function createSprint(req: Request, res: Response): Promise<void> {
   try {
     const { projectId } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project || (!isSuper && project.tenantId !== tenantId)) {
+      res.status(404).json({ success: false, message: 'Proyecto no encontrado o sin acceso' });
+      return;
+    }
+
     const { name, goal, startDate, endDate } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       res.status(400).json({ success: false, message: 'El nombre del sprint es obligatorio' });
       return;
     }
@@ -203,8 +371,15 @@ export async function createSprint(req: Request, res: Response): Promise<void> {
 
 export async function listTasks(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { projectId, sprintId, assigneeId, status } = req.query;
+
     const where: any = {};
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.project = { tenantId };
+    }
+
     if (projectId) where.projectId = String(projectId);
     if (sprintId) where.sprintId = String(sprintId);
     if (assigneeId) where.assigneeId = String(assigneeId);
@@ -228,10 +403,18 @@ export async function listTasks(req: Request, res: Response): Promise<void> {
 
 export async function createTask(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { projectId, sprintId, title, description, status, priority, storyPoints, estimatedHours, assigneeId, dueDate } = req.body;
 
     if (!projectId || !title) {
       res.status(400).json({ success: false, message: 'Proyecto y título son obligatorios' });
+      return;
+    }
+
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project || (!isSuper && project.tenantId !== tenantId)) {
+      res.status(404).json({ success: false, message: 'Proyecto no encontrado o sin acceso' });
       return;
     }
 
@@ -254,7 +437,7 @@ export async function createTask(req: Request, res: Response): Promise<void> {
       },
     });
 
-    await logAudit((req as any).user?.id || null, 'CREATE', 'Task', task.id, { title: task.title }, req.ip);
+    await logAudit(req.user?.id || null, 'CREATE', 'Task', task.id, { title: task.title, projectId, tenantId }, req.ip);
 
     res.status(201).json({ success: true, data: task });
   } catch (error: any) {
@@ -265,6 +448,24 @@ export async function createTask(req: Request, res: Response): Promise<void> {
 export async function patchTask(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const existingTask = await prisma.task.findUnique({
+      where: { id },
+      include: { project: true },
+    });
+
+    if (!existingTask) {
+      res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
+
+    if (!isSuper && existingTask.project.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar esta tarea' });
+      return;
+    }
+
     const { status, priority, storyPoints, estimatedHours, loggedHours, assigneeId, sprintId, dueDate, title, description } = req.body;
 
     const data: any = {};
@@ -298,21 +499,32 @@ export async function patchTask(req: Request, res: Response): Promise<void> {
 export async function deleteTask(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
 
-    const existing = await prisma.task.findUnique({ where: { id } });
+    const existing = await prisma.task.findUnique({
+      where: { id },
+      include: { project: true },
+    });
+
     if (!existing) {
       res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
+
+    if (!isSuper && existing.project.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar esta tarea' });
       return;
     }
 
     await prisma.task.delete({ where: { id } });
 
     await logAudit(
-      (req as any).user?.id || null,
+      req.user?.id || null,
       'DELETE',
       'Task',
       id,
-      { title: existing.title },
+      { title: existing.title, tenantId },
       req.ip
     );
 
@@ -324,13 +536,21 @@ export async function deleteTask(req: Request, res: Response): Promise<void> {
 
 export async function getMyTasks(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const where: any = {
+      assigneeId: userId,
+      status: { not: 'DONE' },
+    };
+
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.project = { tenantId };
+    }
 
     const myTasks = await prisma.task.findMany({
-      where: {
-        assigneeId: userId,
-        status: { not: 'DONE' },
-      },
+      where,
       include: {
         project: { select: { id: true, name: true } },
         sprint: { select: { id: true, name: true } },
@@ -350,3 +570,277 @@ export async function getMyTasks(req: Request, res: Response): Promise<void> {
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function getTaskDetails(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const task = await prisma.task.findUnique({
+      where: { id },
+      include: {
+        project: {
+          include: {
+            members: { include: { user: { select: { id: true, name: true, email: true, avatar: true } } } },
+          },
+        },
+        sprint: true,
+        assignee: { select: { id: true, name: true, email: true, avatar: true } },
+        comments: {
+          include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+        workLogs: {
+          include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+          orderBy: { date: 'desc' },
+        },
+      },
+    });
+
+    if (!task) {
+      res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
+
+    res.json({ success: true, data: task });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function addTaskComment(req: Request, res: Response): Promise<void> {
+  try {
+    const { taskId } = req.params;
+    const { content, imageUrl } = req.body;
+    const user = req.user;
+
+    if (!content || !String(content).trim()) {
+      res.status(400).json({ success: false, message: 'El comentario no puede estar vacío' });
+      return;
+    }
+
+    const comment = await prisma.taskComment.create({
+      data: {
+        taskId,
+        userId: user?.id || null,
+        userName: user?.name || 'Usuario',
+        content: String(content).trim(),
+        imageUrl: imageUrl || null,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+    });
+
+    res.status(201).json({ success: true, data: comment, message: 'Comentario añadido con éxito' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function listTaskComments(req: Request, res: Response): Promise<void> {
+  try {
+    const { taskId } = req.params;
+    const comments = await prisma.taskComment.findMany({
+      where: { taskId },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json({ success: true, data: comments });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteTaskComment(req: Request, res: Response): Promise<void> {
+  try {
+    const { commentId } = req.params;
+    await prisma.taskComment.delete({ where: { id: commentId } });
+    res.json({ success: true, message: 'Comentario eliminado' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function addTaskWorkLog(req: Request, res: Response): Promise<void> {
+  try {
+    const { taskId } = req.params;
+    const { hours, description, date } = req.body;
+    const user = req.user;
+
+    const numHours = parseFloat(hours);
+    if (isNaN(numHours) || numHours <= 0) {
+      res.status(400).json({ success: false, message: 'Se requiere un número de horas válido' });
+      return;
+    }
+
+    const workLog = await prisma.taskWorkLog.create({
+      data: {
+        taskId,
+        userId: user?.id || null,
+        userName: user?.name || 'Usuario',
+        hours: numHours,
+        description: description || 'Reporte de tiempo',
+        date: date ? new Date(date) : new Date(),
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    // Automatically recalculate task total loggedHours
+    const allLogs = await prisma.taskWorkLog.findMany({ where: { taskId } });
+    const totalLogged = allLogs.reduce((sum, log) => sum + log.hours, 0);
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { loggedHours: totalLogged },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: workLog,
+      totalLoggedHours: totalLogged,
+      message: `Se han reportado ${numHours}h con éxito`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function listTaskWorkLogs(req: Request, res: Response): Promise<void> {
+  try {
+    const { taskId } = req.params;
+    const workLogs = await prisma.taskWorkLog.findMany({
+      where: { taskId },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    res.json({ success: true, data: workLogs });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteTaskWorkLog(req: Request, res: Response): Promise<void> {
+  try {
+    const { workLogId } = req.params;
+    const existing = await prisma.taskWorkLog.findUnique({ where: { id: workLogId } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Registro de tiempo no encontrado' });
+      return;
+    }
+
+    await prisma.taskWorkLog.delete({ where: { id: workLogId } });
+
+    // Recalculate loggedHours
+    const allLogs = await prisma.taskWorkLog.findMany({ where: { taskId: existing.taskId } });
+    const totalLogged = allLogs.reduce((sum, log) => sum + log.hours, 0);
+    await prisma.task.update({
+      where: { id: existing.taskId },
+      data: { loggedHours: totalLogged },
+    });
+
+    res.json({ success: true, message: 'Registro de tiempo eliminado', totalLoggedHours: totalLogged });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function getMyWorkLogs(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    const { from, to } = req.query;
+
+    const where: any = { userId };
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = new Date(from as string);
+      if (to) where.date.lte = new Date(to as string);
+    }
+
+    const workLogs = await prisma.taskWorkLog.findMany({
+      where,
+      include: {
+        task: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            project: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    const totalHours = workLogs.reduce((sum, log) => sum + log.hours, 0);
+
+    res.json({
+      success: true,
+      data: workLogs,
+      totalHours,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function assignProjectMember(req: Request, res: Response): Promise<void> {
+  try {
+    const { id: projectId } = req.params;
+    const { userId, role = 'MEMBER' } = req.body;
+
+    if (!userId) {
+      res.status(400).json({ success: false, message: 'Se requiere userId' });
+      return;
+    }
+
+    const member = await prisma.projectMember.upsert({
+      where: {
+        projectId_userId: { projectId, userId },
+      },
+      update: { role },
+      create: { projectId, userId, role },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+    });
+
+    res.status(201).json({ success: true, data: member, message: 'Miembro asignado al proyecto' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function removeProjectMember(req: Request, res: Response): Promise<void> {
+  try {
+    const { id: projectId, userId } = req.params;
+    await prisma.projectMember.deleteMany({
+      where: { projectId, userId },
+    });
+    res.json({ success: true, message: 'Miembro retirado del proyecto' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function getProjectMembers(req: Request, res: Response): Promise<void> {
+  try {
+    const { id: projectId } = req.params;
+    const members = await prisma.projectMember.findMany({
+      where: { projectId },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+      },
+    });
+
+    res.json({ success: true, data: members });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
