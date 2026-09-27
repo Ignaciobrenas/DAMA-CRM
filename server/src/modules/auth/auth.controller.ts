@@ -138,9 +138,8 @@ export async function loginWithGoogle(req: Request, res: Response): Promise<void
     }
 
     if (!userEmail) {
-      // Direct instant sign-in fallback for Google Workspace admin
-      userEmail = 'ignaciobrenas@gmail.com';
-      userName = 'Ignacio (Google Workspace)';
+      res.status(400).json({ success: false, message: 'Se requiere una credencial válida de Google o un correo electrónico para iniciar sesión' });
+      return;
     }
 
     let user = await prisma.user.findUnique({

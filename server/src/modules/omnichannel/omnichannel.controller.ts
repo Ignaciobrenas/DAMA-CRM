@@ -206,6 +206,14 @@ export async function getClientPortalData(req: Request, res: Response): Promise<
       return;
     }
 
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    if (req.user && !isSuper && company.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes acceso a los datos de esta organización' });
+      return;
+    }
+
     res.json({
       success: true,
       data: {

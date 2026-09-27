@@ -1,15 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
-
-// Helper to check if current user is SuperAdmin
-export function isGodSuperAdmin(req: Request): boolean {
-  if (!req.user) return false;
-  return (
-    req.user.role === 'ADMIN' ||
-    req.user.email === 'ignaciobrenas@gmail.com' ||
-    req.user.email === 'admin@dama-crm.local'
-  );
-}
+import { isGodSuperAdmin } from '../../utils/tenant';
 
 // 1. GET /api/god/tenants - List all tenants with summary statistics
 export async function getTenants(req: Request, res: Response): Promise<void> {

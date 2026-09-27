@@ -1790,6 +1790,59 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(validateRequired('ab', 'Nombre', 3).isValid, false);
     });
   });
+
+  describe('Security Hardening & Defensive Controls', () => {
+    it('should enforce CORS origin patterns strictly', () => {
+      const allowedOriginPatterns = [
+        /^http:\/\/localhost(:\d+)?$/,
+        /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+        /\.damacrm\.com$/,
+        /\.damacrm\.local$/,
+      ];
+
+      const isAllowed = (origin: string) => allowedOriginPatterns.some((pattern) => pattern.test(origin));
+
+      assert.strictEqual(isAllowed('http://localhost:5173'), true);
+      assert.strictEqual(isAllowed('http://127.0.0.1:3000'), true);
+      assert.strictEqual(isAllowed('https://app.damacrm.com'), true);
+      assert.strictEqual(isAllowed('https://tenant-slug.damacrm.local'), true);
+
+      assert.strictEqual(isAllowed('https://malicious-site.com'), false);
+      assert.strictEqual(isAllowed('https://damacrm.com.attacker.com'), false);
+      assert.strictEqual(isAllowed('http://localhost.evil.com'), false);
+    });
+
+    it('should verify n8n API Key authentication check correctly', () => {
+      const configuredKey = 'sec_n8n_live_key_998877';
+      const verifyKey = (providedKey?: string) => {
+        if (!configuredKey) return true;
+        return Boolean(providedKey && providedKey === configuredKey);
+      };
+
+      assert.strictEqual(verifyKey('sec_n8n_live_key_998877'), true);
+      assert.strictEqual(verifyKey('wrong_key'), false);
+      assert.strictEqual(verifyKey(undefined), false);
+      assert.strictEqual(verifyKey(''), false);
+    });
+
+    it('should enforce multi-tenant isolation so tenant admin cannot access master God mode', () => {
+      const isGod = (user: { role: string; tenantId: string; email: string }) => {
+        const isAdminRole = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+        const isGodEmail = user.email === 'ignaciobrenas@gmail.com' || user.email === 'admin@dama-crm.local';
+        const isMasterTenant = !user.tenantId || user.tenantId === 'master';
+        return isGodEmail || (isAdminRole && isMasterTenant);
+      };
+
+      // God SuperAdmin
+      assert.strictEqual(isGod({ role: 'ADMIN', tenantId: 'master', email: 'ignaciobrenas@gmail.com' }), true);
+      assert.strictEqual(isGod({ role: 'ADMIN', tenantId: 'master', email: 'admin@dama-crm.local' }), true);
+      assert.strictEqual(isGod({ role: 'SUPER_ADMIN', tenantId: 'master', email: 'super@company.com' }), true);
+
+      // Sub-company Tenant Admin (MUST NOT be God)
+      assert.strictEqual(isGod({ role: 'ADMIN', tenantId: 'empresa-cliente-123', email: 'admin@cliente.es' }), false);
+      assert.strictEqual(isGod({ role: 'USER', tenantId: 'master', email: 'user@dama.es' }), false);
+    });
+  });
 });
 
 

@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
 import { prisma } from '../prisma';
 
 export interface EmailBranding {
@@ -19,9 +19,9 @@ export interface EmailOptions {
 }
 
 export class EmailService {
-  private static transporter: nodemailer.Transporter | null = null;
+  private static transporter: Transporter | null = null;
 
-  private static getTransporter(): nodemailer.Transporter {
+  private static getTransporter(): Transporter {
     if (!this.transporter) {
       const host = process.env.SMTP_HOST || 'localhost';
       const port = parseInt(process.env.SMTP_PORT || '1025', 10);

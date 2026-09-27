@@ -638,7 +638,13 @@ export async function exportInventoryCsv(req: Request, res: Response): Promise<v
 export async function handleUnoPimWebhook(req: Request, res: Response): Promise<void> {
   try {
     const signature = req.headers['x-unopim-secret'];
-    if (signature && signature !== config.webhooks.unopimSecret) {
+    const expectedSecret = config.webhooks.unopimSecret;
+    if (expectedSecret && config.env === 'production') {
+      if (!signature || signature !== expectedSecret) {
+        res.status(401).json({ success: false, message: 'Firma de webhook UnoPIM inválida o no proporcionada' });
+        return;
+      }
+    } else if (signature && expectedSecret && signature !== expectedSecret) {
       res.status(401).json({ success: false, message: 'Firma de webhook UnoPIM inválida' });
       return;
     }
