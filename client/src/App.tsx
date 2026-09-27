@@ -44,11 +44,15 @@ import { PublicQuoteSign } from './pages/PublicQuoteSign';
 import { EmployeePortal } from './pages/EmployeePortal';
 import { MyTime } from './pages/MyTime';
 import { CalendarPage } from './pages/Calendar';
+import { Appointments } from './pages/Appointments';
+import { Logistics } from './pages/Logistics';
 
 const normalizeRoute = (pathname: string): string => {
   const p = pathname.toLowerCase();
   if (p.startsWith('/quote/sign/')) return pathname;
   if (p === '/calendar') return '/calendar';
+  if (p === '/appointments') return '/appointments';
+  if (p === '/logistics') return '/logistics';
   if (p === '/portal-empleado') return '/portal-empleado';
   if (p === '/my-time') return '/my-time';
   if (p === '/tickets') return '/tickets';
@@ -262,6 +266,10 @@ const AppContent: React.FC = () => {
         return <FAQ onNavigate={navigateTo} />;
       case '/calendar':
         return <CalendarPage />;
+      case '/appointments':
+        return isModuleEnabled('appointments') ? <Appointments /> : <ModuleDisabled moduleKey="appointments" onGoBack={() => navigateTo('/')} />;
+      case '/logistics':
+        return isModuleEnabled('logistics') ? <Logistics /> : <ModuleDisabled moduleKey="logistics" onGoBack={() => navigateTo('/')} />;
       default:
         return <Dashboard onNavigate={navigateTo} />;
     }

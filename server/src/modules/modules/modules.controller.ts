@@ -19,6 +19,8 @@ export interface CompanyModulesConfig {
   leadCapture: boolean;
   reports: boolean;
   clientPortal: boolean;
+  appointments: boolean;
+  logistics: boolean;
 }
 
 export const DEFAULT_MODULES_CONFIG: CompanyModulesConfig = {
@@ -37,6 +39,8 @@ export const DEFAULT_MODULES_CONFIG: CompanyModulesConfig = {
   leadCapture: true,
   reports: true,
   clientPortal: true,
+  appointments: true,
+  logistics: true,
 };
 
 /**
