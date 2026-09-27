@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Ticket as TicketIcon, LayoutGrid, Table, Plus } from 'lucide-react';
 import { useTranslation } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
@@ -116,7 +117,8 @@ export const Tickets: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            🎫 {t('tickets.pageTitle')}
+            <TicketIcon className="w-6 h-6 text-blue-500" />
+            <span>{t('tickets.pageTitle')}</span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {t('tickets.pageSubtitle')}
@@ -128,31 +130,34 @@ export const Tickets: React.FC = () => {
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
               onClick={() => setViewMode('kanban')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'kanban'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              📊 {t('tickets.viewKanban')}
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>{t('tickets.viewKanban')}</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'table'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              📋 {t('tickets.viewTable')}
+              <Table className="w-3.5 h-3.5" />
+              <span>{t('tickets.viewTable')}</span>
             </button>
           </div>
 
           <button
             onClick={() => setShowNewModal(true)}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs transition flex items-center gap-1.5"
           >
-            <span>+ {t('tickets.newTicket')}</span>
+            <Plus className="w-4 h-4" />
+            <span>{t('tickets.newTicket')}</span>
           </button>
         </div>
       </div>

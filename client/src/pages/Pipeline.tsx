@@ -110,7 +110,7 @@ export const Pipeline: React.FC = () => {
         spread: 70,
         origin: { y: 0.6 },
       });
-      toast.success('¡Negocio Ganado! 🎉', 'Oportunidad cerrada satisfactoriamente');
+      toast.success('¡Negocio Ganado!', 'Oportunidad cerrada satisfactoriamente');
     }
 
     // Server PATCH mutation

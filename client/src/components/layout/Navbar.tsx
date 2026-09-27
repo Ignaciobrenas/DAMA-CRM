@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   Shield,
+  ShieldAlert,
   Volume2,
   VolumeX,
   HelpCircle,
@@ -111,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
             className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-800/60 hover:bg-amber-500/20 transition shadow-xs"
             title="Panel de SuperAdmin God Mode & Multi-Tenant"
           >
-            <span>👑</span>
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
             <span className="hidden md:inline font-mono">{activeTenant?.name || 'God Mode'}</span>
           </button>
         )}
@@ -243,9 +244,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar })
             </button>
             <button
               onClick={handleResetToMaster}
-              className="px-2.5 py-0.5 rounded bg-black/40 hover:bg-black/60 text-white font-medium transition"
+              className="px-2.5 py-0.5 rounded bg-black/40 hover:bg-black/60 text-white font-medium transition flex items-center space-x-1"
             >
-              ✕ Salir a Master
+              <LogOut className="w-3 h-3" />
+              <span>Salir a Master</span>
             </button>
           </div>
         </div>

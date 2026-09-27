@@ -22,6 +22,9 @@ import {
   generateInvoiceFromRecurring,
   deleteRecurringInvoice,
   importInvoices,
+  rectifyInvoice,
+  duplicateInvoice,
+  sendInvoiceEmail,
 } from './invoices.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -46,6 +49,9 @@ router.get('/:id', requirePermission('invoices', 'read'), getInvoice);
 router.post('/', requirePermission('invoices', 'create'), validate(createInvoiceSchema), createInvoice);
 router.patch('/:id/status', requirePermission('invoices', 'update'), updateInvoiceStatus);
 router.post('/:id/payments', requirePermission('invoices', 'update'), recordInvoicePayment);
+router.post('/:id/rectify', requirePermission('invoices', 'create'), rectifyInvoice);
+router.post('/:id/duplicate', requirePermission('invoices', 'create'), duplicateInvoice);
+router.post('/:id/send-email', requirePermission('invoices', 'read'), sendInvoiceEmail);
 router.get('/:id/pdf', requirePermission('invoices', 'read'), downloadInvoicePdf);
 router.delete('/:id', requirePermission('invoices', 'delete'), deleteInvoice);
 

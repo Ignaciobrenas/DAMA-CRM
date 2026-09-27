@@ -42,11 +42,13 @@ import { Tickets } from './pages/Tickets';
 import { Expenses } from './pages/Expenses';
 import { PublicQuoteSign } from './pages/PublicQuoteSign';
 import { EmployeePortal } from './pages/EmployeePortal';
+import { MyTime } from './pages/MyTime';
 
 const normalizeRoute = (pathname: string): string => {
   const p = pathname.toLowerCase();
   if (p.startsWith('/quote/sign/')) return pathname;
   if (p === '/portal-empleado') return '/portal-empleado';
+  if (p === '/my-time') return '/my-time';
   if (p === '/tickets') return '/tickets';
   if (p === '/expenses') return '/expenses';
   if (p === '/pipeline') return '/pipeline';
@@ -133,6 +135,9 @@ const AppContent: React.FC = () => {
 
   // Mandatory authentication guard for all protected workspace routes
   if (!isAuthenticated) {
+    if (currentRoute === '/onboarding') {
+      return <Onboarding onComplete={() => navigateTo('/')} />;
+    }
     return (
       <Login
         onNavigatePrivacy={() => navigateTo('/privacy')}
@@ -156,6 +161,8 @@ const AppContent: React.FC = () => {
         ) : (
           <ModuleDisabled moduleKey="portalEmpleado" onGoBack={() => navigateTo('/')} />
         );
+      case '/my-time':
+        return <MyTime />;
       case '/tickets':
         return (
           <PermissionGate resource="tickets" action="read" fallback={<AccessDenied resource="tickets" onGoBack={() => navigateTo('/')} />}>

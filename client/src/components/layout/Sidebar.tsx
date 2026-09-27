@@ -23,6 +23,7 @@ import {
   Ticket,
   WalletCards,
   UserCheck,
+  Clock,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -61,6 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     animation?: IconAnimationVariant;
   }> = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/', animation: 'bounce' },
+    { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', animation: 'pulse' },
     { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', moduleKey: 'portalEmpleado', animation: 'float' },
     { id: 'tickets', label: t('sidebar.tickets'), icon: Ticket, route: '/tickets', resource: 'tickets', moduleKey: 'tickets', animation: 'tilt' },
     { id: 'expenses', label: t('sidebar.expenses'), icon: WalletCards, route: '/expenses', resource: 'expenses', moduleKey: 'expenses', animation: 'float' },

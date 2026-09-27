@@ -1,633 +1,845 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import confetti from 'canvas-confetti';
 import {
-  Sparkles,
   Building2,
-  Users,
-  Plug,
-  Rocket,
-  Check,
-  ChevronRight,
-  ChevronLeft,
-  Sun,
-  Moon,
+  Globe,
   Palette,
-  Coins,
+  Users,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  Sparkles,
+  ShieldCheck,
+  Upload,
+  Lock,
+  Mail,
+  User,
+  Phone,
+  MapPin,
+  Check,
+  AlertCircle,
   Plus,
   Trash2,
-  Mail,
-  ShoppingBag,
-  Zap,
-  Globe,
-  Database,
-  ArrowRight,
-  ShieldCheck,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useBranding } from '../context/BrandingContext';
-import { useLanguage } from '../context/LanguageContext';
+import { apiRequest } from '../services/api';
+import { useToast } from '../context/ToastContext';
 import { soundService } from '../services/sound';
 
-interface OnboardingProps {
-  onComplete: () => void;
-}
+export const Onboarding: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
+  const toast = useToast();
+  const [step, setStep] = useState<number>(1);
+  const [isLoadingToken, setIsLoadingToken] = useState(true);
+  const [tokenError, setTokenError] = useState('');
+  const [invitationData, setInvitationData] = useState<any>(null);
 
-export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-  const { user, updatePreferences } = useAuth();
-  const { branding, updateBranding, getLogo, isDarkMode } = useBranding();
-  const { t } = useLanguage();
+  // Step 1: Tenant Slug
+  const [slug, setSlug] = useState('');
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  const [slugMessage, setSlugMessage] = useState('');
 
-  const [step, setStep] = useState(1);
-  const totalSteps = 4;
+  // Step 2: Company Info
+  const [companyName, setCompanyName] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [industry, setIndustry] = useState('Tecnología y Software');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('España');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [website, setWebsite] = useState('');
 
-  // Step 1: Branding & Org
-  const [companyName, setCompanyName] = useState(branding.companyName || 'Mi Empresa');
-  const [currency, setCurrency] = useState('EUR');
-  const [selectedColor, setSelectedColor] = useState(branding.primaryColor || '#072053');
-  const [previewThemeDark, setPreviewThemeDark] = useState(isDarkMode);
+  // Step 3: Branding
+  const [primaryColor, setPrimaryColor] = useState('#072053');
+  const [secondaryColor, setSecondaryColor] = useState('#2563EB');
+  const [logoUrl, setLogoUrl] = useState('');
 
-  // Step 2: Role & Team
-  const [userRole, setUserRole] = useState('Dirección General / CEO');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [teamInvites, setTeamInvites] = useState<string[]>([]);
+  // Step 4: Admin & Team
+  const [adminName, setAdminName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [invitedMembers, setInvitedMembers] = useState<Array<{ name: string; email: string; role: string }>>([]);
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState('USER');
 
-  // Step 3: Ecosystem & Connectors
-  const [enabledConnectors, setEnabledConnectors] = useState<Record<string, boolean>>({
-    odoo: false,
-    woocommerce: true,
-    shopify: false,
-    n8n: true,
-    unopim: true,
-    whatsapp: true,
-  });
+  // Submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Step 4: Demo Data & Launch
-  const [loadDemoData, setLoadDemoData] = useState(true);
-  const [isFinishing, setIsFinishing] = useState(false);
+  // Parse token from URL search params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
 
-  const colorPresets = [
-    { name: 'DAMA Corporativo', hex: '#072053' },
-    { name: 'Azul Real', hex: '#2563EB' },
-    { name: 'Índigo Ejecutivo', hex: '#4F46E5' },
-    { name: 'Esmeralda', hex: '#059669' },
-    { name: 'Púrpura Imperial', hex: '#7C3AED' },
-    { name: 'Carbón Elegante', hex: '#1E293B' },
-  ];
-
-  const handleAddInvite = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inviteEmail && inviteEmail.includes('@') && !teamInvites.includes(inviteEmail)) {
-      setTeamInvites([...teamInvites, inviteEmail.trim()]);
-      setInviteEmail('');
-      soundService.play('action');
+    if (!token) {
+      setTokenError('No se ha proporcionado un token de invitación válido.');
+      setIsLoadingToken(false);
+      return;
     }
-  };
 
-  const handleRemoveInvite = (email: string) => {
-    setTeamInvites(teamInvites.filter((item) => item !== email));
-  };
+    async function verifyToken() {
+      try {
+        const res = await apiRequest(`/onboarding/verify-token?token=${token}`);
+        if (res.success && res.data) {
+          setInvitationData(res.data);
+          setEmail(res.data.email || '');
+          if (res.data.tenantSlug) setSlug(res.data.tenantSlug);
+          if (res.data.companyName) setCompanyName(res.data.companyName);
+        } else {
+          setTokenError(res.message || 'El enlace de invitación no es válido o ha expirado.');
+        }
+      } catch (err: any) {
+        setTokenError(err.message || 'Error de conexión con el servidor');
+      } finally {
+        setIsLoadingToken(false);
+      }
+    }
 
-  const toggleConnector = (key: string) => {
-    setEnabledConnectors((prev) => ({ ...prev, [key]: !prev[key] }));
+    verifyToken();
+  }, []);
+
+  // Check slug availability with debounce
+  useEffect(() => {
+    if (!slug || slug.length < 3) {
+      setSlugAvailable(null);
+      setSlugMessage('');
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsCheckingSlug(true);
+      try {
+        const res = await apiRequest(`/onboarding/check-slug?slug=${encodeURIComponent(slug)}`);
+        if (res.success) {
+          setSlugAvailable(res.available);
+          setSlugMessage(res.message || '');
+        }
+      } catch {
+        setSlugAvailable(null);
+      } finally {
+        setIsCheckingSlug(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [slug]);
+
+  const handleAddMember = () => {
+    if (!newMemberEmail || !newMemberEmail.includes('@')) {
+      toast.error('Email inválido', 'Introduce un correo electrónico válido para invitar');
+      return;
+    }
+    setInvitedMembers((prev) => [
+      ...prev,
+      { name: newMemberName || 'Colaborador', email: newMemberEmail.trim(), role: newMemberRole },
+    ]);
+    setNewMemberName('');
+    setNewMemberEmail('');
     soundService.play('action');
   };
 
-  const triggerConfettiCelebration = () => {
-    const end = Date.now() + 2.5 * 1000;
-    const colors = ['#072053', '#2563EB', '#60A5FA', '#F59E0B', '#10B981'];
-
-    (function frame() {
-      confetti({
-        particleCount: 4,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0, y: 0.7 },
-        colors: colors,
-      });
-      confetti({
-        particleCount: 4,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1, y: 0.7 },
-        colors: colors,
-      });
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    })();
+  const handleRemoveMember = (index: number) => {
+    setInvitedMembers((prev) => prev.filter((_, i) => i !== index));
+    soundService.play('action');
   };
 
-  const handleFinish = async () => {
-    setIsFinishing(true);
-    soundService.play('success');
-    triggerConfettiCelebration();
+  const handleCompleteSetup = async () => {
+    if (password !== confirmPassword) {
+      toast.error('Contraseñas no coinciden', 'Por favor verifica la contraseña');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      toast.error('Contraseña débil', 'La contraseña debe tener un mínimo de 6 caracteres');
+      return;
+    }
+
+    setIsSubmitting(true);
+    soundService.play('action');
 
     try {
-      // 1. Update branding
-      await updateBranding({
-        companyName: companyName.trim() || 'DAMA-CRM',
-        primaryColor: selectedColor,
+      const res = await apiRequest('/onboarding/complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          token: invitationData?.token,
+          slug,
+          company: {
+            name: companyName,
+            taxId,
+            industry,
+            address,
+            city,
+            country,
+            phone,
+            email,
+            website,
+          },
+          branding: {
+            companyName,
+            logoUrl,
+            primaryColor,
+            secondaryColor,
+          },
+          adminUser: {
+            name: adminName || 'Administrador',
+            password,
+          },
+          invitedMembers,
+        }),
       });
 
-      // 2. Mark onboarding as completed in user preferences
-      await updatePreferences({
-        onboardingCompleted: true,
-      });
-
-      setTimeout(() => {
-        onComplete();
-      }, 1800);
-    } catch {
-      onComplete();
+      if (res.success && res.token) {
+        soundService.play('success');
+        localStorage.setItem('dama_token', res.token);
+        localStorage.setItem('dama_user', JSON.stringify(res.user));
+        toast.success('¡Entorno Creado!', `Bienvenido a DAMA CRM, ${companyName}`);
+        setTimeout(() => {
+          if (onComplete) {
+            onComplete();
+          } else {
+            window.location.href = '/';
+          }
+        }, 1200);
+      } else {
+        soundService.play('alert');
+        toast.error('Error al configurar', res.message || 'No se pudo completar la configuración');
+      }
+    } catch (err: any) {
+      toast.error('Error de servidor', err.message || 'Error de conexión');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-between text-slate-900 dark:text-slate-100 transition-colors">
-      {/* Top Header */}
-      <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img
-            src={getLogo('symbol')}
-            alt="DAMA Logo"
-            className="h-8 w-auto object-contain"
-          />
-          <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            {t('onboarding.setupWizard', 'Asistente de Bienvenida & Configuración')}
-          </span>
+  if (isLoadingToken) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+            Validando enlace de invitación y credenciales...
+          </p>
         </div>
+      </div>
+    );
+  }
 
-        {/* Step Indicator & Skip Button */}
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={handleFinish}
-            className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 underline transition"
-          >
-            {t('onboarding.skipToDashboard', 'Omitir configuración e ir al Dashboard')}
-          </button>
-
-          <div className="flex items-center gap-2">
-            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
-              <div
-                key={s}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  s === step
-                    ? 'w-8 bg-brand-color'
-                    : s < step
-                    ? 'w-2 bg-emerald-500'
-                    : 'w-2 bg-slate-200 dark:bg-slate-800'
-                }`}
-              />
-            ))}
-            <span className="text-xs text-slate-500 font-medium ml-2">
-              Paso {step} de {totalSteps}
-            </span>
+  if (tokenError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-xl text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 mx-auto flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
           </div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Enlace de Activación No Válido</h2>
+          <p className="text-xs text-slate-600 dark:text-slate-400">{tokenError}</p>
+          <button
+            onClick={() => (window.location.href = '/login')}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl"
+          >
+            Ir al Inicio de Sesión
+          </button>
         </div>
-      </header>
+      </div>
+    );
+  }
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-6 sm:p-10 flex flex-col justify-center">
-        <AnimatePresence mode="wait">
-          {/* STEP 1: ORGANIZACIÓN & MARCA */}
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-between py-10 px-4 sm:px-6">
+      <div className="max-w-3xl mx-auto w-full space-y-8">
+        {/* Header Branding */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-xs font-bold">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Configuración Inicial de Empresa</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Bienvenido a DAMA CRM
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
+            Configura en pocos pasos el espacio de trabajo exclusivo para tu organización y equipo.
+          </p>
+        </div>
+
+        {/* Step Indicator */}
+        <div className="grid grid-cols-5 gap-2">
+          {[
+            { n: 1, label: 'Identificador' },
+            { n: 2, label: 'Empresa' },
+            { n: 3, label: 'Branding' },
+            { n: 4, label: 'Equipo' },
+            { n: 5, label: 'Activación' },
+          ].map((st) => (
+            <div key={st.n} className="flex flex-col items-center gap-1.5 text-center">
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-colors ${
+                  step === st.n
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : step > st.n
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                {step > st.n ? <Check className="w-4 h-4" /> : st.n}
+              </div>
+              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 hidden sm:inline">
+                {st.label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Card Wizard */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl">
+          {/* STEP 1: SLUG */}
           {step === 1 && (
-            <motion.div
-              key="step-1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
-            >
-              <div className="space-y-2 text-center sm:text-left">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-color/10 text-brand-color text-xs font-semibold">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t('onboarding.step1Tag', 'Bienvenido a DAMA-CRM')}</span>
-                </div>
-                <h1 className="text-3xl font-extrabold tracking-tight">
-                  {t('onboarding.step1Title', 'Personaliza la identidad de tu organización')}
-                </h1>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  {t('onboarding.step1Subtitle', 'Configura los datos base de tu empresa y observa en tiempo real cómo luce tu marca adaptable.')}
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="space-y-1">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-blue-600" />
+                  <span>1. Identificador de Tenant y Subdominio</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Elige un nombre único y corto para identificar tu espacio de trabajo en la nube.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                {/* Inputs */}
-                <div className="space-y-5 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      {t('onboarding.companyName', 'Nombre de la Empresa u Organización')}
-                    </label>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Identificador / Slug de la Empresa
+                </label>
+                <div className="flex rounded-xl border border-slate-300 dark:border-slate-700 overflow-hidden focus-within:border-blue-600 shadow-2xs">
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    placeholder="mi-empresa"
+                    className="flex-1 px-4 py-2.5 bg-transparent text-xs font-semibold text-slate-900 dark:text-white focus:outline-none"
+                  />
+                  <span className="px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-xs font-mono text-slate-500 border-l border-slate-300 dark:border-slate-700 flex items-center">
+                    .damacrm.com
+                  </span>
+                </div>
+
+                {isCheckingSlug && (
+                  <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                    <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    Comprobando disponibilidad...
+                  </p>
+                )}
+
+                {!isCheckingSlug && slugAvailable !== null && (
+                  <p
+                    className={`text-[11px] font-semibold flex items-center gap-1 ${
+                      slugAvailable ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {slugAvailable ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                    {slugMessage}
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-4 flex justify-end">
+                <button
+                  type="button"
+                  disabled={!slug || !slugAvailable}
+                  onClick={() => {
+                    soundService.play('action');
+                    setStep(2);
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <span>Continuar</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: COMPANY DETAILS */}
+          {step === 2 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="space-y-1">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                  <span>2. Información General de la Empresa</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Introduce los datos fiscales y de contacto de tu organización.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Razón Social / Nombre *</label>
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Ej. Acme Soluciones S.L."
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">NIF / CIF / Tax ID</label>
+                  <input
+                    type="text"
+                    value={taxId}
+                    onChange={(e) => setTaxId(e.target.value)}
+                    placeholder="B12345678"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Sector de Actividad</label>
+                  <select
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                  >
+                    <option value="Tecnología y Software">Tecnología y Software</option>
+                    <option value="Consultoría y Servicios">Consultoría y Servicios</option>
+                    <option value="Comercio y Distribución">Comercio y Distribución</option>
+                    <option value="Manufactura e Industria">Manufactura e Industria</option>
+                    <option value="Construcción e Inmobiliaria">Construcción e Inmobiliaria</option>
+                    <option value="Salud y Bienestar">Salud y Bienestar</option>
+                    <option value="Hostelería y Turismo">Hostelería y Turismo</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Teléfono Corporativo</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+34 912 345 678"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Dirección</label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Calle Principal 123"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Ciudad y País</label>
+                  <div className="flex gap-2">
                     <input
                       type="text"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="Acme Global Inc."
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-brand-color outline-none"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Madrid"
+                      className="w-1/2 px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      placeholder="España"
+                      className="w-1/2 px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
+                </div>
+              </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      {t('onboarding.currency', 'Moneda Principal del Negocio')}
-                    </label>
-                    <select
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-brand-color outline-none"
-                    >
-                      <option value="EUR">{t('onboarding.currencyEuro')}</option>
-                      <option value="USD">USD ($) - Dólar Estadounidense</option>
-                      <option value="GBP">{t('onboarding.currencyGbp')}</option>
-                      <option value="MXN">MXN ($) - Peso Mexicano</option>
-                    </select>
+              <div className="pt-4 flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Atrás</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!companyName}
+                  onClick={() => {
+                    soundService.play('action');
+                    setStep(3);
+                  }}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <span>Siguiente: Branding</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: BRANDING */}
+          {step === 3 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="space-y-1">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-blue-600" />
+                  <span>3. Identidad Visual y Colores de Marca</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Personaliza los colores primarios y el logotipo que se mostrarán en la interfaz y en los PDFs oficiales.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Color Primario Corporativo</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 dark:border-slate-700 p-0.5 bg-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="w-32 px-3 py-2 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                      {t('onboarding.primaryColor', 'Color Primario del Sistema')}
-                    </label>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Color Secundario / Acento</label>
                     <div className="flex items-center gap-3">
-                      {colorPresets.map((preset) => (
-                        <button
-                          key={preset.hex}
-                          type="button"
-                          onClick={() => {
-                            setSelectedColor(preset.hex);
-                            soundService.play('action');
-                          }}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
-                            selectedColor === preset.hex ? 'scale-110 ring-2 ring-offset-2 ring-slate-900 dark:ring-white' : 'hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: preset.hex }}
-                          title={preset.name}
-                        >
-                          {selectedColor === preset.hex && <Check className="w-4 h-4 text-white stroke-[3]" />}
-                        </button>
-                      ))}
+                      <input
+                        type="color"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 dark:border-slate-700 p-0.5 bg-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="w-32 px-3 py-2 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">URL del Logotipo (PNG/SVG)</label>
+                    <input
+                      type="url"
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      placeholder="https://miempresa.com/logo.png"
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                </div>
+
+                {/* Live Preview Box */}
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Vista Previa de Marca
+                  </span>
+                  <div
+                    className="p-4 rounded-xl text-white shadow-md flex items-center justify-between"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      {logoUrl ? (
+                        <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-md bg-white/20 p-1" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-bold text-xs">
+                          {companyName ? companyName[0].toUpperCase() : 'D'}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-bold text-xs">{companyName || 'Nombre de Empresa'}</div>
+                        <div className="text-[10px] opacity-80 font-mono">{slug}.damacrm.com</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white shadow-xs"
+                      style={{ backgroundColor: secondaryColor }}
+                    >
+                      Botón
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Atrás</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundService.play('action');
+                    setStep(4);
+                  }}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95"
+                >
+                  <span>Siguiente: Usuario y Equipo</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: ADMIN & TEAM */}
+          {step === 4 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="space-y-1">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <span>4. Cuenta de Administrador e Invitación de Equipo</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Define tu clave de acceso como administrador y añade opcionalmente a tus primeros colaboradores.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tu Nombre Completo *</label>
+                    <div className="relative">
+                      <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={adminName}
+                        onChange={(e) => setAdminName(e.target.value)}
+                        placeholder="Ej. Ignacio Brena"
+                        className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Email Administrador (Fijo)</label>
+                    <div className="relative">
+                      <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="email"
+                        value={email}
+                        disabled
+                        className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-500 dark:text-slate-400 cursor-not-allowed font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Contraseña *</label>
+                    <div className="relative">
+                      <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                        className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Repetir Contraseña *</label>
+                    <div className="relative">
+                      <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Repite tu contraseña"
+                        className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-600"
+                        required
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Live Brand Theme Preview */}
-                <div className="space-y-4">
+                {/* Invite initial team members */}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      {t('onboarding.liveLogoPreview', 'Previsualización Adaptativa de Marca')}
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Invitar Colaboradores (Opcional)
                     </span>
+                    <span className="text-[11px] text-slate-400">{invitedMembers.length} añadidos</span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={newMemberName}
+                      onChange={(e) => setNewMemberName(e.target.value)}
+                      placeholder="Nombre del compañero"
+                      className="flex-1 px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                    />
+                    <input
+                      type="email"
+                      value={newMemberEmail}
+                      onChange={(e) => setNewMemberEmail(e.target.value)}
+                      placeholder="email@empresa.com"
+                      className="flex-1 px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                    />
+                    <select
+                      value={newMemberRole}
+                      onChange={(e) => setNewMemberRole(e.target.value)}
+                      className="px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
+                    >
+                      <option value="USER">Comercial / Ventas</option>
+                      <option value="USER">Técnico / Scrum</option>
+                      <option value="ADMIN">Administrador</option>
+                    </select>
                     <button
                       type="button"
-                      onClick={() => setPreviewThemeDark(!previewThemeDark)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:opacity-80 transition-opacity"
+                      onClick={handleAddMember}
+                      className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1 shrink-0"
                     >
-                      {previewThemeDark ? <Moon className="w-3.5 h-3.5 text-blue-400" /> : <Sun className="w-3.5 h-3.5 text-amber-500" />}
-                      <span>{previewThemeDark ? 'Modo Oscuro' : 'Modo Claro'}</span>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Añadir</span>
                     </button>
                   </div>
 
-                  <div
-                    className={`rounded-2xl p-6 border transition-all duration-300 flex flex-col items-center justify-center min-h-[220px] text-center ${
-                      previewThemeDark
-                        ? 'bg-slate-900 border-slate-800 text-white shadow-xl'
-                        : 'bg-white border-slate-200 text-slate-900 shadow-md'
-                    }`}
-                  >
-                    <div className="mb-4 p-4 rounded-xl transition-all">
-                      {/* Logo placeholder dynamically adapting to Dark and Light modes */}
-                      <img
-                        src={getLogo('full', previewThemeDark)}
-                        alt="Brand Preview"
-                        className="h-14 w-auto object-contain max-w-[200px]"
-                      />
-                    </div>
-                    <h3 className="font-bold text-lg mb-1">{companyName || 'DAMA-CRM'}</h3>
-                    <p className={`text-xs ${previewThemeDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {t('onboarding.adaptiveExplanation', 'El imagotipo DAMA se adapta automáticamente con contraste perfecto en fondos claros y oscuros.')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* STEP 2: ROL & EQUIPO */}
-          {step === 2 && (
-            <motion.div
-              key="step-2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
-            >
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-color/10 text-brand-color text-xs font-semibold">
-                  <Users className="w-3.5 h-3.5" />
-                  <span>{t('onboarding.step2Tag', 'Colaboración & Permisos')}</span>
-                </div>
-                <h1 className="text-3xl font-extrabold tracking-tight">
-                  {t('onboarding.step2Title', 'Tu rol y miembros de tu equipo')}
-                </h1>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  {t('onboarding.step2Subtitle', 'Invita a tus compañeros para colaborar en ventas, inventario, facturación y sprints.')}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* User Role */}
-                <div className="space-y-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {t('onboarding.selectYourRole', '¿Cuál es tu rol principal en la empresa?')}
-                  </label>
-                  <div className="space-y-2">
-                    {[
-                      'Dirección General / CEO',
-                      'Responsable de Ventas & Pipeline',
-                      'Operaciones & Logística / UnoPIM',
-                      'Finanzas & Facturación',
-                      'Ingeniería / Automatizaciones n8n',
-                    ].map((role) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => {
-                          setUserRole(role);
-                          soundService.play('action');
-                        }}
-                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-semibold border transition-all flex items-center justify-between ${
-                          userRole === role
-                            ? 'bg-brand-color/10 border-brand-color text-brand-color'
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        <span>{role}</span>
-                        {userRole === role && <Check className="w-4 h-4 text-brand-color" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Team Invites */}
-                <div className="space-y-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-                  <div className="space-y-4">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      {t('onboarding.inviteCoworkers', 'Invitar miembros a tu espacio')}
-                    </label>
-                    <form onSubmit={handleAddInvite} className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                        <input
-                          type="email"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          placeholder="companero@empresa.com"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-brand-color outline-none"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        className="px-4 py-2.5 bg-brand-color text-white rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>{t('onboarding.addBtn')}</span>
-                      </button>
-                    </form>
-
-                    {/* Invites list */}
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {teamInvites.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic py-4 text-center">
-                          {t('onboarding.noInvitesYet', 'Aún no has añadido invitaciones (opcional).')}
-                        </p>
-                      ) : (
-                        teamInvites.map((email) => (
-                          <div
-                            key={email}
-                            className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs"
-                          >
-                            <span className="font-mono text-slate-700 dark:text-slate-300">{email}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveInvite(email)}
-                              className="text-slate-400 hover:text-rose-500"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                  {invitedMembers.length > 0 && (
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto pt-1">
+                      {invitedMembers.map((m, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{m.name}</span>
+                            <span className="text-slate-400 font-mono text-[11px] truncate">({m.email})</span>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-slate-400">
-                    {t('onboarding.inviteNote', 'Podrás gestionar roles finos y niveles de acceso RBAC en Configuración más adelante.')}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* STEP 3: ECOSISTEMA & CONECTORES */}
-          {step === 3 && (
-            <motion.div
-              key="step-3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
-            >
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-color/10 text-brand-color text-xs font-semibold">
-                  <Plug className="w-3.5 h-3.5" />
-                  <span>{t('onboarding.step3Tag', 'Ecosistema de Software')}</span>
-                </div>
-                <h1 className="text-3xl font-extrabold tracking-tight">
-                  {t('onboarding.step3Title', 'Conecta tus herramientas de trabajo')}
-                </h1>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  {t('onboarding.step3Subtitle', 'Elige qué servicios sincronizarán datos con DAMA-CRM. Podrás configurarlos en detalle en cualquier momento.')}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  {
-                    id: 'odoo',
-                    name: 'Odoo ERP',
-                    desc: 'Sincroniza contactos, facturas y contabilidad.',
-                    icon: Building2,
-                  },
-                  {
-                    id: 'woocommerce',
-                    name: 'WooCommerce',
-                    desc: 'Importa clientes y pedidos online automáticamente.',
-                    icon: ShoppingBag,
-                  },
-                  {
-                    id: 'shopify',
-                    name: 'Shopify',
-                    desc: 'Webhooks criptográficos para tiendas de alto volumen.',
-                    icon: Globe,
-                  },
-                  {
-                    id: 'n8n',
-                    name: 'n8n Workflows',
-                    desc: 'Dispara y recibe flujos de automatización ilimitados.',
-                    icon: Zap,
-                  },
-                  {
-                    id: 'unopim',
-                    name: 'UnoPIM PIM/Catálogo',
-                    desc: 'Centraliza SKUs, stock y catálogo multicanal.',
-                    icon: Database,
-                  },
-                  {
-                    id: 'whatsapp',
-                    name: 'WhatsApp Cloud',
-                    desc: 'Bandeja omnicanal para atención y soporte 24/7.',
-                    icon: ShieldCheck,
-                  },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  const active = enabledConnectors[item.id];
-
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => toggleConnector(item.id)}
-                      className={`cursor-pointer p-5 rounded-2xl border transition-all flex flex-col justify-between select-none ${
-                        active
-                          ? 'bg-brand-color/5 border-brand-color shadow-sm ring-1 ring-brand-color/30'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            active ? 'bg-brand-color text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                          }`}
-                        >
-                          <Icon className="w-5 h-5" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(idx)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                        <div
-                          className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                            active ? 'bg-brand-color border-brand-color text-white' : 'border-slate-300 dark:border-slate-700'
-                          }`}
-                        >
-                          {active && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-1">{item.name}</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.desc}</p>
-                      </div>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          {/* STEP 4: LANZAMIENTO */}
-          {step === 4 && (
-            <motion.div
-              key="step-4"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-8 text-center max-w-xl mx-auto"
-            >
-              <div className="w-20 h-20 mx-auto rounded-3xl bg-brand-color/10 text-brand-color flex items-center justify-center">
-                <Rocket className="w-10 h-10 animate-bounce" />
-              </div>
-
-              <div className="space-y-2">
-                <h1 className="text-3xl font-extrabold tracking-tight">
-                  {t('onboarding.step4Title', '¡Todo listo para despegar!')}
-                </h1>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  {t(
-                    'onboarding.step4Subtitle',
-                    'Tu espacio de trabajo está configurado con seguridad militar, sincronización modular y tema adaptativo.'
                   )}
-                </p>
-              </div>
-
-              {/* Demo Data Option */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 text-left space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                      {t('onboarding.loadDemoDataTitle', 'Cargar datos de demostración interactivos')}
-                    </h4>
-                    <p className="text-xs text-slate-500">
-                      {t('onboarding.loadDemoDataDesc', 'Incluye tratos en el pipeline, contactos de ejemplo y métricas de prueba.')}
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={loadDemoData}
-                      onChange={(e) => setLoadDemoData(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-color"></div>
-                  </label>
                 </div>
               </div>
 
-              {/* Big Launch Button */}
-              <button
-                type="button"
-                onClick={handleFinish}
-                disabled={isFinishing}
-                className="w-full py-4 px-6 bg-brand-color text-white font-bold rounded-2xl shadow-xl hover:opacity-95 transition-all flex items-center justify-center gap-3 text-base active:scale-98"
-              >
-                <span>{isFinishing ? 'Iniciando sesión...' : t('onboarding.enterWorkspace', 'Entrar a DAMA-CRM')}</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </motion.div>
+              <div className="pt-4 flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Atrás</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!adminName || !password || password !== confirmPassword}
+                  onClick={() => {
+                    soundService.play('action');
+                    setStep(5);
+                  }}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <span>Revisar y Activar</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
-      </main>
 
-      {/* Footer Navigation */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => {
-            if (step > 1) {
-              setStep(step - 1);
-              soundService.play('action');
-            }
-          }}
-          disabled={step === 1 || isFinishing}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-            step === 1 ? 'opacity-0 pointer-events-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>{t('common.back', 'Atrás')}</span>
-        </button>
+          {/* STEP 5: REVIEW & COMPLETE */}
+          {step === 5 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="space-y-1">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>5. Resumen de Activación del Espacio de Trabajo</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Verifica los detalles antes de inicializar la base de datos y tu panel de control.
+                </p>
+              </div>
 
-        {step < totalSteps && (
-          <button
-            type="button"
-            onClick={() => {
-              setStep(step + 1);
-              soundService.play('action');
-            }}
-            className="px-6 py-2.5 bg-brand-color text-white rounded-xl text-xs font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
-          >
-            <span>{t('common.continue', 'Continuar')}</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
-      </footer>
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs">
+                <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-500">Identificador Tenant:</span>
+                  <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{slug}.damacrm.com</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-500">Empresa:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{companyName}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-500">Administrador:</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {adminName} ({email})
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-500">Sector:</span>
+                  <span className="text-slate-700 dark:text-slate-300">{industry}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-slate-500">Módulos Inicializados:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    CRM, Ventas, Facturación, Inventario, Scrum, Empleados, BI
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-between">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setStep(4)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Atrás</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleCompleteSetup}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Creando tu Entorno...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Finalizar e Iniciar DAMA CRM</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
