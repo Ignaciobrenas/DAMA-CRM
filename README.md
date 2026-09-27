@@ -9,8 +9,8 @@
 </picture>
 
 <p align="center">
-  <strong>CRM &amp; ERP Modular de Alto Rendimiento: Gestión Comercial, Calendario con Sincronización Google / Apple, Portal del Empleado &amp; Mi Tiempo, Facturación Legal ISO 19005-1, Mesa de Ayuda con SLAs y Conectores Sage / Odoo / UnoPIM.</strong><br>
-  <em>100% Self-Hosted • Zero Licencias Recurrentes • Multi-Tenant Real • 10 Idiomas • Experiencia Móvil y Tablet Nativa</em>
+  <strong>CRM &amp; ERP Modular de Alto Rendimiento: Gestión Comercial, Catálogo &amp; Inventario con Mapeo Multi-App, Calendario con Sincronización Google / Apple, Portal del Empleado &amp; Mi Tiempo, Facturación Legal ISO 19005-1, Mesa de Ayuda con SLAs y Conectores Sage / Odoo / UnoPIM / OpenCart / Shopify.</strong><br>
+  <em>100% Self-Hosted • Zero Licencias Recurrentes • Multi-Tenant Real • 11 Idiomas • Multiplataforma (Web, Escritorio Electron, Móvil Capacitor Android/iOS)</em>
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -21,7 +21,8 @@
 [![Redis 7+](https://img.shields.io/badge/Redis-7+-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![React 18+](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v3-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Tests Passing](https://img.shields.io/badge/Tests-94%20Passed-10B981)](server/tests)
+[![Tests Passing](https://img.shields.io/badge/Tests-103%20Passed-10B981)](server/tests)
+[![i18n](https://img.shields.io/badge/i18n-11%20Languages%20100%25-blueviolet)](client/src/i18n)
 
 </div>
 
@@ -35,18 +36,20 @@
 
 ---
 
-## 📱 Experiencia Responsive en Móvil y Tablet
+## 📱 Experiencia Responsive & Multiplataforma (Web, Escritorio y Móvil)
 
-DAMA-CRM está diseñado con una arquitectura **Mobile-First real**. No se trata de una simple reducción de tamaño, sino de una adaptación ergonómica completa pensada para comerciales en movimiento, operarios y gestores en tablet:
+DAMA-CRM está diseñado con una arquitectura **Mobile-First y Multiplataforma real**:
 
 <div align="center">
   <img src="client/public/assets/docs/mobile-responsive-preview.svg" alt="DAMA-CRM Móvil y Tablet" width="950">
 </div>
 
 * **Barra de Navegación Inferior Táctil:** Acceso instantáneo con el pulgar a *Inicio*, *Ventas*, *Clientes*, *Facturas* y *Menú Global*.
+* **Popups y Modales Centrados:** Selector de idiomas con buscador interactivo, centro de notificaciones en tiempo real y Command Palette (Ctrl+K) perfectamente centrados en pantalla con diseño premium y animaciones suaves.
 * **Áreas Seguras (Safe-Area Insets):** Integración nativa con los bordes curvos de dispositivos iOS y Android.
-* **Sin Desbordamientos ni Textos Pisados:** Adaptación fluida de tablas, diagramas Kanban y cuadrículas de calendario.
-* **Widgets de Fichaje en 1 Toque:** Registro de jornada y pausas directamente desde la pantalla de inicio del teléfono.
+* **Ecosistema Multiplataforma Distribuido:**
+  - **Escritorio:** Paquete nativo Electron para Windows (.exe), Linux (.deb/AppImage) y macOS (.dmg) vía `proyecto-contenedor-escritorio`.
+  - **Móvil:** Paquete nativo Capacitor para Android (.apk/.aab) e iOS vía `proyecto-contenedor-movil`.
 
 ---
 
@@ -54,7 +57,7 @@ DAMA-CRM está diseñado con una arquitectura **Mobile-First real**. No se trata
 
 Cada empresa puede activar o desactivar dinámicamente los módulos según sus necesidades operativas desde `Configuración > Módulos`:
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   DAMA-CRM ECOSYSTEM                                   │
 ├──────────────────────────┬──────────────────────────┬──────────────────────────────────┤
@@ -63,7 +66,7 @@ Cada empresa puede activar o desactivar dinámicamente los módulos según sus n
 │ ⚙️ Gestor de Módulos     │ ⏱️ Mi Tiempo & Fichajes  │ 📊 Margen P&L y Modelo 303 AEAT  │
 ├──────────────────────────┼──────────────────────────┼──────────────────────────────────┤
 │ 🎯 Ventas & Pipeline     │ 🎫 Mesa de Ayuda (SLA)   │ 💬 WhatsApp Omnicanal con IA     │
-│ 📋 Proyectos & Sprints   │ 📦 Inventario & Catálogo │ 🔌 Conectores Sage / Odoo / n8n  │
+│ 📋 Proyectos & Sprints   │ 📦 Catálogo & Cajas Dual │ 🔌 Conectores Sage / Odoo / n8n  │
 ├──────────────────────────┼──────────────────────────┼──────────────────────────────────┤
 │ 🔔 WebSocket Real-Time   │ 🔒 2FA OTP & Matriz RBAC │ 🎨 Personalización & Zoom UI     │
 └──────────────────────────┴──────────────────────────┴──────────────────────────────────┘
@@ -71,35 +74,48 @@ Cada empresa puede activar o desactivar dinámicamente los módulos según sus n
 
 ---
 
-### 1. 📅 Calendario, Recordatorios y Sincronización Google / Apple
+### 1. 📦 Inventario Inteligente: Vista Dual (Tabla / Cajas) & Auto-Mapeo Multi-App
+
+* **Vista Dual Conmutable:** Alterna al instante entre vista de **Tabla compacta** y vista de **Cajas visuales** con fotos en alta resolución, indicador de stock con barra de progreso cromática (verde/naranja/rojo), márgenes de beneficio y precios de compra/venta.
+* **Mapeo Automático de Atributos & Metadatos:** Motor inteligente que mapea automáticamente especificaciones técnicas, variantes y atributos con conectores:
+  - **UnoPIM:** Atributos PIM, familias y variantes.
+  - **OpenCart:** Opciones de producto, atributos y categorías de tienda.
+  - **Sage ERP (Sage 1, 50 y 200):** Cuentas contables, referencias de proveedor y tarifas.
+  - **Odoo:** Plantillas de productos y variantes de inventario.
+  - **Shopify & WooCommerce:** Metacampos, tags y variantes de eCommerce.
+* **Auto-Mapeo en Lote:** Botón de sincronización masiva para actualizar y normalizar atributos en todo el catálogo en un solo clic.
+
+---
+
+### 2. 📅 Calendario, Recordatorios y Sincronización Google / Apple
 
 <div align="center">
   <img src="client/public/assets/docs/calendar-module-preview.svg" alt="Módulo de Calendario DAMA-CRM" width="950">
 </div>
 
 * **Vistas Múltiples:** Visualización mensual, semanal, diaria y lista de agenda cronológica.
-* **Separación de Calendarios:** Cada usuario dispone de su propio calendario personal, además de un calendario global de empresa donde se visualizan los hitos compartidos y entregas de proyectos asignados.
-* **Sincronización con Apple Calendar:** Enlace de suscripción `webcal://` y descarga de `.ics` en tiempo real para iPhone, iPad y Mac.
-* **Sincronización con Google Calendar:** Integración bidireccional de citas, reuniones comerciales y videollamadas de Google Meet.
+* **Separación de Calendarios:** Calendario personal privado y calendario global corporativo para hitos compartidos y entregas de proyectos.
+* **Sincronización Apple Calendar:** Enlace `webcal://` y suscripción `.ics` en tiempo real para iPhone, iPad y Mac.
+* **Sincronización Google Calendar:** Integración bidireccional de citas, reuniones comerciales y enlaces Google Meet.
 * **Sistema de Alertas y Recordatorios:** Avisos flotantes configurables (15m, 1h, 1 día antes) con descarte en 1 clic y sonido armónico.
 
 ---
 
-### 2. 📑 Suite de Facturación Avanzada, Rectificativas e IRPF
+### 3. 📑 Suite de Facturación Avanzada, Rectificativas e IRPF
 
 <div align="center">
   <img src="client/public/assets/docs/invoicing-suite-preview.svg" alt="Facturación Legal DAMA-CRM" width="950">
 </div>
 
 * **Descuentos e Impuestos Flexibles:** Descuento por línea, descuento global sobre la base imponible y retenciones de IRPF profesional (0%, 7%, 15%, 19%).
-* **Facturas Rectificativas (Abonos):** Emisión legal de facturas rectificativas asociadas a la factura original con selección de motivos reglamentarios (R1 a R5) e importes negativos automáticos.
+* **Facturas Rectificativas (Abonos):** Emisión legal de facturas rectificativas vinculadas a la factura original con selección de motivos reglamentarios (R1 a R5) e importes negativos automáticos.
 * **Facturas Proforma y Presupuestos:** Conversión de presupuestos en facturas en 1 solo clic.
 * **Firma Digital Pública (`/quote/sign/:token`):** Aceptación y rúbrica táctil directa del cliente sin necesidad de registro ni contraseñas.
 * **Plazos de Vencimiento:** Presets estándar (*Inmediato*, *15 días*, *30 días*, *60 días*, *Fin de mes*).
 
 ---
 
-### 3. 🎯 Ventas (Pipeline Kanban Comercial)
+### 4. 🎯 Ventas (Pipeline Kanban Comercial)
 
 * **Embudo Visual de Ventas:** Etapas personalizables (*Lead*, *Contacto*, *Propuesta*, *Negociación*, *Ganado*, *Perdido*).
 * **Previsión Ponderada de Ingresos:** Cálculo dinámico de ingresos según la probabilidad de éxito de cada etapa comercial.
@@ -107,7 +123,7 @@ Cada empresa puede activar o desactivar dinámicamente los módulos según sus n
 
 ---
 
-### 4. ⏱️ Mi Tiempo & Portal del Empleado
+### 5. ⏱️ Mi Tiempo & Portal del Empleado
 
 * **Control Horario Legal (Estatuto de los Trabajadores):** Fichaje digital con justificación de jornada (Oficina central, Teletrabajo, Visita comercial, Pausa médica).
 * **Imputación de Horas a Tareas:** Registro detallado de minutos dedicados a cada proyecto para control de rentabilidad y desvíos.
@@ -116,7 +132,7 @@ Cada empresa puede activar o desactivar dinámicamente los módulos según sus n
 
 ---
 
-### 5. 📋 Planificador Ágil & Proyectos
+### 6. 📋 Planificador Ágil & Proyectos
 
 * **Scrum & Kanban Integrados:** Sprints, historias de usuario, estimación de puntos y asignación de responsables.
 * **Detalle Enriquecido en Markdown:** Descripciones técnicas con soporte para código, listas y adjunto de imágenes con vista previa.
@@ -124,7 +140,7 @@ Cada empresa puede activar o desactivar dinámicamente los módulos según sus n
 
 ---
 
-### 6. 🎨 Personalización Total y Persistencia en BBDD
+### 7. 🎨 Personalización Total y Persistencia en BBDD
 
 <div align="center">
   <img src="client/public/assets/docs/customization-preview.svg" alt="Personalización DAMA-CRM" width="950">
@@ -134,13 +150,13 @@ Cada empresa puede activar o desactivar dinámicamente los módulos según sus n
 * **Tamaños Tipográficos Base:** XS, SM, MD, LG, XL adaptados a cualquier necesidad visual.
 * **Estilos de Iconos Lucide:** Alterna entre iconos animados (*Bounce*), sólidos o minimalistas con previsualización en vivo.
 * **Colores de Marca e Identidad:** Selector de paleta corporativa y subida de logotipos persistentes por empresa.
-* **Menú Superior de Usuario:** Popup interactivo en la esquina superior derecha para cambiar de cuenta, recordar sesión en el equipo y acceder a ajustes del sistema (con icono de engranaje).
 
 ---
 
-### 7. 🔌 Conectores e Integraciones ERP
+### 8. 🔌 Conectores e Integraciones ERP
 
 * **Sage ERP:** Conectores oficiales estructurados para **Sage 1 (Business Cloud)**, **Sage 50** y **Sage 200**.
+* **OpenCart:** Sincronización de catálogo, pedidos y stock.
 * **UnoPIM:** Sincronización bidireccional de catálogo, variantes, precios y control de stock.
 * **WooCommerce & Shopify:** Captura de pedidos en tiempo real convirtiéndolos en tratos y contactos del CRM.
 * **Meta WhatsApp Cloud API:** Bandeja omnicanal con asistencia de respuestas automáticas con IA.
@@ -148,21 +164,26 @@ Cada empresa puede activar o desactivar dinámicamente los módulos según sus n
 
 ---
 
-### 8. 🏢 Onboarding Guiado de Empresa (5 Pasos)
+### 9. 🌐 Soporte Multi-Idioma Completo (11 Idiomas)
 
-* **Invitación Tokenizada:** Enlaces seguros generados por el SuperAdmin God Mode para que cada empresa se auto-configure.
-* **Paso a Paso:**
-  1. *Comprobación de Slug:* Validación en tiempo real de la URL única del tenant.
-  2. *Datos Fiscales:* Razón social, NIF/CIF, dirección y contacto.
-  3. *Identidad Visual:* Colores corporativos y logotipo con previsualización inmediata.
-  4. *Equipo Inicial:* Alta del administrador y colaboradores.
-  5. *Aprovisionamiento Instantáneo:* Emisión de JWT y despliegue del espacio de trabajo.
+DAMA-CRM cuenta con traducción completa y sincronizada (100% de paridad) en 11 idiomas:
+- 🇪🇸 Español (es)
+- 🏴 Català (ca)
+- 🇬🇧 English (en)
+- 🇫🇷 Français (fr)
+- 🇩🇪 Deutsch (de)
+- 🇮🇹 Italiano (it)
+- 🇵🇹 Português (pt)
+- 🇸🇦 العربية (ar)
+- 🇨🇳 中文 (zh)
+- 🇯🇵 日本語 (ja)
+- 🇷🇺 Русский (ru)
 
 ---
 
 ## 🛠️ Arquitectura Técnica
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │                      Arquitectura                        │
 ├─────────────────────────┬────────────────────────────────┤
@@ -173,6 +194,8 @@ Cada empresa puede activar o desactivar dinámicamente los módulos según sus n
 │ Caché & Rate Limiting   │ Redis 7                        │
 │ Tiempo Real             │ WebSockets (wsClient)          │
 │ Despliegue              │ Docker & Docker Compose        │
+│ Contenedor Escritorio   │ Electron (Windows/Linux/macOS) │
+│ Contenedor Móvil        │ Capacitor (Android/iOS)        │
 └─────────────────────────┴────────────────────────────────┘
 ```
 
@@ -193,7 +216,7 @@ docker compose up -d
 
 ### 3. Ejecutar las migraciones idempotentes
 ```bash
-npx prisma migrate deploy --schema=server/prisma/schema.prisma
+npx prisma db push --schema=server/prisma/schema.prisma
 ```
 
 ### 4. Acceso a la aplicación
@@ -205,30 +228,16 @@ npx prisma migrate deploy --schema=server/prisma/schema.prisma
 
 ## 🧪 Batería de Pruebas Automatizadas
 
-El proyecto cuenta con un conjunto de **94 tests automatizados** que validan la seguridad multi-tenant, motor de facturación, retenciones, control horario, integraciones y generador de feeds iCal:
+El proyecto cuenta con un conjunto de **103 tests automatizados** y validación de paridad de 11 idiomas:
 
 ```bash
-npm --prefix server test
+npm run test:all
 ```
 
-```
-✔ ISO-Compliant PDF Engine & Dynamic Pagination (5 tests)
-✔ Multi-Tenant SaaS & God Mode Isolation Engine (3 tests)
-✔ Helpdesk Tickets & SLA Compliance Engine (3 tests)
-✔ Expenses, P&L Profit Margin & Tax Books (3 tests)
-✔ Real-time Notification Engine (3 tests)
-✔ Portal del Empleado - Time Tracking & Fichajes (3 tests)
-✔ Portal del Empleado - Payrolls & RGPD Privacy (3 tests)
-✔ Accessibility, UI Scale & Typography Persistence (3 tests)
-✔ Sage ERP Connectors (Sage 1, Sage 50, Sage 200) (4 tests)
-✔ Inventory & Stock Movements Core Logic (4 tests)
-✔ Company Onboarding & Slug Provisioning (3 tests)
-✔ Enriched Invoicing: Discounts, IRPF & Rectifications (3 tests)
-✔ Agile Planner & Mi Tiempo Worklogs (2 tests)
-✔ Calendar Module: RFC 5545 iCal & Alert Reminders (3 tests)
-✔ UnoPIM / Meta WhatsApp / WooCommerce / n8n Integration Tests (7 tests)
-
-ℹ tests 94 • suites 36 • pass 94 • fail 0
+```text
+✔ DAMA-CRM Core Unit Tests (96 tests pass)
+✔ DAMA-CRM Integration & Automation Tests (7 tests pass)
+✔ i18n 11-Language Parity Check (1552/1552 keys matched across all 11 locales)
 ```
 
 ---
