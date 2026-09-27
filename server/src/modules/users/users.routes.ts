@@ -7,6 +7,7 @@ import {
   listRoles,
   updateRolePermissions,
   listAuditLogs,
+  getUserAuditTrail,
   getUserPreferences,
   updateUserPreferences,
   updateProfile,
@@ -28,10 +29,11 @@ router.patch('/profile', updateProfile);
 // System User Management (RBAC-protected)
 router.get('/', requirePermission('users', 'read'), listUsers);
 router.post('/', requirePermission('users', 'create'), validate(createUserSchema), createUser);
-router.put('/:id', requirePermission('users', 'update'), updateUser);
-router.delete('/:id', requirePermission('users', 'delete'), deleteUser);
 router.get('/roles', requirePermission('users', 'read'), listRoles);
 router.put('/roles/:roleId/permissions', requirePermission('users', 'manage'), updateRolePermissions);
 router.get('/audit-logs', requirePermission('users', 'read'), listAuditLogs);
+router.get('/:id/audit-trail', requirePermission('users', 'read'), getUserAuditTrail);
+router.put('/:id', requirePermission('users', 'update'), updateUser);
+router.delete('/:id', requirePermission('users', 'delete'), deleteUser);
 
 export default router;
