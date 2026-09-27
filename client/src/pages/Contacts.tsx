@@ -31,6 +31,8 @@ import { PermissionGate } from '../components/common/PermissionGate';
 import { exportToCSV } from '../utils/exportUtils';
 import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
 import { LoadingState } from '../components/ui/LoadingState';
+import { ValidatedInput } from '../components/common/ValidatedInput';
+import { validateEmail, validatePhone, validateRequired } from '../utils/validators';
 
 export const Contacts: React.FC = () => {
   const { t } = useLanguage();
@@ -196,6 +198,33 @@ export const Contacts: React.FC = () => {
 
   const handleCreateContact = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const firstNameCheck = validateRequired(firstName, t('contacts.firstName', 'Nombre'));
+    if (!firstNameCheck.isValid) {
+      toast.error(t('error'), firstNameCheck.message);
+      return;
+    }
+
+    const lastNameCheck = validateRequired(lastName, t('contacts.lastName', 'Apellidos'));
+    if (!lastNameCheck.isValid) {
+      toast.error(t('error'), lastNameCheck.message);
+      return;
+    }
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.isValid) {
+      toast.error(t('error'), emailCheck.message);
+      return;
+    }
+
+    if (phone) {
+      const phoneCheck = validatePhone(phone);
+      if (!phoneCheck.isValid) {
+        toast.error(t('error'), phoneCheck.message);
+        return;
+      }
+    }
+
     const res = await apiRequest('/contacts', {
       method: 'POST',
       body: JSON.stringify({
@@ -255,6 +284,41 @@ export const Contacts: React.FC = () => {
   const handleSaveDetailModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detailModalContact) return;
+
+    const firstNameCheck = validateRequired(detailFirstName, t('contacts.firstName', 'Nombre'));
+    if (!firstNameCheck.isValid) {
+      setDetailFormError(firstNameCheck.message || 'El nombre es obligatorio');
+      return;
+    }
+
+    const lastNameCheck = validateRequired(detailLastName, t('contacts.lastName', 'Apellidos'));
+    if (!lastNameCheck.isValid) {
+      setDetailFormError(lastNameCheck.message || 'El apellido es obligatorio');
+      return;
+    }
+
+    const emailCheck = validateEmail(detailEmail);
+    if (!emailCheck.isValid) {
+      setDetailFormError(emailCheck.message || 'El email no es válido');
+      return;
+    }
+
+    if (detailPhone) {
+      const phoneCheck = validatePhone(detailPhone);
+      if (!phoneCheck.isValid) {
+        setDetailFormError(phoneCheck.message || 'El teléfono no es válido');
+        return;
+      }
+    }
+
+    if (detailMobile) {
+      const mobileCheck = validatePhone(detailMobile);
+      if (!mobileCheck.isValid) {
+        setDetailFormError(mobileCheck.message || 'El teléfono móvil no es válido');
+        return;
+      }
+    }
+
     setIsSavingDetail(true);
     setDetailFormError('');
 
@@ -553,63 +617,49 @@ export const Contacts: React.FC = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('newContact')}>
         <form onSubmit={handleCreateContact} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('fullName')}</label>
-              <input
-                type="text"
-                required
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder={t('contacts.firstName')}
-                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.lastName')}</label>
-              <input
-                type="text"
-                required
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder={t('contacts.lastName')}
-                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('email')}</label>
-            <input
-              type="email"
+            <ValidatedInput
+              label={t('contacts.firstName', 'Nombre')}
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="cliente@empresa.com"
-              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              validator={(val) => validateRequired(val, t('contacts.firstName', 'Nombre'))}
+              placeholder={t('contacts.firstName', 'Nombre')}
+            />
+            <ValidatedInput
+              label={t('contacts.lastName', 'Apellidos')}
+              required
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              validator={(val) => validateRequired(val, t('contacts.lastName', 'Apellidos'))}
+              placeholder={t('contacts.lastName', 'Apellidos')}
             />
           </div>
 
+          <ValidatedInput
+            label={t('email', 'Correo electrónico')}
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            validator={validateEmail}
+            placeholder="cliente@empresa.com"
+          />
+
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('phone')}</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+34 600 000 000"
-                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('jobTitle')}</label>
-              <input
-                type="text"
-                value={position}
-                onChange={(e) => setPosition(e.target.value)}
-                placeholder={t('contacts.jobTitlePlaceholder', 'CEO / Responsable Compras')}
-                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-              />
-            </div>
+            <ValidatedInput
+              label={t('phone', 'Teléfono')}
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              validator={validatePhone}
+              placeholder="+34 600 000 000"
+            />
+            <ValidatedInput
+              label={t('jobTitle', 'Cargo / Puesto')}
+              value={position}
+              onChange={(e) => setPosition(e.target.value)}
+              placeholder={t('contacts.jobTitlePlaceholder', 'CEO / Responsable Compras')}
+            />
           </div>
 
           <div>
@@ -617,7 +667,7 @@ export const Contacts: React.FC = () => {
             <select
               value={companyId}
               onChange={(e) => setCompanyId(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-850 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white outline-none focus:border-blue-500"
             >
               <option value="">{t('contacts.unassignedCompany')}</option>
               {companies.map((c) => (
@@ -800,66 +850,52 @@ export const Contacts: React.FC = () => {
                       {isEditingInModal ? (
                         <form onSubmit={handleSaveDetailModal} className="space-y-4">
                           <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.firstName')}</label>
-                              <input
-                                type="text"
-                                required
-                                value={detailFirstName}
-                                onChange={(e) => setDetailFirstName(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.lastName')}</label>
-                              <input
-                                type="text"
-                                required
-                                value={detailLastName}
-                                onChange={(e) => setDetailLastName(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                              />
-                            </div>
+                            <ValidatedInput
+                              label={t('contacts.firstName', 'Nombre')}
+                              required
+                              value={detailFirstName}
+                              onChange={(e) => setDetailFirstName(e.target.value)}
+                              validator={(val) => validateRequired(val, t('contacts.firstName', 'Nombre'))}
+                            />
+                            <ValidatedInput
+                              label={t('contacts.lastName', 'Apellidos')}
+                              required
+                              value={detailLastName}
+                              onChange={(e) => setDetailLastName(e.target.value)}
+                              validator={(val) => validateRequired(val, t('contacts.lastName', 'Apellidos'))}
+                            />
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.email')}</label>
-                              <input
-                                type="email"
-                                required
-                                value={detailEmail}
-                                onChange={(e) => setDetailEmail(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.landline')}</label>
-                              <input
-                                type="tel"
-                                value={detailPhone}
-                                onChange={(e) => setDetailPhone(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                              />
-                            </div>
+                            <ValidatedInput
+                              label={t('contacts.email', 'Email')}
+                              type="email"
+                              required
+                              value={detailEmail}
+                              onChange={(e) => setDetailEmail(e.target.value)}
+                              validator={validateEmail}
+                            />
+                            <ValidatedInput
+                              label={t('contacts.landline', 'Teléfono')}
+                              type="tel"
+                              value={detailPhone}
+                              onChange={(e) => setDetailPhone(e.target.value)}
+                              validator={validatePhone}
+                            />
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.jobTitle')}</label>
-                              <input
-                                type="text"
-                                value={detailPosition}
-                                onChange={(e) => setDetailPosition(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
-                              />
-                            </div>
+                            <ValidatedInput
+                              label={t('contacts.jobTitle', 'Cargo')}
+                              value={detailPosition}
+                              onChange={(e) => setDetailPosition(e.target.value)}
+                            />
                             <div>
                               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">{t('contacts.company')}</label>
                               <select
                                 value={detailCompanyId}
                                 onChange={(e) => setDetailCompanyId(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white outline-none focus:border-blue-500"
                               >
                                 <option value="">{t('contacts.noCompanyOption')}</option>
                                 {companies.map((co) => (
