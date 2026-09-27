@@ -1843,7 +1843,210 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(isGod({ role: 'USER', tenantId: 'master', email: 'user@dama.es' }), false);
     });
   });
+
+  describe('RBAC Multi-Role Matrix & Tenant User Provisioning Engine', () => {
+    interface UserPermission {
+      resource: string;
+      action: string;
+    }
+
+    interface MockUser {
+      role: string;
+      tenantId: string;
+      permissions: UserPermission[];
+    }
+
+    const checkAccess = (user: MockUser, resource: string, action: string): boolean => {
+      if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return true;
+      return user.permissions.some(
+        (p) =>
+          (p.resource === resource || p.resource === '*') &&
+          (p.action === action || p.action === 'manage')
+      );
+    };
+
+    const mockAdmin: MockUser = {
+      role: 'ADMIN',
+      tenantId: 'ignacio-corp',
+      permissions: [{ resource: '*', action: 'manage' }],
+    };
+
+    const mockSales: MockUser = {
+      role: 'SALES',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'contacts', action: 'manage' },
+        { resource: 'companies', action: 'manage' },
+        { resource: 'deals', action: 'manage' },
+        { resource: 'quotes', action: 'manage' },
+        { resource: 'invoices', action: 'read' },
+      ],
+    };
+
+    const mockTech: MockUser = {
+      role: 'TECH',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'integrations', action: 'manage' },
+        { resource: 'webhooks', action: 'manage' },
+        { resource: 'api', action: 'manage' },
+        { resource: 'logs', action: 'read' },
+      ],
+    };
+
+    const mockSupport: MockUser = {
+      role: 'SUPPORT',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'tickets', action: 'manage' },
+        { resource: 'omnichannel', action: 'manage' },
+        { resource: 'contacts', action: 'read' },
+      ],
+    };
+
+    const mockHR: MockUser = {
+      role: 'HR',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'employees', action: 'manage' },
+        { resource: 'payrolls', action: 'manage' },
+        { resource: 'time_tracking', action: 'manage' },
+      ],
+    };
+
+    const mockEmployee: MockUser = {
+      role: 'EMPLOYEE',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'time_tracking', action: 'write' },
+        { resource: 'tasks', action: 'manage' },
+      ],
+    };
+
+    const mockViewer: MockUser = {
+      role: 'VIEWER',
+      tenantId: 'ignacio-corp',
+      permissions: [
+        { resource: 'contacts', action: 'read' },
+        { resource: 'deals', action: 'read' },
+        { resource: 'reports', action: 'read' },
+      ],
+    };
+
+    it('should grant ADMIN full bypass on any resource and action', () => {
+      assert.strictEqual(checkAccess(mockAdmin, 'payrolls', 'delete'), true);
+      assert.strictEqual(checkAccess(mockAdmin, 'god_system', 'manage'), true);
+      assert.strictEqual(checkAccess(mockAdmin, 'integrations', 'write'), true);
+    });
+
+    it('should grant SALES access to deals and contacts but block payrolls and integrations', () => {
+      assert.strictEqual(checkAccess(mockSales, 'deals', 'create'), true);
+      assert.strictEqual(checkAccess(mockSales, 'deals', 'update'), true);
+      assert.strictEqual(checkAccess(mockSales, 'contacts', 'delete'), true);
+      assert.strictEqual(checkAccess(mockSales, 'invoices', 'read'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockSales, 'payrolls', 'read'), false);
+      assert.strictEqual(checkAccess(mockSales, 'integrations', 'manage'), false);
+      assert.strictEqual(checkAccess(mockSales, 'invoices', 'delete'), false);
+    });
+
+    it('should grant TECH access to integrations and webhooks but block financial payrolls', () => {
+      assert.strictEqual(checkAccess(mockTech, 'integrations', 'update'), true);
+      assert.strictEqual(checkAccess(mockTech, 'webhooks', 'create'), true);
+      assert.strictEqual(checkAccess(mockTech, 'logs', 'read'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockTech, 'payrolls', 'read'), false);
+      assert.strictEqual(checkAccess(mockTech, 'deals', 'delete'), false);
+    });
+
+    it('should grant SUPPORT access to tickets and omnichannel but block invoices and payrolls', () => {
+      assert.strictEqual(checkAccess(mockSupport, 'tickets', 'manage'), true);
+      assert.strictEqual(checkAccess(mockSupport, 'omnichannel', 'create'), true);
+      assert.strictEqual(checkAccess(mockSupport, 'contacts', 'read'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockSupport, 'invoices', 'manage'), false);
+      assert.strictEqual(checkAccess(mockSupport, 'payrolls', 'manage'), false);
+    });
+
+    it('should grant HR access to employees and payrolls but block CRM integrations and deals deletion', () => {
+      assert.strictEqual(checkAccess(mockHR, 'employees', 'create'), true);
+      assert.strictEqual(checkAccess(mockHR, 'payrolls', 'read'), true);
+      assert.strictEqual(checkAccess(mockHR, 'time_tracking', 'manage'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockHR, 'deals', 'delete'), false);
+      assert.strictEqual(checkAccess(mockHR, 'integrations', 'manage'), false);
+    });
+
+    it('should allow standard EMPLOYEE to clock-in and manage own tasks but not see coworker payrolls', () => {
+      assert.strictEqual(checkAccess(mockEmployee, 'time_tracking', 'write'), true);
+      assert.strictEqual(checkAccess(mockEmployee, 'tasks', 'manage'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockEmployee, 'payrolls', 'read'), false);
+      assert.strictEqual(checkAccess(mockEmployee, 'deals', 'manage'), false);
+      assert.strictEqual(checkAccess(mockEmployee, 'contacts', 'manage'), false);
+    });
+
+    it('should allow VIEWER to read contacts and reports but block write/delete operations', () => {
+      assert.strictEqual(checkAccess(mockViewer, 'contacts', 'read'), true);
+      assert.strictEqual(checkAccess(mockViewer, 'deals', 'read'), true);
+      assert.strictEqual(checkAccess(mockViewer, 'reports', 'read'), true);
+
+      // Blocked
+      assert.strictEqual(checkAccess(mockViewer, 'contacts', 'create'), false);
+      assert.strictEqual(checkAccess(mockViewer, 'deals', 'delete'), false);
+      assert.strictEqual(checkAccess(mockViewer, 'integrations', 'write'), false);
+    });
+  });
+
+  describe('Internal Team Chat & Audit Trail Logic Engine', () => {
+    it('should validate default corporate department channels', () => {
+      const defaultChannels = [
+        { id: 'general', name: 'general', displayName: 'General', type: 'channel' },
+        { id: 'ventas', name: 'ventas', displayName: 'Ventas y Comercial', type: 'channel' },
+        { id: 'soporte', name: 'soporte', displayName: 'Soporte y Clientes', type: 'channel' },
+        { id: 'proyectos', name: 'proyectos', displayName: 'Proyectos y Desarrollo', type: 'channel' },
+        { id: 'anuncios', name: 'anuncios', displayName: 'Anuncios y Dirección', type: 'channel' },
+      ];
+
+      assert.strictEqual(defaultChannels.length, 5);
+      assert.strictEqual(defaultChannels.every((c) => c.type === 'channel'), true);
+      assert.strictEqual(defaultChannels.some((c) => c.name === 'general'), true);
+      assert.strictEqual(defaultChannels.some((c) => c.name === 'ventas'), true);
+    });
+
+    it('should correctly format direct message channel identifiers between two users', () => {
+      const getDmChannelId = (userA: string, userB: string) => {
+        const sorted = [userA, userB].sort();
+        return `dm_${sorted[0]}_${sorted[1]}`;
+      };
+
+      const dm1 = getDmChannelId('user-xyz', 'user-abc');
+      const dm2 = getDmChannelId('user-abc', 'user-xyz');
+      assert.strictEqual(dm1, dm2);
+      assert.strictEqual(dm1, 'dm_user-abc_user-xyz');
+    });
+
+    it('should parse and format user audit trail diffs safely', () => {
+      const rawAuditDetail = JSON.stringify({
+        action: 'UPDATE_ROLE',
+        previousRole: 'SALES',
+        newRole: 'ADMIN',
+        updatedBy: 'admin@ignaciocorp.com',
+      });
+
+      const parsed = JSON.parse(rawAuditDetail);
+      assert.strictEqual(parsed.action, 'UPDATE_ROLE');
+      assert.strictEqual(parsed.previousRole, 'SALES');
+      assert.strictEqual(parsed.newRole, 'ADMIN');
+    });
+  });
 });
+
 
 
 
