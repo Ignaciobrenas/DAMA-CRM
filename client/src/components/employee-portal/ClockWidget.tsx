@@ -26,6 +26,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isClockOutModalOpen, setIsClockOutModalOpen] = useState<boolean>(false);
   const [selectedReason, setSelectedReason] = useState<string>('OFFICE');
   const [notes, setNotes] = useState<string>('');
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
@@ -112,6 +113,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
 
       if (res.success) {
         toast.success(t('timeTracking.clockOutSuccess'));
+        setIsClockOutModalOpen(false);
         setNotes('');
         await fetchStatus();
         if (onStatusChange) onStatusChange();
@@ -147,7 +149,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
               {formatTimer(elapsedSeconds)}
             </span>
             <button
-              onClick={handleClockOut}
+              onClick={() => setIsClockOutModalOpen(true)}
               disabled={actionLoading}
               title={t('timeTracking.clockOut')}
               className="p-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:bg-rose-500/10 rounded"
@@ -170,7 +172,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
         {isModalOpen && (
           <div
             onClick={() => setIsModalOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -251,6 +253,79 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
             </div>
           </div>
         )}
+
+        {/* Modal de Fichaje Salida */}
+        {isClockOutModalOpen && (
+          <div
+            onClick={() => setIsClockOutModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-[95vw] sm:max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 bg-rose-50 dark:bg-rose-950/50 rounded-xl text-rose-600 dark:text-rose-400">
+                    <Square className="w-5 h-5 fill-current" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                      {t('timeTracking.clockOut')}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
+                      Finalizar jornada laboral computable
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Tiempo Transcurrido</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-300">Sesión iniciada a las {status?.activeRecord?.clockIn ? new Date(status.activeRecord.clockIn).toLocaleTimeString() : '--:--'}</span>
+                  </div>
+                  <div className="font-mono text-xl font-black text-rose-600 dark:text-rose-400">
+                    {formatTimer(elapsedSeconds)}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                    {t('timeTracking.notesOptional')}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Notas o resumen opcional del cierre de jornada..."
+                    className="w-full text-xs rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsClockOutModalOpen(false)}
+                  className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClockOut}
+                  disabled={actionLoading}
+                  className="px-5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-md transition flex items-center space-x-1.5"
+                >
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>{actionLoading ? t('loading') : 'Confirmar Salida'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -306,7 +381,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
 
           {status?.isClockedIn ? (
             <button
-              onClick={handleClockOut}
+              onClick={() => setIsClockOutModalOpen(true)}
               disabled={actionLoading}
               className="px-5 py-2.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-md hover:shadow-lg transition flex items-center space-x-2"
             >
@@ -330,7 +405,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
       {isModalOpen && (
         <div
           onClick={() => setIsModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -406,6 +481,79 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>{actionLoading ? t('loading') : t('timeTracking.confirmClockIn')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Fichaje Salida */}
+      {isClockOutModalOpen && (
+        <div
+          onClick={() => setIsClockOutModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-[95vw] sm:max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 bg-rose-50 dark:bg-rose-950/50 rounded-xl text-rose-600 dark:text-rose-400">
+                  <Square className="w-5 h-5 fill-current" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                    {t('timeTracking.clockOut')}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    Finalizar jornada laboral computable
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Tiempo Transcurrido</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-300">Sesión iniciada a las {status?.activeRecord?.clockIn ? new Date(status.activeRecord.clockIn).toLocaleTimeString() : '--:--'}</span>
+                </div>
+                <div className="font-mono text-xl font-black text-rose-600 dark:text-rose-400">
+                  {formatTimer(elapsedSeconds)}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
+                  {t('timeTracking.notesOptional')}
+                </label>
+                <textarea
+                  rows={2}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Notas o resumen opcional del cierre de jornada..."
+                  className="w-full text-xs rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsClockOutModalOpen(false)}
+                className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleClockOut}
+                disabled={actionLoading}
+                className="px-5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-md transition flex items-center space-x-1.5"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                <span>{actionLoading ? t('loading') : 'Confirmar Salida'}</span>
               </button>
             </div>
           </div>
