@@ -1,0 +1,108 @@
+[
+  {
+    "id": "apt-001",
+    "tenantId": "master",
+    "clientName": "Elena Ramos García",
+    "clientPhone": "+34 612 345 678",
+    "clientEmail": "elena.ramos@example.com",
+    "staffId": "staff-1",
+    "staffName": "Ignacio (Estilista Senior)",
+    "serviceIds": [
+      "srv-color-mechas"
+    ],
+    "services": [
+      {
+        "id": "srv-color-mechas",
+        "name": "Coloración Completa + Balayage / Mechas",
+        "category": "HAIRDRESSING",
+        "durationMin": 120,
+        "price": 85,
+        "supplyCost": 14,
+        "description": "Decoloración técnica, matiz personalizado, tratamiento plex y peinado",
+        "isPopular": true
+      }
+    ],
+    "startTime": "2026-09-27T08:00:00.000Z",
+    "endTime": "2026-09-27T10:00:00.000Z",
+    "durationMin": 120,
+    "totalPrice": 85,
+    "totalSupplyCost": 14,
+    "estimatedProfit": 71,
+    "status": "CONFIRMED",
+    "paymentStatus": "PENDING",
+    "notes": "Cliente habitual, prefiere matiz ceniza frío.",
+    "createdAt": "2026-09-27T15:00:08.020Z",
+    "updatedAt": "2026-09-27T15:00:08.020Z"
+  },
+  {
+    "id": "apt-002",
+    "tenantId": "master",
+    "clientName": "Carlos Mendoza",
+    "clientPhone": "+34 689 987 654",
+    "clientEmail": "carlos.m@example.com",
+    "staffId": "staff-1",
+    "staffName": "Ignacio (Estilista Senior)",
+    "serviceIds": [
+      "srv-corte-hombre"
+    ],
+    "services": [
+      {
+        "id": "srv-corte-hombre",
+        "name": "Corte Degradado Hombre & Barba",
+        "category": "BARBER",
+        "durationMin": 35,
+        "price": 22,
+        "supplyCost": 2,
+        "description": "Corte fade a máquina y tijera, perfilado y ritual de toalla caliente para barba",
+        "isPopular": true
+      }
+    ],
+    "startTime": "2026-09-27T10:30:00.000Z",
+    "endTime": "2026-09-27T11:10:00.000Z",
+    "durationMin": 40,
+    "totalPrice": 22,
+    "totalSupplyCost": 2,
+    "estimatedProfit": 20,
+    "status": "COMPLETED",
+    "paymentStatus": "PAID",
+    "paymentMethod": "BIZUM",
+    "notes": "Degradado al 0.5 con perfilado a navaja.",
+    "createdAt": "2026-09-27T15:00:08.020Z",
+    "updatedAt": "2026-09-27T15:00:08.020Z"
+  },
+  {
+    "id": "apt-003",
+    "tenantId": "master",
+    "clientName": "Laura Valero",
+    "clientPhone": "+34 655 443 322",
+    "clientEmail": "laura.v@example.com",
+    "staffId": "staff-2",
+    "staffName": "Sofía Martínez (Estética & Manicura)",
+    "serviceIds": [
+      "srv-manicura-semi"
+    ],
+    "services": [
+      {
+        "id": "srv-manicura-semi",
+        "name": "Manicura Rusa & Esmaltado Semipermanente",
+        "category": "BEAUTY",
+        "durationMin": 50,
+        "price": 28,
+        "supplyCost": 4,
+        "description": "Limpieza de cutículas a torno, nivelación con base rubber y color de larga duración",
+        "isPopular": true
+      }
+    ],
+    "startTime": "2026-09-27T14:00:00.000Z",
+    "endTime": "2026-09-27T15:00:00.000Z",
+    "durationMin": 60,
+    "totalPrice": 28,
+    "totalSupplyCost": 4,
+    "estimatedProfit": 24,
+    "status": "SCHEDULED",
+    "paymentStatus": "PENDING",
+    "notes": "Diseño nail art en uñas anulares.",
+    "createdAt": "2026-09-27T15:00:08.020Z",
+    "updatedAt": "2026-09-27T15:00:08.020Z"
+  }
+]

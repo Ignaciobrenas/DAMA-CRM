@@ -14,23 +14,40 @@ export async function getTenants(req: Request, res: Response): Promise<void> {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (tenants.length === 0) {
-      const masterTenant = await prisma.tenant.upsert({
-        where: { slug: 'master' },
-        update: {},
-        create: {
-          slug: 'master',
-          name: 'DAMA Master Tenant',
-          isGodTenant: true,
-          status: 'ACTIVE',
-          plan: 'ENTERPRISE',
-          maxUsers: 100,
-          domain: 'master.damacrm.com',
-          branding: JSON.stringify({ companyName: 'DAMA CRM Enterprise' }),
-        },
-      });
-      tenants = [masterTenant];
-    }
+    // Ensure master and god root tenants exist
+    await prisma.tenant.upsert({
+      where: { slug: 'master' },
+      update: { isGodTenant: true },
+      create: {
+        slug: 'master',
+        name: 'DAMA Master Enterprise',
+        isGodTenant: true,
+        status: 'ACTIVE',
+        plan: 'ENTERPRISE',
+        maxUsers: 999,
+        domain: 'master.damacrm.com',
+        branding: JSON.stringify({ companyName: 'DAMA CRM Enterprise' }),
+      },
+    });
+
+    await prisma.tenant.upsert({
+      where: { slug: 'god' },
+      update: { isGodTenant: true },
+      create: {
+        slug: 'god',
+        name: 'DAMA God Root SuperAdmin',
+        isGodTenant: true,
+        status: 'ACTIVE',
+        plan: 'ENTERPRISE',
+        maxUsers: 999,
+        domain: 'god.damacrm.com',
+        branding: JSON.stringify({ companyName: 'DAMA God SuperAdmin' }),
+      },
+    });
+
+    tenants = await prisma.tenant.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
 
     // Compute live metrics per tenant
     const tenantsWithMetrics = await Promise.all(

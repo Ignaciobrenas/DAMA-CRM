@@ -25,6 +25,7 @@ export interface User {
   email: string;
   avatar?: string;
   role: string;
+  tenantId?: string | null;
   twoFactorEnabled: boolean;
   preferences?: UserPreferences;
   permissions: Array<{ resource: string; action: string }>;

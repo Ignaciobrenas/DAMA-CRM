@@ -145,18 +145,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation Items */}
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            // Check resource RBAC permissions
-            if (item.resource && !hasPermission(item.resource, 'read')) {
+            const isGod =
+              user?.tenantId === 'god' ||
+              user?.role === 'GOD' ||
+              user?.role === 'ADMIN' ||
+              user?.email === 'ignaciobrenas@gmail.com' ||
+              user?.email === 'admin@dama-crm.local';
+
+            // Check resource RBAC permissions (God / SuperAdmin bypasses)
+            if (!isGod && item.resource && !hasPermission(item.resource, 'read')) {
               return null;
             }
 
-            // Check if module is enabled by company admin
-            if (item.moduleKey && !isModuleEnabled(item.moduleKey)) {
+            // Check if module is enabled by company admin (God / SuperAdmin bypasses)
+            if (!isGod && item.moduleKey && !isModuleEnabled(item.moduleKey)) {
               return null;
             }
 
             // Check if user has customized pinned items
-            if (pinnedRoutes && Array.isArray(pinnedRoutes) && pinnedRoutes.length > 0) {
+            if (!isGod && pinnedRoutes && Array.isArray(pinnedRoutes) && pinnedRoutes.length > 0) {
               if (item.route !== '/settings' && item.route !== '/' && !pinnedRoutes.includes(item.route)) {
                 return null;
               }

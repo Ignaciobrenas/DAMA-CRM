@@ -678,13 +678,27 @@ describe('DAMA-CRM Core Unit Tests', () => {
 
     it('should detect God Mode SuperAdmin user privileges properly', () => {
       const superAdminUser = { email: 'ignaciobrenas@gmail.com', role: 'ADMIN' };
-      const standardSales = { email: 'pedro@empresa.com', role: 'SALES' };
+      const godSlugUser = { email: 'custom@god-corp.com', role: 'EMPLOYEE', tenantId: 'god' };
+      const standardSales = { email: 'pedro@empresa.com', role: 'SALES', tenantId: 'tenant-123' };
 
-      const isGod1 = superAdminUser.role === 'ADMIN' || superAdminUser.email === 'ignaciobrenas@gmail.com';
-      const isGod2 = standardSales.role === 'ADMIN' || standardSales.email === 'ignaciobrenas@gmail.com';
+      const { isGodSuperAdmin } = require('../src/utils/tenant');
 
-      assert.strictEqual(isGod1, true);
-      assert.strictEqual(isGod2, false);
+      assert.strictEqual(isGodSuperAdmin(superAdminUser), true);
+      assert.strictEqual(isGodSuperAdmin(godSlugUser), true);
+      assert.strictEqual(isGodSuperAdmin(standardSales), false);
+    });
+
+    it('should verify god slug has all functional modules enabled', () => {
+      const { DEFAULT_MODULES_CONFIG } = require('../src/modules/modules/modules.controller');
+      const expectedModules = [
+        'portalEmpleado', 'tickets', 'expenses', 'pipeline', 'agile', 'contacts',
+        'companies', 'invoicing', 'inventory', 'workflows', 'omnichannel',
+        'integrations', 'leadCapture', 'reports', 'clientPortal', 'appointments', 'logistics',
+      ];
+
+      for (const mod of expectedModules) {
+        assert.strictEqual(DEFAULT_MODULES_CONFIG[mod], true, `Module ${mod} must be true for god slug`);
+      }
     });
 
     it('should properly isolate tenant identifiers in data query payloads', () => {
