@@ -1634,6 +1634,103 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(visibleToUser.some(e => e.title === 'Private Note Other'), false);
     });
   });
+
+  describe('Real-time Form Validation Engine', () => {
+    // Import validator functions
+    const {
+      validateEmail,
+      validatePhone,
+      validateSpanishTaxId,
+      validateUrl,
+      validateNumber,
+      validateIban,
+      validateRequired,
+    } = require('../src/utils/validators');
+
+    it('should validate emails with RFC-compliant and TLD checks', () => {
+      assert.strictEqual(validateEmail('contacto@empresa.com').isValid, true);
+      assert.strictEqual(validateEmail('admin+crm@dama-crm.es').isValid, true);
+      assert.strictEqual(validateEmail('user@subdomain.empresa.co.uk').isValid, true);
+
+      assert.strictEqual(validateEmail('').isValid, false);
+      assert.strictEqual(validateEmail('malformado').isValid, false);
+      assert.strictEqual(validateEmail('sin_arroba.com').isValid, false);
+      assert.strictEqual(validateEmail('test@.com').isValid, false);
+      assert.strictEqual(validateEmail('test@dominio').isValid, false);
+      assert.strictEqual(validateEmail('test@@dominio.com').isValid, false);
+    });
+
+    it('should validate Spanish and international phone numbers', () => {
+      assert.strictEqual(validatePhone('+34 600 123 456').isValid, true);
+      assert.strictEqual(validatePhone('+1 555-0199').isValid, true);
+      assert.strictEqual(validatePhone('612345678').isValid, true);
+      assert.strictEqual(validatePhone('912345678').isValid, true);
+      assert.strictEqual(validatePhone('').isValid, true); // Optional empty
+
+      assert.strictEqual(validatePhone('1234').isValid, false);
+      assert.strictEqual(validatePhone('abc123456').isValid, false);
+    });
+
+    it('should validate Spanish Tax IDs (NIF, NIE, CIF) with checksum verification', () => {
+      // Valid NIF: 12345678Z
+      assert.strictEqual(validateSpanishTaxId('12345678Z').isValid, true);
+      assert.strictEqual(validateSpanishTaxId('12345678Z').type, 'NIF');
+      // Invalid NIF letter
+      assert.strictEqual(validateSpanishTaxId('12345678A').isValid, false);
+
+      // Valid NIE: X1234567L (X=0)
+      assert.strictEqual(validateSpanishTaxId('X1234567L').isValid, true);
+      assert.strictEqual(validateSpanishTaxId('X1234567L').type, 'NIE');
+      // Invalid NIE letter
+      assert.strictEqual(validateSpanishTaxId('X1234567A').isValid, false);
+
+      // Valid CIF: B12345674 or A58818501
+      const cifRes = validateSpanishTaxId('B58818501');
+      assert.strictEqual(cifRes.isValid, true);
+      assert.strictEqual(cifRes.type, 'CIF');
+
+      // Invalid format
+      assert.strictEqual(validateSpanishTaxId('INVALID_TAX_ID').isValid, false);
+    });
+
+    it('should validate Web URLs correctly', () => {
+      assert.strictEqual(validateUrl('https://damacrm.com').isValid, true);
+      assert.strictEqual(validateUrl('http://sub.domain.org/path').isValid, true);
+      assert.strictEqual(validateUrl('www.empresa.es').isValid, true);
+      assert.strictEqual(validateUrl('').isValid, true); // Optional empty
+
+      assert.strictEqual(validateUrl('htp:/bad-url').isValid, false);
+      assert.strictEqual(validateUrl('sinpunto').isValid, false);
+    });
+
+    it('should validate numeric constraints and bounds', () => {
+      assert.strictEqual(validateNumber(100, { min: 0, max: 1000 }).isValid, true);
+      assert.strictEqual(validateNumber('25.50', { min: 0 }).isValid, true);
+      assert.strictEqual(validateNumber(5, { integer: true }).isValid, true);
+
+      assert.strictEqual(validateNumber(-10, { min: 0 }).isValid, false);
+      assert.strictEqual(validateNumber(1500, { max: 1000 }).isValid, false);
+      assert.strictEqual(validateNumber(3.14, { integer: true }).isValid, false);
+      assert.strictEqual(validateNumber('not-a-number').isValid, false);
+    });
+
+    it('should validate IBAN bank accounts with MOD-97 algorithm', () => {
+      // Test Spanish test IBAN
+      assert.strictEqual(validateIban('ES9121000418450200051332').isValid, true);
+      assert.strictEqual(validateIban('ES91 2100 0418 4502 0005 1332').isValid, true);
+      assert.strictEqual(validateIban('').isValid, true); // Optional empty
+
+      assert.strictEqual(validateIban('ES0000000000000000000000').isValid, false);
+      assert.strictEqual(validateIban('12345').isValid, false);
+    });
+
+    it('should validate required text fields', () => {
+      assert.strictEqual(validateRequired('Acme Corp').isValid, true);
+      assert.strictEqual(validateRequired('   ').isValid, false);
+      assert.strictEqual(validateRequired('', 'Nombre').isValid, false);
+      assert.strictEqual(validateRequired('ab', 'Nombre', 3).isValid, false);
+    });
+  });
 });
 
 

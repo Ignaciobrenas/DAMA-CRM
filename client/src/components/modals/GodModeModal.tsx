@@ -15,6 +15,8 @@ import {
 import { api, apiRequest } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { useTranslation } from '../../context/LanguageContext';
+import { ValidatedInput } from '../common/ValidatedInput';
+import { validateEmail, validateRequired } from '../../utils/validators';
 
 interface Tenant {
   id: string;
@@ -282,43 +284,27 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Email del Administrador de la Empresa *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="admin@empresa-cliente.com"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Nombre de la Empresa (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={inviteCompanyName}
-                      onChange={(e) => setInviteCompanyName(e.target.value)}
-                      placeholder="p.ej. Innova Consulting SL"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Slug Sugerido (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={inviteSlug}
-                      onChange={(e) => setInviteSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                      placeholder="innova-consulting"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-hidden"
-                    />
-                  </div>
+                  <ValidatedInput
+                    label="Email del Administrador de la Empresa"
+                    type="email"
+                    required
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    validator={validateEmail}
+                    placeholder="admin@empresa-cliente.com"
+                  />
+                  <ValidatedInput
+                    label="Nombre de la Empresa (Opcional)"
+                    value={inviteCompanyName}
+                    onChange={(e) => setInviteCompanyName(e.target.value)}
+                    placeholder="p.ej. Innova Consulting SL"
+                  />
+                  <ValidatedInput
+                    label="Slug Sugerido (Opcional)"
+                    value={inviteSlug}
+                    onChange={(e) => setInviteSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                    placeholder="innova-consulting"
+                  />
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Plan Asignado
@@ -326,7 +312,7 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
                     <select
                       value={invitePlan}
                       onChange={(e) => setInvitePlan(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 outline-hidden"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 outline-hidden"
                     >
                       <option value="STARTER">Starter (5 usuarios)</option>
                       <option value="PRO">Pro (25 usuarios)</option>
@@ -387,37 +373,27 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
                 {t('godMode.provisionTitle')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    {t('godMode.companyName')} *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newName}
-                    onChange={(e) => {
-                      setNewName(e.target.value);
-                      if (!newSlug) {
-                        setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''));
-                      }
-                    }}
-                    placeholder="e.g. Acme Corporation"
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-hidden"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    {t('godMode.slug')} * (Subdominio)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newSlug}
-                    onChange={(e) => setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                    placeholder="acme"
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-hidden font-mono"
-                  />
-                </div>
+                <ValidatedInput
+                  label={t('godMode.companyName', 'Nombre de Empresa')}
+                  required
+                  value={newName}
+                  onChange={(e) => {
+                    setNewName(e.target.value);
+                    if (!newSlug) {
+                      setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                    }
+                  }}
+                  validator={(val) => validateRequired(val, t('godMode.companyName', 'Nombre de Empresa'))}
+                  placeholder="e.g. Acme Corporation"
+                />
+                <ValidatedInput
+                  label={`${t('godMode.slug', 'Slug')} (Subdominio)`}
+                  required
+                  value={newSlug}
+                  onChange={(e) => setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                  validator={(val) => validateRequired(val, 'El slug')}
+                  placeholder="acme"
+                />
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
                     {t('godMode.plan')}
