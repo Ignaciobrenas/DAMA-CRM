@@ -34,6 +34,8 @@ import modulesRoutes from './modules/modules/modules.routes';
 import contractsRoutes from './modules/contracts/contracts.routes';
 import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import calendarRoutes from './modules/calendar/calendar.routes';
+import appointmentsRoutes from './modules/appointments/appointments.routes';
+import logisticsRoutes from './modules/logistics/logistics.routes';
 
 const app = express();
 
@@ -175,6 +177,8 @@ app.use('/api/modules', modulesRoutes);
 app.use('/api/contracts', contractsRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/logistics', logisticsRoutes);
 
 // Explicit third-party integrations catalog endpoint
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';

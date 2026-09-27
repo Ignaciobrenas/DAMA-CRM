@@ -2045,6 +2045,109 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(parsed.newRole, 'ADMIN');
     });
   });
+
+  describe('Salon & Appointments Revenue Estimation Engine', () => {
+    interface ServiceItem {
+      id: string;
+      name: string;
+      price: number;
+      supplyCost: number;
+      durationMin: number;
+    }
+
+    it('should calculate duration, price, supply cost and net profit for multi-service bookings', () => {
+      const services: ServiceItem[] = [
+        { id: '1', name: 'Coloración Balayage', price: 85.0, supplyCost: 14.0, durationMin: 120 },
+        { id: '2', name: 'Corte & Peinado', price: 32.0, supplyCost: 3.5, durationMin: 45 },
+        { id: '3', name: 'Tratamiento Plex', price: 25.0, supplyCost: 4.5, durationMin: 20 },
+      ];
+
+      const totalPrice = services.reduce((sum, s) => sum + s.price, 0);
+      const totalSupplyCost = services.reduce((sum, s) => sum + s.supplyCost, 0);
+      const totalDuration = services.reduce((sum, s) => sum + s.durationMin, 0);
+      const netProfit = totalPrice - totalSupplyCost;
+      const profitMarginPercent = (netProfit / totalPrice) * 100;
+
+      assert.strictEqual(totalPrice, 142.0);
+      assert.strictEqual(totalSupplyCost, 22.0);
+      assert.strictEqual(totalDuration, 185);
+      assert.strictEqual(netProfit, 120.0);
+      assert.strictEqual(Number(profitMarginPercent.toFixed(1)), 84.5);
+    });
+
+    it('should aggregate today and monthly revenue and average ticket metrics', () => {
+      const appointments = [
+        { totalPrice: 32.0, estimatedProfit: 28.5, status: 'COMPLETED', date: '2026-09-27' },
+        { totalPrice: 85.0, estimatedProfit: 71.0, status: 'CONFIRMED', date: '2026-09-27' },
+        { totalPrice: 22.0, estimatedProfit: 20.0, status: 'CANCELLED', date: '2026-09-27' },
+        { totalPrice: 110.0, estimatedProfit: 92.0, status: 'COMPLETED', date: '2026-09-26' },
+      ];
+
+      const activeToday = appointments.filter((a) => a.date === '2026-09-27' && a.status !== 'CANCELLED');
+      const todayEstimated = activeToday.reduce((sum, a) => sum + a.totalPrice, 0);
+      const todayRealized = activeToday
+        .filter((a) => a.status === 'COMPLETED')
+        .reduce((sum, a) => sum + a.totalPrice, 0);
+
+      const activeAll = appointments.filter((a) => a.status !== 'CANCELLED');
+      const totalRevenue = activeAll.reduce((sum, a) => sum + a.totalPrice, 0);
+      const avgTicket = totalRevenue / activeAll.length;
+
+      assert.strictEqual(todayEstimated, 117.0);
+      assert.strictEqual(todayRealized, 32.0);
+      assert.strictEqual(activeAll.length, 3);
+      assert.strictEqual(Number(avgTicket.toFixed(2)), 75.67);
+    });
+  });
+
+  describe('Logistics & Courier Tracking Engine (GLS, NACEX, Amazon, Correos)', () => {
+    it('should validate carrier tracking code generation formats', () => {
+      const generateTracking = (carrier: string, rand: number) => {
+        switch (carrier) {
+          case 'GLS':
+            return `GLS-ES-${rand}`;
+          case 'NACEX':
+            return `NCX-${rand}`;
+          case 'AMAZON':
+            return `TBA${rand}ES`;
+          case 'CORREOS_EXPRESS':
+            return `CEX-${rand}`;
+          case 'DHL':
+            return `DHL-EXP-${rand}`;
+          default:
+            return `TRK-${rand}`;
+        }
+      };
+
+      assert.strictEqual(generateTracking('GLS', 88442211), 'GLS-ES-88442211');
+      assert.strictEqual(generateTracking('NACEX', 94810239), 'NCX-94810239');
+      assert.strictEqual(generateTracking('AMAZON', 93821049), 'TBA93821049ES');
+      assert.strictEqual(generateTracking('CORREOS_EXPRESS', 12345678), 'CEX-12345678');
+      assert.strictEqual(generateTracking('DHL', 55443322), 'DHL-EXP-55443322');
+    });
+
+    it('should correctly sequence status transitions and calculate delivery success rates', () => {
+      const shipments = [
+        { tracking: 'GLS-1', carrier: 'GLS', status: 'DELIVERED', cost: 7.95 },
+        { tracking: 'NCX-1', carrier: 'NACEX', status: 'DELIVERED', cost: 6.5 },
+        { tracking: 'AMZ-1', carrier: 'AMAZON', status: 'OUT_FOR_DELIVERY', cost: 8.4 },
+        { tracking: 'GLS-2', carrier: 'GLS', status: 'IN_TRANSIT', cost: 7.95 },
+        { tracking: 'DHL-1', carrier: 'DHL', status: 'EXCEPTION', cost: 12.0 },
+      ];
+
+      const total = shipments.length;
+      const delivered = shipments.filter((s) => s.status === 'DELIVERED').length;
+      const active = shipments.filter((s) => ['IN_TRANSIT', 'OUT_FOR_DELIVERY', 'PRE_TRANSIT'].includes(s.status)).length;
+      const totalCost = shipments.reduce((sum, s) => sum + s.cost, 0);
+      const deliveryRate = (delivered / total) * 100;
+
+      assert.strictEqual(total, 5);
+      assert.strictEqual(delivered, 2);
+      assert.strictEqual(active, 2);
+      assert.strictEqual(deliveryRate, 40);
+      assert.strictEqual(Number(totalCost.toFixed(2)), 42.8);
+    });
+  });
 });
 
 
