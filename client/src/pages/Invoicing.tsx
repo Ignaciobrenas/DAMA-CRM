@@ -1,14 +1,45 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Download, CheckCircle, Clock, AlertCircle, Trash2, Bell, FileSpreadsheet, Upload } from 'lucide-react';
+import {
+  Plus,
+  Download,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Trash2,
+  Bell,
+  FileSpreadsheet,
+  Upload,
+  BarChart3,
+  Copy,
+  RotateCcw,
+  Mail,
+  FileText,
+  Zap,
+  PenTool,
+  Link as LinkIcon,
+  Pause,
+  Play,
+  Percent,
+  Receipt,
+  FileCheck2,
+} from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { Modal } from '../components/common/Modal';
+import { ConfirmModal } from '../components/common/ConfirmModal';
 import { PermissionGate } from '../components/common/PermissionGate';
 import { AgingReportModal } from '../components/invoicing/AgingReportModal';
 import { QuoteSignModal } from '../components/invoicing/QuoteSignModal';
 import { exportToCSV } from '../utils/exportUtils';
 import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
+
+interface ItemRow {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+}
 
 export const Invoicing: React.FC = () => {
   const { t } = useLanguage();
@@ -29,12 +60,43 @@ export const Invoicing: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [signingQuote, setSigningQuote] = useState<any>(null);
 
-  // Modal State
+  // Custom Confirm Modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'info';
+    confirmLabel?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'danger',
+    onConfirm: () => {},
+  });
+
+  // Rectification Modal state
+  const [rectifyModal, setRectifyModal] = useState<{
+    isOpen: boolean;
+    invoice: any | null;
+    reason: string;
+  }>({
+    isOpen: false,
+    invoice: null,
+    reason: 'Devolución de mercancía o corrección de datos de facturación',
+  });
+
+  // Modal State for creation
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'invoice' | 'quote' | 'recurring' | 'contract'>('invoice');
   const [companyId, setCompanyId] = useState('');
   const [contactId, setContactId] = useState('');
   const [taxRate, setTaxRate] = useState('21');
+  const [discountPercent, setDiscountPercent] = useState('0');
+  const [irpfRate, setIrpfRate] = useState('0');
+  const [paymentTerms, setPaymentTerms] = useState('DAYS_30');
+  const [isProforma, setIsProforma] = useState(false);
   const [frequency, setFrequency] = useState('MONTHLY');
   const [contractType, setContractType] = useState('SERVICE');
   const [contractValue, setContractValue] = useState('');
@@ -42,8 +104,8 @@ export const Invoicing: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
-  const [items, setItems] = useState<Array<{ description: string; quantity: number; unitPrice: number }>>([
-    { description: '', quantity: 1, unitPrice: 0 },
+  const [items, setItems] = useState<ItemRow[]>([
+    { description: '', quantity: 1, unitPrice: 0, discount: 0 },
   ]);
 
   const loadData = async () => {
@@ -112,6 +174,52 @@ export const Invoicing: React.FC = () => {
     toast.success(t('invoicing.reminderSent'), `${invoice.invoiceNumber} - ${clientName}`);
   };
 
+  const handleSendEmail = async (id: string, invoiceNumber: string) => {
+    try {
+      const res = await apiRequest(`/invoices/${id}/send-email`, { method: 'POST' });
+      if (res.success) {
+        toast.success(t('success'), res.message || `Factura ${invoiceNumber} enviada por email al cliente`);
+      } else {
+        toast.error(t('error'), res.message || 'Error al enviar email');
+      }
+    } catch {
+      toast.error(t('error'), 'Fallo de conexión');
+    }
+  };
+
+  const handleDuplicateInvoice = async (id: string) => {
+    try {
+      const res = await apiRequest(`/invoices/${id}/duplicate`, { method: 'POST' });
+      if (res.success) {
+        toast.success(t('success'), `Factura duplicada: ${res.data?.invoiceNumber || ''}`);
+        loadData();
+      } else {
+        toast.error(t('error'), res.message || 'Error al duplicar factura');
+      }
+    } catch {
+      toast.error(t('error'), 'Fallo de conexión al duplicar');
+    }
+  };
+
+  const handleConfirmRectify = async () => {
+    if (!rectifyModal.invoice) return;
+    try {
+      const res = await apiRequest(`/invoices/${rectifyModal.invoice.id}/rectify`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: rectifyModal.reason }),
+      });
+      if (res.success) {
+        toast.success(t('success'), `Factura Rectificativa generada: ${res.data?.invoiceNumber || ''}`);
+        setRectifyModal({ isOpen: false, invoice: null, reason: '' });
+        loadData();
+      } else {
+        toast.error(t('error'), res.message || 'Error al generar abono/rectificativa');
+      }
+    } catch {
+      toast.error(t('error'), 'Fallo al procesar rectificativa');
+    }
+  };
+
   const handleConvertQuote = async (quoteId: string) => {
     setIsConverting(true);
     try {
@@ -130,22 +238,29 @@ export const Invoicing: React.FC = () => {
     }
   };
 
-  const handleDeleteDocument = async (id: string, type: 'invoice' | 'quote', number: string) => {
-    const confirmMsg = type === 'invoice' ? t('confirmDeleteInvoice') : t('confirmDeleteQuote');
-    if (!window.confirm(`${confirmMsg} (${number})`)) return;
-
-    const endpoint = type === 'invoice' ? `/invoices/${id}` : `/invoices/quotes/${id}`;
-    const res = await apiRequest(endpoint, { method: 'DELETE' });
-    if (res.success) {
-      toast.success(t('success'), res.message || 'Documento eliminado');
-      loadData();
-    } else {
-      toast.error(t('error'), res.message || 'Error al eliminar');
-    }
+  const handleDeleteDocument = (id: string, type: 'invoice' | 'quote', number: string) => {
+    const isInv = type === 'invoice';
+    setConfirmModal({
+      isOpen: true,
+      title: isInv ? t('deleteInvoice') : t('deleteQuote'),
+      message: `¿Estás seguro de que deseas eliminar permanentemente ${isInv ? 'la factura' : 'el presupuesto'} "${number}"? Esta acción no se puede deshacer.`,
+      variant: 'danger',
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        const endpoint = isInv ? `/invoices/${id}` : `/invoices/quotes/${id}`;
+        const res = await apiRequest(endpoint, { method: 'DELETE' });
+        if (res.success) {
+          toast.success(t('success'), res.message || 'Documento eliminado');
+          loadData();
+        } else {
+          toast.error(t('error'), res.message || 'Error al eliminar');
+        }
+      },
+    });
   };
 
   const addItemRow = () => {
-    setItems([...items, { description: '', quantity: 1, unitPrice: 0 }]);
+    setItems([...items, { description: '', quantity: 1, unitPrice: 0, discount: 0 }]);
   };
 
   const removeItemRow = (index: number) => {
@@ -160,24 +275,42 @@ export const Invoicing: React.FC = () => {
     setItems(updated);
   };
 
-  // Live modal math
+  // Live modal math calculations
   const calculatedSubtotal = useMemo(() => {
-    return items.reduce((acc, it) => acc + (Number(it.quantity) || 0) * (parseFloat(it.unitPrice as any) || 0), 0);
+    return items.reduce((acc, it) => {
+      const gross = (Number(it.quantity) || 0) * (parseFloat(it.unitPrice as any) || 0);
+      const lineDisc = (Number(it.discount) || 0) / 100;
+      return acc + (gross - gross * lineDisc);
+    }, 0);
   }, [items]);
+
+  const calculatedGlobalDiscount = useMemo(() => {
+    const rate = parseFloat(discountPercent) || 0;
+    return (calculatedSubtotal * rate) / 100;
+  }, [calculatedSubtotal, discountPercent]);
+
+  const calculatedBase = useMemo(() => {
+    return Math.max(0, calculatedSubtotal - calculatedGlobalDiscount);
+  }, [calculatedSubtotal, calculatedGlobalDiscount]);
 
   const calculatedTaxAmount = useMemo(() => {
     const rate = parseFloat(taxRate) || 0;
-    return calculatedSubtotal * (rate / 100);
-  }, [calculatedSubtotal, taxRate]);
+    return calculatedBase * (rate / 100);
+  }, [calculatedBase, taxRate]);
+
+  const calculatedIrpfAmount = useMemo(() => {
+    const rate = parseFloat(irpfRate) || 0;
+    return calculatedBase * (rate / 100);
+  }, [calculatedBase, irpfRate]);
 
   const calculatedTotal = useMemo(() => {
-    return calculatedSubtotal + calculatedTaxAmount;
-  }, [calculatedSubtotal, calculatedTaxAmount]);
+    return calculatedBase + calculatedTaxAmount - calculatedIrpfAmount;
+  }, [calculatedBase, calculatedTaxAmount, calculatedIrpfAmount]);
 
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     let endpoint = '/invoices';
-    const numPrefix = modalType === 'invoice' ? 'FAC' : 'PRE';
+    const numPrefix = modalType === 'invoice' ? (isProforma ? 'PRO' : 'FAC') : 'PRE';
     const number = `${numPrefix}-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
 
     if (modalType === 'quote') {
@@ -223,12 +356,17 @@ export const Invoicing: React.FC = () => {
         contactId: contactId || null,
         companyId: companyId || null,
         taxRate: parseFloat(taxRate),
+        discountPercent: parseFloat(discountPercent) || 0,
+        irpfRate: parseFloat(irpfRate) || 0,
+        paymentTerms,
+        proforma: isProforma,
         currency: 'EUR',
         notes,
         items: items.map((it) => ({
           description: it.description,
           quantity: Number(it.quantity),
           unitPrice: parseFloat(it.unitPrice as any),
+          discount: parseFloat((it.discount as any) || 0),
         })),
       };
 
@@ -248,7 +386,7 @@ export const Invoicing: React.FC = () => {
       toast.success(
         t('success'),
         modalType === 'invoice'
-          ? 'Factura generada'
+          ? (isProforma ? 'Factura Proforma generada' : 'Factura generada')
           : modalType === 'quote'
           ? 'Presupuesto creado'
           : modalType === 'recurring'
@@ -259,7 +397,10 @@ export const Invoicing: React.FC = () => {
       setNotes('');
       setTitle('');
       setContractValue('');
-      setItems([{ description: '', quantity: 1, unitPrice: 0 }]);
+      setDiscountPercent('0');
+      setIrpfRate('0');
+      setIsProforma(false);
+      setItems([{ description: '', quantity: 1, unitPrice: 0, discount: 0 }]);
       loadData();
     } else {
       toast.error(t('error'), res.message || 'Error al crear documento');
@@ -293,22 +434,38 @@ export const Invoicing: React.FC = () => {
     }
   };
 
-  const handleDeleteRecurring = async (id: string, name: string) => {
-    if (!window.confirm(`¿Deseas eliminar la suscripción "${name}"?`)) return;
-    const res = await apiRequest(`/invoices/recurring/${id}`, { method: 'DELETE' });
-    if (res.success) {
-      toast.success(t('success'), 'Suscripción eliminada');
-      loadData();
-    }
+  const handleDeleteRecurring = (id: string, name: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Eliminar Suscripción',
+      message: `¿Estás seguro de que deseas eliminar la suscripción recurrente "${name}"? No se generarán más facturas programadas.`,
+      variant: 'danger',
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        const res = await apiRequest(`/invoices/recurring/${id}`, { method: 'DELETE' });
+        if (res.success) {
+          toast.success(t('success'), 'Suscripción eliminada');
+          loadData();
+        }
+      },
+    });
   };
 
-  const handleDeleteContract = async (id: string, number: string) => {
-    if (!window.confirm(`¿Deseas eliminar el contrato ${number}?`)) return;
-    const res = await apiRequest(`/contracts/${id}`, { method: 'DELETE' });
-    if (res.success) {
-      toast.success(t('success'), 'Contrato eliminado');
-      loadData();
-    }
+  const handleDeleteContract = (id: string, number: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Eliminar Contrato',
+      message: `¿Estás seguro de que deseas eliminar el contrato "${number}"?`,
+      variant: 'danger',
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        const res = await apiRequest(`/contracts/${id}`, { method: 'DELETE' });
+        if (res.success) {
+          toast.success(t('success'), 'Contrato eliminado');
+          loadData();
+        }
+      },
+    });
   };
 
   const filteredInvoices = useMemo(() => {
@@ -320,24 +477,28 @@ export const Invoicing: React.FC = () => {
     const headers = [
       'Número Factura',
       'Cliente / Empresa',
+      'Tipo / Proforma',
       'Fecha Emisión',
       'Fecha Vencimiento',
       'Estado',
       'Base Imponible (€)',
-      'IVA (%)',
-      'Cuota IVA (€)',
+      'Descuento (€)',
+      'IVA (€)',
+      'IRPF Retención (€)',
       'Total (€)',
       'Moneda',
     ];
     const rows = filteredInvoices.map((inv) => [
       inv.invoiceNumber,
       inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim() || 'N/A',
+      inv.isRectifying ? 'Rectificativa' : inv.proforma ? 'Proforma' : 'Ordinaria',
       new Date(inv.issueDate).toLocaleDateString(),
       inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'N/A',
       inv.status,
-      inv.subtotal || (inv.total / (1 + (inv.taxRate || 21) / 100)),
-      `${inv.taxRate || 21}%`,
+      inv.subtotal || inv.total,
+      inv.discountAmount || 0,
       inv.taxAmount || 0,
+      inv.irpfAmount || 0,
       inv.total,
       inv.currency || 'EUR',
     ]);
@@ -423,7 +584,8 @@ export const Invoicing: React.FC = () => {
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             title="Informe de Antigüedad de Deuda y Control de Morosidad"
           >
-            <span>📊 {t('dunning.agingButton')}</span>
+            <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
+            <span>{t('dunning.agingButton')}</span>
           </button>
 
           <button
@@ -479,7 +641,7 @@ export const Invoicing: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Suscripción</span>
+              <span>Suscripción</span>
             </button>
           </PermissionGate>
           <PermissionGate resource="deals" action="create">
@@ -491,7 +653,7 @@ export const Invoicing: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Contrato</span>
+              <span>Contrato</span>
             </button>
           </PermissionGate>
         </div>
@@ -530,6 +692,7 @@ export const Invoicing: React.FC = () => {
                   <tr>
                     <th className="px-4 py-3">{t('invoiceNumber')}</th>
                     <th className="px-4 py-3">{t('client')}</th>
+                    <th className="px-4 py-3">Tipo / Términos</th>
                     <th className="px-4 py-3">{t('issueDate')}</th>
                     <th className="px-4 py-3">{t('dueDate')}</th>
                     <th className="px-4 py-3">{t('status')}</th>
@@ -540,7 +703,7 @@ export const Invoicing: React.FC = () => {
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                      <td colSpan={8} className="p-8 text-center text-xs text-gray-400">
                         <div className="flex items-center justify-center space-x-2">
                           <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                           <span>{t('loading')}</span>
@@ -551,12 +714,39 @@ export const Invoicing: React.FC = () => {
                     filteredInvoices.map((inv) => (
                       <tr key={inv.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
-                          {inv.invoiceNumber}
+                          <div className="flex items-center space-x-1.5">
+                            <span>{inv.invoiceNumber}</span>
+                            {inv.isRectifying && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                                Abono / Rectificativa
+                              </span>
+                            )}
+                            {inv.proforma && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                                Proforma
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-semibold text-gray-900 dark:text-white">
                             {inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim() || '—'}
                           </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 dark:text-slate-400">
+                          <span className="inline-block text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                            {inv.paymentTerms === 'IMMEDIATE'
+                              ? 'Al contado'
+                              : inv.paymentTerms === 'DAYS_15'
+                              ? '15 días'
+                              : inv.paymentTerms === 'DAYS_30'
+                              ? '30 días'
+                              : inv.paymentTerms === 'DAYS_60'
+                              ? '60 días'
+                              : inv.paymentTerms === 'END_OF_MONTH'
+                              ? 'Fin de mes'
+                              : inv.paymentTerms || '30 días'}
+                          </span>
                         </td>
                         <td className="px-4 py-3">{new Date(inv.issueDate).toLocaleDateString()}</td>
                         <td className="px-4 py-3">
@@ -581,7 +771,15 @@ export const Invoicing: React.FC = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
-                          {inv.total.toLocaleString('es-ES', { style: 'currency', currency: inv.currency || 'EUR' })}
+                          <div>
+                            {inv.total.toLocaleString('es-ES', { style: 'currency', currency: inv.currency || 'EUR' })}
+                          </div>
+                          {(inv.irpfAmount > 0 || inv.discountAmount > 0) && (
+                            <div className="text-[10px] font-normal text-slate-400">
+                              {inv.discountAmount > 0 && <span>Dto: -{inv.discountAmount}€ </span>}
+                              {inv.irpfAmount > 0 && <span>IRPF: -{inv.irpfAmount}€</span>}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex items-center space-x-1">
@@ -604,6 +802,29 @@ export const Invoicing: React.FC = () => {
                               </>
                             )}
                             <button
+                              onClick={() => handleSendEmail(inv.id, inv.invoiceNumber)}
+                              className="p-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded"
+                              title="Enviar por email al cliente"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDuplicateInvoice(inv.id)}
+                              className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded"
+                              title="Duplicar factura"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            {!inv.isRectifying && (
+                              <button
+                                onClick={() => setRectifyModal({ isOpen: true, invoice: inv, reason: 'Devolución de mercancía o rectificación' })}
+                                className="p-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded"
+                                title="Crear Factura Rectificativa / Abono"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
                               onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)}
                               className="inline-flex items-center space-x-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded text-xs font-semibold"
                               title="Descargar PDF"
@@ -613,7 +834,7 @@ export const Invoicing: React.FC = () => {
                             </button>
                             <button
                               onClick={() => handleDeleteDocument(inv.id, 'invoice', inv.invoiceNumber)}
-                              className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
+                              className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
                               title={t('deleteInvoice')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -624,7 +845,7 @@ export const Invoicing: React.FC = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                      <td colSpan={8} className="p-8 text-center text-xs text-gray-400">
                         Sin facturas en este estado.
                       </td>
                     </tr>
@@ -676,7 +897,8 @@ export const Invoicing: React.FC = () => {
                         <div className="inline-flex items-center space-x-1.5">
                           {q.status === 'ACCEPTED' || q.signatureData ? (
                             <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded text-[11px] font-bold">
-                              ✍️ {t('quotes.signed')}
+                              <FileCheck2 className="w-3.5 h-3.5" />
+                              <span>{t('quotes.signed')}</span>
                             </span>
                           ) : (
                             <button
@@ -684,7 +906,8 @@ export const Invoicing: React.FC = () => {
                               className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 rounded text-xs font-semibold"
                               title="Firmar presupuesto en pantalla"
                             >
-                              <span>✍️ {t('quotes.sign')}</span>
+                              <PenTool className="w-3 h-3" />
+                              <span>{t('quotes.sign')}</span>
                             </button>
                           )}
                           <button
@@ -696,7 +919,7 @@ export const Invoicing: React.FC = () => {
                             className="inline-flex items-center space-x-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-xs font-semibold"
                             title="Copiar enlace público de firma para el cliente"
                           >
-                            <span>🔗</span>
+                            <LinkIcon className="w-3 h-3" />
                           </button>
                           {q.status !== 'ACCEPTED' && (
                             <button
@@ -778,14 +1001,24 @@ export const Invoicing: React.FC = () => {
                       <td className="px-4 py-3">
                         <button
                           onClick={() => handleToggleRecurringStatus(rec.id, rec.status)}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition ${
+                          className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition ${
                             rec.status === 'ACTIVE'
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
                               : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
                           }`}
                           title="Clic para pausar o activar suscripción"
                         >
-                          {rec.status === 'ACTIVE' ? '● Activa' : '⏸ Pausada'}
+                          {rec.status === 'ACTIVE' ? (
+                            <>
+                              <Play className="w-2.5 h-2.5 fill-current" />
+                              <span>Activa</span>
+                            </>
+                          ) : (
+                            <>
+                              <Pause className="w-2.5 h-2.5 fill-current" />
+                              <span>Pausada</span>
+                            </>
+                          )}
                         </button>
                       </td>
                       <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
@@ -798,7 +1031,8 @@ export const Invoicing: React.FC = () => {
                             className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 rounded text-xs font-semibold shadow-xs"
                             title="Emitir factura ahora sin esperar al ciclo programado"
                           >
-                            <span>⚡ Emitir Ya</span>
+                            <Zap className="w-3 h-3" />
+                            <span>Emitir Ya</span>
                           </button>
                           <button
                             onClick={() => handleDeleteRecurring(rec.id, rec.title)}
@@ -915,6 +1149,28 @@ export const Invoicing: React.FC = () => {
         size="lg"
       >
         <form onSubmit={handleCreateDocument} className="space-y-4">
+          {/* Proforma toggle for Invoices */}
+          {modalType === 'invoice' && (
+            <div className="flex items-center justify-between p-2.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900/40">
+              <div className="flex items-center space-x-2">
+                <FileText className="w-4 h-4 text-blue-600" />
+                <div>
+                  <div className="text-xs font-bold text-gray-900 dark:text-white">Factura Proforma</div>
+                  <div className="text-[10px] text-gray-500 dark:text-slate-400">Genera un documento informativo previo sin validez contable fiscal</div>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isProforma}
+                  onChange={(e) => setIsProforma(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          )}
+
           {/* Custom title for contracts or recurring */}
           {(modalType === 'recurring' || modalType === 'contract') && (
             <div>
@@ -1002,15 +1258,63 @@ export const Invoicing: React.FC = () => {
                   onChange={(e) => setTaxRate(e.target.value)}
                   className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
                 >
-                  <option value="21">{t('invoicing.taxGeneral')}</option>
-                  <option value="10">{t('invoicing.taxReduced')}</option>
-                  <option value="4">{t('invoicing.taxSuperReduced')}</option>
-                  <option value="0">{t('invoicing.taxExempt')}</option>
-                  <option value="7">{t('invoicing.taxCanary')}</option>
+                  <option value="21">{t('invoicing.taxGeneral')} (21%)</option>
+                  <option value="10">{t('invoicing.taxReduced')} (10%)</option>
+                  <option value="4">{t('invoicing.taxSuperReduced')} (4%)</option>
+                  <option value="0">{t('invoicing.taxExempt')} (0%)</option>
+                  <option value="7">{t('invoicing.taxCanary')} (7%)</option>
                 </select>
               </div>
             )}
           </div>
+
+          {/* Payment Terms, Global Discount & IRPF for Invoice/Quote */}
+          {(modalType === 'invoice' || modalType === 'quote') && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/60">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Términos de Pago</label>
+                <select
+                  value={paymentTerms}
+                  onChange={(e) => setPaymentTerms(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="IMMEDIATE">Pago al Contado</option>
+                  <option value="DAYS_15">15 Días Fecha Factura</option>
+                  <option value="DAYS_30">30 Días Fecha Factura</option>
+                  <option value="DAYS_60">60 Días Fecha Factura</option>
+                  <option value="END_OF_MONTH">Fin de Mes</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Descuento Global (%)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(e.target.value)}
+                    className="w-full pl-3 pr-7 py-1.5 text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                  />
+                  <Percent className="w-3 h-3 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Retención IRPF (%)</label>
+                <select
+                  value={irpfRate}
+                  onChange={(e) => setIrpfRate(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="0">Sin Retención (0%)</option>
+                  <option value="7">Nuevos Autónomos (7%)</option>
+                  <option value="15">Profesionales Estándar (15%)</option>
+                  <option value="19">Alquileres / Otros (19%)</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {modalType === 'contract' && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1076,7 +1380,7 @@ export const Invoicing: React.FC = () => {
                     min="1"
                     value={it.quantity}
                     onChange={(e) => updateItem(idx, 'quantity', parseFloat(e.target.value) || 1)}
-                    className="w-20 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
+                    className="w-16 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
                   />
                   <input
                     type="number"
@@ -1085,7 +1389,18 @@ export const Invoicing: React.FC = () => {
                     step="0.01"
                     value={it.unitPrice}
                     onChange={(e) => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
-                    className="w-24 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-right"
+                    className="w-20 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-right"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Dto %"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={it.discount || 0}
+                    onChange={(e) => updateItem(idx, 'discount', parseFloat(e.target.value) || 0)}
+                    className="w-16 px-2 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white text-center"
+                    title="Descuento individual por línea (%)"
                   />
                   {items.length > 1 && (
                     <button
@@ -1110,12 +1425,28 @@ export const Invoicing: React.FC = () => {
                   {calculatedSubtotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                 </span>
               </div>
+              {calculatedGlobalDiscount > 0 && (
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                  <span>Descuento global ({discountPercent}%):</span>
+                  <span className="font-semibold">
+                    -{calculatedGlobalDiscount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-600 dark:text-slate-400">
                 <span>{t('invoicing.taxAmount')} ({taxRate}%):</span>
                 <span className="font-semibold text-gray-900 dark:text-white">
-                  {calculatedTaxAmount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  +{calculatedTaxAmount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                 </span>
               </div>
+              {calculatedIrpfAmount > 0 && (
+                <div className="flex justify-between text-rose-600 dark:text-rose-400">
+                  <span>Retención IRPF (-{irpfRate}%):</span>
+                  <span className="font-semibold">
+                    -{calculatedIrpfAmount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white pt-1.5 border-t border-gray-200 dark:border-slate-700">
                 <span>{t('invoicing.totalAmount')}:</span>
                 <span className="text-blue-600 dark:text-blue-400">
@@ -1142,36 +1473,75 @@ export const Invoicing: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
+              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
             >
               {t('cancel')}
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
+              className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs"
             >
               {modalType === 'invoice'
-                ? t('newInvoice')
+                ? (isProforma ? 'Generar Proforma' : t('invoicing.createInvoiceAction'))
                 : modalType === 'quote'
-                ? t('newQuote')
+                ? t('invoicing.createQuoteAction')
                 : modalType === 'recurring'
                 ? 'Guardar Suscripción'
-                : 'Guardar Contrato'}
+                : 'Crear Contrato'}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Aging Debt Report Modal */}
+      {/* Rectify Invoice Modal */}
+      <Modal
+        isOpen={rectifyModal.isOpen}
+        onClose={() => setRectifyModal({ isOpen: false, invoice: null, reason: '' })}
+        title="Emitir Factura Rectificativa / Abono"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-200">
+            Se generará una factura rectificativa vinculada a la factura <strong>{rectifyModal.invoice?.invoiceNumber}</strong> con importes negativos correspondientes al abono fiscal.
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              Motivo legal de la rectificación *
+            </label>
+            <input
+              type="text"
+              required
+              value={rectifyModal.reason}
+              onChange={(e) => setRectifyModal({ ...rectifyModal, reason: e.target.value })}
+              className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
+            />
+          </div>
+          <div className="flex justify-end space-x-2 pt-2 border-t border-gray-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setRectifyModal({ isOpen: false, invoice: null, reason: '' })}
+              className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 rounded-lg"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmRectify}
+              className="px-4 py-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-xs"
+            >
+              Emitir Factura Rectificativa
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* SME Modals */}
       <AgingReportModal
         isOpen={isAgingModalOpen}
         onClose={() => setIsAgingModalOpen(false)}
-        onPaymentRecorded={() => {
-          loadData();
-        }}
+        onPaymentRecorded={loadData}
       />
 
-      {/* Quote Digital Signing Modal */}
       {signingQuote && (
         <QuoteSignModal
           isOpen={Boolean(signingQuote)}
@@ -1181,21 +1551,32 @@ export const Invoicing: React.FC = () => {
           total={signingQuote.total}
           publicToken={signingQuote.publicToken}
           onSignedSuccess={() => {
+            setSigningQuote(null);
             loadData();
           }}
         />
       )}
 
-      {/* Batch Invoices Importer Modal */}
       <ExcelCsvImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-        onImportSuccess={() => {
+        targetType="invoices"
+        onSuccess={() => {
+          setIsImportModalOpen(false);
           loadData();
         }}
-        targetType="invoices"
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        confirmLabel={confirmModal.confirmLabel}
+        onConfirm={confirmModal.onConfirm}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
   );
 };
-

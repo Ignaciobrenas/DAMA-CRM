@@ -1,4 +1,5 @@
 import React from 'react';
+import { TrendingUp, TrendingDown, Sparkles, AlertTriangle, Building2 } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 
 export interface PnLData {
@@ -33,7 +34,7 @@ export const ExpenseKpis: React.FC<ExpenseKpisProps> = ({ pnl }) => {
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span>{t('expenses.totalInvoicedRevenue')}</span>
-          <span className="text-emerald-500 text-base">📈</span>
+          <TrendingUp className="w-4 h-4 text-emerald-500" />
         </div>
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-2xl font-black text-slate-900 dark:text-white">
@@ -49,7 +50,7 @@ export const ExpenseKpis: React.FC<ExpenseKpisProps> = ({ pnl }) => {
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span>{t('expenses.totalExpenses')}</span>
-          <span className="text-rose-500 text-base">📉</span>
+          <TrendingDown className="w-4 h-4 text-rose-500" />
         </div>
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
@@ -65,7 +66,11 @@ export const ExpenseKpis: React.FC<ExpenseKpisProps> = ({ pnl }) => {
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span>{t('expenses.operatingMargin')} (P&L)</span>
-          <span className="text-base">{isProfitPositive ? '✨' : '⚠️'}</span>
+          {isProfitPositive ? (
+            <Sparkles className="w-4 h-4 text-emerald-500" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-rose-500" />
+          )}
         </div>
         <div className="mt-2 flex items-baseline gap-2">
           <span className={`text-2xl font-black ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
@@ -84,7 +89,7 @@ export const ExpenseKpis: React.FC<ExpenseKpisProps> = ({ pnl }) => {
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span>{t('expenses.vatBalance')} (Mod 303)</span>
-          <span className="text-blue-500 text-base">🏛️</span>
+          <Building2 className="w-4 h-4 text-blue-500" />
         </div>
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-2xl font-black text-blue-600 dark:text-blue-400">

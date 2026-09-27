@@ -53,6 +53,9 @@ model User {
   employee         Employee?
   auditLogs        AuditLog[]
   twoFactorTokens  TwoFactorToken[]
+  taskComments     TaskComment[]
+  taskWorkLogs     TaskWorkLog[]
+  projectMembers   ProjectMember[]
 
   @@index([tenantId, isActive])
   @@index([email])
@@ -214,23 +217,37 @@ model Deal {
 // -----------------------------------------------------------------------------
 
 model Project {
-  id          String    @id @default(uuid())
+  id          String          @id @default(uuid())
   name        String
   description String?
-  status      String    @default("ACTIVE") // PLANNING, ACTIVE, COMPLETED, ON_HOLD
-  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      String          @default("ACTIVE") // PLANNING, ACTIVE, COMPLETED, ON_HOLD
+  priority    String          @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
   dealId      String?
-  deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  deal        Deal?           @relation(fields: [dealId], references: [id], onDelete: SetNull)
   startDate   DateTime?
   endDate     DateTime?
   budget      Float?
-  tenantId    String?   @default("master")
+  tenantId    String?         @default("master")
   sprints     Sprint[]
   tasks       Task[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  members     ProjectMember[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("MEMBER") // LEAD, MEMBER, VIEWER
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
 }
 
 model Sprint {
@@ -250,25 +267,58 @@ model Sprint {
 }
 
 model Task {
-  id             String    @id @default(uuid())
+  id             String        @id @default(uuid())
   projectId      String
-  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sprintId       String?
-  sprint         Sprint?   @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  sprint         Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   title          String
   description    String?
-  status         String    @default("TODO") // TODO, IN_PROGRESS, REVIEW, DONE
-  priority       String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  storyPoints    Int?      @default(1)
-  estimatedHours Float?    @default(0)
-  loggedHours    Float?    @default(0)
+  status         String        @default("TODO") // TODO, IN_PROGRESS, REVIEW, DONE
+  priority       String        @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  storyPoints    Int?          @default(1)
+  estimatedHours Float?        @default(0)
+  loggedHours    Float?        @default(0)
   assigneeId     String?
-  assignee       User?     @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assignee       User?         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   dueDate        DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  comments       TaskComment[]
+  workLogs       TaskWorkLog[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName  String?
+  content   String   // Markdown support
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
+  @@map("task_comments")
+}
+
+model TaskWorkLog {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName    String?
+  hours       Float    @default(0.0)
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([taskId, date])
+  @@map("task_work_logs")
 }
 
 // -----------------------------------------------------------------------------
@@ -276,58 +326,72 @@ model Task {
 // -----------------------------------------------------------------------------
 
 model Quote {
-  id            String        @id @default(uuid())
-  quoteNumber   String        @unique
-  contactId     String?
-  contact       Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  companyId     String?
-  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  issueDate     DateTime      @default(now())
-  expiryDate    DateTime?
-  status        String        @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED
-  subtotal      Float         @default(0.0)
-  taxRate       Float         @default(21.0)
-  taxAmount     Float         @default(0.0)
-  total         Float         @default(0.0)
-  currency      String        @default("EUR")
-  notes         String?
-  signatureData String?       // Base64 PNG signature from digital acceptance canvas
-  signedAt      DateTime?
-  signedBy      String?       // Signer's full name or email
-  publicToken   String?       @unique // Unique secure token for customer self-service portal / quote view
-  tenantId      String?       @default("master")
-  items         InvoiceItem[]
-  invoices      Invoice[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  quoteNumber     String        @unique
+  contactId       String?
+  contact         Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId       String?
+  company         Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  issueDate       DateTime      @default(now())
+  expiryDate      DateTime?
+  status          String        @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED
+  subtotal        Float         @default(0.0)
+  discountPercent Float         @default(0.0)
+  discountAmount  Float         @default(0.0)
+  taxRate         Float         @default(21.0)
+  taxAmount       Float         @default(0.0)
+  irpfRate        Float         @default(0.0)
+  irpfAmount      Float         @default(0.0)
+  total           Float         @default(0.0)
+  currency        String        @default("EUR")
+  paymentTerms    String        @default("IMMEDIATE") // IMMEDIATE, DAYS_15, DAYS_30, DAYS_60, END_OF_MONTH
+  notes           String?
+  signatureData   String?       // Base64 PNG signature from digital acceptance canvas
+  signedAt        DateTime?
+  signedBy        String?       // Signer's full name or email
+  publicToken     String?       @unique // Unique secure token for customer self-service portal / quote view
+  tenantId        String?       @default("master")
+  items           InvoiceItem[]
+  invoices        Invoice[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@map("quotes")
 }
 
 model Invoice {
-  id            String        @id @default(uuid())
-  invoiceNumber String        @unique
-  quoteId       String?
-  quote         Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
-  contactId     String?
-  contact       Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  companyId     String?
-  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  issueDate     DateTime      @default(now())
-  dueDate       DateTime?
-  status        String        @default("DRAFT") // DRAFT, SENT, PAID, PARTIAL, OVERDUE, CANCELLED
-  subtotal      Float         @default(0.0)
-  taxRate       Float         @default(21.0)
-  taxAmount     Float         @default(0.0)
-  total         Float         @default(0.0)
-  paidAmount    Float         @default(0.0) // For partial payment / dunning tracking
-  currency      String        @default("EUR")
-  notes         String?
-  paidAt        DateTime?
-  tenantId      String?       @default("master")
-  items         InvoiceItem[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                 String        @id @default(uuid())
+  invoiceNumber      String        @unique
+  quoteId            String?
+  quote              Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  contactId          String?
+  contact            Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId          String?
+  company            Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  issueDate          DateTime      @default(now())
+  dueDate            DateTime?
+  status             String        @default("DRAFT") // DRAFT, SENT, PAID, PARTIAL, OVERDUE, CANCELLED
+  subtotal           Float         @default(0.0)
+  discountPercent    Float         @default(0.0)
+  discountAmount     Float         @default(0.0)
+  taxRate            Float         @default(21.0)
+  taxAmount          Float         @default(0.0)
+  irpfRate           Float         @default(0.0)
+  irpfAmount         Float         @default(0.0)
+  total              Float         @default(0.0)
+  paidAmount         Float         @default(0.0) // For partial payment / dunning tracking
+  currency           String        @default("EUR")
+  paymentTerms       String        @default("IMMEDIATE") // IMMEDIATE, DAYS_15, DAYS_30, DAYS_60, END_OF_MONTH
+  isRectifying       Boolean       @default(false)
+  rectifiesInvoiceId String?
+  rectifyingReason   String?
+  proforma           Boolean       @default(false)
+  notes              String?
+  paidAt             DateTime?
+  tenantId           String?       @default("master")
+  items              InvoiceItem[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   @@map("invoices")
 }
@@ -341,9 +405,27 @@ model InvoiceItem {
   description String
   quantity    Float    @default(1.0)
   unitPrice   Float    @default(0.0)
+  discount    Float    @default(0.0) // Line-item discount percent
   amount      Float    @default(0.0)
 
   @@map("invoice_items")
+}
+
+model TenantInvitation {
+  id          String    @id @default(uuid())
+  token       String    @unique
+  email       String
+  tenantSlug  String?
+  companyName String?
+  role        String    @default("ADMIN")
+  status      String    @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  expiresAt   DateTime
+  metadata    String?   @default("{}") // JSON config
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("tenant_invitations")
 }
 
 model RecurringInvoice {

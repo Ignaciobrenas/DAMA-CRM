@@ -99,7 +99,7 @@ export const ClientPortal: React.FC = () => {
     });
 
     if (res.success) {
-      setTicketSuccess(`✅ Ticket creado con éxito: ${res.ticketNumber}. Asignado al equipo de soporte.`);
+      setTicketSuccess(`Ticket creado con éxito: ${res.ticketNumber}. Asignado al equipo de soporte.`);
       setTicketSubject('');
       setTicketMessage('');
       loadTickets(portalData.company.email);

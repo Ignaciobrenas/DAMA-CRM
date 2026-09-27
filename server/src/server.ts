@@ -32,6 +32,7 @@ import notificationsRoutes from './modules/notifications/notifications.routes';
 import employeesRoutes from './modules/employees/employees.routes';
 import modulesRoutes from './modules/modules/modules.routes';
 import contractsRoutes from './modules/contracts/contracts.routes';
+import onboardingRoutes from './modules/onboarding/onboarding.routes';
 
 const app = express();
 
@@ -171,6 +172,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/employees', employeesRoutes);
 app.use('/api/modules', modulesRoutes);
 app.use('/api/contracts', contractsRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 // Explicit third-party integrations catalog endpoint
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';

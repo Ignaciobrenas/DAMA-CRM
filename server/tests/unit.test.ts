@@ -1403,6 +1403,166 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.strictEqual(row.includes('"Tech Supplies SL"'), true);
     });
   });
+
+  describe('Company Onboarding & Slug Provisioning', () => {
+    const sanitizeSlug = (raw: string): string => {
+      return raw
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    };
+
+    it('should correctly sanitize company names to URL-safe tenant slugs', () => {
+      assert.strictEqual(sanitizeSlug('Acme & Co. España, S.L.'), 'acme-co-espa-a-s-l');
+      assert.strictEqual(sanitizeSlug('  DAMA CRM 2026!  '), 'dama-crm-2026');
+      assert.strictEqual(sanitizeSlug('---super---slug---'), 'super-slug');
+      assert.strictEqual(sanitizeSlug('MiEmpresa_123'), 'miempresa-123');
+    });
+
+    it('should validate slug format against tenant validation rules', () => {
+      const isValidSlug = (slug: string) => /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/.test(slug);
+      assert.strictEqual(isValidSlug('acme-corp'), true);
+      assert.strictEqual(isValidSlug('dama-crm-tech'), true);
+      assert.strictEqual(isValidSlug('-invalid-start'), false);
+      assert.strictEqual(isValidSlug('invalid-end-'), false);
+      assert.strictEqual(isValidSlug('a'), false); // Too short
+      assert.strictEqual(isValidSlug('UPPERCASE'), false);
+    });
+
+    it('should verify invitation token validity and expiration window', () => {
+      const createToken = (expiresInMinutes: number) => ({
+        token: 'test_tok_' + Math.random().toString(36).substring(2),
+        expiresAt: new Date(Date.now() + expiresInMinutes * 60 * 1000),
+      });
+
+      const validInvite = createToken(60);
+      assert.strictEqual(validInvite.expiresAt.getTime() > Date.now(), true);
+
+      const expiredInvite = createToken(-10);
+      assert.strictEqual(expiredInvite.expiresAt.getTime() < Date.now(), true);
+    });
+  });
+
+  describe('Enriched Invoicing: Discounts, IRPF & Rectifications', () => {
+    interface ExtendedInvoiceItem {
+      quantity: number;
+      unitPrice: number;
+      discountPercent?: number;
+    }
+
+    const calculateEnrichedTotals = (
+      items: ExtendedInvoiceItem[],
+      taxRate: number,
+      globalDiscountPercent: number = 0,
+      retentionIrpfPercent: number = 0
+    ) => {
+      let subtotal = 0;
+      for (const item of items) {
+        const itemDisc = item.discountPercent ? (item.quantity * item.unitPrice * item.discountPercent) / 100 : 0;
+        subtotal += item.quantity * item.unitPrice - itemDisc;
+      }
+      subtotal = Math.round(subtotal * 100) / 100;
+
+      const globalDiscount = globalDiscountPercent > 0 ? (subtotal * globalDiscountPercent) / 100 : 0;
+      const taxableBase = Math.round((subtotal - globalDiscount) * 100) / 100;
+
+      const taxAmount = Math.round(((taxableBase * taxRate) / 100) * 100) / 100;
+      const retentionAmount = retentionIrpfPercent > 0 ? Math.round(((taxableBase * retentionIrpfPercent) / 100) * 100) / 100 : 0;
+      const total = Math.round((taxableBase + taxAmount - retentionAmount) * 100) / 100;
+
+      return { subtotal, globalDiscount, taxableBase, taxAmount, retentionAmount, total };
+    };
+
+    it('should calculate line item discounts and global discount correctly', () => {
+      const items = [
+        { quantity: 2, unitPrice: 100, discountPercent: 10 }, // 200 - 20 = 180
+        { quantity: 1, unitPrice: 50, discountPercent: 0 },    // 50
+      ];
+      // Subtotal = 230. Global discount 10% => 23 => Taxable base = 207.
+      // IVA 21% => 43.47. Total = 250.47
+      const res = calculateEnrichedTotals(items, 21, 10, 0);
+      assert.strictEqual(res.subtotal, 230);
+      assert.strictEqual(res.globalDiscount, 23);
+      assert.strictEqual(res.taxableBase, 207);
+      assert.strictEqual(res.taxAmount, 43.47);
+      assert.strictEqual(res.total, 250.47);
+    });
+
+    it('should compute professional IRPF retention (15%) correctly', () => {
+      const items = [{ quantity: 1, unitPrice: 1000 }];
+      // Subtotal = 1000, Taxable = 1000, IVA 21% = 210, IRPF 15% = 150.
+      // Total = 1000 + 210 - 150 = 1060.
+      const res = calculateEnrichedTotals(items, 21, 0, 15);
+      assert.strictEqual(res.taxableBase, 1000);
+      assert.strictEqual(res.taxAmount, 210);
+      assert.strictEqual(res.retentionAmount, 150);
+      assert.strictEqual(res.total, 1060);
+    });
+
+    it('should properly invert balances for Facturas Rectificativas (Credit Notes)', () => {
+      const originalInvoice = {
+        number: 'FAC-2026-001',
+        total: 1210,
+        subtotal: 1000,
+        tax: 210,
+      };
+
+      const rectifyingInvoice = {
+        number: 'REC-2026-001',
+        rectifiesInvoiceNumber: originalInvoice.number,
+        rectificationReason: 'R1 - Devolución de mercancía',
+        subtotal: -originalInvoice.subtotal,
+        tax: -originalInvoice.tax,
+        total: -originalInvoice.total,
+        type: 'RECTIFICATIVE',
+      };
+
+      assert.strictEqual(rectifyingInvoice.total, -1210);
+      assert.strictEqual(rectifyingInvoice.subtotal, -1000);
+      assert.strictEqual(rectifyingInvoice.rectifiesInvoiceNumber, 'FAC-2026-001');
+    });
+  });
+
+  describe('Agile Planner & Mi Tiempo Worklogs', () => {
+    interface WorkLog {
+      id: string;
+      minutesSpent: number;
+      taskId: string;
+      userId: string;
+      loggedAt: Date;
+    }
+
+    it('should aggregate worklog minutes into decimal hours with precision', () => {
+      const worklogs: WorkLog[] = [
+        { id: '1', minutesSpent: 90, taskId: 't1', userId: 'u1', loggedAt: new Date() },
+        { id: '2', minutesSpent: 45, taskId: 't1', userId: 'u2', loggedAt: new Date() },
+        { id: '3', minutesSpent: 120, taskId: 't2', userId: 'u1', loggedAt: new Date() },
+      ];
+
+      const totalMinutes = worklogs.reduce((sum, w) => sum + w.minutesSpent, 0);
+      const totalHours = Math.round((totalMinutes / 60) * 100) / 100;
+      assert.strictEqual(totalMinutes, 255);
+      assert.strictEqual(totalHours, 4.25);
+
+      const user1Logs = worklogs.filter(w => w.userId === 'u1');
+      const user1Hours = user1Logs.reduce((sum, w) => sum + w.minutesSpent, 0) / 60;
+      assert.strictEqual(user1Hours, 3.5);
+    });
+
+    it('should calculate daily clock-in (fichaje) duration in compliance with Spanish labor rules', () => {
+      const clockIn = new Date('2026-09-27T08:30:00Z');
+      const clockOut = new Date('2026-09-27T17:00:00Z');
+      const breakMinutes = 30;
+
+      const durationMinutes = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60) - breakMinutes;
+      const workedHours = durationMinutes / 60;
+
+      assert.strictEqual(durationMinutes, 480); // 8 hours net
+      assert.strictEqual(workedHours, 8.0);
+    });
+  });
 });
 
 

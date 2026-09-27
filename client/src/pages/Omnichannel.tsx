@@ -7,23 +7,23 @@ import { soundService } from '../services/sound';
 
 const CANNED_RESPONSES = [
   {
-    label: '👋 Saludo cordial',
+    label: 'Saludo cordial',
     template: 'Hola {{name}}, un placer saludarte. ¿En qué podemos ayudarte hoy?',
   },
   {
-    label: '📅 Confirmar cita',
+    label: 'Confirmar cita',
     template: 'Hola {{name}}, te confirmamos la sesión para revisar los detalles del proyecto. ¿Te viene bien el horario?',
   },
   {
-    label: '📑 Presupuesto enviado',
+    label: 'Presupuesto enviado',
     template: 'Estimado/a {{name}}, te hemos emitido y enviado la propuesta económica. Quedamos a tu disposición para cualquier duda.',
   },
   {
-    label: '⏳ Seguimiento',
+    label: 'Seguimiento',
     template: 'Hola {{name}}, ¿has tenido oportunidad de revisar la propuesta enviada? Nos encantaría conocer tu opinión.',
   },
   {
-    label: '✅ Agradecimiento',
+    label: 'Agradecimiento',
     template: '¡Muchas gracias por tu confianza, {{name}}! Nuestro equipo ya está trabajando en tu cuenta.',
   },
 ];

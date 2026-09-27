@@ -1,4 +1,5 @@
 import React from 'react';
+import { BarChart3 } from 'lucide-react';
 import { PnLData } from './ExpenseKpis';
 import { useTranslation } from '../../context/LanguageContext';
 
@@ -17,7 +18,8 @@ export const PnLBreakdown: React.FC<PnLBreakdownProps> = ({ pnl }) => {
     <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span>📊</span> {t('expenses.categoryBreakdownTitle')}
+          <BarChart3 className="w-4 h-4 text-blue-500" />
+          <span>{t('expenses.categoryBreakdownTitle')}</span>
         </h3>
         <span className="text-xs font-semibold text-slate-400">
           {t('expenses.total')}: {total.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
