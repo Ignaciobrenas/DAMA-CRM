@@ -201,7 +201,9 @@ app.use('/api/logistics', logisticsRoutes);
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';
 app.get('/api/integraciones-de-terceros', getIntegracionesDeTerceros);
 
-// Centralized error handler
+  app.post('/api/logs/client-error', async (req, res, next) => { try { const { message, stack, route, userAgent } = req.body; const safeHeaders = { ...req.headers }; delete safeHeaders['authorization']; const { prisma } = require('./prisma'); await prisma.systemErrorLog.create({ data: { statusCode: 500, message: '[Frontend Crash] ' + (message || 'Unknown client error'), stack: stack, method: 'CLIENT', path: route || '/', userId: req.user?.userId || null, ipAddress: req.ip || req.socket?.remoteAddress || null, headers: JSON.stringify(safeHeaders), body: JSON.stringify({ userAgent }) } }); res.status(200).json({ success: true }); } catch (error) { next(error); } });
+
+  // Centralized error handler
 app.use(errorHandler);
 
 const server = http.createServer(app);
@@ -229,3 +231,4 @@ if (process.env.NODE_ENV !== 'test') {
 
 export { server };
 export default app;
+

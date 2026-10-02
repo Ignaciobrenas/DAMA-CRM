@@ -707,7 +707,7 @@ export const Integrations: React.FC = () => {
               title="Comprobar enlace directo con todas las APIs configuradas"
             >
               {isTestingAll ? (
-                <ThinkingOrb state="connecting" size={20} theme="dark" />
+                <ThinkingOrb state="connecting" size={20} {...({ dark: true } as any)} />
               ) : (
                 <Radio className="w-4 h-4 text-emerald-100 animate-pulse" />
               )}
@@ -2415,3 +2415,7 @@ export const Integrations: React.FC = () => {
     </div>
   );
 };
+
+
+
+
