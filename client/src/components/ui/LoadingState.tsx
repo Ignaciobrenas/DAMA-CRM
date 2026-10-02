@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import { ThinkingOrb } from 'thinking-orbs';
 
 interface LoadingStateProps {
   title?: string;
   subtitle?: string;
   variant?: 'card' | 'fullscreen' | 'skeleton' | 'inline';
   rows?: number;
+  orbState?: 'working' | 'searching' | 'solving' | 'listening' | 'connecting' | 'weaving' | 'composing' | 'breathing' | 'shaping';
 }
 
 export const LoadingState: React.FC<LoadingStateProps> = ({
@@ -14,12 +15,15 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   subtitle = 'Sincronizando registros con la base de datos empresarial',
   variant = 'card',
   rows = 4,
+  orbState = 'searching',
 }) => {
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
   if (variant === 'inline') {
     return (
-      <div className="flex items-center space-x-2 py-3 text-xs text-gray-500 dark:text-slate-400">
-        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <span className="font-medium">{title}</span>
+      <div className="flex items-center space-x-2.5 py-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+        <ThinkingOrb state={orbState} size={20} theme={isDark ? 'dark' : 'light'} />
+        <span className="font-semibold tracking-tight">{title}</span>
       </div>
     );
   }
@@ -29,12 +33,12 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
       <div className="space-y-3 p-4 w-full animate-pulse">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-gray-200 dark:bg-slate-800 rounded-xl shrink-0" />
+            <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-xl shrink-0" />
             <div className="flex-1 space-y-2">
-              <div className="h-3.5 bg-gray-200 dark:bg-slate-800 rounded w-3/4" />
-              <div className="h-2.5 bg-gray-100 dark:bg-slate-800/60 rounded w-1/2" />
+              <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+              <div className="h-2.5 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
             </div>
-            <div className="w-16 h-6 bg-gray-100 dark:bg-slate-800 rounded-lg" />
+            <div className="w-16 h-6 bg-slate-100 dark:bg-slate-800 rounded-lg" />
           </div>
         ))}
       </div>
@@ -42,38 +46,32 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center p-12 text-center my-6 rounded-2xl bg-gradient-to-b from-blue-50/30 to-indigo-50/10 dark:from-slate-900/60 dark:to-slate-950/40 border border-blue-100 dark:border-slate-800/80 shadow-2xs">
-      <div className="relative mb-4">
-        {/* Glowing Orb Backdrop */}
-        <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full animate-pulse" />
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex flex-col items-center justify-center p-10 text-center my-6 rounded-3xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 shadow-xs backdrop-blur-md"
+    >
+      <div className="relative mb-5 flex items-center justify-center">
+        {/* Glow halo */}
+        <div className="absolute inset-0 bg-blue-500/15 dark:bg-blue-500/25 blur-2xl rounded-full" />
         
-        {/* Animated Brand Loader Icon */}
-        <motion.div
-          animate={{
-            rotate: 360,
-            scale: [1, 1.08, 1],
-          }}
-          transition={{
-            rotate: { duration: 3, repeat: Infinity, ease: 'linear' },
-            scale: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' },
-          }}
-          className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25"
-        >
-          <Sparkles className="w-7 h-7 animate-bounce-subtle" />
-        </motion.div>
+        <div className="relative z-10 p-2 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-md">
+          <ThinkingOrb state={orbState} size={64} theme={isDark ? 'dark' : 'light'} />
+        </div>
       </div>
 
-      <h3 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">
+      <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
         {title}
       </h3>
-      <p className="text-xs text-gray-500 dark:text-slate-400 max-w-xs mt-1 leading-relaxed">
+      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1.5 leading-relaxed font-normal">
         {subtitle}
       </p>
 
-      {/* Pulsing Progress Line */}
-      <div className="w-36 h-1 bg-gray-200 dark:bg-slate-800 rounded-full mt-5 overflow-hidden">
-        <div className="h-full bg-blue-600 dark:bg-blue-400 rounded-full w-1/2 animate-shimmer" />
+      {/* Shimmer line */}
+      <div className="w-32 h-1 bg-slate-200 dark:bg-slate-800 rounded-full mt-5 overflow-hidden">
+        <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 rounded-full w-1/2 animate-shimmer" />
       </div>
-    </div>
+    </motion.div>
   );
 };
+

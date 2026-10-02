@@ -185,19 +185,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             // Filter items by RBAC, module enabled status, and user hidden preferences
             const visibleCategoryItems = categoryItems.filter((item) => {
-              // Always show dashboard and settings to super admin / god
-              if (isGod) return true;
+              // Always show essential core items (dashboard, settings) to admin/god
+              if (item.id === 'dashboard' || item.id === 'settings') return true;
 
               // Check if user explicitly hid this item in Settings
               if (userHiddenItems.includes(item.id)) return false;
 
-              // Check resource RBAC permission
-              if (item.resource && !hasPermission(item.resource, 'read')) {
+              // Check if company module is enabled by admin
+              if (item.moduleKey && !isModuleEnabled(item.moduleKey)) {
                 return false;
               }
 
-              // Check if company module is enabled by admin
-              if (item.moduleKey && !isModuleEnabled(item.moduleKey)) {
+              // Check resource RBAC permission (god bypasses RBAC)
+              if (!isGod && item.resource && !hasPermission(item.resource, 'read')) {
                 return false;
               }
 
