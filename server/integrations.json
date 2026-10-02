@@ -9,7 +9,7 @@
     "syncInvoices": true,
     "syncProducts": true,
     "status": "connected",
-    "lastSyncAt": "2026-10-02T15:20:51.815Z"
+    "lastSyncAt": "2026-10-02T15:27:47.956Z"
   },
   "woocommerce": {
     "enabled": false,
@@ -74,7 +74,7 @@
     "clientSecret": ""
   },
   "sage_one": {
-    "enabled": false,
+    "enabled": true,
     "apiUrl": "https://api.accounting.sage.com/v3.1",
     "apiKey": "sage_one_demo_token",
     "clientId": "",
@@ -84,7 +84,7 @@
     "syncInvoices": true,
     "syncProducts": true,
     "status": "connected",
-    "lastSyncAt": "2026-09-27T15:44:16.294Z"
+    "lastSyncAt": "2026-10-02T15:28:12.093Z"
   },
   "sage_50": {
     "enabled": false,

@@ -15,6 +15,7 @@ import {
   Boxes,
   MessageSquare,
   AlertCircle,
+  AlertTriangle,
   Key,
   Globe,
   Radio,
@@ -45,6 +46,7 @@ import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { soundService } from '../services/sound';
 import { ApiConfiguratorModal } from '../components/integrations/ApiConfiguratorModal';
+import { ThinkingOrb } from 'thinking-orbs';
 
 interface ConnectorCardDefinition {
   id: string;
@@ -89,6 +91,16 @@ export const Integrations: React.FC = () => {
 
   // Estado para comprobación directa desde la tarjeta
   const [testingCardId, setTestingCardId] = useState<string | null>(null);
+
+  // Pruebas Masivas de Conexión y Monitor de Salud
+  const [isTestingAll, setIsTestingAll] = useState(false);
+  const [massTestSummary, setMassTestSummary] = useState<{
+    total: number;
+    passed: number;
+    failed: number;
+    avgLatencyMs: number;
+    results: Record<string, { success: boolean; message: string; latencyMs: number }>;
+  } | null>(null);
 
   // Modal editing state
   const [modalOpen, setModalOpen] = useState(false);
@@ -213,6 +225,78 @@ export const Integrations: React.FC = () => {
     } finally {
       setTestingCardId(null);
     }
+  };
+
+  // Auditoría y Test Masivo de Conexiones API en Paralelo
+  const handleTestAllConnections = async () => {
+    if (!isAdmin) {
+      toast.error('Permiso requerido', 'Solo administradores pueden realizar auditorías masivas de conexión.');
+      return;
+    }
+    setIsTestingAll(true);
+    soundService.play('action');
+
+    const activeList = connectorsList.filter((c) =>
+      c.isSystem || (c.config?.enabled && (c.config?.status === 'connected' || c.config?.hasApiKey || c.config?.hasConsumerKey || c.config?.hasAccessToken))
+    );
+
+    const targetList = activeList.length > 0 ? activeList : connectorsList.slice(0, 8);
+    const results: Record<string, { success: boolean; message: string; latencyMs: number }> = {};
+    let passed = 0;
+    let failed = 0;
+    let totalLatency = 0;
+
+    await Promise.all(
+      targetList.map(async (conn) => {
+        const start = Date.now();
+        try {
+          const res = await integrationsService.testConnection(conn.id);
+          const latency = Date.now() - start;
+          results[conn.id] = {
+            success: res.success,
+            message: res.message || (res.success ? '200 OK' : 'Error en servicio'),
+            latencyMs: latency,
+          };
+          if (res.success) passed++;
+          else failed++;
+          totalLatency += latency;
+        } catch (err: any) {
+          const latency = Date.now() - start;
+          results[conn.id] = {
+            success: false,
+            message: err.message || 'Sin respuesta / Timeout',
+            latencyMs: latency,
+          };
+          failed++;
+          totalLatency += latency;
+        }
+      })
+    );
+
+    const avgLat = targetList.length > 0 ? Math.round(totalLatency / targetList.length) : 0;
+    setMassTestSummary({
+      total: targetList.length,
+      passed,
+      failed,
+      avgLatencyMs: avgLat,
+      results,
+    });
+    setIsTestingAll(false);
+
+    if (failed === 0) {
+      soundService.play('success');
+      toast.success(
+        'Auditoría API Completada',
+        `Todas las ${passed} conexiones probadas responden perfectamente (200 OK, Latencia media: ${avgLat}ms)`
+      );
+    } else {
+      soundService.play('error');
+      toast.error(
+        'Diagnóstico de Conexiones',
+        `${passed} activas OK, ${failed} con error. Consulta el panel de salud.`
+      );
+    }
+    fetchIntegrations();
   };
 
   const handleSyncNow = async (connector: string, e: React.MouseEvent) => {
@@ -617,6 +701,20 @@ export const Integrations: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
+              onClick={handleTestAllConnections}
+              disabled={isTestingAll}
+              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg border border-emerald-400/40 disabled:opacity-50"
+              title="Comprobar enlace directo con todas las APIs configuradas"
+            >
+              {isTestingAll ? (
+                <ThinkingOrb state="connecting" size={20} theme="dark" />
+              ) : (
+                <Radio className="w-4 h-4 text-emerald-100 animate-pulse" />
+              )}
+              <span>{isTestingAll ? 'Probando Conexiones...' : 'Probar Todas las Conexiones'}</span>
+            </button>
+
+            <button
               onClick={() => {
                 soundService.playPopSound();
                 setIsApiConfiguratorOpen(true);
@@ -656,23 +754,91 @@ export const Integrations: React.FC = () => {
             <span className="text-xl font-bold text-white">{stats.available}</span>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-white/75 font-medium block">{t('integrations.accessLevel')}</span>
+            <span className="text-xs text-white/75 font-medium block">Diagnóstico de Red</span>
             <span className="text-sm font-bold text-white flex items-center gap-1 mt-1">
-              {isAdmin ? (
-                <>
-                  <ShieldCheck className="w-4 h-4 text-emerald-300" />
-                  <span>{t('integrations.adminFullAccess')}</span>
-                </>
+              {massTestSummary ? (
+                <span className="text-emerald-300 font-mono text-xs">
+                  {massTestSummary.passed}/{massTestSummary.total} OK • {massTestSummary.avgLatencyMs}ms
+                </span>
               ) : (
-                <>
-                  <Lock className="w-4 h-4 text-amber-300" />
-                  <span>{t('integrations.protectedRead')}</span>
-                </>
+                <span className="text-white/80 text-xs">Listo para probar</span>
               )}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Live Health & Diagnostic Monitor Banner (if mass test ran) */}
+      {massTestSummary && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`p-5 rounded-2xl border shadow-sm ${
+            massTestSummary.failed === 0
+              ? 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60'
+              : 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60'
+          }`}
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3.5">
+              <div className={`p-2.5 rounded-xl text-white shrink-0 ${massTestSummary.failed === 0 ? 'bg-emerald-600' : 'bg-amber-600'}`}>
+                {massTestSummary.failed === 0 ? <CheckCircle2 className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    {massTestSummary.failed === 0
+                      ? 'Diagnóstico Masivo Exitoso: Conexiones al 100%'
+                      : `Diagnóstico API: ${massTestSummary.passed} Exitosas / ${massTestSummary.failed} Con Error`}
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border">
+                    Ping Medio: {massTestSummary.avgLatencyMs} ms
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                  {massTestSummary.failed === 0
+                    ? `Todas las ${massTestSummary.passed} integraciones auditadas respondieron con estado 200 OK y confirmación de handshake.`
+                    : `Se han detectado ${massTestSummary.failed} conexiones con respuesta errónea o falta de clave API. Haz clic en 'Configurar' para corregirlas.`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setMassTestSummary(null)}
+              className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white font-semibold underline self-start md:self-auto"
+            >
+              Cerrar informe
+            </button>
+          </div>
+
+          {/* Grid of Tested Connections */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
+            {Object.entries(massTestSummary.results).map(([connId, res]) => (
+              <div
+                key={connId}
+                className={`p-2 rounded-xl border text-xs flex flex-col justify-between ${
+                  res.success
+                    ? 'bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50'
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-extrabold uppercase text-[10px] text-slate-800 dark:text-slate-200 truncate">
+                    {connId}
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${res.success ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                </div>
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className={res.success ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-rose-700 dark:text-rose-400 font-bold'}>
+                    {res.success ? 'OK' : 'Error'}
+                  </span>
+                  <span className="font-mono text-slate-400">{res.latencyMs}ms</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Control Bar: Search, Category Filters, Status and Toggle */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-4">
