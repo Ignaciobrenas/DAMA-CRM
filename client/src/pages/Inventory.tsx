@@ -118,6 +118,11 @@ export const Inventory: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState('');
 
+  // Stores online activas
+  const [activeStores, setActiveStores] = useState<Array<{ id: string; name: string }>>([
+    { id: 'unopim', name: 'UnoPIM (Catálogo Central)' },
+  ]);
+
   // View & Filter States
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [search, setSearch] = useState('');
@@ -185,9 +190,10 @@ export const Inventory: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [resProducts, resStats] = await Promise.all([
+      const [resProducts, resStats, resIntegrations] = await Promise.all([
         apiRequest('/inventory'),
         apiRequest('/inventory/analytics/stats').catch(() => ({ success: false, data: null })),
+        integrationsService.getIntegrations().catch(() => null),
       ]);
 
       if (resProducts.success && resProducts.data) {
@@ -195,6 +201,30 @@ export const Inventory: React.FC = () => {
       }
       if (resStats && resStats.success && (resStats as any).data) {
         setStats((resStats as any).data);
+      }
+
+      // Populate list of only active and configured online stores
+      if (resIntegrations && resIntegrations.data) {
+        const d = resIntegrations.data;
+        const stores: Array<{ id: string; name: string }> = [
+          { id: 'unopim', name: 'UnoPIM (Catálogo Central)' },
+        ];
+        if (d.woocommerce?.enabled || d.woocommerce?.status === 'connected') {
+          stores.push({ id: 'woocommerce', name: 'WooCommerce Store' });
+        }
+        if (d.shopify?.enabled || d.shopify?.status === 'connected') {
+          stores.push({ id: 'shopify', name: 'Shopify Store' });
+        }
+        if (d.opencart?.enabled || d.opencart?.status === 'connected') {
+          stores.push({ id: 'opencart', name: 'OpenCart Store' });
+        }
+        if (d.odoo?.enabled || d.odoo?.status === 'connected') {
+          stores.push({ id: 'odoo', name: 'Odoo ERP' });
+        }
+        if (d.sage_one?.enabled || d.sage_50?.enabled || d.sage_200?.enabled) {
+          stores.push({ id: 'sage', name: 'Sage ERP' });
+        }
+        setActiveStores(stores);
       }
     } catch (err: any) {
       toast.error('Error al cargar inventario', err.message);
@@ -783,20 +813,19 @@ export const Inventory: React.FC = () => {
 
         {/* Filters */}
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-          {/* Multi-App Connector Filter */}
+          {/* Active Online Store & Multi-App Filter */}
           <select
             value={connectorFilter}
             onChange={(e) => setConnectorFilter(e.target.value)}
-            className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            title="Filtrar por conexión con aplicaciones"
+            className="px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-semibold"
+            title="Filtrar por tienda online o plataforma activa"
           >
-            <option value="ALL">Todas las Apps ({products.length})</option>
-            <option value="unopim">UnoPIM (Catálogo/PIM)</option>
-            <option value="opencart">OpenCart Store</option>
-            <option value="sage">Sage ERP (1 / 50 / 200)</option>
-            <option value="odoo">Odoo ERP</option>
-            <option value="shopify">Shopify Store</option>
-            <option value="woocommerce">WooCommerce</option>
+            <option value="ALL">Canales Online Activos ({products.length})</option>
+            {activeStores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}
+              </option>
+            ))}
           </select>
 
           {/* Category Filter */}
