@@ -168,15 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
 
-        {/* Welcome Tour & Role Capabilities Guide */}
-        <button
-          onClick={() => setIsTourOpen(true)}
-          aria-label={t('tour.openTour')}
-          className="p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
-          title={t('tour.openTour')}
-        >
-          <HelpCircle className="w-4 h-4 text-blue-500 hover:text-blue-600 transition" />
-        </button>
+
 
         {/* Real-time Notification Center with Interactive Navigation */}
         <NotificationCenter />

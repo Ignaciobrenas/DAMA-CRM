@@ -1,11 +1,5 @@
 import { Request, Response } from 'express';
-import fs from 'fs';
-import path from 'path';
-
-const DATA_DIR = path.resolve(__dirname, '../../../data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+import { prisma } from '../../prisma';
 
 export type CarrierType = 'GLS' | 'NACEX' | 'AMAZON' | 'CORREOS_EXPRESS' | 'DHL' | 'MRW' | 'SEUR';
 export type ShipmentStatus = 'PRE_TRANSIT' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'EXCEPTION' | 'RETURNED';
@@ -45,10 +39,6 @@ export interface ShipmentData {
   updatedAt: string;
 }
 
-function getShipmentsFilePath(tenantId: string): string {
-  return path.join(DATA_DIR, `shipments_${tenantId}.json`);
-}
-
 function generateTrackingCode(carrier: CarrierType): string {
   const rand = Math.floor(10000000 + Math.random() * 90000000);
   switch (carrier) {
@@ -71,153 +61,211 @@ function generateTrackingCode(carrier: CarrierType): string {
   }
 }
 
-function loadShipments(tenantId: string): ShipmentData[] {
-  const filePath = getShipmentsFilePath(tenantId);
-  if (!fs.existsSync(filePath)) {
-    const starter: ShipmentData[] = [
+function formatShipment(s: any): ShipmentData {
+  let meta: any = {};
+  if (s.notes) {
+    try {
+      if (s.notes.trim().startsWith('{')) {
+        meta = JSON.parse(s.notes);
+      }
+    } catch {
+      meta = { userNotes: s.notes };
+    }
+  }
+
+  const events: TrackingEvent[] = (s.checkpoints || []).map((cp: any) => ({
+    id: cp.id,
+    status: cp.status as ShipmentStatus,
+    description: cp.description,
+    location: cp.location,
+    timestamp: cp.timestamp ? new Date(cp.timestamp).toISOString() : new Date().toISOString(),
+  }));
+
+  events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  return {
+    id: s.id,
+    tenantId: s.tenantId || 'master',
+    trackingNumber: s.trackingNumber,
+    carrier: s.carrier as CarrierType,
+    recipientName: s.recipientName,
+    recipientPhone: s.recipientPhone || undefined,
+    recipientEmail: s.recipientEmail || undefined,
+    destinationAddress: s.recipientAddress || s.destination || '',
+    destinationCity: s.recipientCity || '',
+    destinationPostalCode: meta.destinationPostalCode || '28001',
+    destinationCountry: meta.destinationCountry || 'España',
+    status: s.status as ShipmentStatus,
+    weightKg: s.weightKg || 1.0,
+    packageType: meta.packageType || 'STANDARD_BOX',
+    shippingCost: meta.shippingCost !== undefined ? Number(meta.shippingCost) : 5.99,
+    orderNumber: meta.orderNumber || undefined,
+    notes: meta.userNotes || (s.notes && !s.notes.trim().startsWith('{') ? s.notes : undefined),
+    estimatedDeliveryDate: s.estimatedDelivery ? new Date(s.estimatedDelivery).toISOString() : new Date().toISOString(),
+    actualDeliveryDate: s.actualDelivery ? new Date(s.actualDelivery).toISOString() : undefined,
+    signatureProof: meta.signatureProof || undefined,
+    events,
+    createdAt: s.createdAt ? new Date(s.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: s.updatedAt ? new Date(s.updatedAt).toISOString() : new Date().toISOString(),
+  };
+}
+
+async function getOrSeedShipments(tenantId: string): Promise<ShipmentData[]> {
+  let records = await prisma.shipment.findMany({
+    where: { tenantId },
+    include: { checkpoints: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (records.length === 0) {
+    const starterData = [
       {
-        id: 'shp-001',
-        tenantId,
         trackingNumber: 'GLS-ES-88349102',
         carrier: 'GLS',
         recipientName: 'Marta Delgado - Salón Estilistas Madrid',
         recipientPhone: '+34 622 112 334',
         recipientEmail: 'marta@estilistasdelgado.es',
-        destinationAddress: 'Calle Serrano 45, 2ºA',
-        destinationCity: 'Madrid',
-        destinationPostalCode: '28001',
-        destinationCountry: 'España',
+        recipientAddress: 'Calle Serrano 45, 2ºA',
+        recipientCity: 'Madrid',
+        origin: 'Almacén Central (Barcelona)',
+        destination: 'Calle Serrano 45, 2ºA, 28001 Madrid',
         status: 'OUT_FOR_DELIVERY',
         weightKg: 3.4,
-        packageType: 'STANDARD_BOX',
-        shippingCost: 7.95,
-        orderNumber: 'PED-2026-089',
-        notes: 'Productos de cosmética capilar y champús profesionales.',
-        estimatedDeliveryDate: new Date().toISOString(),
-        events: [
-          {
-            id: 'evt-1',
-            status: 'PRE_TRANSIT',
-            description: 'Envío registrado en plataforma y etiqueta generada',
-            location: 'Almacén Central (Barcelona)',
-            timestamp: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
-          },
-          {
-            id: 'evt-2',
-            status: 'IN_TRANSIT',
-            description: 'Paquete clasificado en Hub Logístico Principal y en tránsito',
-            location: 'Hub Central Coslada (Madrid)',
-            timestamp: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
-          },
-          {
-            id: 'evt-3',
-            status: 'OUT_FOR_DELIVERY',
-            description: 'Paquete asignado a repartidor. Entrega estimada hoy antes de las 18:00h',
-            location: 'Delegación GLS Madrid Centro',
-            timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-          },
-        ],
-        createdAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
-        updatedAt: new Date().toISOString(),
+        estimatedDelivery: new Date(),
+        notes: JSON.stringify({
+          packageType: 'STANDARD_BOX',
+          shippingCost: 7.95,
+          orderNumber: 'PED-2026-089',
+          destinationPostalCode: '28001',
+          destinationCountry: 'España',
+          userNotes: 'Productos de cosmética capilar y champús profesionales.',
+        }),
+        checkpoints: {
+          create: [
+            {
+              status: 'PRE_TRANSIT',
+              description: 'Envío registrado en plataforma y etiqueta generada',
+              location: 'Almacén Central (Barcelona)',
+              timestamp: new Date(Date.now() - 36 * 3600 * 1000),
+            },
+            {
+              status: 'IN_TRANSIT',
+              description: 'Paquete clasificado en Hub Logístico Principal y en tránsito',
+              location: 'Hub Central Coslada (Madrid)',
+              timestamp: new Date(Date.now() - 12 * 3600 * 1000),
+            },
+            {
+              status: 'OUT_FOR_DELIVERY',
+              description: 'Paquete asignado a repartidor. Entrega estimada hoy antes de las 18:00h',
+              location: 'Delegación GLS Madrid Centro',
+              timestamp: new Date(Date.now() - 2 * 3600 * 1000),
+            },
+          ],
+        },
       },
       {
-        id: 'shp-002',
-        tenantId,
         trackingNumber: 'NCX-94810239',
         carrier: 'NACEX',
         recipientName: 'Alejandro Sanz - Barbería Clásica',
         recipientPhone: '+34 677 889 900',
         recipientEmail: 'alejandro@barberiasanz.com',
-        destinationAddress: 'Avinguda Diagonal 230',
-        destinationCity: 'Barcelona',
-        destinationPostalCode: '08018',
-        destinationCountry: 'España',
+        recipientAddress: 'Avinguda Diagonal 230',
+        recipientCity: 'Barcelona',
+        origin: 'Hub Valencia',
+        destination: 'Avinguda Diagonal 230, 08018 Barcelona',
         status: 'DELIVERED',
         weightKg: 1.8,
-        packageType: 'STANDARD_BOX',
-        shippingCost: 6.5,
-        orderNumber: 'PED-2026-082',
-        notes: 'Cuchillas de afeitar y máquinas de corte Wahl.',
-        estimatedDeliveryDate: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-        actualDeliveryDate: new Date(Date.now() - 20 * 3600 * 1000).toISOString(),
-        signatureProof: 'Firmado por: A. Sanz (DNI: ***4321*)',
-        events: [
-          {
-            id: 'evt-10',
-            status: 'PRE_TRANSIT',
-            description: 'Recogida solicitada en almacén',
-            location: 'Hub Valencia',
-            timestamp: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-          },
-          {
-            id: 'evt-11',
-            status: 'IN_TRANSIT',
-            description: 'Llegada a plataforma de distribución regional',
-            location: 'Centro Distribución El Prat (Barcelona)',
-            timestamp: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
-          },
-          {
-            id: 'evt-12',
-            status: 'DELIVERED',
-            description: 'Paquete entregado correctamente en destino',
-            location: 'Barcelona',
-            timestamp: new Date(Date.now() - 20 * 3600 * 1000).toISOString(),
-          },
-        ],
-        createdAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-        updatedAt: new Date().toISOString(),
+        estimatedDelivery: new Date(Date.now() - 24 * 3600 * 1000),
+        actualDelivery: new Date(Date.now() - 20 * 3600 * 1000),
+        notes: JSON.stringify({
+          packageType: 'STANDARD_BOX',
+          shippingCost: 6.5,
+          orderNumber: 'PED-2026-082',
+          destinationPostalCode: '08018',
+          destinationCountry: 'España',
+          signatureProof: 'Firmado por: A. Sanz (DNI: ***4321*)',
+          userNotes: 'Cuchillas de afeitar y máquinas de corte Wahl.',
+        }),
+        checkpoints: {
+          create: [
+            {
+              status: 'PRE_TRANSIT',
+              description: 'Recogida solicitada en almacén',
+              location: 'Hub Valencia',
+              timestamp: new Date(Date.now() - 48 * 3600 * 1000),
+            },
+            {
+              status: 'IN_TRANSIT',
+              description: 'Llegada a plataforma de distribución regional',
+              location: 'Centro Distribución El Prat (Barcelona)',
+              timestamp: new Date(Date.now() - 26 * 3600 * 1000),
+            },
+            {
+              status: 'DELIVERED',
+              description: 'Paquete entregado correctamente en destino',
+              location: 'Barcelona',
+              timestamp: new Date(Date.now() - 20 * 3600 * 1000),
+            },
+          ],
+        },
       },
       {
-        id: 'shp-003',
-        tenantId,
         trackingNumber: 'TBA93821049ES',
         carrier: 'AMAZON',
         recipientName: 'Clínica Dermocosmética Bellasur',
         recipientPhone: '+34 655 123 789',
         recipientEmail: 'pedidos@bellasur.es',
-        destinationAddress: 'Plaza Nueva 12',
-        destinationCity: 'Sevilla',
-        destinationPostalCode: '41001',
-        destinationCountry: 'España',
+        recipientAddress: 'Plaza Nueva 12',
+        recipientCity: 'Sevilla',
+        origin: 'San Fernando de Henares (Madrid)',
+        destination: 'Plaza Nueva 12, 41001 Sevilla',
         status: 'IN_TRANSIT',
         weightKg: 5.2,
-        packageType: 'STANDARD_BOX',
-        shippingCost: 8.4,
-        orderNumber: 'AMZ-ES-40291',
-        notes: 'Envío Fulfillment by Amazon (FBA) prioritario.',
-        estimatedDeliveryDate: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-        events: [
-          {
-            id: 'evt-20',
-            status: 'PRE_TRANSIT',
-            description: 'Envío empaquetado en centro logístico Amazon MAD4',
-            location: 'San Fernando de Henares (Madrid)',
-            timestamp: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
-          },
-          {
-            id: 'evt-21',
-            status: 'IN_TRANSIT',
-            description: 'En tránsito hacia la estación de entrega local',
-            location: 'Estación Logística Amazon SVQ1 (Sevilla)',
-            timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-          },
-        ],
-        createdAt: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
-        updatedAt: new Date().toISOString(),
+        estimatedDelivery: new Date(Date.now() + 24 * 3600 * 1000),
+        notes: JSON.stringify({
+          packageType: 'STANDARD_BOX',
+          shippingCost: 8.4,
+          orderNumber: 'AMZ-ES-40291',
+          destinationPostalCode: '41001',
+          destinationCountry: 'España',
+          userNotes: 'Envío Fulfillment by Amazon (FBA) prioritario.',
+        }),
+        checkpoints: {
+          create: [
+            {
+              status: 'PRE_TRANSIT',
+              description: 'Envío empaquetado en centro logístico Amazon MAD4',
+              location: 'San Fernando de Henares (Madrid)',
+              timestamp: new Date(Date.now() - 10 * 3600 * 1000),
+            },
+            {
+              status: 'IN_TRANSIT',
+              description: 'En tránsito hacia la estación de entrega local',
+              location: 'Estación Logística Amazon SVQ1 (Sevilla)',
+              timestamp: new Date(Date.now() - 2 * 3600 * 1000),
+            },
+          ],
+        },
       },
     ];
-    fs.writeFileSync(filePath, JSON.stringify(starter, null, 2), 'utf8');
-    return starter;
-  }
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
-    return [];
-  }
-}
 
-function saveShipments(tenantId: string, shipments: ShipmentData[]): void {
-  fs.writeFileSync(getShipmentsFilePath(tenantId), JSON.stringify(shipments, null, 2), 'utf8');
+    for (const item of starterData) {
+      await prisma.shipment.create({
+        data: {
+          tenantId,
+          ...item,
+        },
+      });
+    }
+
+    records = await prisma.shipment.findMany({
+      where: { tenantId },
+      include: { checkpoints: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  return records.map(formatShipment);
 }
 
 /**
@@ -229,7 +277,7 @@ export async function listShipments(req: Request, res: Response): Promise<void> 
     const tenantId = req.user?.tenantId || 'master';
     const { carrier, status, query } = req.query;
 
-    let shipments = loadShipments(tenantId);
+    let shipments = await getOrSeedShipments(tenantId);
 
     if (carrier && typeof carrier === 'string') {
       shipments = shipments.filter((s) => s.carrier === carrier);
@@ -247,9 +295,6 @@ export async function listShipments(req: Request, res: Response): Promise<void> 
           (s.orderNumber && s.orderNumber.toLowerCase().includes(q))
       );
     }
-
-    // Sort by createdAt descending
-    shipments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json({ success: true, data: shipments });
   } catch (err: any) {
@@ -292,47 +337,49 @@ export async function createShipment(req: Request, res: Response): Promise<void>
 
     const carrierEnum = carrier as CarrierType;
     const finalTracking = trackingNumber && trackingNumber.trim() ? trackingNumber.trim() : generateTrackingCode(carrierEnum);
-
     const estDays = Number(estimatedDeliveryDays) || 2;
-    const estimatedDate = new Date(Date.now() + estDays * 24 * 3600 * 1000).toISOString();
+    const estimatedDate = new Date(Date.now() + estDays * 24 * 3600 * 1000);
 
-    const initialEvent: TrackingEvent = {
-      id: `evt-${Date.now()}`,
-      status: 'PRE_TRANSIT',
-      description: `Envío generado y registrado en la red de ${carrierEnum}. En espera de recogida.`,
-      location: 'Almacén de origen',
-      timestamp: new Date().toISOString(),
-    };
-
-    const newShipment: ShipmentData = {
-      id: `shp-${Date.now()}`,
-      tenantId,
-      trackingNumber: finalTracking,
-      carrier: carrierEnum,
-      recipientName,
-      recipientPhone,
-      recipientEmail,
-      destinationAddress,
-      destinationCity,
-      destinationPostalCode,
-      destinationCountry: destinationCountry || 'España',
-      status: 'PRE_TRANSIT',
-      weightKg: Number(weightKg) || 1.0,
+    const metaJson = JSON.stringify({
       packageType: packageType || 'STANDARD_BOX',
       shippingCost: Number(shippingCost) || 5.99,
-      orderNumber,
-      notes,
-      estimatedDeliveryDate: estimatedDate,
-      events: [initialEvent],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      orderNumber: orderNumber || undefined,
+      destinationPostalCode,
+      destinationCountry: destinationCountry || 'España',
+      userNotes: notes || undefined,
+    });
 
-    const shipments = loadShipments(tenantId);
-    shipments.unshift(newShipment);
-    saveShipments(tenantId, shipments);
+    const created = await prisma.shipment.create({
+      data: {
+        tenantId,
+        trackingNumber: finalTracking,
+        carrier: carrierEnum,
+        recipientName,
+        recipientPhone: recipientPhone || null,
+        recipientEmail: recipientEmail || null,
+        recipientAddress: destinationAddress,
+        recipientCity: destinationCity,
+        origin: 'Almacén de origen',
+        destination: `${destinationAddress}, ${destinationPostalCode} ${destinationCity}`,
+        status: 'PRE_TRANSIT',
+        weightKg: Number(weightKg) || 1.0,
+        estimatedDelivery: estimatedDate,
+        notes: metaJson,
+        checkpoints: {
+          create: [
+            {
+              status: 'PRE_TRANSIT',
+              description: `Envío generado y registrado en la red de ${carrierEnum}. En espera de recogida.`,
+              location: 'Almacén de origen',
+              timestamp: new Date(),
+            },
+          ],
+        },
+      },
+      include: { checkpoints: true },
+    });
 
-    res.status(201).json({ success: true, data: newShipment });
+    res.status(201).json({ success: true, data: formatShipment(created) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -347,15 +394,20 @@ export async function getShipmentDetails(req: Request, res: Response): Promise<v
     const tenantId = req.user?.tenantId || 'master';
     const { id } = req.params;
 
-    const shipments = loadShipments(tenantId);
-    const found = shipments.find((s) => s.id === id || s.trackingNumber === id);
+    const found = await prisma.shipment.findFirst({
+      where: {
+        tenantId,
+        OR: [{ id }, { trackingNumber: id }],
+      },
+      include: { checkpoints: true },
+    });
 
     if (!found) {
       res.status(404).json({ success: false, message: 'Envío no encontrado' });
       return;
     }
 
-    res.json({ success: true, data: found });
+    res.json({ success: true, data: formatShipment(found) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -371,38 +423,57 @@ export async function updateShipmentStatus(req: Request, res: Response): Promise
     const { id } = req.params;
     const { status, description, location, signatureProof } = req.body;
 
-    const shipments = loadShipments(tenantId);
-    const index = shipments.findIndex((s) => s.id === id || s.trackingNumber === id);
+    const found = await prisma.shipment.findFirst({
+      where: {
+        tenantId,
+        OR: [{ id }, { trackingNumber: id }],
+      },
+    });
 
-    if (index === -1) {
+    if (!found) {
       res.status(404).json({ success: false, message: 'Envío no encontrado' });
       return;
     }
 
-    const current = shipments[index];
     const newStatus = status as ShipmentStatus;
+    const eventLocation = location || found.recipientCity || 'Delegación';
 
-    const newEvent: TrackingEvent = {
-      id: `evt-${Date.now()}`,
-      status: newStatus,
-      description: description || `Estado actualizado a ${newStatus}`,
-      location: location || current.destinationCity,
-      timestamp: new Date().toISOString(),
-    };
+    await prisma.shipmentCheckpoint.create({
+      data: {
+        shipmentId: found.id,
+        status: newStatus,
+        description: description || `Estado actualizado a ${newStatus}`,
+        location: eventLocation,
+        timestamp: new Date(),
+      },
+    });
 
-    const updated: ShipmentData = {
-      ...current,
-      status: newStatus,
-      events: [...current.events, newEvent],
-      signatureProof: signatureProof || current.signatureProof,
-      actualDeliveryDate: newStatus === 'DELIVERED' ? new Date().toISOString() : current.actualDeliveryDate,
-      updatedAt: new Date().toISOString(),
-    };
+    let meta: any = {};
+    if (found.notes) {
+      try {
+        if (found.notes.trim().startsWith('{')) {
+          meta = JSON.parse(found.notes);
+        }
+      } catch {
+        meta = { userNotes: found.notes };
+      }
+    }
 
-    shipments[index] = updated;
-    saveShipments(tenantId, shipments);
+    if (signatureProof) {
+      meta.signatureProof = signatureProof;
+    }
 
-    res.json({ success: true, data: updated });
+    const updated = await prisma.shipment.update({
+      where: { id: found.id },
+      data: {
+        status: newStatus,
+        actualDelivery: newStatus === 'DELIVERED' ? new Date() : found.actualDelivery,
+        notes: JSON.stringify(meta),
+      },
+      include: { checkpoints: true },
+    });
+
+    res.json({ success: true, data: formatShipment(updated) });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -415,7 +486,7 @@ export async function updateShipmentStatus(req: Request, res: Response): Promise
 export async function getLogisticsStats(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
-    const shipments = loadShipments(tenantId);
+    const shipments = await getOrSeedShipments(tenantId);
 
     const totalShipments = shipments.length;
     const deliveredCount = shipments.filter((s) => s.status === 'DELIVERED').length;
@@ -428,7 +499,6 @@ export async function getLogisticsStats(req: Request, res: Response): Promise<vo
     const deliveryRate = totalShipments > 0 ? (deliveredCount / totalShipments) * 100 : 0;
     const totalShippingSpend = shipments.reduce((sum, s) => sum + (s.shippingCost || 0), 0);
 
-    // Group by Carrier
     const carrierBreakdown: Record<string, { carrier: string; count: number; totalCost: number; delivered: number }> = {};
     for (const s of shipments) {
       if (!carrierBreakdown[s.carrier]) {
@@ -467,7 +537,7 @@ export async function getLogisticsStats(req: Request, res: Response): Promise<vo
 export async function exportShipmentsCsv(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
-    const shipments = loadShipments(tenantId);
+    const shipments = await getOrSeedShipments(tenantId);
     const { generateCsvBuffer } = await import('../../services/report-exporter.service');
 
     const headers = [
@@ -529,7 +599,7 @@ export async function exportShipmentsCsv(req: Request, res: Response): Promise<v
 export async function exportShipmentsPdf(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
-    const shipments = loadShipments(tenantId);
+    const shipments = await getOrSeedShipments(tenantId);
     const { generateReportPdf } = await import('../../services/report-exporter.service');
 
     const totalShipments = shipments.length;
@@ -573,4 +643,3 @@ export async function exportShipmentsPdf(req: Request, res: Response): Promise<v
     res.status(500).json({ success: false, message: err.message });
   }
 }
-

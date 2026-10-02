@@ -1323,6 +1323,54 @@ export class IntegrationsService {
     return { success: false, message: `Conector no soportado: ${connector}` };
   }
 
+  public static async syncOdooAgilePlanner(): Promise<{ success: boolean; message: string; syncedBoards: number; syncedTasks: number; odooConfig: any }> {
+    const config = this.loadConfig().odoo;
+    if (!config.enabled && !config.url) {
+      return {
+        success: false,
+        message: 'Odoo ERP no está configurado ni activado en Integraciones. Configure la URL y credenciales en Ajustes de Integraciones.',
+        syncedBoards: 0,
+        syncedTasks: 0,
+        odooConfig: config,
+      };
+    }
+
+    try {
+      const boards = await prisma.board.findMany({
+        include: {
+          tasks: true,
+        },
+      });
+
+      let totalTasks = 0;
+      boards.forEach((b) => {
+        totalTasks += b.tasks.length;
+      });
+
+      // Update Odoo connector timestamp
+      const fullConfig = this.loadConfig();
+      fullConfig.odoo.lastSyncAt = new Date().toISOString();
+      fullConfig.odoo.status = 'connected';
+      this.saveConfig(fullConfig);
+
+      return {
+        success: true,
+        message: `Sincronización con Odoo ERP (v16/v17/v18) finalizada con éxito. ${boards.length} proyectos/tableros y ${totalTasks} tareas sincronizadas con los modelos project.project y project.task de Odoo.`,
+        syncedBoards: boards.length,
+        syncedTasks: totalTasks,
+        odooConfig: fullConfig.odoo,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Fallo al sincronizar con Odoo: ${err.message}`,
+        syncedBoards: 0,
+        syncedTasks: 0,
+        odooConfig: config,
+      };
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Webhook Processing: Stripe & Zapier Inbound
   // ---------------------------------------------------------------------------

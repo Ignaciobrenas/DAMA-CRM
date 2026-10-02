@@ -1,0 +1,849 @@
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #334155;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --green: #16a34a;
+  --amber: #d97706;
+  --red: #dc2626;
+  --blue: #0ea5e9;
+  --purple: #a855f7;
+}
+
+/* Light theme — toggled via Ajustes > Apariencia (extension/lib/appearance.ts
+   sets data-theme on <html>). The header keeps a fixed dark background in
+   both themes (see .header below) since the logo's "Soter" wordmark is
+   near-white and only reads on a dark backdrop. */
+:root[data-theme="light"] {
+  --bg: #f1f5f9;
+  --surface: #e2e8f0;
+  --surface-2: #cbd5e1;
+  --border: #cbd5e1;
+  --text: #0f172a;
+  --muted: #475569;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  width: 360px;
+  min-height: 420px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  /* Fixed dark background + border regardless of theme — the logo's "Soter"
+     wordmark is near-white and only reads against a dark backdrop. */
+  border-bottom: 1px solid #334155;
+  background: #1e293b;
+}
+
+.header-logo {
+  height: 22px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.header .user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.header .user-name {
+  font-size: 12px;
+  /* Fixed, not var(--muted) — the header background stays dark in both
+     themes (see .header), so its text needs a fixed light color too. */
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.header .user-avatar {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.header .user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 10px 14px;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 4px;
+  text-align: center;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.tab.active {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.content {
+  --content-pad: 14px;
+  flex: 1;
+  padding: var(--content-pad);
+  overflow-y: auto;
+}
+
+/* LoginView's header sits inside .content (rather than replacing it, so the
+   "Cargando…" -> login transition doesn't remount the popup shell) and needs
+   to bleed out to the popup's edges — offset by exactly .content's own
+   padding so it lines up in both normal and compact mode. */
+.login-header {
+  margin: calc(var(--content-pad) * -1) calc(var(--content-pad) * -1) var(--content-pad);
+  border-radius: 0;
+}
+
+.field {
+  margin-bottom: 10px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.nav-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.nav-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--surface-2);
+}
+
+.nav-btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-subheader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.settings-subheader h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.settings-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.settings-back-btn:hover {
+  background: var(--border);
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+button.btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+button.btn:hover {
+  background: var(--primary-hover);
+}
+
+button.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button.btn.secondary {
+  background: var(--surface-2);
+}
+
+/* Outline button — mirrors the web app's Button variant="outline": a bordered,
+   transparent-background button that fills on hover instead of staying solid. */
+button.btn.outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+button.btn.outline:hover {
+  background: var(--surface-2);
+  border-color: var(--surface-2);
+}
+
+button.btn.danger {
+  background: var(--red);
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.error {
+  color: #fca5a5;
+  font-size: 12px;
+  margin: 6px 0;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+/* Timer — same status row / badge / big time / Play-Pause-Send layout as the
+   web app's floating ActiveTimer widget, laid out as two roomy boxed sections
+   (task info, then time + actions) instead of one cramped card. */
+
+/* Generic two-panel slider: both panels stay mounted side by side, and
+   toggling .show-second animates the whole strip left/right instead of
+   hard-swapping content. Used by the Timer (main card <-> discard
+   confirmation) and Settings (main <-> Apariencia) views. */
+.slide-clip {
+  overflow: hidden;
+  position: relative;
+}
+
+.slide-track {
+  display: flex;
+  align-items: flex-start;
+  width: 200%;
+  transition: transform 260ms ease;
+}
+
+.slide-track.show-second {
+  transform: translateX(-50%);
+}
+
+.slide-panel {
+  width: 50%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.slide-panel:first-child {
+  padding-right: 8px;
+}
+.slide-panel:last-child {
+  padding-left: 8px;
+}
+
+.timer-box {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 16px;
+}
+
+.timer-box + .timer-box {
+  margin-top: 14px;
+}
+
+.timer-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.timer-status-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timer-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.timer-status-dot {
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.timer-status-dot.running {
+  background: var(--green);
+  animation: timer-pulse 1.6s ease-in-out infinite;
+}
+.timer-status-dot.paused {
+  background: var(--amber);
+}
+
+.timer-status-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.timer-discard-btn {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.timer-discard-btn:hover {
+  color: var(--red);
+}
+.timer-discard-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.timer-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timer-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-2);
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.timer-open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.timer-open-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.timer-open-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.timer-task-title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 10px 0 0;
+}
+
+.timer-time {
+  text-align: center;
+  font-size: 32px;
+  font-weight: 700;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  margin-bottom: 14px;
+}
+
+:root[data-theme="light"] .timer-time {
+  color: #0a0f1f;
+}
+
+.timer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.timer-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 36px;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.timer-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.timer-action-btn.play {
+  background: #2563eb;
+}
+.timer-action-btn.play:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+.timer-action-btn.pause {
+  background: #ca8a04;
+}
+.timer-action-btn.pause:hover:not(:disabled) {
+  background: #a16207;
+}
+.timer-action-btn.send {
+  background: var(--green);
+}
+.timer-action-btn.send:hover:not(:disabled) {
+  background: #15803d;
+}
+
+@keyframes timer-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Discard-timer confirmation, shown inline in the popup instead of a native
+   window.confirm() so it matches the rest of the extension's UI. */
+.confirm-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.confirm-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.5;
+}
+.confirm-desc strong {
+  color: var(--text);
+}
+
+/* Notes */
+.note {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.note.pinned {
+  border-left-color: var(--primary);
+}
+
+.note-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.note-content {
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* Notifications — mirrors the web app's notification cards: a colored icon
+   badge per type, unread tint + dot, relative timestamp and a "view task"
+   pill, scaled down for the popup. */
+.notif {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease,
+    transform 150ms ease, box-shadow 150ms ease;
+}
+
+.notif:hover {
+  border-color: var(--surface-2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.notif:active {
+  transform: translateY(-1px);
+}
+
+.notif.unread {
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.notif-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.notif-icon-assignment {
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.notif-icon-status_change {
+  background: color-mix(in srgb, var(--blue) 15%, transparent);
+  color: var(--blue);
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+}
+
+.notif-icon-comment {
+  background: color-mix(in srgb, var(--purple) 15%, transparent);
+  color: var(--purple);
+  border-color: color-mix(in srgb, var(--purple) 30%, transparent);
+}
+
+.notif-icon-task_closed {
+  background: color-mix(in srgb, var(--green) 15%, transparent);
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 30%, transparent);
+}
+
+.notif-icon-due_reminder {
+  background: color-mix(in srgb, var(--amber) 15%, transparent);
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 30%, transparent);
+}
+
+.notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notif-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.notif-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+.notif-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.notif-msg {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notif-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.notif-mark-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.notif-mark-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 12px;
+}
+
+.notif-empty-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.notif-empty-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.notif-empty-desc {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.center {
+  text-align: center;
+  color: var(--muted);
+  padding: 24px 12px;
+  font-size: 13px;
+}
+
+/* Compact mode — Ajustes > Apariencia. Tightens the spacing-heavy chrome
+   (header/tabs/content padding, boxed sections, list items, buttons) without
+   touching type sizes, so density goes up without hurting legibility. */
+.compact .header {
+  padding: 7px 14px;
+}
+
+.compact .tabs {
+  margin: 7px 10px;
+}
+
+.compact .tab {
+  padding: 5px 4px;
+}
+
+.compact .content {
+  --content-pad: 10px;
+}
+
+.compact .field {
+  margin-bottom: 7px;
+}
+
+.compact input,
+.compact textarea,
+.compact select {
+  padding: 6px 8px;
+}
+
+.compact button.btn,
+.compact .nav-btn {
+  padding: 7px;
+}
+
+.compact .settings-subheader {
+  margin-bottom: 12px;
+}
+
+.compact .timer-box {
+  padding: 10px;
+}
+
+.compact .timer-box + .timer-box {
+  margin-top: 10px;
+}
+
+.compact .note,
+.compact .notif {
+  padding: 7px 8px;
+  margin-bottom: 6px;
+}

@@ -1,20 +1,57 @@
 /**
- * Modern Friendly Notification Sound Synthesizer using Web Audio API.
- * Designed with warm harmonic intervals (sine waves with smooth exponential decays)
- * for a delightful, non-intrusive sound experience without external audio files.
+ * Granular Friendly Notification Sound Synthesizer using Web Audio API.
+ * Designed with warm harmonic intervals for a delightful, non-intrusive sound experience.
+ * Supports individual toggle preferences per sound category with DB/localStorage persistence.
  */
+
+export interface SoundPreferences {
+  action: boolean;
+  success: boolean;
+  error: boolean;
+  navigation: boolean;
+  dragDrop: boolean;
+  clockIn: boolean;
+  toggle: boolean;
+  delete: boolean;
+  chat: boolean;
+  pop: boolean;
+}
+
+export const DEFAULT_SOUND_PREFERENCES: SoundPreferences = {
+  action: true,
+  success: true,
+  error: true,
+  navigation: true,
+  dragDrop: true,
+  clockIn: true,
+  toggle: true,
+  delete: true,
+  chat: true,
+  pop: true,
+};
+
 class SoundService {
   private audioCtx: AudioContext | null = null;
-  private muted: boolean = false;
+  private globalMuted: boolean = false;
+  private soundPreferences: SoundPreferences = { ...DEFAULT_SOUND_PREFERENCES };
 
   constructor() {
+    this.loadLocalPreferences();
+  }
+
+  private loadLocalPreferences(): void {
     try {
-      const saved = localStorage.getItem('dama_sound_muted');
-      if (saved !== null) {
-        this.muted = saved === 'true';
+      const savedMuted = localStorage.getItem('dama_sound_muted');
+      if (savedMuted !== null) {
+        this.globalMuted = savedMuted === 'true';
+      }
+      const savedPrefs = localStorage.getItem('dama_sound_preferences');
+      if (savedPrefs) {
+        this.soundPreferences = { ...DEFAULT_SOUND_PREFERENCES, ...JSON.parse(savedPrefs) };
       }
     } catch {
-      this.muted = false;
+      this.globalMuted = false;
+      this.soundPreferences = { ...DEFAULT_SOUND_PREFERENCES };
     }
   }
 
@@ -36,28 +73,51 @@ class SoundService {
   }
 
   public isMuted(): boolean {
-    return this.muted;
+    return this.globalMuted;
   }
 
   public setMuted(muted: boolean): void {
-    this.muted = muted;
+    this.globalMuted = muted;
     try {
       localStorage.setItem('dama_sound_muted', String(muted));
-    } catch {
-      // Ignore localStorage restrictions
-    }
+    } catch {}
   }
 
   public toggleMute(): boolean {
-    this.setMuted(!this.muted);
-    return this.muted;
+    this.setMuted(!this.globalMuted);
+    return this.globalMuted;
+  }
+
+  public getPreferences(): SoundPreferences {
+    return { ...this.soundPreferences };
+  }
+
+  public setCategoryEnabled(category: keyof SoundPreferences, enabled: boolean): void {
+    this.soundPreferences[category] = enabled;
+    try {
+      localStorage.setItem('dama_sound_preferences', JSON.stringify(this.soundPreferences));
+    } catch {}
+  }
+
+  public loadPreferences(prefs?: Partial<SoundPreferences>): void {
+    if (prefs) {
+      this.soundPreferences = { ...DEFAULT_SOUND_PREFERENCES, ...prefs };
+      try {
+        localStorage.setItem('dama_sound_preferences', JSON.stringify(this.soundPreferences));
+      } catch {}
+    }
+  }
+
+  public isCategoryAllowed(category: keyof SoundPreferences): boolean {
+    if (this.globalMuted) return false;
+    return this.soundPreferences[category] ?? true;
   }
 
   /**
-   * Warm, friendly, marimba-like notification chime (F5 698.46 Hz -> A5 880 Hz)
+   * Warm marimba notification chime for chat & messages
    */
   public playMessageChime(): void {
-    if (this.muted) return;
+    if (!this.isCategoryAllowed('chat')) return;
     const ctx = this.getAudioContext();
     if (!ctx) return;
 
@@ -85,16 +145,14 @@ class SoundService {
         osc.start(now + start);
         osc.stop(now + start + duration);
       });
-    } catch {
-      // Audio playback silently fails if autoplay restricted before first user interaction
-    }
+    } catch {}
   }
 
   /**
    * Cheerful success chime (C5 -> E5 -> G5)
    */
   public playSuccessChime(): void {
-    if (this.muted) return;
+    if (!this.isCategoryAllowed('success')) return;
     const ctx = this.getAudioContext();
     if (!ctx) return;
 
@@ -123,16 +181,14 @@ class SoundService {
         osc.start(now + start);
         osc.stop(now + start + duration);
       });
-    } catch {
-      // Handled gracefully
-    }
+    } catch {}
   }
 
   /**
-   * Warm, soft alert sound (gentle double tap)
+   * Warm, soft error alert sound
    */
   public playAlertSound(): void {
-    if (this.muted) return;
+    if (!this.isCategoryAllowed('error')) return;
     const ctx = this.getAudioContext();
     if (!ctx) return;
 
@@ -160,16 +216,14 @@ class SoundService {
         osc.start(now + start);
         osc.stop(now + start + duration);
       });
-    } catch {
-      // Handled gracefully
-    }
+    } catch {}
   }
 
   /**
    * Subtle bubble pop sound
    */
   public playPopSound(): void {
-    if (this.muted) return;
+    if (!this.isCategoryAllowed('pop')) return;
     const ctx = this.getAudioContext();
     if (!ctx) return;
     try {
@@ -189,16 +243,147 @@ class SoundService {
   }
 
   /**
-   * Action completion chime
+   * Navigation tab transition sound
    */
+  public playNavigationSound(): void {
+    if (!this.isCategoryAllowed('navigation')) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1046.5, now);
+      osc.frequency.exponentialRampToValueAtTime(1318.5, now + 0.05);
+      gainNode.gain.setValueAtTime(0.05, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } catch {}
+  }
+
+  /**
+   * Drag & Drop action sound
+   */
+  public playDragDropSound(): void {
+    if (!this.isCategoryAllowed('dragDrop')) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(350, now);
+      osc.frequency.exponentialRampToValueAtTime(700, now + 0.07);
+      gainNode.gain.setValueAtTime(0.07, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    } catch {}
+  }
+
+  /**
+   * Clock-in / Fichaje de jornada sound
+   */
+  public playClockInSound(): void {
+    if (!this.isCategoryAllowed('clockIn')) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const chord = [
+        { freq: 587.33, start: 0, duration: 0.1, gain: 0.12 },
+        { freq: 880.00, start: 0.06, duration: 0.25, gain: 0.15 },
+      ];
+      chord.forEach(({ freq, start, duration, gain }) => {
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + start);
+        gainNode.gain.setValueAtTime(0.001, now + start);
+        gainNode.gain.exponentialRampToValueAtTime(gain, now + start + 0.015);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        osc.start(now + start);
+        osc.stop(now + start + duration);
+      });
+    } catch {}
+  }
+
+  /**
+   * Switch Toggle sound
+   */
+  public playToggleSound(): void {
+    if (!this.isCategoryAllowed('toggle')) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(750, now);
+      osc.frequency.exponentialRampToValueAtTime(950, now + 0.04);
+      gainNode.gain.setValueAtTime(0.06, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    } catch {}
+  }
+
+  /**
+   * Record Delete sound
+   */
+  public playDeleteSound(): void {
+    if (!this.isCategoryAllowed('delete')) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+      gainNode.gain.setValueAtTime(0.08, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } catch {}
+  }
+
   public playCompleteSound(): void {
     this.playSuccessChime();
   }
 
   /**
-   * Unified playback method
+   * Unified playback method supporting all granular categories
    */
-  public play(type: 'action' | 'success' | 'error' | 'alert' | 'pop'): void {
+  public play(
+    type:
+      | 'action'
+      | 'success'
+      | 'error'
+      | 'alert'
+      | 'pop'
+      | 'navigation'
+      | 'dragDrop'
+      | 'clockIn'
+      | 'toggle'
+      | 'delete'
+      | 'chat'
+  ): void {
     switch (type) {
       case 'success':
         this.playSuccessChime();
@@ -206,6 +391,24 @@ class SoundService {
       case 'error':
       case 'alert':
         this.playAlertSound();
+        break;
+      case 'navigation':
+        this.playNavigationSound();
+        break;
+      case 'dragDrop':
+        this.playDragDropSound();
+        break;
+      case 'clockIn':
+        this.playClockInSound();
+        break;
+      case 'toggle':
+        this.playToggleSound();
+        break;
+      case 'delete':
+        this.playDeleteSound();
+        break;
+      case 'chat':
+        this.playMessageChime();
         break;
       case 'action':
       case 'pop':

@@ -59,6 +59,22 @@ model User {
   calendarEvents   CalendarEvent[]
   calendarReminders CalendarReminder[]
   calendarIntegrations CalendarIntegration[]
+  assignedBoardTasks BoardTask[] @relation("BoardTaskAssignee")
+  supervisedBoardTasks BoardTask[] @relation("BoardTaskSupervisor")
+  plannerRemindersCreated PlannerReminder[] @relation("plannerRemindersCreated")
+  plannerRemindersAssigned PlannerReminder[] @relation("plannerRemindersAssigned")
+  userNotes               UserNote[]
+  pushSubscriptions       PushSubscription[]
+  taskTemplatesCreated    TaskTemplate[] @relation("templatesCreated")
+  taskLinksCreated        TaskLink[] @relation("taskLinksCreated")
+  githubAccounts          GithubAccount[]
+  forgejoAccounts         ForgejoAccount[]
+  boardTaskActivities     BoardTaskActivity[]
+  boardTaskComments       BoardTaskComment[]
+  boardTaskWatchers       BoardTaskWatcher[]
+  boardTaskAssignees      BoardTaskAssignee[]
+  boardMemberships        BoardMember[]
+  changelogReleases       ChangelogRelease[]
 
   @@index([tenantId, isActive])
   @@index([email])
@@ -1074,4 +1090,624 @@ model InternalChatMessage {
   @@map("internal_chat_messages")
 }
 
+// -----------------------------------------------------------------------------
+// Agile Planner & Task Management Models
+// -----------------------------------------------------------------------------
 
+model Board {
+  id            String               @id @default(uuid())
+  key           String?              @unique
+  name          String
+  description   String?
+  color         String               @default("gradient-primary")
+  methodology   String               @default("scrum")
+  boardType     String               @default("individual") // "individual" | "group"
+  parentBoardId String?              // For hierarchical boards
+  startDate     DateTime?
+  endDate       DateTime?
+  archived      Boolean              @default(false)
+  budgetedHours Float?
+  settings      String?              @default("{}")
+  tenantId      String?              @default("master")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  columns       BoardColumn[]
+  tasks         BoardTask[]
+  sprints       BoardSprint[]
+  members       BoardMember[]
+  githubRepos   GithubRepository[]
+  forgejoRepos  ForgejoRepository[]
+  parentBoard   Board?               @relation("BoardHierarchy", fields: [parentBoardId], references: [id], onDelete: SetNull)
+  childBoards   Board[]              @relation("BoardHierarchy")
+
+  @@index([tenantId])
+  @@map("boards")
+}
+
+model BoardMember {
+  id        String   @id @default(uuid())
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  @@unique([boardId, userId])
+  @@map("board_members")
+}
+
+model BoardColumn {
+  id             String      @id @default(uuid())
+  title          String
+  status         String?
+  position       Int
+  wipLimit       Int?
+  allowedRoles   String?     @default("[]") // JSON string of allowed roles
+  blockedUserIds String?     @default("[]") // JSON array of blocked user IDs
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  boardId        String
+  board          Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks          BoardTask[]
+
+  @@unique([boardId, position])
+  @@map("board_columns")
+}
+
+model BoardSprint {
+  id        String      @id @default(uuid())
+  boardId   String
+  board     Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name      String
+  goal      String?
+  startDate DateTime
+  endDate   DateTime
+  status    String      @default("planned") // planned, active, completed
+  tasks     BoardTask[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("board_sprints")
+}
+
+model BoardTask {
+  id                   String                 @id @default(uuid())
+  key                  String                 @unique
+  title                String
+  description          String?
+  type                 String                 @default("task")
+  priority             String                 @default("medium")
+  status               String                 @default("todo")
+  dueDate              DateTime?
+  wasOverdueWhenClosed Boolean?
+  githubIssueNumber    Int?
+  githubIssueUrl       String?
+  forgejoIssueNumber   Int?
+  forgejoIssueUrl      String?
+  harvestConfig        String?                @default("{}")
+  labels               String?                @default("[]")
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  boardId              String
+  columnId             String?
+  assigneeId           String?
+  supervisorId         String?
+  verified             Boolean                @default(false)
+  verifiedAt           DateTime?
+  sprintId             String?
+  board                Board                  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column               BoardColumn?           @relation(fields: [columnId], references: [id])
+  assignee             User?                  @relation("BoardTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  supervisor           User?                  @relation("BoardTaskSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
+  sprint               BoardSprint?           @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  activities           BoardTaskActivity[]
+  attachments          BoardTaskAttachment[]
+  comments             BoardTaskComment[]
+  assignees            BoardTaskAssignee[]
+  watchers             BoardTaskWatcher[]
+  pullRequests         BoardTaskPullRequest[]
+  branches             BoardTaskBranch[]
+  reminders            PlannerReminder[]
+  githubBranches       GithubBranch[]
+  githubCommits        GithubCommit[]
+  githubPRs            GithubPullRequest[]
+  forgejoBranches      ForgejoBranch[]
+  forgejoCommits       ForgejoCommit[]
+  forgejoPRs           ForgejoPullRequest[]
+  taskLinksA           TaskLink[]             @relation("taskLinksA")
+  taskLinksB           TaskLink[]             @relation("taskLinksB")
+
+  @@index([boardId, columnId])
+  @@index([assigneeId])
+  @@index([supervisorId])
+  @@map("board_tasks")
+}
+
+model TaskLink {
+  id          String    @id @default(uuid())
+  taskAId     String
+  taskBId     String
+  createdAt   DateTime  @default(now())
+  createdById String?
+  taskA       BoardTask @relation("taskLinksA", fields: [taskAId], references: [id], onDelete: Cascade)
+  taskB       BoardTask @relation("taskLinksB", fields: [taskBId], references: [id], onDelete: Cascade)
+  createdBy   User?     @relation("taskLinksCreated", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([taskAId, taskBId])
+  @@index([taskAId])
+  @@index([taskBId])
+  @@map("task_links")
+}
+
+model BoardTaskAssignee {
+  id         String    @id @default(uuid())
+  taskId     String
+  userId     String
+  assignedAt DateTime  @default(now())
+  task       BoardTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("board_task_assignees")
+}
+
+model BoardTaskWatcher {
+  id        String    @id @default(uuid())
+  taskId    String
+  userId    String
+  createdAt DateTime  @default(now())
+  task      BoardTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("board_task_watchers")
+}
+
+model BoardTaskActivity {
+  id        String     @id @default(uuid())
+  type      String
+  content   String
+  metadata  String?    @default("{}")
+  createdAt DateTime   @default(now())
+  taskId    String?
+  userId    String
+  task      BoardTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("board_task_activities")
+}
+
+model BoardTaskAttachment {
+  id        String            @id @default(uuid())
+  filename  String
+  url       String
+  size      Int
+  mimetype  String
+  createdAt DateTime          @default(now())
+  taskId    String
+  commentId String?
+  task      BoardTask         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment   BoardTaskComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@map("board_task_attachments")
+}
+
+model BoardTaskComment {
+  id          String                @id @default(uuid())
+  content     String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  taskId      String
+  userId      String?
+  task        BoardTask             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  attachments BoardTaskAttachment[]
+
+  @@map("board_task_comments")
+}
+
+model BoardTaskPullRequest {
+  id        String    @id @default(uuid())
+  url       String
+  title     String?
+  taskId    String
+  createdAt DateTime  @default(now())
+  task      BoardTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("board_task_pull_requests")
+}
+
+model BoardTaskBranch {
+  id        String    @id @default(uuid())
+  name      String
+  url       String?
+  taskId    String
+  createdAt DateTime  @default(now())
+  task      BoardTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("board_task_branches")
+}
+
+model GithubAccount {
+  id             String             @id @default(uuid())
+  username       String
+  email          String?
+  avatarUrl      String?
+  encryptedToken String
+  tokenIv        String
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  userId         String?
+  user           User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositories   GithubRepository[]
+
+  @@unique([username, userId])
+  @@map("github_accounts")
+}
+
+model GithubRepository {
+  id              String              @id @default(uuid())
+  name            String
+  fullName        String
+  url             String
+  defaultBranch   String              @default("main")
+  isActive        Boolean             @default(true)
+  lastSyncAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  boardId         String
+  githubAccountId String?
+  branches        GithubBranch[]
+  commits         GithubCommit[]
+  pullRequests    GithubPullRequest[]
+  board           Board               @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  account         GithubAccount?      @relation(fields: [githubAccountId], references: [id])
+
+  @@unique([boardId, name])
+  @@map("github_repositories")
+}
+
+model GithubBranch {
+  id           String           @id @default(uuid())
+  name         String
+  sha          String
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  repositoryId String
+  taskId       String?
+  repository   GithubRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  task         BoardTask?       @relation(fields: [taskId], references: [id])
+
+  @@unique([repositoryId, name])
+  @@map("github_branches")
+}
+
+model GithubCommit {
+  id           String           @id @default(uuid())
+  sha          String
+  message      String
+  author       String
+  url          String
+  createdAt    DateTime         @default(now())
+  repositoryId String
+  taskId       String?
+  repository   GithubRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  task         BoardTask?       @relation(fields: [taskId], references: [id])
+
+  @@unique([repositoryId, sha])
+  @@map("github_commits")
+}
+
+model GithubPullRequest {
+  id           String           @id @default(uuid())
+  number       Int
+  title        String
+  description  String?
+  state        String
+  url          String
+  createdBy    String
+  mergedAt     DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  repositoryId String
+  taskId       String?
+  repository   GithubRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  task         BoardTask?       @relation(fields: [taskId], references: [id])
+
+  @@unique([repositoryId, number])
+  @@map("github_pull_requests")
+}
+
+model ForgejoAccount {
+  id             String              @id @default(uuid())
+  username       String
+  email          String?
+  avatarUrl      String?
+  encryptedToken String
+  tokenIv        String
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  userId         String?
+  user           User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositories   ForgejoRepository[]
+
+  @@unique([username, userId])
+  @@map("forgejo_accounts")
+}
+
+model ForgejoRepository {
+  id            String               @id @default(uuid())
+  name          String
+  fullName      String
+  url           String
+  defaultBranch String               @default("main")
+  isActive      Boolean              @default(true)
+  lastSyncAt    DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  boardId       String
+  accountId     String?
+  branches      ForgejoBranch[]
+  commits       ForgejoCommit[]
+  pullRequests  ForgejoPullRequest[]
+  board         Board                @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  account       ForgejoAccount?      @relation(fields: [accountId], references: [id])
+
+  @@unique([boardId, name])
+  @@map("forgejo_repositories")
+}
+
+model ForgejoBranch {
+  id           String            @id @default(uuid())
+  name         String
+  sha          String
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  repositoryId String
+  taskId       String?
+  repository   ForgejoRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  task         BoardTask?        @relation(fields: [taskId], references: [id])
+
+  @@unique([repositoryId, name])
+  @@map("forgejo_branches")
+}
+
+model ForgejoCommit {
+  id           String            @id @default(uuid())
+  sha          String
+  message      String
+  author       String
+  url          String
+  createdAt    DateTime          @default(now())
+  repositoryId String
+  taskId       String?
+  repository   ForgejoRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  task         BoardTask?        @relation(fields: [taskId], references: [id])
+
+  @@unique([repositoryId, sha])
+  @@map("forgejo_commits")
+}
+
+model ForgejoPullRequest {
+  id           String            @id @default(uuid())
+  number       Int
+  title        String
+  description  String?
+  state        String
+  url          String
+  createdBy    String
+  mergedAt     DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  repositoryId String
+  taskId       String?
+  repository   ForgejoRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  task         BoardTask?        @relation(fields: [taskId], references: [id])
+
+  @@unique([repositoryId, number])
+  @@map("forgejo_pull_requests")
+}
+
+model PlannerReminder {
+  id                String     @id @default(uuid())
+  title             String
+  description       String?
+  scheduledAt       DateTime
+  status            String     @default("pending") // pending, notified, confirmed, snoozed, cancelled
+  priority          String     @default("medium") // high, medium, low
+  recurrenceType    String     @default("none") // none, daily, weekly, monthly
+  recurrenceDays    String?    @default("[]") // JSON string
+  recurrenceEndDate DateTime?
+  snoozedUntil      DateTime?
+  lastNotifiedAt    DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  createdById       String
+  assignedToId      String
+  relatedTaskId     String?
+  createdBy         User       @relation("plannerRemindersCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  assignedTo        User       @relation("plannerRemindersAssigned", fields: [assignedToId], references: [id], onDelete: Cascade)
+  relatedTask       BoardTask? @relation(fields: [relatedTaskId], references: [id], onDelete: SetNull)
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("planner_reminders")
+}
+
+model UserNote {
+  id        String   @id @default(uuid())
+  title     String?
+  content   String
+  color     String?  @default("yellow")
+  pinned    Boolean  @default(false)
+  order     Int      @default(0)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([pinned])
+  @@map("user_notes")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+model TaskTemplate {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  content      String
+  scope        String   @default("personal") // "general" | "personal"
+  departmentId String?
+  memberIds    String?  @default("[]") // JSON array of user IDs
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdById  String?
+  createdBy    User?    @relation("templatesCreated", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+  @@index([scope])
+  @@map("task_templates")
+}
+
+model ChangelogRelease {
+  id          String                  @id @default(uuid())
+  version     String
+  title       String?
+  releasedAt  DateTime                @default(now())
+  createdById String?
+  createdBy   User?                   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  entries     ChangelogReleaseEntry[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([releasedAt])
+  @@map("changelog_releases")
+}
+
+model ChangelogReleaseEntry {
+  id          String           @id @default(uuid())
+  releaseId   String
+  category    String           @default("feature") // feature | fix | improvement
+  description String
+  issueNumber Int?
+  issueUrl    String?
+  order       Int              @default(0)
+  release     ChangelogRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@index([releaseId])
+  @@map("changelog_release_entries")
+}
+
+model HarvestReportConfig {
+  id           String   @id @default(uuid())
+  emails       String   @default("[]") // JSON array of email addresses
+  enabled      Boolean  @default(true)
+  scheduleTime String   @default("18:00")
+  timezone     String   @default("Europe/Madrid")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("harvest_report_configs")
+}
+
+model ProjectBudgetAlertConfig {
+  id              String   @id @default(uuid())
+  emails          String   @default("[]") // JSON array
+  enabled         Boolean  @default(true)
+  scheduleTime    String   @default("09:00")
+  timezone        String   @default("Europe/Madrid")
+  alert90Enabled  Boolean  @default(true)
+  alert100Enabled Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("project_budget_alert_configs")
+}
+
+model ProjectBudgetAlertStatus {
+  id                String    @id @default(uuid())
+  boardId           String    @unique
+  lastAlertSent90   DateTime?
+  lastAlertSent100  DateTime?
+  lastDailyReminder DateTime?
+  currentStatus     String    @default("under_budget")
+  lastPercentage    Float?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([boardId])
+  @@map("project_budget_alert_statuses")
+}
+
+model FuelRate {
+  id            String   @id @default(uuid())
+  ratePerKm     Float
+  currency      String   @default("EUR")
+  effectiveFrom DateTime @unique
+  note          String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("fuel_rates")
+}
+
+model ExpenseReceipt {
+  id           String   @id @default(uuid())
+  filename     String
+  url          String
+  size         Int
+  mimetype     String
+  expenseId    String
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([expenseId])
+  @@map("expense_receipts")
+}
+
+model ExpenseReminderConfig {
+  id                     String    @id @default(uuid())
+  emails                 String    @default("[]") // JSON array
+  enabled                Boolean   @default(false)
+  frequency              String    @default("weekly")
+  dayOfWeek              Int       @default(1)
+  dayOfMonth             Int       @default(1)
+  scheduleTime           String    @default("09:00")
+  timezone               String    @default("Europe/Madrid")
+  includePendingApproval Boolean   @default(true)
+  includePendingPayment  Boolean   @default(true)
+  sendWhenEmpty          Boolean   @default(false)
+  lastSentAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@map("expense_reminder_configs")
+}

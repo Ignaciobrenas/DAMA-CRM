@@ -16,6 +16,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAppearance, FontSizeOption, IconStyleOption, FONT_SIZE_PX_MAP } from '../../context/AppearanceContext';
 import { useToast } from '../../context/ToastContext';
 import { DynamicIcon } from '../ui/DynamicIcon';
+import { SidebarCustomizer } from './SidebarCustomizer';
 
 export const AccessibilitySettings: React.FC = () => {
   const { t } = useLanguage();
@@ -414,6 +415,9 @@ export const AccessibilitySettings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Drag & Drop Sidebar Customizer & Granular Sound Engine */}
+      <SidebarCustomizer />
     </div>
   );
 };

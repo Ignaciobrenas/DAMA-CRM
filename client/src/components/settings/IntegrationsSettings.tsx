@@ -156,6 +156,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'Odoo ERP v17 / v18',
       desc: 'Sincronización bidireccional de fichajes de empleados, partes de horas y presupuestos.',
       icon: Boxes,
+      logoUrl: '/assets/logos/integrations/odoo.png',
       color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60',
       fields: [
         { key: 'url', label: 'URL del Servidor Odoo', placeholder: 'https://odoo.miempresa.com' },
@@ -169,6 +170,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'Sage One / Business Cloud',
       desc: 'Sincronización cloud de clientes, facturas de venta y catálogo de productos con Sage Accounting.',
       icon: Boxes,
+      logoUrl: '/assets/logos/integrations/sage.png',
       color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
       fields: [
         { key: 'apiUrl', label: 'URL Endpoint API Sage One', placeholder: 'https://api.accounting.sage.com/v3.1' },
@@ -183,6 +185,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'Sage 50 Cloud Asesoría & Pymes',
       desc: 'Conector SData / REST para sincronizar cartera de clientes, facturación y stock físico.',
       icon: Boxes,
+      logoUrl: '/assets/logos/integrations/sage.png',
       color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
       fields: [
         { key: 'endpointUrl', label: 'Endpoint SData / REST', placeholder: 'http://localhost:5493/sdata/sage50' },
@@ -197,6 +200,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'Sage 200 Advanced Enterprise ERP',
       desc: 'Integración empresarial de gran escala con libro mayor contable, impuestos y asientos.',
       icon: Boxes,
+      logoUrl: '/assets/logos/integrations/sage.png',
       color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
       fields: [
         { key: 'baseUrl', label: 'Base URL API Sage 200', placeholder: 'https://api.sage.com/sage200/v1' },
@@ -211,6 +215,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'Meta WhatsApp Cloud API',
       desc: 'Bandeja omnicanal de mensajería con soporte de plantillas verificadas de Meta.',
       icon: MessageSquare,
+      logoUrl: '/assets/logos/integrations/whatsapp.png',
       color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
       fields: [
         { key: 'phoneNumberId', label: 'ID Número de Teléfono (Phone ID)', placeholder: '109283746192834' },
@@ -223,6 +228,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'UnoPIM PIM & Inventario',
       desc: 'Catálogo unificado de productos, variantes y niveles de existencias multialmacén.',
       icon: Boxes,
+      logoUrl: '/assets/logos/integrations/unopim.png',
       color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60',
       fields: [
         { key: 'endpoint', label: 'URL Endpoint UnoPIM', placeholder: 'https://pim.miempresa.com/api' },
@@ -234,6 +240,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'WooCommerce & Shopify eCommerce',
       desc: 'Ingreso automático de pedidos online como oportunidades ganadas y clientes.',
       icon: ShoppingCart,
+      logoUrl: '/assets/logos/integrations/woocommerce.png',
       color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
       fields: [
         { key: 'storeUrl', label: 'URL de la Tienda Online', placeholder: 'https://tienda.empresa.com' },
@@ -246,6 +253,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'Stripe Billing & Pagos',
       desc: 'Conciliación automática de facturas y cobros online mediante tarjeta y domiciliación SEPA.',
       icon: CreditCard,
+      logoUrl: '/assets/logos/integrations/stripe.png',
       color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60',
       fields: [
         { key: 'publishableKey', label: 'Stripe Publishable Key', placeholder: 'pk_live_••••••••' },
@@ -258,6 +266,7 @@ export const IntegrationsSettings: React.FC = () => {
       name: 'Servidor SMTP / Correo Saliente',
       desc: 'Envío de códigos 2FA, presupuestos a clientes y notificaciones de recordatorio.',
       icon: Mail,
+      logoUrl: '/assets/logos/integrations/correos.png',
       color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
       fields: [
         { key: 'host', label: 'Host SMTP', placeholder: 'smtp.gmail.com' },
@@ -299,6 +308,10 @@ export const IntegrationsSettings: React.FC = () => {
             const values = formData[connector.id] || {};
             const isTesting = testingId === connector.id;
             const isSyncing = syncingId === connector.id;
+            const isConfigured = Boolean(
+              integrations[connector.id]?.enabled ||
+              Object.values(values).some((v) => v && v.trim() && !v.includes('••••'))
+            );
 
             return (
               <div
@@ -308,8 +321,18 @@ export const IntegrationsSettings: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${connector.color}`}>
-                        <Icon className="w-4 h-4" />
+                      <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                        <img
+                          src={connector.logoUrl}
+                          alt={connector.name}
+                          className="w-7 h-7 object-contain drop-shadow-xs"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.nextElementSibling;
+                            if (fallback) fallback.classList.remove('hidden');
+                          }}
+                        />
+                        <Icon className="w-4 h-4 hidden text-gray-600 dark:text-slate-400" />
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-gray-900 dark:text-white">{connector.name}</h4>
@@ -319,9 +342,15 @@ export const IntegrationsSettings: React.FC = () => {
                       </div>
                     </div>
 
-                    <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Activo</span>
+                    <span
+                      className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] font-semibold border shrink-0 ${
+                        isConfigured
+                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      {isConfigured ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <AlertCircle className="w-3 h-3 text-slate-400" />}
+                      <span>{isConfigured ? 'Activo' : 'Sin configurar'}</span>
                     </span>
                   </div>
 
