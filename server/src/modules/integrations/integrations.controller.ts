@@ -364,8 +364,35 @@ export async function testIntegration(req: Request, res: Response): Promise<void
         return;
     }
 
+    // Asynchronously log to DB
+    const { prisma } = require('../../prisma');
+    await prisma.auditLog.create({
+      data: {
+        userId: (req as any).user?.userId || null,
+        action: 'INTEGRATION_TEST',
+        entity: 'Integration',
+        entityId: connector,
+        details: JSON.stringify({ success: result.success, message: result.message }),
+        ipAddress: req.ip || req.socket?.remoteAddress || null,
+        tenantId: (req as any).user?.tenantId || 'master'
+      }
+    }).catch((e: any) => console.error(e));
+
     res.status(result.success ? 200 : 400).json(result);
   } catch (err: any) {
+    const { prisma } = require('../../prisma');
+    await prisma.systemErrorLog.create({
+      data: {
+        statusCode: 500,
+        message: `[Integration Test Error] ${err.message}`,
+        stack: err.stack,
+        method: req.method,
+        path: req.path,
+        userId: (req as any).user?.userId || null,
+        ipAddress: req.ip || req.socket?.remoteAddress || null,
+      }
+    }).catch((e: any) => console.error(e));
+
     res.status(500).json({ success: false, message: err.message });
   }
 }

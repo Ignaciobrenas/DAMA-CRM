@@ -1711,3 +1711,19 @@ model ExpenseReminderConfig {
 
   @@map("expense_reminder_configs")
 }
+
+model SystemErrorLog {
+  id          String   @id @default(uuid())
+  statusCode  Int?
+  message     String
+  stack       String?
+  method      String?
+  path        String?
+  userId      String?
+  ipAddress   String?
+  headers     String?  // JSON string
+  body        String?  // JSON string
+  createdAt   DateTime @default(now())
+
+  @@map("system_error_logs")
+}

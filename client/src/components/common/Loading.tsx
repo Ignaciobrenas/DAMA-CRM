@@ -117,7 +117,7 @@ export const LoadingScreen: React.FC<{
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
           <div className="relative z-10 p-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl">
-            <ThinkingOrb state={orbState} size={64} theme={isDark ? 'dark' : 'light'} />
+            <ThinkingOrb state={orbState} size={64} {...({ dark: isDark } as any)} />
           </div>
         </div>
 
@@ -230,3 +230,7 @@ export const LoadingButton: React.FC<
     </button>
   );
 };
+
+
+
+

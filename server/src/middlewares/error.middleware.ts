@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import { prisma } from '../prisma';
 
-export function errorHandler(err: any, req: Request, res: Response, next: NextFunction): void {
+export async function errorHandler(err: any, req: Request, res: Response, next: NextFunction): Promise<void> {
   // Safe server-side logging
-  console.error(`🚨 [API Error] ${req.method} ${req.path}:`, err.message || err);
+  console.error(`🔴 [API Error] ${req.method} ${req.path}:`, err.message || err);
 
   let statusCode = err.statusCode || 500;
   let friendlyMessage = 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo en unos momentos.';
@@ -23,6 +24,28 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
   } else if (statusCode < 500 && err.message) {
     // Client-side / validation error: keep concise message
     friendlyMessage = err.message;
+  }
+
+  // Asynchronously log to database
+  try {
+    const safeHeaders = { ...req.headers };
+    delete safeHeaders['authorization']; // do not log auth tokens
+    
+    await prisma.systemErrorLog.create({
+      data: {
+        statusCode,
+        message: err.message || String(err),
+        stack: err.stack,
+        method: req.method,
+        path: req.path,
+        userId: (req as any).user?.userId || null,
+        ipAddress: req.ip || req.socket?.remoteAddress || null,
+        headers: JSON.stringify(safeHeaders),
+        body: ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body ? JSON.stringify(req.body) : null
+      }
+    });
+  } catch (dbErr) {
+    console.error('🔴 [DB Logging Error] Failed to save error log:', dbErr);
   }
 
   res.status(statusCode).json({
