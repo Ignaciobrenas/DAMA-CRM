@@ -210,6 +210,8 @@ export const NotificationCenter: React.FC = () => {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
+      case 'task':
+        return <Layers className="w-3.5 h-3.5 text-blue-500" />;
       case 'ticket':
         return <Headphones className="w-3.5 h-3.5 text-blue-500" />;
       case 'invoice':
@@ -347,6 +349,7 @@ export const NotificationCenter: React.FC = () => {
                       className="text-[11px] font-semibold bg-transparent text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
                     >
                       <option value="all" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterAll')}</option>
+                      <option value="task" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Tareas & Planner</option>
                       <option value="ticket" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterTickets')}</option>
                       <option value="invoice" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterInvoices')}</option>
                       <option value="quote" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{t('notifications.filterQuotes')}</option>
@@ -360,6 +363,7 @@ export const NotificationCenter: React.FC = () => {
                 <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
                   {[
                     { id: 'all', label: t('notifications.filterAll') },
+                    { id: 'task', label: 'Tareas' },
                     { id: 'ticket', label: t('notifications.filterTickets') },
                     { id: 'invoice', label: t('notifications.filterInvoices') },
                     { id: 'deal', label: t('notifications.filterDeals') },

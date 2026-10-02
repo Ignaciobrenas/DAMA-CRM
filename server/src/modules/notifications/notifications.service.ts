@@ -6,7 +6,7 @@ export interface CreateNotificationInput {
   tenantId?: string;
   title: string;
   message: string;
-  type?: 'ticket' | 'invoice' | 'quote' | 'deal' | 'stock' | 'lead' | 'system' | 'workflow' | 'chat' | 'info';
+  type?: 'ticket' | 'invoice' | 'quote' | 'deal' | 'stock' | 'lead' | 'system' | 'workflow' | 'chat' | 'task' | 'info';
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   actionUrl?: string;
   metadata?: Record<string, any>;
@@ -141,6 +141,68 @@ export class NotificationService {
       priority: 'normal',
       actionUrl: '/contacts',
       metadata: { email: lead.email, source: lead.source },
+    });
+  }
+
+  public static async notifyTaskCreated(task: { id: string; key: string; title: string; assigneeId?: string | null; tenantId?: string | null }) {
+    return this.dispatch({
+      userId: task.assigneeId || undefined,
+      tenantId: task.tenantId || 'master',
+      title: `📋 Nueva Tarea: ${task.key}`,
+      message: `Tarea creada: "${task.title}"`,
+      type: 'task',
+      priority: 'normal',
+      actionUrl: '/agile',
+      metadata: { taskId: task.id, key: task.key },
+    });
+  }
+
+  public static async notifyTaskStatusChanged(task: { id: string; key: string; title: string; assigneeId?: string | null; supervisorId?: string | null; tenantId?: string | null }, oldStatus: string, newStatus: string, actorName?: string) {
+    const statusLabels: Record<string, string> = {
+      todo: 'Por Hacer',
+      in_progress: 'En Progreso',
+      review: 'En Revisión',
+      done: 'Completada',
+    };
+    const fromLabel = statusLabels[oldStatus] || oldStatus;
+    const toLabel = statusLabels[newStatus] || newStatus;
+
+    return this.dispatch({
+      userId: task.assigneeId || task.supervisorId || undefined,
+      tenantId: task.tenantId || 'master',
+      title: `🔄 Cambio de Estado [${task.key}]`,
+      message: `Tarea "${task.title}" cambió de "${fromLabel}" a "${toLabel}"${actorName ? ` por ${actorName}` : ''}.`,
+      type: 'task',
+      priority: newStatus === 'done' ? 'high' : 'normal',
+      actionUrl: '/agile',
+      metadata: { taskId: task.id, key: task.key, oldStatus, newStatus },
+    });
+  }
+
+  public static async notifyTaskAssigned(task: { id: string; key: string; title: string; assigneeId: string; tenantId?: string | null }, actorName?: string) {
+    return this.dispatch({
+      userId: task.assigneeId,
+      tenantId: task.tenantId || 'master',
+      title: `📌 Tarea Asignada: ${task.key}`,
+      message: `Se te ha asignado la tarea "${task.title}"${actorName ? ` por ${actorName}` : ''}.`,
+      type: 'task',
+      priority: 'high',
+      actionUrl: '/agile',
+      metadata: { taskId: task.id, key: task.key },
+    });
+  }
+
+  public static async notifyTaskComment(task: { id: string; key: string; title: string; assigneeId?: string | null; supervisorId?: string | null; tenantId?: string | null }, authorName: string, commentContent: string) {
+    const preview = commentContent.length > 80 ? commentContent.slice(0, 80) + '...' : commentContent;
+    return this.dispatch({
+      userId: task.assigneeId || task.supervisorId || undefined,
+      tenantId: task.tenantId || 'master',
+      title: `💬 Comentario en ${task.key}`,
+      message: `${authorName}: "${preview}"`,
+      type: 'task',
+      priority: 'normal',
+      actionUrl: '/agile',
+      metadata: { taskId: task.id, key: task.key },
     });
   }
 }

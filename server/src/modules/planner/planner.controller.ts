@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import { NotificationService } from '../notifications/notifications.service';
 
 // -----------------------------------------------------------------------------
 // Boards (Agile Projects / Kanban Boards)
@@ -246,6 +247,7 @@ export async function deleteColumn(req: Request, res: Response): Promise<void> {
 
 export async function createBoardTask(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const { boardId, columnId, title, description, priority, type, dueDate, assigneeId, supervisorId, labels } = req.body;
 
     if (!boardId || !title) {
@@ -283,7 +285,28 @@ export async function createBoardTask(req: Request, res: Response): Promise<void
       include: {
         assignee: { select: { id: true, name: true, avatar: true } },
         column: { select: { id: true, title: true } },
+        board: { select: { tenantId: true } },
       },
+    });
+
+    if (req.user?.id) {
+      await prisma.boardTaskActivity.create({
+        data: {
+          taskId: task.id,
+          userId: req.user.id,
+          type: 'task_created',
+          content: `Tarea ${task.key} creada`,
+          metadata: JSON.stringify({ title: task.title, priority: task.priority }),
+        },
+      }).catch(() => {});
+    }
+
+    await NotificationService.notifyTaskCreated({
+      id: task.id,
+      key: task.key,
+      title: task.title,
+      assigneeId: task.assigneeId,
+      tenantId: task.board?.tenantId || tenantId,
     });
 
     res.status(201).json({ success: true, data: task });
@@ -296,6 +319,16 @@ export async function updateBoardTask(req: Request, res: Response): Promise<void
   try {
     const { id } = req.params;
     const { title, description, columnId, status, priority, type, dueDate, assigneeId, supervisorId, labels, verified } = req.body;
+
+    const existingTask = await prisma.boardTask.findUnique({
+      where: { id },
+      include: { board: { select: { tenantId: true } } },
+    });
+
+    if (!existingTask) {
+      res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
 
     const data: any = {};
     if (title !== undefined) data.title = title.trim();
@@ -320,8 +353,98 @@ export async function updateBoardTask(req: Request, res: Response): Promise<void
         assignee: { select: { id: true, name: true, avatar: true } },
         supervisor: { select: { id: true, name: true, avatar: true } },
         column: { select: { id: true, title: true } },
+        board: { select: { tenantId: true } },
       },
     });
+
+    const actorId = req.user?.id;
+    const actorName = req.user?.name || req.user?.email || undefined;
+    const tenantId = updated.board?.tenantId || getRequestTenant(req);
+
+    // Track status change activity and dispatch notification
+    if (status !== undefined && status !== existingTask.status) {
+      if (actorId) {
+        await prisma.boardTaskActivity.create({
+          data: {
+            taskId: updated.id,
+            userId: actorId,
+            type: 'status_changed',
+            content: `Estado cambiado de ${existingTask.status} a ${status}`,
+            metadata: JSON.stringify({ oldStatus: existingTask.status, newStatus: status }),
+          },
+        }).catch(() => {});
+      }
+
+      await NotificationService.notifyTaskStatusChanged(
+        {
+          id: updated.id,
+          key: updated.key,
+          title: updated.title,
+          assigneeId: updated.assigneeId,
+          supervisorId: updated.supervisorId,
+          tenantId,
+        },
+        existingTask.status,
+        status,
+        actorName
+      );
+    }
+
+    // Track column change activity
+    if (columnId !== undefined && columnId !== existingTask.columnId) {
+      if (actorId) {
+        await prisma.boardTaskActivity.create({
+          data: {
+            taskId: updated.id,
+            userId: actorId,
+            type: 'column_changed',
+            content: `Movido a columna ${updated.column?.title || columnId}`,
+            metadata: JSON.stringify({ oldColumnId: existingTask.columnId, newColumnId: columnId }),
+          },
+        }).catch(() => {});
+      }
+    }
+
+    // Track assignee change activity and notify new assignee
+    if (assigneeId !== undefined && assigneeId !== existingTask.assigneeId && assigneeId) {
+      if (actorId) {
+        await prisma.boardTaskActivity.create({
+          data: {
+            taskId: updated.id,
+            userId: actorId,
+            type: 'assignee_changed',
+            content: `Asignado a usuario ${updated.assignee?.name || assigneeId}`,
+            metadata: JSON.stringify({ oldAssigneeId: existingTask.assigneeId, newAssigneeId: assigneeId }),
+          },
+        }).catch(() => {});
+      }
+
+      await NotificationService.notifyTaskAssigned(
+        {
+          id: updated.id,
+          key: updated.key,
+          title: updated.title,
+          assigneeId,
+          tenantId,
+        },
+        actorName
+      );
+    }
+
+    // Track verification activity
+    if (verified !== undefined && verified !== existingTask.verified) {
+      if (actorId) {
+        await prisma.boardTaskActivity.create({
+          data: {
+            taskId: updated.id,
+            userId: actorId,
+            type: 'verified',
+            content: verified ? 'Tarea verificada' : 'Verificación eliminada',
+            metadata: JSON.stringify({ verified }),
+          },
+        }).catch(() => {});
+      }
+    }
 
     res.json({ success: true, data: updated });
   } catch (error: any) {
@@ -603,8 +726,39 @@ export async function createTaskComment(req: Request, res: Response): Promise<vo
       include: {
         user: { select: { id: true, name: true, avatar: true } },
         attachments: true,
+        task: {
+          include: { board: { select: { tenantId: true } } },
+        },
       },
     });
+
+    if (userId) {
+      await prisma.boardTaskActivity.create({
+        data: {
+          taskId,
+          userId,
+          type: 'comment_added',
+          content: `Añadió un comentario: "${content.trim().slice(0, 50)}"`,
+          metadata: JSON.stringify({ commentId: comment.id }),
+        },
+      }).catch(() => {});
+    }
+
+    const authorName = comment.user?.name || req.user?.name || 'Un usuario';
+    if (comment.task) {
+      await NotificationService.notifyTaskComment(
+        {
+          id: comment.task.id,
+          key: comment.task.key,
+          title: comment.task.title,
+          assigneeId: comment.task.assigneeId,
+          supervisorId: comment.task.supervisorId,
+          tenantId: comment.task.board?.tenantId || 'master',
+        },
+        authorName,
+        comment.content
+      );
+    }
 
     res.status(201).json({ success: true, data: comment });
   } catch (error: any) {
