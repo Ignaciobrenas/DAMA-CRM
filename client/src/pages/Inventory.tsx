@@ -685,7 +685,7 @@ export const Inventory: React.FC = () => {
           <button
             onClick={handleBulkAutoMap}
             disabled={isBulkMapping}
-            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             title="Mapea atributos y metadatos automáticamente para UnoPim, OpenCart, Sage, Odoo, Shopify y WooCommerce"
           >
             <Sparkles className={`w-3.5 h-3.5 ${isBulkMapping ? 'animate-spin' : ''}`} />
@@ -1510,7 +1510,7 @@ export const Inventory: React.FC = () => {
                   return (
                     <div className="space-y-4">
                       {/* Top Action Banner */}
-                      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-200/60 dark:border-blue-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className="p-2.5 rounded-xl bg-blue-600 text-white shrink-0">
                             <Sparkles className="w-5 h-5" />

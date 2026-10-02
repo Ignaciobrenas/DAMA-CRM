@@ -187,7 +187,7 @@ export const OnboardingTourModal: React.FC<OnboardingTourModalProps> = ({
           className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] cursor-default m-auto"
         >
           {/* Top Banner / Progress Header */}
-          <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 text-white relative overflow-hidden shrink-0">
+          <div className="bg-slate-900 dark:bg-slate-950 p-6 text-white relative overflow-hidden shrink-0 border-b border-slate-800">
             <div className="absolute top-0 right-0 p-4">
               <button
                 type="button"

@@ -223,13 +223,9 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-      {/* Background Animated Glow Meshes */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-blue-600/15 via-indigo-500/10 to-teal-400/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-gradient-to-br from-purple-600/10 via-pink-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
-
+    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-100/90 dark:bg-slate-950 transition-colors duration-300">
       {/* Auth Card Container */}
-      <div className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/80 dark:border-slate-800 p-6 sm:p-8 relative z-10 transition-all duration-300">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 relative z-10 transition-all duration-300">
         
         {/* Top Controls: Language & Dark/Light Mode */}
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-slate-800/80">

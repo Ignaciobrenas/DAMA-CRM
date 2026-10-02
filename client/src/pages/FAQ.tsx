@@ -273,7 +273,7 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
       </div>
 
       {/* Contact Support Footer Card */}
-      <div className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800/80 rounded-2xl p-6 sm:p-8 border border-slate-300 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-slate-100 dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-300 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-brand-color/10 text-brand-color flex items-center justify-center shrink-0">
             <MessageCircle className="w-6 h-6" />

@@ -42,7 +42,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.namePortalEmpleado', 'Portal del Empleado'),
       description: t('modules.descPortalEmpleado', 'Control horario de jornada laboral (Art. 34.9 ET), nóminas salariales y sincronización Odoo'),
       icon: UserCheck,
-      color: 'from-blue-500 to-indigo-600',
+      color: 'bg-blue-600',
       badge: t('modules.badgeHR', 'RRHH & Laboral'),
     },
     {
@@ -50,7 +50,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameTickets', 'Mesa de Ayuda & Tickets'),
       description: t('modules.descTickets', 'Gestión de incidencias de soporte técnico, acuerdos SLA y notas internas confidenciales'),
       icon: Ticket,
-      color: 'from-violet-500 to-purple-600',
+      color: 'bg-purple-600',
       badge: t('modules.badgeSupport', 'Soporte'),
     },
     {
@@ -58,7 +58,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameExpenses', 'Control de Gastos & P&L'),
       description: t('modules.descExpenses', 'Registro de gastos deducibles, modelo 303 de IVA, balance de pérdidas y ganancias e informe Dunning'),
       icon: WalletCards,
-      color: 'from-emerald-500 to-teal-600',
+      color: 'bg-emerald-600',
       badge: t('modules.badgeFinance', 'Finanzas'),
     },
     {
@@ -66,7 +66,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.namePipeline', 'Embudo de Ventas (Pipeline)'),
       description: t('modules.descPipeline', 'Seguimiento visual de oportunidades comerciales, pronóstico de ingresos y fases de venta'),
       icon: TrendingUp,
-      color: 'from-blue-600 to-cyan-600',
+      color: 'bg-blue-700',
       badge: t('modules.badgeSales', 'Comercial'),
     },
     {
@@ -74,7 +74,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameAgile', 'Planificador Ágil (Kanban)'),
       description: t('modules.descAgile', 'Tableros Kanban, gestión de sprints y tareas por proyecto para equipos ágiles'),
       icon: CheckSquare,
-      color: 'from-amber-500 to-orange-600',
+      color: 'bg-amber-600',
       badge: t('modules.badgeOperations', 'Operaciones'),
     },
     {
@@ -82,7 +82,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameContacts', 'Directorio de Contactos'),
       description: t('modules.descContacts', 'Libreta unificada de clientes, proveedores y personas clave con historial de interacciones'),
       icon: Users,
-      color: 'from-sky-500 to-blue-600',
+      color: 'bg-sky-600',
       badge: t('modules.badgeCRM', 'CRM'),
     },
     {
@@ -90,7 +90,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameCompanies', 'Empresas & Cuentas'),
       description: t('modules.descCompanies', 'Fichas corporativas de clientes B2B, CIF/NIF, facturación asociada y volumen de negocio'),
       icon: Building2,
-      color: 'from-indigo-500 to-blue-700',
+      color: 'bg-indigo-600',
       badge: t('modules.badgeCRM', 'CRM'),
     },
     {
@@ -98,7 +98,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameInvoicing', 'Facturación & Presupuestos'),
       description: t('modules.descInvoicing', 'Emisión de facturas oficiales, presupuestos con firma digital pública y exportación PDF ISO'),
       icon: Receipt,
-      color: 'from-emerald-600 to-green-700',
+      color: 'bg-emerald-700',
       badge: t('modules.badgeBilling', 'Facturación'),
     },
     {
@@ -106,7 +106,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameInventory', 'Catálogo de Inventario (UnoPIM)'),
       description: t('modules.descInventory', 'Gestión de productos, existencias en almacén, códigos SKU y webhook con UnoPIM'),
       icon: Package,
-      color: 'from-amber-600 to-yellow-600',
+      color: 'bg-amber-700',
       badge: t('modules.badgeStock', 'Stock'),
     },
     {
@@ -114,7 +114,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameWorkflows', 'Automatizaciones (Workflows)'),
       description: t('modules.descWorkflows', 'Disparadores inteligentes por eventos, webhooks automatizados y reglas de negocio'),
       icon: Cpu,
-      color: 'from-fuchsia-500 to-pink-600',
+      color: 'bg-pink-600',
       badge: t('modules.badgeAutomation', 'Automatización'),
     },
     {
@@ -122,7 +122,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameOmnichannel', 'Mensajería Omnicanal'),
       description: t('modules.descOmnichannel', 'Bandeja unificada con WhatsApp Cloud API, chat en vivo y redes de mensajería'),
       icon: MessageSquare,
-      color: 'from-teal-500 to-emerald-600',
+      color: 'bg-teal-600',
       badge: t('modules.badgeComms', 'Comunicación'),
     },
     {
@@ -130,7 +130,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameIntegrations', 'Conectores & Integraciones'),
       description: t('modules.descIntegrations', 'Conexión con Odoo ERP, WooCommerce, Shopify, Stripe y plataformas de automatización n8n'),
       icon: Blocks,
-      color: 'from-indigo-600 to-purple-700',
+      color: 'bg-indigo-700',
       badge: t('modules.badgeEcosystem', 'Ecosistema'),
     },
     {
@@ -138,7 +138,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameLeadCapture', 'Puntos de Captura de Leads'),
       description: t('modules.descLeadCapture', 'Formularios web embebibles y widgets flotantes para captura automática de prospectos'),
       icon: Zap,
-      color: 'from-yellow-500 to-amber-600',
+      color: 'bg-amber-500',
       badge: t('modules.badgeMarketing', 'Marketing'),
     },
     {
@@ -146,7 +146,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameReports', 'Informes & Business Intelligence'),
       description: t('modules.descReports', 'Cuadros de mando analíticos, métricas de rendimiento, embudos de conversión y exportación'),
       icon: BarChart3,
-      color: 'from-rose-500 to-red-600',
+      color: 'bg-rose-600',
       badge: t('modules.badgeAnalytics', 'Analítica'),
     },
     {
@@ -154,7 +154,7 @@ export const ModulesSettings: React.FC = () => {
       name: t('modules.nameClientPortal', 'Portal del Cliente B2B'),
       description: t('modules.descClientPortal', 'Área de autoservicio para clientes para consulta y descarga de sus facturas y presupuestos'),
       icon: ExternalLink,
-      color: 'from-cyan-500 to-blue-600',
+      color: 'bg-cyan-600',
       badge: t('modules.badgePortal', 'Autoservicio'),
     },
   ];
@@ -210,7 +210,7 @@ export const ModulesSettings: React.FC = () => {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center space-x-3">
-                  <div className={`p-2.5 rounded-xl bg-gradient-to-br ${mod.color} text-white shadow-xs`}>
+                  <div className={`p-2.5 rounded-xl ${mod.color} text-white shadow-xs`}>
                     <DynamicIcon icon={Icon} variant="bounce" size={18} />
                   </div>
                   <div>

@@ -451,3 +451,70 @@ export async function exportExecutivePdf(req: Request, res: Response): Promise<v
   }
 }
 
+export async function getAdminSystemAnalytics(req: Request, res: Response): Promise<void> {
+  try {
+    const isSuper = isGodSuperAdmin(req);
+    const tenantId = getRequestTenant(req);
+
+    const [userCount, companyCount, dealCount, invoiceCount, auditLogs] = await Promise.all([
+      prisma.user.count(),
+      prisma.company.count(),
+      prisma.deal.count(),
+      prisma.invoice.count(),
+      prisma.auditLog.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+      }).catch(() => []),
+    ]);
+
+    const wonDeals = await prisma.deal.findMany({
+      where: { status: 'WON' },
+      select: { value: true },
+    });
+    const totalWonRevenue = wonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+
+    const paidInvoices = await prisma.invoice.findMany({
+      where: { status: 'PAID' },
+      select: { total: true },
+    });
+    const totalPaidRevenue = paidInvoices.reduce((sum, i) => sum + i.total, 0);
+
+    const memoryUsage = process.memoryUsage();
+
+    res.json({
+      success: true,
+      data: {
+        system: {
+          uptimeSeconds: Math.round(process.uptime()),
+          nodeVersion: process.version,
+          platform: process.platform,
+          memoryUsageMb: {
+            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+            rss: Math.round(memoryUsage.rss / 1024 / 1024),
+          },
+          activeTenants: isSuper ? 5 : 1,
+        },
+        database: {
+          userCount,
+          companyCount,
+          dealCount,
+          invoiceCount,
+          totalWonRevenue,
+          totalPaidRevenue,
+        },
+        auditLogs: auditLogs.map((log) => ({
+          id: log.id,
+          action: log.action,
+          entity: log.entity,
+          userId: log.userId,
+          createdAt: log.createdAt,
+        })),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+

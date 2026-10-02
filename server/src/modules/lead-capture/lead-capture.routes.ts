@@ -13,6 +13,7 @@ import {
   submitSupportTicket,
   getClientTickets,
   exportCustomerData,
+  submitArcoRequest,
 } from './lead-capture.controller';
 
 const router = Router();
@@ -35,6 +36,7 @@ router.post('/ecommerce/order', handleEcommerceOrder);
 // 4. Privacidad RGPD & Consentimientos
 router.post('/consent', updateMarketingConsent);
 router.get('/privacy-export', exportCustomerData);
+router.post('/arco-request', submitArcoRequest);
 
 // 5. Helpdesk Ticketing
 router.post('/tickets', submitSupportTicket);

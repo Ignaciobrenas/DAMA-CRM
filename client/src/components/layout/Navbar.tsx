@@ -243,7 +243,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
 
       {/* Sub-Tenant Impersonation Active Banner */}
       {isSuperAdmin && activeTenant?.slug && activeTenant.slug !== 'master' && (
-        <div className="absolute top-16 left-0 right-0 z-20 px-4 py-2 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white flex items-center justify-between text-xs shadow-md">
+        <div className="absolute top-16 left-0 right-0 z-20 px-4 py-2 bg-amber-600 text-white flex items-center justify-between text-xs shadow-md">
           <div className="flex items-center gap-2">
             <span className="font-bold uppercase tracking-wider text-[10px] bg-black/25 px-2 py-0.5 rounded">
               SuperAdmin Activo

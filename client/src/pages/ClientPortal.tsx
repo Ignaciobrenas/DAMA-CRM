@@ -110,7 +110,7 @@ export const ClientPortal: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Banner */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden space-y-4">
+      <div className="bg-slate-900 dark:bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center space-x-2 text-blue-200 text-xs font-semibold uppercase tracking-wider">

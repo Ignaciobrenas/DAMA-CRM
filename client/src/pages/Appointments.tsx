@@ -329,7 +329,7 @@ export const Appointments: React.FC = () => {
       {/* KPI Cards: Revenue & Margin */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Today Expected Revenue */}
-        <div className="bg-gradient-to-br from-blue-50 to-white dark:from-slate-900 dark:to-slate-900/60 p-4 rounded-xl border border-blue-100 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-blue-100 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Ingresos Previstos Hoy</span>
             <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300">
@@ -346,7 +346,7 @@ export const Appointments: React.FC = () => {
         </div>
 
         {/* Card 2: Estimated Net Profit */}
-        <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-slate-900 dark:to-slate-900/60 p-4 rounded-xl border border-emerald-100 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-emerald-100 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Beneficio Neto Estimado</span>
             <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300">
@@ -363,7 +363,7 @@ export const Appointments: React.FC = () => {
         </div>
 
         {/* Card 3: Average Ticket */}
-        <div className="bg-gradient-to-br from-indigo-50 to-white dark:from-slate-900 dark:to-slate-900/60 p-4 rounded-xl border border-indigo-100 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-indigo-100 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Ticket Medio / Cita</span>
             <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300">
@@ -379,7 +379,7 @@ export const Appointments: React.FC = () => {
         </div>
 
         {/* Card 4: Appointments Count */}
-        <div className="bg-gradient-to-br from-purple-50 to-white dark:from-slate-900 dark:to-slate-900/60 p-4 rounded-xl border border-purple-100 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-purple-100 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Citas de Hoy</span>
             <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300">

@@ -178,7 +178,7 @@ export const AccessibilitySettings: React.FC = () => {
       </div>
 
       {/* Live Visual Preview Sandbox */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-950 border border-blue-200/60 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+      <div className="bg-blue-50/50 dark:bg-slate-900 border border-blue-200/60 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
         <div className="flex items-center justify-between pb-3 border-b border-blue-200/40 dark:border-slate-800">
           <div className="flex items-center space-x-2 text-xs font-bold text-blue-900 dark:text-blue-300">
             <Eye className="w-4 h-4" />
