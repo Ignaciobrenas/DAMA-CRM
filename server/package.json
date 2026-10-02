@@ -33,6 +33,7 @@
     "nodemailer": "^10.0.11",
     "pdfkit": "^0.15.0",
     "ws": "^8.21.3",
+    "web-push": "^3.6.7",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -44,6 +45,7 @@
     "@types/node": "^20.17.6",
     "@types/nodemailer": "^6.4.16",
     "@types/pdfkit": "^0.13.7",
+    "@types/web-push": "^3.6.3",
     "@types/ws": "^8.18.1",
     "prisma": "^5.22.0",
     "ts-node": "^10.9.2",

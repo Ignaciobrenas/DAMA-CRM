@@ -180,6 +180,9 @@ export const CalendarPage: React.FC = () => {
 
   useEffect(() => {
     fetchCalendarData();
+    const handleSynced = () => fetchCalendarData();
+    window.addEventListener('dama:calendar-synced', handleSynced);
+    return () => window.removeEventListener('dama:calendar-synced', handleSynced);
   }, [currentDate, scopeFilter, typeFilter]);
 
   // Calendar Date Math Helpers
@@ -1187,7 +1190,7 @@ export const CalendarPage: React.FC = () => {
                       className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-[11px] font-mono select-all focus:outline-none text-slate-700 dark:text-slate-300"
                     />
                     <button
-                      onClick={() => handleCopyFeed(integrations.find((i) => i.provider === 'APPLE_ICAL')?.webcalUrl)}
+                      onClick={() => handleCopyFeed(integrations.find((i) => i.provider === 'APPLE_ICAL')?.webcalUrl || `${window.location.origin}/api/calendar/feed/my-feed.ics`)}
                       className="px-3 py-1.5 rounded-xl font-semibold bg-purple-600 text-white hover:bg-purple-700 transition flex items-center space-x-1 shrink-0"
                     >
                       {copiedFeed ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

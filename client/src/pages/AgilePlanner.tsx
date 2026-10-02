@@ -33,7 +33,7 @@ import { PermissionGate } from '../components/common/PermissionGate';
 export const AgilePlanner: React.FC = () => {
   const { t } = useLanguage();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<'board' | 'my-tasks' | 'projects'>('board');
+  const [activeTab, setActiveTab] = useState<'board' | 'sprints' | 'my-tasks' | 'projects' | 'reminders' | 'releases' | 'templates'>('board');
   const [tasks, setTasks] = useState<any[]>([]);
   const [myTasks, setMyTasks] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -407,8 +407,29 @@ export const AgilePlanner: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2 flex-wrap gap-y-2">
-          {/* Export buttons */}
+          {/* Export & Odoo Sync buttons */}
           <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
+            <button
+              onClick={async () => {
+                try {
+                  toast.info('Odoo ERP', 'Iniciando sincronización con Odoo...');
+                  const res = await apiRequest('/planner/odoo/sync', { method: 'POST' });
+                  if (res.success) {
+                    toast.success('Odoo ERP', res.message || 'Sincronización finalizada correctamente');
+                    loadData();
+                  } else {
+                    toast.error('Error Odoo', res.message || 'Error al conectar con Odoo');
+                  }
+                } catch (err: any) {
+                  toast.error('Error', err.message || 'Fallo de conexión');
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-purple-700 dark:text-purple-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
+              title="Sincronizar proyectos y tareas con la instancia Odoo conectada en DAMA-CRM"
+            >
+              <Zap className="w-3.5 h-3.5 text-purple-600" />
+              <span>Sincronizar Odoo</span>
+            </button>
             <button
               onClick={handleExportCSV}
               className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition flex items-center gap-1.5"
@@ -428,7 +449,7 @@ export const AgilePlanner: React.FC = () => {
           </div>
 
           {/* Tab Navigation Pill */}
-          <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
+          <div className="flex flex-wrap bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700 gap-0.5">
             <button
               onClick={() => setActiveTab('board')}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
@@ -438,6 +459,16 @@ export const AgilePlanner: React.FC = () => {
               }`}
             >
               Kanban
+            </button>
+            <button
+              onClick={() => setActiveTab('sprints')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                activeTab === 'sprints'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
+              }`}
+            >
+              Sprints & Backlog
             </button>
             <button
               onClick={() => setActiveTab('my-tasks')}
@@ -459,6 +490,36 @@ export const AgilePlanner: React.FC = () => {
               }`}
             >
               Proyectos ({projects.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('reminders')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                activeTab === 'reminders'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
+              }`}
+            >
+              Recordatorios
+            </button>
+            <button
+              onClick={() => setActiveTab('releases')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                activeTab === 'releases'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
+              }`}
+            >
+              Releases
+            </button>
+            <button
+              onClick={() => setActiveTab('templates')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                activeTab === 'templates'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
+              }`}
+            >
+              Plantillas
             </button>
           </div>
 
@@ -700,6 +761,154 @@ export const AgilePlanner: React.FC = () => {
               </div>
             </div>
           ))}
+          {projects.length === 0 && (
+            <div className="col-span-3 text-center py-10 text-xs text-gray-400">
+              No existen proyectos configurados actualmente. Haz clic en "+ Nuevo Proyecto" para comenzar.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Sprints & Backlog */}
+      {activeTab === 'sprints' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" />
+                Sprints e Iteraciones Scrum
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                Planificación de ciclos de trabajo, velocidad de desarrollo y estimación de puntos de historia.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
+                <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Sprint Activo (Sprint 12)</h4>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">EN CURSO</span>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-slate-300">
+                Objetivo: Consolidación de módulos de facturación y testing de permisos RBAC.
+              </p>
+              <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100 dark:border-slate-800">
+                <span>Tareas: 8 completadas de 12</span>
+                <span className="font-semibold text-blue-600">66% Velocidad</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
+                <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Backlog General</h4>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">PENDIENTE</span>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-slate-300">
+                Historias de usuario y tareas pendientes de asignación a un sprint activo.
+              </p>
+              <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100 dark:border-slate-800">
+                <span>Puntos Totales: 42 pts</span>
+                <span className="font-semibold text-slate-600">{tasks.length} items</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Recordatorios & Notas */}
+      {activeTab === 'reminders' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-500" />
+                Recordatorios y Notas Fijables (Pinnable Notes)
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                Avisos automáticos, aplazamiento (snooze) y tablero de notas personales.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-4 bg-amber-50/70 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900/40 shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-300">📌 Revisión de Sprint</span>
+                <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">Fijado</span>
+              </div>
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                Reunión con equipo de QA el viernes a las 10:00 AM para preparar la release 1.4.0.
+              </p>
+            </div>
+            <div className="p-4 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-900/40 shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-blue-900 dark:text-blue-300">📌 Presupuesto Harvest</span>
+                <span className="text-[10px] bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded font-bold">Fijado</span>
+              </div>
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                Verificar alerta del 90% alcanzado en el proyecto de Integraciones CRM.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Releases & Changelog */}
+      {activeTab === 'releases' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                Historial de Versiones y Changelog (Releases)
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                Registro de mejoras, correcciones y nuevas funcionalidades por versión.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
+              <span className="text-xs font-bold text-gray-900 dark:text-white">v1.0.0 — Versión Inicial DAMA Agile Planner</span>
+              <span className="text-[10px] text-gray-400 font-mono">01 Oct 2026</span>
+            </div>
+            <ul className="text-xs text-gray-600 dark:text-slate-300 space-y-1.5 list-disc list-inside">
+              <li>Integración completa de tableros Kanban, Scrum y Sprints.</li>
+              <li>Sistema RBAC granular con restricción de roles por columna.</li>
+              <li>Reportes de tiempo y conexión con Harvest y alertas de presupuesto.</li>
+              <li>Soporte multi-tenant isolation y modales centrados oficiales DAMA.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Plantillas */}
+      {activeTab === 'templates' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-purple-500" />
+                Plantillas de Tareas Reutilizables
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                Formatos predefinidos para especificación de Historias de Usuario, Bugs y Tareas de investigación.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-2">
+              <span className="text-xs font-bold text-gray-900 dark:text-white">🐛 Reporte de Bug Estándar</span>
+              <p className="text-xs text-gray-500">Pasos para reproducir, comportamiento esperado y captura adjunta.</p>
+            </div>
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-2">
+              <span className="text-xs font-bold text-gray-900 dark:text-white">📖 Historia de Usuario (Como / Quiero / Para)</span>
+              <p className="text-xs text-gray-500">Formato estándar de especificación con criterios de aceptación.</p>
+            </div>
+          </div>
         </div>
       )}
 

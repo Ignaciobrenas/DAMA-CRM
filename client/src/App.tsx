@@ -15,13 +15,14 @@ import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
-import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
+
 import { PermissionGate, AccessDenied, ModuleDisabled } from './components/common/PermissionGate';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { analytics } from './services/analytics';
 
 // Views
 import { Login } from './pages/Login';
+import { PlannerBoard } from './pages/PlannerBoard';
 import { Dashboard } from './pages/Dashboard';
 import { Pipeline } from './pages/Pipeline';
 import { AgilePlanner } from './pages/AgilePlanner';
@@ -207,6 +208,12 @@ const AppContent: React.FC = () => {
             {isModuleEnabled('agile') ? <AgilePlanner /> : <ModuleDisabled moduleKey="agile" onGoBack={() => navigateTo('/')} />}
           </PermissionGate>
         );
+      case '/planner':
+        return (
+          <PermissionGate resource="projects" action="read" fallback={<AccessDenied resource="projects" onGoBack={() => navigateTo('/')} />}>
+            <PlannerBoard />
+          </PermissionGate>
+        );
       case '/contacts':
         return (
           <PermissionGate resource="contacts" action="read" fallback={<AccessDenied resource="contacts" onGoBack={() => navigateTo('/')} />}>
@@ -279,7 +286,7 @@ const AppContent: React.FC = () => {
   const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
 
   return (
-    <div className="min-h-screen bg-slate-300/80 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
+    <div className="min-h-screen bg-slate-100/90 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
       {/* Sidebar */}
       <Sidebar
         currentRoute={currentRoute}
@@ -360,8 +367,6 @@ const AppContent: React.FC = () => {
       {/* Floating Lead & WhatsApp Live Capture Widget */}
       <FloatingCaptureWidget />
 
-      {/* Role-based Onboarding & Capabilities Welcome Tour Modal */}
-      <OnboardingTourModal />
     </div>
   );
 };

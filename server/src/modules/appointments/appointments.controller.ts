@@ -1,13 +1,5 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
-import fs from 'fs';
-import path from 'path';
-
-// Services catalog storage path per tenant (fallback persistent storage)
-const DATA_DIR = path.resolve(__dirname, '../../../data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
 
 export interface SalonServiceItem {
   id: string;
@@ -15,7 +7,7 @@ export interface SalonServiceItem {
   category: 'CONSULTATION' | 'TECHNICAL' | 'ADVISORY' | 'SERVICE' | 'TREATMENT' | 'OTHER' | 'HAIRDRESSING' | 'BEAUTY' | 'BARBER' | 'MASSAGE';
   durationMin: number;
   price: number;
-  supplyCost: number; // Coste de materiales o suministros directos
+  supplyCost: number;
   description?: string;
   isPopular?: boolean;
 }
@@ -31,8 +23,8 @@ export interface AppointmentData {
   staffName: string;
   serviceIds: string[];
   services: SalonServiceItem[];
-  startTime: string; // ISO String
-  endTime: string; // ISO String
+  startTime: string;
+  endTime: string;
   durationMin: number;
   totalPrice: number;
   totalSupplyCost: number;
@@ -99,37 +91,55 @@ const DEFAULT_SERVICES: SalonServiceItem[] = [
   },
 ];
 
-function getServicesFilePath(tenantId: string): string {
-  return path.join(DATA_DIR, `services_${tenantId}.json`);
-}
+/**
+ * Ensure default services exist in Database
+ */
+async function ensureDbServices(tenantId: string): Promise<any[]> {
+  let services = await prisma.appointmentService.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: 'desc' },
+  });
 
-function getAppointmentsFilePath(tenantId: string): string {
-  return path.join(DATA_DIR, `appointments_${tenantId}.json`);
-}
-
-function loadServices(tenantId: string): SalonServiceItem[] {
-  const filePath = getServicesFilePath(tenantId);
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(DEFAULT_SERVICES, null, 2), 'utf8');
-    return DEFAULT_SERVICES;
+  if (services.length === 0) {
+    for (const s of DEFAULT_SERVICES) {
+      await prisma.appointmentService.create({
+        data: {
+          id: s.id,
+          tenantId,
+          name: s.name,
+          category: s.category,
+          durationMin: s.durationMin,
+          price: s.price,
+          supplyCost: s.supplyCost,
+          description: s.description,
+          isPopular: s.isPopular,
+        },
+      });
+    }
+    services = await prisma.appointmentService.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
-    return DEFAULT_SERVICES;
-  }
+
+  return services;
 }
 
-function saveServices(tenantId: string, services: SalonServiceItem[]): void {
-  fs.writeFileSync(getServicesFilePath(tenantId), JSON.stringify(services, null, 2), 'utf8');
-}
+/**
+ * Ensure default sample appointments exist in Database
+ */
+async function ensureDbAppointments(tenantId: string): Promise<any[]> {
+  let appointments = await prisma.appointment.findMany({
+    where: { tenantId },
+    orderBy: { startTime: 'desc' },
+  });
 
-function loadAppointments(tenantId: string): AppointmentData[] {
-  const filePath = getAppointmentsFilePath(tenantId);
-  if (!fs.existsSync(filePath)) {
-    // Generate starter sample appointments for today and this week
-    const starter: AppointmentData[] = [
-      {
+  if (appointments.length === 0) {
+    const services = await ensureDbServices(tenantId);
+    const selectedSrv = services[1] || services[0];
+
+    await prisma.appointment.create({
+      data: {
         id: 'apt-001',
         tenantId,
         clientName: 'Elena Ramos García',
@@ -137,88 +147,37 @@ function loadAppointments(tenantId: string): AppointmentData[] {
         clientEmail: 'elena.ramos@example.com',
         staffId: 'staff-1',
         staffName: 'Ignacio (Especialista Senior)',
-        serviceIds: ['srv-auditoria-tecnica'],
-        services: [DEFAULT_SERVICES[1]],
-        startTime: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(),
-        endTime: new Date(new Date().setHours(11, 30, 0, 0)).toISOString(),
+        serviceIds: JSON.stringify([selectedSrv.id]),
+        servicesDetails: JSON.stringify([selectedSrv]),
+        startTime: new Date(new Date().setHours(10, 0, 0, 0)),
+        endTime: new Date(new Date().setHours(11, 30, 0, 0)),
         durationMin: 90,
-        totalPrice: 120.0,
-        totalSupplyCost: 10.0,
-        estimatedProfit: 110.0,
+        totalPrice: selectedSrv.price || 120.0,
+        totalSupplyCost: selectedSrv.supplyCost || 10.0,
+        estimatedProfit: (selectedSrv.price || 120.0) - (selectedSrv.supplyCost || 10.0),
         status: 'CONFIRMED',
         paymentStatus: 'PENDING',
         notes: 'Revisión inicial del plan de trabajo y validación de requisitos.',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       },
-      {
-        id: 'apt-002',
-        tenantId,
-        clientName: 'Carlos Mendoza',
-        clientPhone: '+34 689 987 654',
-        clientEmail: 'carlos.m@example.com',
-        staffId: 'staff-1',
-        staffName: 'Ignacio (Especialista Senior)',
-        serviceIds: ['srv-asesoramiento-fiscal'],
-        services: [DEFAULT_SERVICES[2]],
-        startTime: new Date(new Date().setHours(12, 30, 0, 0)).toISOString(),
-        endTime: new Date(new Date().setHours(13, 15, 0, 0)).toISOString(),
-        durationMin: 45,
-        totalPrice: 65.0,
-        totalSupplyCost: 2.5,
-        estimatedProfit: 62.5,
-        status: 'COMPLETED',
-        paymentStatus: 'PAID',
-        paymentMethod: 'BIZUM',
-        notes: 'Sesión de asesoramiento completada con éxito.',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'apt-003',
-        tenantId,
-        clientName: 'Laura Valero',
-        clientPhone: '+34 655 443 322',
-        clientEmail: 'laura.v@example.com',
-        staffId: 'staff-2',
-        staffName: 'Sofía Martínez (Consultor Senior)',
-        serviceIds: ['srv-consultoria-estrategica'],
-        services: [DEFAULT_SERVICES[0]],
-        startTime: new Date(new Date().setHours(16, 0, 0, 0)).toISOString(),
-        endTime: new Date(new Date().setHours(17, 0, 0, 0)).toISOString(),
-        durationMin: 60,
-        totalPrice: 85.0,
-        totalSupplyCost: 5.0,
-        estimatedProfit: 80.0,
-        status: 'SCHEDULED',
-        paymentStatus: 'PENDING',
-        notes: 'Primera reunión de diagnóstico.',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-    fs.writeFileSync(filePath, JSON.stringify(starter, null, 2), 'utf8');
-    return starter;
-  }
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
-    return [];
-  }
-}
+    });
 
-function saveAppointments(tenantId: string, appointments: AppointmentData[]): void {
-  fs.writeFileSync(getAppointmentsFilePath(tenantId), JSON.stringify(appointments, null, 2), 'utf8');
+    appointments = await prisma.appointment.findMany({
+      where: { tenantId },
+      orderBy: { startTime: 'desc' },
+    });
+  }
+
+  return appointments;
 }
 
 /**
  * GET /api/appointments/services
- * Get list of salon & beauty services
+ * Get list of salon & beauty services from DB
  */
 export async function listServices(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
-    const services = loadServices(tenantId);
+    const services = await ensureDbServices(tenantId);
     res.json({ success: true, data: services });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -227,40 +186,44 @@ export async function listServices(req: Request, res: Response): Promise<void> {
 
 /**
  * POST /api/appointments/services
- * Create or update a service
+ * Create or update a service in DB
  */
 export async function createOrUpdateService(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
     const { id, name, category, durationMin, price, supplyCost, description, isPopular } = req.body;
 
-    if (!name || !price) {
+    if (!name || price === undefined) {
       res.status(400).json({ success: false, message: 'El nombre y precio del servicio son obligatorios' });
       return;
     }
 
-    const services = loadServices(tenantId);
-    const existingIndex = services.findIndex((s) => s.id === id);
+    const serviceId = id || `srv-${Date.now()}`;
+    const upserted = await prisma.appointmentService.upsert({
+      where: { id: serviceId },
+      create: {
+        id: serviceId,
+        tenantId,
+        name,
+        category: category || 'CONSULTATION',
+        durationMin: Number(durationMin) || 30,
+        price: Number(price),
+        supplyCost: Number(supplyCost) || 0,
+        description,
+        isPopular: Boolean(isPopular),
+      },
+      update: {
+        name,
+        category: category || 'CONSULTATION',
+        durationMin: Number(durationMin) || 30,
+        price: Number(price),
+        supplyCost: Number(supplyCost) || 0,
+        description,
+        isPopular: Boolean(isPopular),
+      },
+    });
 
-    const serviceObj: SalonServiceItem = {
-      id: id || `srv-${Date.now()}`,
-      name,
-      category: category || 'HAIRDRESSING',
-      durationMin: Number(durationMin) || 30,
-      price: Number(price),
-      supplyCost: Number(supplyCost) || 0,
-      description,
-      isPopular: Boolean(isPopular),
-    };
-
-    if (existingIndex >= 0) {
-      services[existingIndex] = serviceObj;
-    } else {
-      services.push(serviceObj);
-    }
-
-    saveServices(tenantId, services);
-    res.status(201).json({ success: true, data: serviceObj });
+    res.status(201).json({ success: true, data: upserted });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -268,14 +231,40 @@ export async function createOrUpdateService(req: Request, res: Response): Promis
 
 /**
  * GET /api/appointments
- * List all scheduled appointments with optional date, staff, or status filters
+ * List all scheduled appointments with optional date, staff, or status filters from DB
  */
 export async function listAppointments(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
     const { startDate, endDate, staffId, status, query } = req.query;
 
-    let appointments = loadAppointments(tenantId);
+    const rawAppointments = await ensureDbAppointments(tenantId);
+
+    let appointments: AppointmentData[] = rawAppointments.map((a: any) => ({
+      id: a.id,
+      tenantId: a.tenantId || tenantId,
+      clientName: a.clientName,
+      clientPhone: a.clientPhone || undefined,
+      clientEmail: a.clientEmail || undefined,
+      contactId: a.contactId || undefined,
+      staffId: a.staffId || 'staff-default',
+      staffName: a.staffName,
+      serviceIds: typeof a.serviceIds === 'string' ? JSON.parse(a.serviceIds) : a.serviceIds || [],
+      services: typeof a.servicesDetails === 'string' ? JSON.parse(a.servicesDetails) : a.servicesDetails || [],
+      startTime: a.startTime instanceof Date ? a.startTime.toISOString() : a.startTime,
+      endTime: a.endTime instanceof Date ? a.endTime.toISOString() : a.endTime,
+      durationMin: a.durationMin,
+      totalPrice: a.totalPrice,
+      totalSupplyCost: a.totalSupplyCost,
+      estimatedProfit: a.estimatedProfit,
+      status: a.status as any,
+      paymentStatus: a.paymentStatus as any,
+      paymentMethod: a.paymentMethod || undefined,
+      notes: a.notes || undefined,
+      invoiceId: a.invoiceId || undefined,
+      createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : a.createdAt,
+      updatedAt: a.updatedAt instanceof Date ? a.updatedAt.toISOString() : a.updatedAt,
+    }));
 
     if (status && typeof status === 'string') {
       appointments = appointments.filter((a) => a.status === status);
@@ -301,9 +290,6 @@ export async function listAppointments(req: Request, res: Response): Promise<voi
       );
     }
 
-    // Sort by startTime descending
-    appointments.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-
     res.json({ success: true, data: appointments });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -312,7 +298,7 @@ export async function listAppointments(req: Request, res: Response): Promise<voi
 
 /**
  * POST /api/appointments
- * Create a new appointment and calculate revenue / supply costs
+ * Create a new appointment in DB
  */
 export async function createAppointment(req: Request, res: Response): Promise<void> {
   try {
@@ -337,44 +323,41 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
       return;
     }
 
-    const allServices = loadServices(tenantId);
-    const selectedServices = allServices.filter((s) => serviceIds.includes(s.id));
+    const allServices = await ensureDbServices(tenantId);
+    const selectedServices = allServices.filter((s: any) => serviceIds.includes(s.id));
 
-    const durationMin = selectedServices.reduce((acc, s) => acc + (s.durationMin || 30), 0);
-    const totalPrice = selectedServices.reduce((acc, s) => acc + s.price, 0);
-    const totalSupplyCost = selectedServices.reduce((acc, s) => acc + (s.supplyCost || 0), 0);
+    const durationMin = selectedServices.reduce((acc: number, s: any) => acc + (s.durationMin || 30), 0);
+    const totalPrice = selectedServices.reduce((acc: number, s: any) => acc + s.price, 0);
+    const totalSupplyCost = selectedServices.reduce((acc: number, s: any) => acc + (s.supplyCost || 0), 0);
     const estimatedProfit = totalPrice - totalSupplyCost;
 
     const startObj = new Date(startTime);
-    const endObj = new Date(startObj.getTime() + durationMin * 60 * 1000);
+    const endObj = new Date(startObj.getTime() + (durationMin || 30) * 60 * 1000);
+    const aptId = `apt-${Date.now()}`;
 
-    const newAppointment: AppointmentData = {
-      id: `apt-${Date.now()}`,
-      tenantId,
-      clientName,
-      clientPhone,
-      clientEmail,
-      contactId,
-      staffId: staffId || 'staff-default',
-      staffName,
-      serviceIds,
-      services: selectedServices,
-      startTime: startObj.toISOString(),
-      endTime: endObj.toISOString(),
-      durationMin,
-      totalPrice,
-      totalSupplyCost,
-      estimatedProfit,
-      status: 'SCHEDULED',
-      paymentStatus: 'PENDING',
-      notes,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const appointments = loadAppointments(tenantId);
-    appointments.unshift(newAppointment);
-    saveAppointments(tenantId, appointments);
+    const created = await prisma.appointment.create({
+      data: {
+        id: aptId,
+        tenantId,
+        clientName,
+        clientPhone,
+        clientEmail,
+        contactId,
+        staffId: staffId || 'staff-default',
+        staffName,
+        serviceIds: JSON.stringify(serviceIds),
+        servicesDetails: JSON.stringify(selectedServices),
+        startTime: startObj,
+        endTime: endObj,
+        durationMin: durationMin || 30,
+        totalPrice,
+        totalSupplyCost,
+        estimatedProfit,
+        status: 'SCHEDULED',
+        paymentStatus: 'PENDING',
+        notes,
+      },
+    });
 
     // Sync to Calendar if user exists
     if (req.user?.id) {
@@ -383,19 +366,43 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
           data: {
             tenantId,
             userId: req.user.id,
-            title: `Cita: ${clientName} (${selectedServices.map((s) => s.name).join(', ')})`,
-            description: `Servicios: ${selectedServices.map((s) => s.name).join(', ')}\nIngresos estimados: ${totalPrice.toFixed(2)}€\nNotas: ${notes || 'Sin notas'}`,
+            title: `Cita: ${clientName} (${selectedServices.map((s: any) => s.name).join(', ')})`,
+            description: `Servicios: ${selectedServices.map((s: any) => s.name).join(', ')}\nIngresos estimados: ${totalPrice.toFixed(2)}€\nNotas: ${notes || 'Sin notas'}`,
             startDate: startObj,
             endDate: endObj,
             type: 'APPOINTMENT',
-            color: '#EC4899', // Pink theme for appointments & salon
+            color: '#EC4899',
             status: 'CONFIRMED',
           },
         });
       } catch {}
     }
 
-    res.status(201).json({ success: true, data: newAppointment });
+    const formattedData: AppointmentData = {
+      id: created.id,
+      tenantId,
+      clientName: created.clientName,
+      clientPhone: created.clientPhone || undefined,
+      clientEmail: created.clientEmail || undefined,
+      contactId: created.contactId || undefined,
+      staffId: created.staffId || 'staff-default',
+      staffName: created.staffName,
+      serviceIds,
+      services: selectedServices,
+      startTime: created.startTime.toISOString(),
+      endTime: created.endTime.toISOString(),
+      durationMin: created.durationMin,
+      totalPrice: created.totalPrice,
+      totalSupplyCost: created.totalSupplyCost,
+      estimatedProfit: created.estimatedProfit,
+      status: created.status as any,
+      paymentStatus: created.paymentStatus as any,
+      notes: created.notes || undefined,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    };
+
+    res.status(201).json({ success: true, data: formattedData });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -403,7 +410,7 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
 
 /**
  * PUT /api/appointments/:id
- * Update appointment details, status or payment
+ * Update appointment details in DB
  */
 export async function updateAppointment(req: Request, res: Response): Promise<void> {
   try {
@@ -411,36 +418,72 @@ export async function updateAppointment(req: Request, res: Response): Promise<vo
     const { id } = req.params;
     const updates = req.body;
 
-    const appointments = loadAppointments(tenantId);
-    const index = appointments.findIndex((a) => a.id === id);
-
-    if (index === -1) {
+    const existing = await prisma.appointment.findUnique({ where: { id } });
+    if (!existing) {
       res.status(404).json({ success: false, message: 'Cita no encontrada' });
       return;
     }
 
-    const current = appointments[index];
-    const updated: AppointmentData = {
-      ...current,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
+    let serviceIds = updates.serviceIds ? updates.serviceIds : JSON.parse(existing.serviceIds || '[]');
+    let selectedServices = existing.servicesDetails ? JSON.parse(existing.servicesDetails) : [];
 
-    // If services changed, recalculate metrics
     if (updates.serviceIds) {
-      const allServices = loadServices(tenantId);
-      const selected = allServices.filter((s) => updates.serviceIds.includes(s.id));
-      updated.services = selected;
-      updated.durationMin = selected.reduce((acc, s) => acc + (s.durationMin || 30), 0);
-      updated.totalPrice = selected.reduce((acc, s) => acc + s.price, 0);
-      updated.totalSupplyCost = selected.reduce((acc, s) => acc + (s.supplyCost || 0), 0);
-      updated.estimatedProfit = updated.totalPrice - updated.totalSupplyCost;
+      const allServices = await ensureDbServices(tenantId);
+      selectedServices = allServices.filter((s: any) => serviceIds.includes(s.id));
     }
 
-    appointments[index] = updated;
-    saveAppointments(tenantId, appointments);
+    const durationMin = selectedServices.reduce((acc: number, s: any) => acc + (s.durationMin || 30), 0);
+    const totalPrice = selectedServices.reduce((acc: number, s: any) => acc + (s.price || 0), 0);
+    const totalSupplyCost = selectedServices.reduce((acc: number, s: any) => acc + (s.supplyCost || 0), 0);
+    const estimatedProfit = totalPrice - totalSupplyCost;
 
-    res.json({ success: true, data: updated });
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: {
+        clientName: updates.clientName !== undefined ? updates.clientName : existing.clientName,
+        clientPhone: updates.clientPhone !== undefined ? updates.clientPhone : existing.clientPhone,
+        clientEmail: updates.clientEmail !== undefined ? updates.clientEmail : existing.clientEmail,
+        staffId: updates.staffId !== undefined ? updates.staffId : existing.staffId,
+        staffName: updates.staffName !== undefined ? updates.staffName : existing.staffName,
+        serviceIds: JSON.stringify(serviceIds),
+        servicesDetails: JSON.stringify(selectedServices),
+        durationMin,
+        totalPrice,
+        totalSupplyCost,
+        estimatedProfit,
+        status: updates.status !== undefined ? updates.status : existing.status,
+        paymentStatus: updates.paymentStatus !== undefined ? updates.paymentStatus : existing.paymentStatus,
+        paymentMethod: updates.paymentMethod !== undefined ? updates.paymentMethod : existing.paymentMethod,
+        notes: updates.notes !== undefined ? updates.notes : existing.notes,
+      },
+    });
+
+    const formatted: AppointmentData = {
+      id: updated.id,
+      tenantId: updated.tenantId || tenantId,
+      clientName: updated.clientName,
+      clientPhone: updated.clientPhone || undefined,
+      clientEmail: updated.clientEmail || undefined,
+      contactId: updated.contactId || undefined,
+      staffId: updated.staffId || 'staff-default',
+      staffName: updated.staffName,
+      serviceIds,
+      services: selectedServices,
+      startTime: updated.startTime.toISOString(),
+      endTime: updated.endTime.toISOString(),
+      durationMin: updated.durationMin,
+      totalPrice: updated.totalPrice,
+      totalSupplyCost: updated.totalSupplyCost,
+      estimatedProfit: updated.estimatedProfit,
+      status: updated.status as any,
+      paymentStatus: updated.paymentStatus as any,
+      paymentMethod: updated.paymentMethod as any,
+      notes: updated.notes || undefined,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+
+    res.json({ success: true, data: formatted });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -448,24 +491,19 @@ export async function updateAppointment(req: Request, res: Response): Promise<vo
 
 /**
  * DELETE /api/appointments/:id
- * Remove an appointment
+ * Remove an appointment from DB
  */
 export async function deleteAppointment(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
     const { id } = req.params;
+    const existing = await prisma.appointment.findUnique({ where: { id } });
 
-    let appointments = loadAppointments(tenantId);
-    const exists = appointments.some((a) => a.id === id);
-
-    if (!exists) {
+    if (!existing) {
       res.status(404).json({ success: false, message: 'Cita no encontrada' });
       return;
     }
 
-    appointments = appointments.filter((a) => a.id !== id);
-    saveAppointments(tenantId, appointments);
-
+    await prisma.appointment.delete({ where: { id } });
     res.json({ success: true, message: 'Cita eliminada correctamente' });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -474,68 +512,65 @@ export async function deleteAppointment(req: Request, res: Response): Promise<vo
 
 /**
  * GET /api/appointments/stats/revenue
- * Get aggregated revenue, projected earnings, ticket average and occupation
+ * Get aggregated revenue, projected earnings, ticket average and occupation from DB
  */
 export async function getRevenueStats(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
-    const appointments = loadAppointments(tenantId);
+    const rawAppts = await ensureDbAppointments(tenantId);
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // Today's stats
-    const todayAppointments = appointments.filter((a) => {
+    const todayAppointments = rawAppts.filter((a) => {
       const d = new Date(a.startTime).toISOString().split('T')[0];
       return d === todayStr && a.status !== 'CANCELLED';
     });
 
-    const todayEstimatedRevenue = todayAppointments.reduce((sum, a) => sum + a.totalPrice, 0);
+    const todayEstimatedRevenue = todayAppointments.reduce((sum, a) => sum + (a.totalPrice || 0), 0);
     const todayRealizedRevenue = todayAppointments
       .filter((a) => a.status === 'COMPLETED' || a.paymentStatus === 'PAID')
-      .reduce((sum, a) => sum + a.totalPrice, 0);
+      .reduce((sum, a) => sum + (a.totalPrice || 0), 0);
 
-    const todayEstimatedProfit = todayAppointments.reduce((sum, a) => sum + a.estimatedProfit, 0);
+    const todayEstimatedProfit = todayAppointments.reduce((sum, a) => sum + (a.estimatedProfit || 0), 0);
 
-    // Month's stats
-    const monthAppointments = appointments.filter((a) => {
+    const monthAppointments = rawAppts.filter((a) => {
       const date = new Date(a.startTime);
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear && a.status !== 'CANCELLED';
     });
 
-    const monthEstimatedRevenue = monthAppointments.reduce((sum, a) => sum + a.totalPrice, 0);
+    const monthEstimatedRevenue = monthAppointments.reduce((sum, a) => sum + (a.totalPrice || 0), 0);
     const monthRealizedRevenue = monthAppointments
       .filter((a) => a.status === 'COMPLETED' || a.paymentStatus === 'PAID')
-      .reduce((sum, a) => sum + a.totalPrice, 0);
+      .reduce((sum, a) => sum + (a.totalPrice || 0), 0);
 
-    const monthEstimatedProfit = monthAppointments.reduce((sum, a) => sum + a.estimatedProfit, 0);
+    const monthEstimatedProfit = monthAppointments.reduce((sum, a) => sum + (a.estimatedProfit || 0), 0);
 
     const totalActiveAppointments = monthAppointments.length;
     const averageTicket = totalActiveAppointments > 0 ? monthEstimatedRevenue / totalActiveAppointments : 0;
     const profitMarginPercent = monthEstimatedRevenue > 0 ? (monthEstimatedProfit / monthEstimatedRevenue) * 100 : 0;
 
-    // Breakdown by Staff
     const staffMap: Record<string, { staffName: string; totalRevenue: number; appointmentCount: number }> = {};
     for (const apt of monthAppointments) {
       if (!staffMap[apt.staffName]) {
         staffMap[apt.staffName] = { staffName: apt.staffName, totalRevenue: 0, appointmentCount: 0 };
       }
-      staffMap[apt.staffName].totalRevenue += apt.totalPrice;
+      staffMap[apt.staffName].totalRevenue += apt.totalPrice || 0;
       staffMap[apt.staffName].appointmentCount += 1;
     }
     const staffBreakdown = Object.values(staffMap).sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-    // Breakdown by Service
     const serviceMap: Record<string, { serviceName: string; count: number; revenue: number }> = {};
     for (const apt of monthAppointments) {
-      for (const s of apt.services) {
+      const services = typeof apt.servicesDetails === 'string' ? JSON.parse(apt.servicesDetails) : apt.servicesDetails || [];
+      for (const s of services) {
         if (!serviceMap[s.name]) {
           serviceMap[s.name] = { serviceName: s.name, count: 0, revenue: 0 };
         }
         serviceMap[s.name].count += 1;
-        serviceMap[s.name].revenue += s.price;
+        serviceMap[s.name].revenue += s.price || 0;
       }
     }
     const topServices = Object.values(serviceMap).sort((a, b) => b.revenue - a.revenue);
@@ -569,12 +604,12 @@ export async function getRevenueStats(req: Request, res: Response): Promise<void
 
 /**
  * GET /api/appointments/export/csv
- * Export appointments to CSV / Excel
+ * Export appointments from DB to CSV / Excel
  */
 export async function exportAppointmentsCsv(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
-    const appointments = loadAppointments(tenantId);
+    const rawAppts = await ensureDbAppointments(tenantId);
     const { generateCsvBuffer } = await import('../../services/report-exporter.service');
 
     const headers = [
@@ -597,9 +632,10 @@ export async function exportAppointmentsCsv(req: Request, res: Response): Promis
       'Notas',
     ];
 
-    const rows = appointments.map((a) => {
+    const rows = rawAppts.map((a: any) => {
       const sDate = new Date(a.startTime);
       const eDate = new Date(a.endTime);
+      const services = typeof a.servicesDetails === 'string' ? JSON.parse(a.servicesDetails) : a.servicesDetails || [];
       return [
         a.id,
         sDate.toLocaleDateString('es-ES'),
@@ -609,11 +645,11 @@ export async function exportAppointmentsCsv(req: Request, res: Response): Promis
         a.clientPhone || '',
         a.clientEmail || '',
         a.staffName,
-        a.services.map((s) => s.name).join(' + '),
+        services.map((s: any) => s.name).join(' + '),
         a.durationMin,
-        a.totalPrice.toFixed(2),
-        a.totalSupplyCost.toFixed(2),
-        a.estimatedProfit.toFixed(2),
+        (a.totalPrice || 0).toFixed(2),
+        (a.totalSupplyCost || 0).toFixed(2),
+        (a.estimatedProfit || 0).toFixed(2),
         a.status,
         a.paymentStatus,
         a.paymentMethod || 'PENDIENTE',
@@ -633,27 +669,30 @@ export async function exportAppointmentsCsv(req: Request, res: Response): Promis
 
 /**
  * GET /api/appointments/export/pdf
- * Export official Professional Services & Appointments PDF Report
+ * Export official Professional Services & Appointments PDF Report from DB
  */
 export async function exportAppointmentsPdf(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.user?.tenantId || 'master';
-    const appointments = loadAppointments(tenantId);
+    const rawAppts = await ensureDbAppointments(tenantId);
     const { generateReportPdf } = await import('../../services/report-exporter.service');
 
-    const totalRevenue = appointments.reduce((sum, a) => sum + (a.status !== 'CANCELLED' ? a.totalPrice : 0), 0);
-    const totalProfit = appointments.reduce((sum, a) => sum + (a.status !== 'CANCELLED' ? a.estimatedProfit : 0), 0);
-    const completedCount = appointments.filter((a) => a.status === 'COMPLETED').length;
+    const totalRevenue = rawAppts.reduce((sum, a) => sum + (a.status !== 'CANCELLED' ? (a.totalPrice || 0) : 0), 0);
+    const totalProfit = rawAppts.reduce((sum, a) => sum + (a.status !== 'CANCELLED' ? (a.estimatedProfit || 0) : 0), 0);
+    const completedCount = rawAppts.filter((a) => a.status === 'COMPLETED').length;
 
     const tableHeaders = ['Fecha / Hora', 'Cliente', 'Profesional', 'Servicios', 'Total (€)', 'Estado'];
-    const tableRows = appointments.slice(0, 40).map((a) => [
-      `${new Date(a.startTime).toLocaleDateString('es-ES')} ${new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      a.clientName,
-      a.staffName.split(' ')[0],
-      a.services.map((s) => s.name).join(', ').slice(0, 30),
-      `${a.totalPrice.toFixed(2)}€`,
-      a.status === 'COMPLETED' ? 'Completada' : a.status === 'CONFIRMED' ? 'Confirmada' : a.status,
-    ]);
+    const tableRows = rawAppts.slice(0, 40).map((a: any) => {
+      const services = typeof a.servicesDetails === 'string' ? JSON.parse(a.servicesDetails) : a.servicesDetails || [];
+      return [
+        `${new Date(a.startTime).toLocaleDateString('es-ES')} ${new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        a.clientName,
+        a.staffName.split(' ')[0],
+        services.map((s: any) => s.name).join(', ').slice(0, 30),
+        `${(a.totalPrice || 0).toFixed(2)}€`,
+        a.status === 'COMPLETED' ? 'Completada' : a.status === 'CONFIRMED' ? 'Confirmada' : a.status,
+      ];
+    });
 
     const pdfBuf = await generateReportPdf({
       title: 'Informe de Citas, Servicios Profesionales & Estimación de Ingresos',
@@ -664,7 +703,7 @@ export async function exportAppointmentsPdf(req: Request, res: Response): Promis
         { label: 'Facturación Prevista', value: `${totalRevenue.toFixed(2)}€`, color: '#3B82F6' },
         { label: 'Beneficio Neto Estimado', value: `${totalProfit.toFixed(2)}€`, color: '#10B981' },
         { label: 'Citas Realizadas', value: completedCount, color: '#6366F1' },
-        { label: 'Total Reservas', value: appointments.length, color: '#8B5CF6' },
+        { label: 'Total Reservas', value: rawAppts.length, color: '#8B5CF6' },
       ],
       tableHeaders,
       tableRows,
@@ -681,4 +720,3 @@ export async function exportAppointmentsPdf(req: Request, res: Response): Promis
     res.status(500).json({ success: false, message: err.message });
   }
 }
-

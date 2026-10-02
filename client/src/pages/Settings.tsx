@@ -10,6 +10,7 @@ import {
   Plug,
   Server,
   Tag,
+  Kanban,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -25,6 +26,7 @@ import { UsersSettings } from '../components/settings/UsersSettings';
 import { IntegrationsSettings } from '../components/settings/IntegrationsSettings';
 import { SystemSettings } from '../components/settings/SystemSettings';
 import { CustomFieldsSettings } from '../components/settings/CustomFieldsSettings';
+import { AgilePlannerSettings } from '../components/settings/AgilePlannerSettings';
 
 export const Settings: React.FC = () => {
   const { user } = useAuth();
@@ -39,7 +41,7 @@ export const Settings: React.FC = () => {
   const canManageCompany = isCompanyAdmin || isSuperAdmin;
 
   const [activeTab, setActiveTab] = useState<
-    'accessibility' | 'modules' | 'profile' | 'company' | 'custom_fields' | 'security' | 'users' | 'integrations' | 'system'
+    'accessibility' | 'modules' | 'profile' | 'company' | 'agile_planner' | 'custom_fields' | 'security' | 'users' | 'integrations' | 'system'
   >('accessibility');
 
   const settingsTabs = [
@@ -68,6 +70,11 @@ export const Settings: React.FC = () => {
             id: 'company',
             label: t('settings.tabCompany', 'Identidad & Facturación'),
             icon: Building2,
+          },
+          {
+            id: 'agile_planner',
+            label: t('settings.tabAgilePlanner', 'Agile Planner & Sprints'),
+            icon: Kanban,
           },
           {
             id: 'custom_fields',
@@ -156,6 +163,7 @@ export const Settings: React.FC = () => {
           {activeTab === 'modules' && canManageCompany && <ModulesSettings />}
           {activeTab === 'profile' && <ProfileSettings />}
           {activeTab === 'company' && canManageCompany && <CompanySettings />}
+          {activeTab === 'agile_planner' && canManageCompany && <AgilePlannerSettings />}
           {activeTab === 'custom_fields' && canManageCompany && <CustomFieldsSettings />}
           {activeTab === 'security' && <SecuritySettings />}
           {activeTab === 'users' && canManageCompany && <UsersSettings />}

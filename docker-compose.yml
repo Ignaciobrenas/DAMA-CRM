@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ----------------------------------------------------------------------------
   # DNS Server: Wildcard DNS Resolver for *.dama.com -> 127.0.0.1

@@ -92,8 +92,8 @@ html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):focus,
 html:not(.dark) select:focus,
 html:not(.dark) textarea:focus {
   border-color: #2563EB !important;
-  background-color: #dfdfdf !important;
-  outline: 2px solid #0e58f7;
+  background-color: #FFFFFF !important;
+  outline: 2px solid #2563EB;
 }
 
 /* Light Mode Typography: Zero Washed-Out Text */
