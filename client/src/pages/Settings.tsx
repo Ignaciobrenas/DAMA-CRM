@@ -16,7 +16,6 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useModules } from '../context/ModulesContext';
 
-// Subcomponents for each settings domain
 import { AccessibilitySettings } from '../components/settings/AccessibilitySettings';
 import { ModulesSettings } from '../components/settings/ModulesSettings';
 import { ProfileSettings } from '../components/settings/ProfileSettings';
@@ -41,137 +40,109 @@ export const Settings: React.FC = () => {
   const canManageCompany = isCompanyAdmin || isSuperAdmin;
 
   const [activeTab, setActiveTab] = useState<
-    'accessibility' | 'modules' | 'profile' | 'company' | 'agile_planner' | 'custom_fields' | 'security' | 'users' | 'integrations' | 'system'
-  >('accessibility');
+    'profile' | 'security' | 'accessibility' | 'modules' | 'company' | 'agile_planner' | 'custom_fields' | 'users' | 'integrations' | 'system'
+  >('profile');
 
-  const settingsTabs = [
-    {
-      id: 'accessibility',
-      label: t('settings.tabAccessibility', 'Personalización & Accesibilidad'),
-      icon: Sliders,
-    },
-    ...(canManageCompany
-      ? [
-          {
-            id: 'modules',
-            label: t('settings.tabModules', 'Módulos & Funcionalidades'),
-            icon: Blocks,
-          },
-        ]
-      : []),
-    {
-      id: 'profile',
-      label: t('settings.tabProfile', 'Mi Perfil & Preferencias'),
-      icon: UserIcon,
-    },
-    ...(canManageCompany
-      ? [
-          {
-            id: 'company',
-            label: t('settings.tabCompany', 'Identidad & Facturación'),
-            icon: Building2,
-          },
-          {
-            id: 'agile_planner',
-            label: t('settings.tabAgilePlanner', 'Agile Planner & Sprints'),
-            icon: Kanban,
-          },
-          {
-            id: 'custom_fields',
-            label: t('settings.tabCustomFields', 'Campos Personalizados'),
-            icon: Tag,
-          },
-        ]
-      : []),
-    {
-      id: 'security',
-      label: t('settings.tabSecurity', 'Seguridad & Permisos RBAC'),
-      icon: ShieldCheck,
-    },
-    ...(canManageCompany
-      ? [
-          {
-            id: 'users',
-            label: t('settings.tabUsers', 'Cuentas de Usuarios'),
-            icon: Users,
-          },
-          {
-            id: 'integrations',
-            label: t('settings.tabIntegrations', 'Conectores & Integraciones'),
-            icon: Plug,
-          },
-          {
-            id: 'system',
-            label: t('settings.tabSystem', 'Sistema & Copias de Seguridad'),
-            icon: Server,
-          },
-        ]
-      : []),
+  const personalTabs = [
+    { id: 'profile', label: t('settings.tabProfile', 'Mi Perfil'), icon: UserIcon },
+    { id: 'security', label: t('settings.tabSecurity', 'Seguridad & 2FA'), icon: ShieldCheck },
+    { id: 'accessibility', label: t('settings.tabAccessibility', 'Apariencia & Accesibilidad'), icon: Sliders },
   ];
 
+  const workspaceTabs = [
+    { id: 'modules', label: t('settings.tabModules', 'Módulos Activos'), icon: Blocks },
+    { id: 'company', label: t('settings.tabCompany', 'Empresa & Facturación'), icon: Building2 },
+    { id: 'users', label: t('settings.tabUsers', 'Usuarios & Roles'), icon: Users },
+  ];
+
+  const advancedTabs = [
+    { id: 'integrations', label: t('settings.tabIntegrations', 'Conectores & Apps'), icon: Plug },
+    { id: 'agile_planner', label: t('settings.tabAgilePlanner', 'Agile Planner'), icon: Kanban },
+    { id: 'custom_fields', label: t('settings.tabCustomFields', 'Campos Personalizados'), icon: Tag },
+    { id: 'system', label: t('settings.tabSystem', 'Sistema & Backups'), icon: Server },
+  ];
+
+  const renderTabButton = (tab: any) => {
+    const Icon = tab.icon;
+    const isActive = activeTab === tab.id;
+    return (
+      <button
+        key={tab.id}
+        onClick={() => setActiveTab(tab.id)}
+        className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-[0.98] ${
+          isActive
+            ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700/80'
+            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/40 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 border border-transparent'
+        }`}
+      >
+        <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+        <span>{tab.label}</span>
+      </button>
+    );
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-          {t('settings', 'Configuración')}
-        </h1>
-        <p className="text-xs text-gray-500 dark:text-slate-400">
-          Personalización visual, campos dinámicos, gestión modular, seguridad 2FA, identidad corporativa y copias de seguridad
-        </p>
+    <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-8rem)]">
+      {/* Sidebar Settings Navigation */}
+      <div className="w-full md:w-64 shrink-0 flex flex-col gap-6 overflow-y-auto hide-scrollbar pr-2 pb-12">
+        <div>
+          <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3 mb-2">
+            Ajustes Personales
+          </h3>
+          <div className="space-y-1">
+            {personalTabs.map(renderTabButton)}
+          </div>
+        </div>
+
+        {canManageCompany && (
+          <div>
+            <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3 mb-2">
+              Espacio de Trabajo
+            </h3>
+            <div className="space-y-1">
+              {workspaceTabs.map(renderTabButton)}
+            </div>
+          </div>
+        )}
+
+        {canManageCompany && (
+          <div>
+            <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3 mb-2">
+              Avanzado
+            </h3>
+            <div className="space-y-1">
+              {advancedTabs.map(renderTabButton)}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Navigation Tabs Bar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-slate-800 pb-2">
-        {settingsTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`relative px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
-                isActive
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 shadow-xs'
-                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/60'
-              }`}
+      {/* Main Content Area */}
+      <div className="flex-1 bg-slate-50 dark:bg-slate-950 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col relative z-0">
+        <div className="flex-1 overflow-y-auto hide-scrollbar p-6 lg:p-8 relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="max-w-4xl mx-auto w-full relative z-10"
             >
-              <Icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-              {isActive && (
-                <motion.div
-                  layoutId="activeSettingsTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full"
-                />
-              )}
-            </button>
-          );
-        })}
+              {activeTab === 'accessibility' && <AccessibilitySettings />}
+              {activeTab === 'modules' && canManageCompany && <ModulesSettings />}
+              {activeTab === 'profile' && <ProfileSettings />}
+              {activeTab === 'company' && canManageCompany && <CompanySettings />}
+              {activeTab === 'agile_planner' && canManageCompany && <AgilePlannerSettings />}
+              {activeTab === 'custom_fields' && canManageCompany && <CustomFieldsSettings />}
+              {activeTab === 'security' && <SecuritySettings />}
+              {activeTab === 'users' && canManageCompany && <UsersSettings />}
+              {activeTab === 'integrations' && canManageCompany && <IntegrationsSettings />}
+              {activeTab === 'system' && canManageCompany && <SystemSettings />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
-
-      {/* Active Tab Views */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.15 }}
-        >
-          {activeTab === 'accessibility' && <AccessibilitySettings />}
-          {activeTab === 'modules' && canManageCompany && <ModulesSettings />}
-          {activeTab === 'profile' && <ProfileSettings />}
-          {activeTab === 'company' && canManageCompany && <CompanySettings />}
-          {activeTab === 'agile_planner' && canManageCompany && <AgilePlannerSettings />}
-          {activeTab === 'custom_fields' && canManageCompany && <CustomFieldsSettings />}
-          {activeTab === 'security' && <SecuritySettings />}
-          {activeTab === 'users' && canManageCompany && <UsersSettings />}
-          {activeTab === 'integrations' && canManageCompany && <IntegrationsSettings />}
-          {activeTab === 'system' && canManageCompany && <SystemSettings />}
-        </motion.div>
-      </AnimatePresence>
     </div>
   );
 };
-
