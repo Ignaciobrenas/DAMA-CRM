@@ -79,3 +79,22 @@ export function rateLimiter(options: RateLimitOptions) {
     next();
   };
 }
+
+export const globalLimiter = rateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  message: 'Demasiadas solicitudes enviadas al servidor. Por favor, reintente en 15 minutos.',
+});
+
+export const authLimiter = rateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: 'Demasiados intentos de autenticación. Por seguridad, su IP ha sido restringida por 15 minutos.',
+});
+
+export const apiLimiter = rateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: 'Límite de solicitudes de la API alcanzado.',
+});
+

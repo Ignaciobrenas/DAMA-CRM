@@ -58,7 +58,7 @@ export const FloatingCaptureWidget: React.FC = () => {
       {isOpen ? (
         <div className="w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-200">
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 text-white flex items-center justify-between">
+          <div className="bg-emerald-600 p-4 text-white flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
               <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center">
                 <MessageCircle className="w-5 h-5" />
@@ -158,7 +158,7 @@ export const FloatingCaptureWidget: React.FC = () => {
         <button
           onClick={() => setIsOpen(true)}
           aria-label={t('floatingWidget.launcher')}
-          className="group flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+          className="group flex items-center space-x-2.5 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
         >
           <div className="relative">
             <MessageCircle className="w-5 h-5" />

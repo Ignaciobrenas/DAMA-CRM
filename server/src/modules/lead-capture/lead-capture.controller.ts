@@ -863,3 +863,62 @@ export const exportCustomerData = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * Exercise ARCO/POL Rights (Acceso, Rectificación, Supresión, Oposición, Portabilidad, Limitación)
+ */
+export const submitArcoRequest = async (req: Request, res: Response) => {
+  try {
+    const {
+      rightType, // 'access' | 'rectification' | 'erasure' | 'opposition' | 'portability' | 'limitation'
+      fullName,
+      email,
+      dniPassport,
+      details,
+    } = req.body;
+
+    if (!rightType || !email || !fullName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de derecho, nombre completo y correo electrónico son obligatorios.',
+      });
+    }
+
+    const ticketNumber = `ARCO-${Date.now().toString().slice(-6)}`;
+
+    // Create Audit Log
+    await prisma.auditLog.create({
+      data: {
+        action: `ARCO_REQUEST_${rightType.toUpperCase()}`,
+        entity: 'PrivacyRights',
+        details: JSON.stringify({
+          ticketNumber,
+          rightType,
+          fullName,
+          email,
+          dniPassport: dniPassport ? '***PROCESADO***' : 'No adjuntado',
+          details,
+          ip: req.ip || req.headers['x-forwarded-for'],
+          timestamp: new Date().toISOString(),
+        }),
+      },
+    });
+
+    // Notify CRM Admins via WS
+    wsService.broadcast('privacy:arco_requested', {
+      ticketNumber,
+      rightType,
+      email,
+      fullName,
+    });
+
+    return res.json({
+      success: true,
+      ticketNumber,
+      message: `Solicitud de derecho ARCO (${rightType.toUpperCase()}) registrada correctamente bajo el expediente ${ticketNumber}. El DPO responderá en un plazo máximo de 30 días conforme a la LOPD-GDD.`,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+

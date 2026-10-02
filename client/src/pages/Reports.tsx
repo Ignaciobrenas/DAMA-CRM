@@ -33,21 +33,25 @@ export const Reports: React.FC = () => {
   const toast = useToast();
   const [salesData, setSalesData] = useState<any>(null);
   const [agileData, setAgileData] = useState<any>(null);
+  const [adminBiData, setAdminBiData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [timePeriod, setTimePeriod] = useState<'30d' | '90d' | 'year'>('30d');
+  const [activeTab, setActiveTab] = useState<'commercial' | 'admin_telemetry'>('commercial');
 
   useEffect(() => {
     async function loadReports() {
       setIsLoading(true);
-      const [resSales, resAgile] = await Promise.all([
+      const [resSales, resAgile, resAdminBi] = await Promise.all([
         apiRequest('/reports/sales'),
         apiRequest('/reports/velocity'),
+        apiRequest('/reports/admin-bi').catch(() => null),
       ]);
 
       if (resSales.success) setSalesData(resSales.data);
       if (resAgile.success) setAgileData(resAgile.data);
+      if (resAdminBi && resAdminBi.success) setAdminBiData(resAdminBi.data);
       setIsLoading(false);
     }
     loadReports();
@@ -128,11 +132,37 @@ export const Reports: React.FC = () => {
             Informes y Business Intelligence (BI)
           </h1>
           <p className="text-xs text-gray-500 dark:text-slate-400">
-            Análisis de rendimiento comercial, tasa de conversión y exportación universal de datos
+            Análisis de rendimiento comercial, telemetría de sistema y exportación universal de datos
           </p>
         </div>
 
         <div className="flex items-center space-x-2 relative">
+          {/* Admin Telemetry Tab Switcher */}
+          {adminBiData && (
+            <div className="flex bg-slate-200 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold mr-2">
+              <button
+                onClick={() => setActiveTab('commercial')}
+                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                  activeTab === 'commercial'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                BI Comercial
+              </button>
+              <button
+                onClick={() => setActiveTab('admin_telemetry')}
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1 ${
+                  activeTab === 'admin_telemetry'
+                    ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5" />
+                <span>Telemetría Admin</span>
+              </button>
+            </div>
+          )}
           {/* Period selector */}
           <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
             <button
@@ -239,165 +269,326 @@ export const Reports: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.revenueWon')}</span>
-          <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {(kpis.totalWonRevenue || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
-          </div>
-          <div className="mt-1 text-[11px] text-gray-500">
-            {kpis.wonDealsCount || 0} acuerdos cerrados con éxito
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.winRate')}</span>
-          <div className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400">
-            {kpis.winRate || 0}%
-          </div>
-          <div className="mt-1 text-[11px] text-gray-500">
-            Ratio sobre oportunidades resueltas
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.avgTicketWon')}</span>
-          <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-            {(kpis.averageDealSize || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
-          </div>
-          <div className="mt-1 text-[11px] text-gray-500">
-            Valor medio por venta cerrada
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.agileDeliveryRate')}</span>
-          <div className="mt-2 text-2xl font-bold text-purple-600 dark:text-purple-400">
-            {agileData?.completionRate || 0}%
-          </div>
-          <div className="mt-1 text-[11px] text-gray-500">
-            {agileData?.doneTasks || 0} de {agileData?.totalTasks || 0} tareas completadas
-          </div>
-        </div>
-      </div>
-
-      {/* Main Analytics Visualizations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Monthly Revenue Projection Bar Chart */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-              <span>{t('reports.monthlyInvoicingEvolution')}</span>
-            </h2>
-            <span className="text-[11px] text-gray-400">{t('reports.commercialTrend')}</span>
-          </div>
-
-          <div className="pt-2">
-            <BarChart
-              data={monthlyBarData}
-              height={220}
-              valueFormatter={(val: number) => `${(val / 1000).toFixed(0)}k €`}
-            />
-          </div>
-        </div>
-
-        {/* Deals Status Distribution Donut Chart */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-              <PieChart className="w-4 h-4 text-indigo-600" />
-              <span>{t('reports.pipelineDistribution')}</span>
-            </h2>
-            <span className="text-[11px] text-gray-400">{t('reports.totalOpportunities')}</span>
-          </div>
-
-          <div className="flex items-center justify-center pt-2">
-            <DonutChart data={dealsDonutData} size={190} strokeWidth={24} />
-          </div>
-        </div>
-      </div>
-
-      {/* Sprint Velocity & Top Customers Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sprint Velocity Tracking */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-              <Layers className="w-4 h-4 text-purple-600" />
-              <span>{t('reports.scrumSprintVelocity')}</span>
-            </h2>
-            <span className="text-[11px] text-gray-400">{t('reports.storyPoints')}</span>
-          </div>
-
-          <div className="space-y-3">
-            {agileData?.sprintVelocity && agileData.sprintVelocity.length > 0 ? (
-              agileData.sprintVelocity.map((s: any, idx: number) => {
-                const pct = s.totalPoints > 0 ? Math.round((s.completedPoints / s.totalPoints) * 100) : 0;
-                return (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-semibold text-gray-800 dark:text-slate-200">{s.name}</span>
-                      <span className="text-gray-500 font-mono text-[11px]">
-                        {s.completedPoints} / {s.totalPoints} pts ({pct}%)
-                      </span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-purple-600 rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8 text-xs text-gray-400">
-                No hay sprints registrados todavía.
+      {/* Content based on Active Tab */}
+      {activeTab === 'admin_telemetry' && adminBiData ? (
+        <div className="space-y-6">
+          {/* Admin System Metrics KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Memoria Heap Servidor</span>
+              <div className="mt-2 text-2xl font-bold text-purple-600 dark:text-purple-400 font-mono">
+                {(adminBiData.systemMetrics?.memory?.heapUsed / (1024 * 1024)).toFixed(1)} MB
               </div>
-            )}
-          </div>
-        </div>
+              <div className="mt-1 text-[11px] text-gray-500 font-mono">
+                de {(adminBiData.systemMetrics?.memory?.heapTotal / (1024 * 1024)).toFixed(1)} MB asignados
+              </div>
+            </div>
 
-        {/* Top 5 Clients by Closed Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-              <Award className="w-4 h-4 text-amber-500" />
-              <span>{t('reports.topClientsByRevenue')}</span>
-            </h2>
-            <span className="text-[11px] text-gray-400">{t('reports.clientRanking')}</span>
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Tiempo Activo (Uptime)</span>
+              <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                {Math.floor((adminBiData.systemMetrics?.uptime || 0) / 3600)}h {Math.floor(((adminBiData.systemMetrics?.uptime || 0) % 3600) / 60)}m
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                Servidor Node.js sin interrupción
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Cuentas Multi-Tenant</span>
+              <div className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400 font-mono">
+                {adminBiData.tenants?.length || 1}
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                Organizaciones activas aisladas (RLS)
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Registros de Auditoría</span>
+              <div className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">
+                {adminBiData.dbCounts?.auditLogs || 0}
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                Traza de auditoría de seguridad
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            {salesData?.topCompanies && salesData.topCompanies.length > 0 ? (
-              salesData.topCompanies.map((c: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800"
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
-                      {idx + 1}
-                    </span>
-                    <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                      {c.name}
-                    </span>
-                  </div>
-                  <span className="text-xs font-bold text-gray-900 dark:text-white font-mono">
-                    {c.total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+          {/* Detailed Server Environment & Database Entity Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* System Info */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                <Activity className="w-4 h-4 text-purple-600" />
+                <span>Entorno de Ejecución & Hardware</span>
+              </h2>
+              <div className="space-y-2 text-xs font-mono">
+                <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-slate-800/60">
+                  <span className="text-slate-500">Plataforma OS:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{adminBiData.systemMetrics?.platform}</span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-slate-800/60">
+                  <span className="text-slate-500">Versión de Node.js:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{adminBiData.systemMetrics?.nodeVersion}</span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-slate-800/60">
+                  <span className="text-slate-500">Núcleos de CPU Disponibles:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{adminBiData.systemMetrics?.cpus} núcleos</span>
+                </div>
+                <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-slate-800/60">
+                  <span className="text-slate-500">Memoria RSS del Proceso:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {(adminBiData.systemMetrics?.memory?.rss / (1024 * 1024)).toFixed(1)} MB
                   </span>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-xs text-gray-400">
-                No hay datos de clientes registrados aún.
               </div>
-            )}
+            </div>
+
+            {/* DB Entity Counts */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                <Layers className="w-4 h-4 text-blue-600" />
+                <span>Volumen Global de Datos en Base de Datos</span>
+              </h2>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50">
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">Oportunidades (Deals)</span>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.deals || 0}</div>
+                </div>
+                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Contactos</span>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.contacts || 0}</div>
+                </div>
+                <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50">
+                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">Empresas / Cuentas</span>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.companies || 0}</div>
+                </div>
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50">
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">Facturas Emitidas</span>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.invoices || 0}</div>
+                </div>
+                <div className="p-3 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-100 dark:border-cyan-900/50">
+                  <span className="text-cyan-600 dark:text-cyan-400 font-medium">Productos Catálogo</span>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.products || 0}</div>
+                </div>
+                <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/50">
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">Tareas Ágiles</span>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.tasks || 0}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Admin Audit Trail Feed */}
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+              <FileText className="w-4 h-4 text-indigo-600" />
+              <span>Registro Reciente de Auditoría de Sistema</span>
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase text-[10px]">
+                    <th className="py-2 px-3">Fecha / Hora</th>
+                    <th className="py-2 px-3">Acción</th>
+                    <th className="py-2 px-3">Tenant ID</th>
+                    <th className="py-2 px-3">Detalles</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                  {adminBiData.auditLogs && adminBiData.auditLogs.length > 0 ? (
+                    adminBiData.auditLogs.map((log: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="py-2 px-3 text-slate-500 whitespace-nowrap">
+                          {new Date(log.createdAt || log.timestamp).toLocaleString()}
+                        </td>
+                        <td className="py-2 px-3 font-semibold text-purple-600 dark:text-purple-400">
+                          {log.action}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-400">
+                          {log.tenantId || 'system'}
+                        </td>
+                        <td className="py-2 px-3 text-slate-700 dark:text-slate-300 max-w-md truncate">
+                          {typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || '-')}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-4 text-center text-slate-400 font-sans italic">
+                        No hay registros de auditoría recientes.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.revenueWon')}</span>
+              <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {(kpis.totalWonRevenue || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                {kpis.wonDealsCount || 0} acuerdos cerrados con éxito
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.winRate')}</span>
+              <div className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {kpis.winRate || 0}%
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                Ratio sobre oportunidades resueltas
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.avgTicketWon')}</span>
+              <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {(kpis.averageDealSize || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                Valor medio por venta cerrada
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('reports.agileDeliveryRate')}</span>
+              <div className="mt-2 text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {agileData?.completionRate || 0}%
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500">
+                {agileData?.doneTasks || 0} de {agileData?.totalTasks || 0} tareas completadas
+              </div>
+            </div>
+          </div>
+
+          {/* Main Analytics Visualizations */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Monthly Revenue Projection Bar Chart */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                  <span>{t('reports.monthlyInvoicingEvolution')}</span>
+                </h2>
+                <span className="text-[11px] text-gray-400">{t('reports.commercialTrend')}</span>
+              </div>
+
+              <div className="pt-2">
+                <BarChart
+                  data={monthlyBarData}
+                  height={220}
+                  valueFormatter={(val: number) => `${(val / 1000).toFixed(0)}k €`}
+                />
+              </div>
+            </div>
+
+            {/* Deals Status Distribution Donut Chart */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <PieChart className="w-4 h-4 text-indigo-600" />
+                  <span>{t('reports.pipelineDistribution')}</span>
+                </h2>
+                <span className="text-[11px] text-gray-400">{t('reports.totalOpportunities')}</span>
+              </div>
+
+              <div className="flex items-center justify-center pt-2">
+                <DonutChart data={dealsDonutData} size={190} strokeWidth={24} />
+              </div>
+            </div>
+          </div>
+
+          {/* Sprint Velocity & Top Customers Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Sprint Velocity Tracking */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <Layers className="w-4 h-4 text-purple-600" />
+                  <span>{t('reports.scrumSprintVelocity')}</span>
+                </h2>
+                <span className="text-[11px] text-gray-400">{t('reports.storyPoints')}</span>
+              </div>
+
+              <div className="space-y-3">
+                {agileData?.sprintVelocity && agileData.sprintVelocity.length > 0 ? (
+                  agileData.sprintVelocity.map((s: any, idx: number) => {
+                    const pct = s.totalPoints > 0 ? Math.round((s.completedPoints / s.totalPoints) * 100) : 0;
+                    return (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-semibold text-gray-800 dark:text-slate-200">{s.name}</span>
+                          <span className="text-gray-500 font-mono text-[11px]">
+                            {s.completedPoints} / {s.totalPoints} pts ({pct}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-purple-600 rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-xs text-gray-400">
+                    No hay sprints registrados todavía.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Top 5 Clients by Closed Revenue */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <Award className="w-4 h-4 text-amber-500" />
+                  <span>{t('reports.topClientsByRevenue')}</span>
+                </h2>
+                <span className="text-[11px] text-gray-400">{t('reports.clientRanking')}</span>
+              </div>
+
+              <div className="space-y-2">
+                {salesData?.topCompanies && salesData.topCompanies.length > 0 ? (
+                  salesData.topCompanies.map((c: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800"
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                          {c.name}
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold text-gray-900 dark:text-white font-mono">
+                        {c.total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-xs text-gray-400">
+                    No hay datos de clientes registrados aún.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Analytics Telemetry & Real-Time Tracking Section */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-5">

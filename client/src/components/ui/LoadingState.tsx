@@ -69,7 +69,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
 
       {/* Shimmer line */}
       <div className="w-32 h-1 bg-slate-200 dark:bg-slate-800 rounded-full mt-5 overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 rounded-full w-1/2 animate-shimmer" />
+        <div className="h-full bg-blue-600 rounded-full w-1/2 animate-shimmer" />
       </div>
     </motion.div>
   );

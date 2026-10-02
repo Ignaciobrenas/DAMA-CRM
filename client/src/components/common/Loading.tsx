@@ -61,7 +61,7 @@ export const PulseLogo: React.FC<{ size?: number; className?: string }> = ({
       />
       {/* Concentric pulsing aura */}
       <div
-        className="absolute rounded-2xl bg-gradient-to-tr from-blue-600/30 to-indigo-500/20 blur-md animate-pulse"
+        className="absolute rounded-2xl bg-blue-500/20 blur-md animate-pulse"
         style={{ width: size * 1.2, height: size * 1.2 }}
       />
       {/* Logo container */}
@@ -134,11 +134,11 @@ export const LoadingScreen: React.FC<{
         <div className="w-52 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative shadow-inner">
           {progress !== undefined ? (
             <div
-              className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 rounded-full transition-all duration-300 ease-out"
+              className="h-full bg-blue-600 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           ) : (
-            <div className="h-full bg-gradient-to-r from-blue-600 via-indigo-400 to-blue-600 rounded-full w-2/5 animate-[shimmer_1.5s_infinite_linear] absolute left-0" />
+            <div className="h-full bg-blue-600 rounded-full w-2/5 animate-pulse absolute left-0" />
           )}
         </div>
 

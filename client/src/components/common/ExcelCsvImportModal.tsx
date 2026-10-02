@@ -225,7 +225,7 @@ export const ExcelCsvImportModal: React.FC<ExcelCsvImportModalProps> = ({
         className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header */}
-        <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 to-transparent">
+        <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-950/20">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
               <FileSpreadsheet className="w-5 h-5" />

@@ -451,7 +451,7 @@ export const CalendarPage: React.FC = () => {
 
       {/* Active Alerts Banner (if any upcoming reminders) */}
       {alertsList.length > 0 && (
-        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-300 dark:border-amber-800/60 rounded-2xl p-4 shadow-xs">
+        <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-800/60 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2 text-xs font-bold text-amber-800 dark:text-amber-300">
               <Bell className="w-4 h-4 text-amber-500 animate-bounce" />
@@ -1149,7 +1149,7 @@ export const CalendarPage: React.FC = () => {
               className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
             >
               {/* Header */}
-              <div className="p-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-between">
+              <div className="p-5 bg-blue-600 text-white flex items-center justify-between">
                 <div className="flex items-center space-x-2.5">
                   <Globe className="w-5 h-5" />
                   <div>

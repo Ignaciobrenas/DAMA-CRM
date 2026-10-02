@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config';
 import { errorHandler } from './middlewares/error.middleware';
+import { globalLimiter, authLimiter } from './middlewares/rate-limit.middleware';
 import { wsService } from './services/websocket.service';
 
 // Module Routes
@@ -40,10 +41,19 @@ import logisticsRoutes from './modules/logistics/logistics.routes';
 
 const app = express();
 
-// Global Middlewares
+app.set('trust proxy', 1);
+
+// Global Middlewares & TLS/HSTS Security Headers
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+    frameguard: { action: 'deny' },
+    noSniff: true,
   })
 );
 
@@ -155,8 +165,9 @@ app.get('/api/docs', (req, res) => {
   `);
 });
 
-// Register API Modules
-app.use('/api/auth', authRoutes);
+// Register API Modules with Rate Limiting
+app.use('/api', globalLimiter);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/companies', companiesRoutes);
 app.use('/api/contacts', contactsRoutes);

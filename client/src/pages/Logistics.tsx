@@ -245,7 +245,7 @@ export const Logistics: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Active Shipments */}
-        <div className="bg-gradient-to-br from-sky-50 to-white dark:from-slate-900 dark:to-slate-900/60 p-4 rounded-xl border border-sky-100 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-sky-100 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-sky-600 dark:text-sky-400">Envíos Activos en Red</span>
             <div className="p-2 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-300">
@@ -261,7 +261,7 @@ export const Logistics: React.FC = () => {
         </div>
 
         {/* Card 2: Out For Delivery */}
-        <div className="bg-gradient-to-br from-amber-50 to-white dark:from-slate-900 dark:to-slate-900/60 p-4 rounded-xl border border-amber-100 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-amber-100 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-600 dark:text-amber-400">En Reparto Hoy</span>
             <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300">
@@ -277,7 +277,7 @@ export const Logistics: React.FC = () => {
         </div>
 
         {/* Card 3: Success Rate */}
-        <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-slate-900 dark:to-slate-900/60 p-4 rounded-xl border border-emerald-100 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-emerald-100 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Tasa de Entrega Exitosa</span>
             <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300">
@@ -293,7 +293,7 @@ export const Logistics: React.FC = () => {
         </div>
 
         {/* Card 4: Total Shipping Cost */}
-        <div className="bg-gradient-to-br from-purple-50 to-white dark:from-slate-900 dark:to-slate-900/60 p-4 rounded-xl border border-purple-100 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-purple-100 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Gasto Total en Portes</span>
             <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300">
