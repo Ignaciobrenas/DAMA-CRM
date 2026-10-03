@@ -1601,5 +1601,6 @@
   "workflows.triggerInvoicePaid": "invoice.paid (請求書支払完了)",
   "workflows.workflowColumn": "ワークフロー",
   "workflowsSubtitle": "ビジネスプロセスの自動化とイベントトリガー",
-  "yes": "はい"
+  "yes": "はい",
+  "privacy": {}
 }

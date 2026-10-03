@@ -1601,5 +1601,6 @@
   "workflows.triggerInvoicePaid": "invoice.paid (发票已支付)",
   "workflows.workflowColumn": "工作流",
   "workflowsSubtitle": "业务流程自动化与事件触发机制",
-  "yes": "是"
+  "yes": "是",
+  "privacy": {}
 }
