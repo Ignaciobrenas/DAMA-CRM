@@ -1,7 +1,4 @@
-const API_BASE =
-  typeof window !== 'undefined' && window.location.port === '5173'
-    ? 'http://localhost:4000/api'
-    : '/api';
+const API_BASE = import.meta.env?.VITE_API_URL || '/api';
 
 export interface ApiResponse<T = any> {
   success: boolean;

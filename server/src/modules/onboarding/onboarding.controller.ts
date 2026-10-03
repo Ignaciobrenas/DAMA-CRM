@@ -40,8 +40,8 @@ export async function createInvitation(req: Request, res: Response): Promise<voi
       },
     });
 
-    const origin = req.headers.origin || req.headers.host || 'http://localhost:5173';
-    const baseUrl = origin.startsWith('http') ? origin : `http://${origin}`;
+    const origin = req.headers.origin || req.headers.host || config.frontendUrl;
+    const baseUrl = origin.startsWith('http') ? origin : `https://${origin}`;
     const onboardingUrl = `${baseUrl}/onboarding?token=${token}`;
 
     await logAudit(req.user?.id || null, 'CREATE_INVITATION', 'TenantInvitation', invitation.id, { email, token, tenantSlug }, req.ip);

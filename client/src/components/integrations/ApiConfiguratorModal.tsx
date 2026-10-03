@@ -431,7 +431,7 @@ echo "Respuesta DAMA-CRM: " . $response;
                     </div>
                   </div>
                   <a
-                    href="http://localhost:4000/api/docs"
+                    href={`${window.location.origin}/api/docs`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition"
