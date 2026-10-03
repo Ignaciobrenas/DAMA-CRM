@@ -5,7 +5,7 @@ import { prisma } from '../../prisma';
 import { generateToken } from '../../utils/jwt';
 import { logAudit } from '../../middlewares/audit.middleware';
 import { isGodSuperAdmin } from '../../utils/tenant';
-
+import { config } from '../../config';
 const RESERVED_SLUGS = ['master', 'admin', 'api', 'system', 'god', 'godmode', 'auth', 'public', 'static'];
 
 export async function createInvitation(req: Request, res: Response): Promise<void> {
