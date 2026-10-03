@@ -3,6 +3,7 @@ export type ConnectorType =
   | 'woocommerce'
   | 'shopify'
   | 'opencart'
+  | 'prestashop'
   | 'n8n'
   | 'unopim'
   | 'whatsapp'
@@ -166,6 +167,19 @@ export interface Sage200Config {
   lastError?: string;
 }
 
+export interface PrestashopConfig {
+  enabled: boolean;
+  storeUrl: string;
+  wsKey?: string;
+  hasWsKey?: boolean;
+  syncProducts: boolean;
+  syncOrders: boolean;
+  syncCustomers: boolean;
+  status: IntegrationStatus;
+  lastSyncAt?: string;
+  lastError?: string;
+}
+
 export interface ProductAttributeMapping {
   unopim?: Record<string, any>;
   opencart?: Record<string, any>;
@@ -182,6 +196,7 @@ export interface IntegrationsConfig {
   woocommerce: WooCommerceConfig;
   shopify: ShopifyConfig;
   opencart?: OpenCartConfig;
+  prestashop?: PrestashopConfig;
   n8n: N8nConfig;
   stripe?: StripeConfig;
   zapier?: ZapierConfig;

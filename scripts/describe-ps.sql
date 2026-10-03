@@ -1,0 +1,1 @@
+DESCRIBE ps_webservice_permission;
