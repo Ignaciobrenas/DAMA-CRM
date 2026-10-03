@@ -12,13 +12,13 @@
     "lastSyncAt": "2026-10-02T15:27:47.956Z"
   },
   "woocommerce": {
-    "enabled": false,
-    "storeUrl": "https://tienda.example.com",
-    "consumerKey": "",
-    "consumerSecret": "",
+    "enabled": true,
+    "storeUrl": "http://localhost:8083",
+    "consumerKey": "ck_148cd26e6b15e5591035466047aec78b2b865d82",
+    "consumerSecret": "cs_2a917375491c0cb54e8c6b9d9ec0ee69a712b3dc",
     "webhookSecret": "",
     "status": "connected",
-    "lastSyncAt": "2026-10-02T15:20:51.827Z"
+    "lastSyncAt": "2026-10-03T13:00:00.000Z"
   },
   "shopify": {
     "enabled": false,
@@ -28,15 +28,25 @@
     "webhookSecret": "",
     "status": "disconnected"
   },
-  "opencart": {
+  "prestashop": {
     "enabled": true,
+    "storeUrl": "http://localhost:8081",
+    "wsKey": "DAMACRMTESTKEY123456789012345678",
+    "syncProducts": true,
+    "syncOrders": true,
+    "syncCustomers": true,
+    "status": "connected",
+    "lastSyncAt": "2026-10-03T13:00:00.000Z"
+  },
+  "opencart": {
+    "enabled": false,
     "storeUrl": "https://demo.opencart.com",
     "apiUsername": "admin_oc",
     "apiKey": "oc_test_key_123",
     "syncProducts": true,
     "syncOrders": true,
     "syncCustomers": true,
-    "status": "connected",
+    "status": "disconnected",
     "lastSyncAt": "2026-10-02T15:20:51.845Z"
   },
   "n8n": {

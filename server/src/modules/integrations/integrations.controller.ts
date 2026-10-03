@@ -97,6 +97,27 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
         },
       },
       {
+        id: 'prestashop',
+        nombre: 'PrestaShop',
+        categoria: 'Comercio Electrónico',
+        tipo: 'Webservice XML',
+        estado: config.prestashop?.status || 'disconnected',
+        activo: config.prestashop?.enabled || false,
+        descripcion: 'Sincronización de catálogo, clientes y pedidos bidireccional mediante el webservice nativo de PrestaShop.',
+        capacidades: ['Pedidos', 'Clientes', 'Catálogo', 'Direcciones'],
+        documentacion: 'https://devdocs.prestashop-project.org/8/webservice/',
+        webhookUrl: '',
+        eventosSoportados: [],
+        configuracion: {
+          storeUrl: config.prestashop?.storeUrl,
+          tieneWsKey: config.prestashop?.hasWsKey,
+          sincronizarProductos: config.prestashop?.syncProducts,
+          sincronizarPedidos: config.prestashop?.syncOrders,
+          sincronizarClientes: config.prestashop?.syncCustomers,
+          ultimaSincronizacion: config.prestashop?.lastSyncAt || null,
+        },
+      },
+      {
         id: 'opencart',
         nombre: 'OpenCart eCommerce',
         categoria: 'Comercio Electrónico & Catálogo',
@@ -292,6 +313,7 @@ export function updateIntegration(req: Request, res: Response): void {
       'woocommerce',
       'shopify',
       'opencart',
+      'prestashop',
       'n8n',
       'stripe',
       'zapier',
@@ -327,6 +349,9 @@ export async function testIntegration(req: Request, res: Response): Promise<void
         break;
       case 'woocommerce':
         result = await IntegrationsService.testWooCommerce(req.body);
+        break;
+      case 'prestashop':
+        result = await IntegrationsService.testPrestashop(req.body);
         break;
       case 'shopify':
         result = await IntegrationsService.testShopify(req.body);

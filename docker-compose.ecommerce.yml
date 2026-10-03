@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # PRESTASHOP
+  # ==========================================
+  prestashop-db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: prestashop_root
+      MYSQL_DATABASE: prestashop
+      MYSQL_USER: prestashop
+      MYSQL_PASSWORD: prestashop_password
+    volumes:
+      - prestashop_db_data:/var/lib/mysql
+    networks:
+      - ecommerce-net
+    restart: unless-stopped
+
+  prestashop:
+    image: prestashop/prestashop:latest
+    ports:
+      - "8081:80"
+    environment:
+      DB_SERVER: prestashop-db
+      DB_USER: prestashop
+      DB_PASSWD: prestashop_password
+      DB_NAME: prestashop
+      PS_DOMAIN: localhost:8081
+    depends_on:
+      - prestashop-db
+    networks:
+      - ecommerce-net
+    restart: unless-stopped
+
+
+
+  # ==========================================
+  # WOOCOMMERCE (WordPress via Bitnami)
+  # ==========================================
+  # Nota: Bitnami instala WordPress. WooCommerce se instala 
+  # fácilmente desde el panel de plugins al iniciar sesión.
+  woo-db:
+    image: bitnami/mariadb:latest
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+      MARIADB_USER: bn_wordpress
+      MARIADB_DATABASE: bitnami_wordpress
+      MARIADB_PASSWORD: wordpress_password
+    volumes:
+      - woo_db_data:/bitnami/mariadb
+    networks:
+      - ecommerce-net
+    restart: unless-stopped
+
+  woo-wp:
+    image: bitnami/wordpress:latest
+    ports:
+      - "8083:8080"
+      - "8445:8443"
+    environment:
+      WORDPRESS_DATABASE_HOST: woo-db
+      WORDPRESS_DATABASE_PORT_NUMBER: 3306
+      WORDPRESS_DATABASE_USER: bn_wordpress
+      WORDPRESS_DATABASE_NAME: bitnami_wordpress
+      WORDPRESS_DATABASE_PASSWORD: wordpress_password
+      WORDPRESS_USERNAME: admin
+      WORDPRESS_PASSWORD: admin_password
+    depends_on:
+      - woo-db
+    volumes:
+      - woo_data:/bitnami/wordpress
+    networks:
+      - ecommerce-net
+    restart: unless-stopped
+
+networks:
+  ecommerce-net:
+    driver: bridge
+
+volumes:
+  prestashop_db_data:
+  woo_db_data:
+  woo_data:

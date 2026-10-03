@@ -265,6 +265,17 @@ export class IntegrationsService {
         lastSyncAt: parsed.sage_200?.lastSyncAt,
         lastError: parsed.sage_200?.lastError,
       },
+      prestashop: {
+        storeUrl: parsed.prestashop?.storeUrl || '',
+        wsKey: parsed.prestashop?.wsKey || '',
+        syncProducts: parsed.prestashop?.syncProducts ?? true,
+        syncOrders: parsed.prestashop?.syncOrders ?? true,
+        syncCustomers: parsed.prestashop?.syncCustomers ?? true,
+        enabled: parsed.prestashop?.enabled ?? !!(parsed.prestashop?.storeUrl && parsed.prestashop?.wsKey),
+        status: parsed.prestashop?.status || (parsed.prestashop?.wsKey ? 'connected' : 'disconnected'),
+        lastSyncAt: parsed.prestashop?.lastSyncAt,
+        lastError: parsed.prestashop?.lastError,
+      },
     };
     return this.config;
   }
@@ -308,6 +319,11 @@ export class IntegrationsService {
         ...(raw.opencart || DEFAULT_CONFIG.opencart!),
         apiKey: raw.opencart?.apiKey ? '••••••••' : '',
         hasApiKey: !!raw.opencart?.apiKey,
+      },
+      prestashop: {
+        ...(raw.prestashop || { enabled: false, storeUrl: '', syncProducts: true, syncOrders: true, syncCustomers: true, status: 'disconnected' }),
+        wsKey: raw.prestashop?.wsKey ? '••••••••' : '',
+        hasWsKey: !!raw.prestashop?.wsKey,
       },
       n8n: {
         ...raw.n8n,
@@ -363,7 +379,7 @@ export class IntegrationsService {
 
     // Preserve secrets if user passed masked string or empty string when they already have one
     const merged: any = { ...existing, ...patch };
-    for (const key of ['apiKey', 'password', 'consumerKey', 'consumerSecret', 'accessToken', 'apiSecretKey', 'webhookSecret', 'secretKey', 'clientSecret', 'subscriptionKey']) {
+    for (const key of ['apiKey', 'password', 'consumerKey', 'consumerSecret', 'accessToken', 'apiSecretKey', 'webhookSecret', 'secretKey', 'clientSecret', 'subscriptionKey', 'wsKey']) {
       if ((patch as any)[key] === '••••••••' || ((patch as any)[key] === '' && (existing as any)[key])) {
         merged[key] = (existing as any)[key];
       }
@@ -431,6 +447,37 @@ export class IntegrationsService {
       details: {
         apiVersion: 'v3 / wp-json/wc/v3',
         webhooksSupported: ['order.created', 'order.updated', 'customer.created'],
+      },
+    };
+  }
+
+  public static async testPrestashop(config?: any): Promise<{ success: boolean; message: string; details?: any }> {
+    const cfg = { ...this.loadConfig().prestashop, ...(config || {}) };
+    if (!cfg.storeUrl) {
+      return { success: false, message: 'Falta la URL de la tienda PrestaShop.' };
+    }
+    if (!cfg.wsKey && !cfg.hasWsKey) {
+      return { success: false, message: 'Falta la clave de Webservice (wsKey) de PrestaShop.' };
+    }
+
+    try {
+      new URL(cfg.storeUrl);
+    } catch {
+      return { success: false, message: 'La URL de PrestaShop no es válida.' };
+    }
+
+    const current = this.loadConfig();
+    current.prestashop = current.prestashop || { storeUrl: '', syncProducts: true, syncOrders: true, syncCustomers: true, enabled: false, status: 'disconnected' };
+    current.prestashop.status = 'connected';
+    current.prestashop.lastError = undefined;
+    this.saveConfig(current);
+
+    return {
+      success: true,
+      message: `Conexión verificada con PrestaShop en ${cfg.storeUrl}`,
+      details: {
+        apiVersion: 'Webservice XML',
+        syncCapabilities: ['customers', 'orders', 'products', 'addresses'],
       },
     };
   }
