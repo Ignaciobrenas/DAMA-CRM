@@ -15,6 +15,11 @@ if (!fs.existsSync(screenshotsDir)) {
   });
   const page = await context.newPage();
 
+  // Inject localStorage to bypass GDPR Cookie Banner before it even loads
+  await page.addInitScript(() => {
+    window.localStorage.setItem('dama_cookie_consent', 'accepted');
+  });
+
   console.log('Navigating to login...');
   await page.goto('http://localhost:5173/login');
   await page.waitForTimeout(2000);
@@ -29,39 +34,33 @@ if (!fs.existsSync(screenshotsDir)) {
   
   // Wait for dashboard to load
   await page.waitForTimeout(5000);
-  await page.screenshot({ path: path.join(screenshotsDir, 'dashboard.png') });
+  await page.screenshot({ path: path.join(screenshotsDir, '1-dashboard.png') });
   console.log('Dashboard screenshot taken.');
 
-  // CRM Module
-  console.log('Navigating to CRM...');
-  await page.goto('http://localhost:5173/crm');
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: path.join(screenshotsDir, 'crm-kanban.png') });
+  const pagesToScreenshot = [
+    { name: '2-crm-pipeline', url: 'http://localhost:5173/pipeline' },
+    { name: '3-agile-planner', url: 'http://localhost:5173/agile' },
+    { name: '4-contacts', url: 'http://localhost:5173/contacts' },
+    { name: '5-companies', url: 'http://localhost:5173/companies' },
+    { name: '6-invoicing', url: 'http://localhost:5173/invoicing' },
+    { name: '7-inventory', url: 'http://localhost:5173/inventory' },
+    { name: '8-workflows', url: 'http://localhost:5173/workflows' },
+    { name: '9-chat-omnichannel', url: 'http://localhost:5173/omnichannel' },
+    { name: '10-reports', url: 'http://localhost:5173/reports' },
+    { name: '11-hr-employees', url: 'http://localhost:5173/portal-empleado' },
+    { name: '12-settings-integrations', url: 'http://localhost:5173/settings/integrations' },
+    { name: '13-settings-roles', url: 'http://localhost:5173/settings/roles' },
+    { name: '14-my-time', url: 'http://localhost:5173/my-time' }
+  ];
 
-  // HR Module
-  console.log('Navigating to HR...');
-  await page.goto('http://localhost:5173/hr/employees');
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: path.join(screenshotsDir, 'hr-employees.png') });
+  for (const p of pagesToScreenshot) {
+    console.log(`Navigating to ${p.name}...`);
+    await page.goto(p.url);
+    await page.waitForTimeout(2500); // Wait for animations and data loading
+    await page.screenshot({ path: path.join(screenshotsDir, `${p.name}.png`) });
+    console.log(`${p.name} screenshot taken.`);
+  }
 
-  // Chat Module
-  console.log('Navigating to Chat...');
-  await page.goto('http://localhost:5173/omnichannel');
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: path.join(screenshotsDir, 'chat-omnichannel.png') });
-
-  // Integrations
-  console.log('Navigating to Integrations...');
-  await page.goto('http://localhost:5173/settings/integrations');
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: path.join(screenshotsDir, 'integrations.png') });
-
-  // Roles & Admin
-  console.log('Navigating to Roles...');
-  await page.goto('http://localhost:5173/settings/roles');
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: path.join(screenshotsDir, 'roles-permissions.png') });
-  
   await browser.close();
   console.log('All screenshots taken and saved to docs/assets/screenshots/');
 })();
