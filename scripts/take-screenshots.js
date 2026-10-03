@@ -32,8 +32,10 @@ if (!fs.existsSync(screenshotsDir)) {
   await page.fill('input[type="password"]', '1');
   await page.click('button[type="submit"]', { force: true });
   
-  // Wait for dashboard to load
-  await page.waitForTimeout(5000);
+  console.log('Waiting for login to complete...');
+  // Wait for the URL to change away from /login OR wait for an element inside the dashboard
+  await page.waitForTimeout(8000); // Wait for the dashboard to render and fetch data
+  
   await page.screenshot({ path: path.join(screenshotsDir, '1-dashboard.png') });
   console.log('Dashboard screenshot taken.');
 
