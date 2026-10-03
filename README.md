@@ -15,56 +15,94 @@
   [![PostgreSQL 15+](https://img.shields.io/badge/PostgreSQL-15+-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 </p>
 
-DAMA-CRM es una plataforma de gestión empresarial diseñada para ser rápida, segura y altamente personalizable. Ofrece un ecosistema modular que incluye CRM y ventas, Recursos Humanos, Chat Omnicanal y conexiones nativas a los principales e-commerce.
+DAMA-CRM es una plataforma de gestión empresarial diseñada para ser rápida, segura y altamente personalizable. Ofrece un ecosistema modular que incluye CRM y ventas, Recursos Humanos, Chat Omnicanal, Gestión de Inventario, Tareas y Facturación.
 
 ---
 
 ## 📑 Índice
-- [🚀 ¿Qué es DAMA-CRM?](#-qué-es-dama-crm)
-- [📸 Módulos Principales](#-módulos-principales)
+- [🎨 Identidad Visual y Logos](#-identidad-visual-y-logos)
+- [📸 Tour Visual (Todos los Módulos)](#-tour-visual-todos-los-módulos)
 - [🏢 Roles, Permisos y God Mode](#-roles-permisos-y-god-mode)
 - [🛠️ Cómo Ejecutar y Configurar (Instalación Local)](#️-cómo-ejecutar-y-configurar-instalación-local)
 - [🌍 Soporte Multi-idioma](#-soporte-multi-idioma)
 
 ---
 
-## 🚀 ¿Qué es DAMA-CRM?
+## 🎨 Identidad Visual y Logos
+DAMA-CRM posee un ecosistema de diseño rígido y un conjunto de logos oficiales ubicados en `client/public/assets/logos/`:
 
-DAMA-CRM es un sistema construido sobre el stack moderno (React + Node.js + Prisma) que centraliza la operativa de las pequeñas y medianas empresas. Su arquitectura nativa en PostgreSQL y su interfaz intuitiva le permiten adaptarse a empresas de cualquier sector.
-
-### Arquitectura Técnica
-- **Frontend:** React 18, Vite, Tailwind CSS, Zustand, Framer Motion
-- **Backend:** Node.js 20, Express, Prisma ORM, Socket.io
-- **Base de Datos:** PostgreSQL 15, Redis (para caché y webhooks)
-- **Despliegue:** Preparado para entornos Bare-Metal y servidores privados.
+| Versión a Color | Versión Oscura (Dark) | Versión Clara (White) | Monocromo |
+| :---: | :---: | :---: | :---: |
+| <img src="client/public/assets/logos/dama-logo-color.png" width="150" /> | <img src="client/public/assets/logos/dama-logo-dark.png" width="150" /> | <div style="background:#1e293b;padding:10px;border-radius:8px"><img src="client/public/assets/logos/dama-logo-white.png" width="150" /></div> | <img src="client/public/assets/logos/dama-logo-black.png" width="150" /> |
+| **Símbolo Color:**<br><img src="client/public/assets/logos/dama-symbol-color.png" width="50" /> | **Símbolo Oscuro:**<br><img src="client/public/assets/logos/dama-symbol-dark.png" width="50" /> | **Símbolo Claro:**<br><div style="background:#1e293b;padding:10px;border-radius:8px"><img src="client/public/assets/logos/dama-symbol-white.png" width="50" /></div> | **Vertical Color:**<br><img src="client/public/assets/logos/dama-logo-vertical-dark.png" width="100" /> |
 
 ---
 
-## 📸 Módulos Principales
+## 📸 Tour Visual (Todos los Módulos)
 
-### 📞 1. CRM y Ventas (Pipeline & Kanbans)
-Gestiona tu ciclo de vida de clientes, desde *Leads* hasta ventas cerradas (Deals). Dispone de un sistema Kanban de arrastrar y soltar (Drag & Drop), configuración de embudos personalizados y predicción de ingresos.
-> ![CRM Kanban](docs/assets/screenshots/crm-kanban.png)
+El ecosistema DAMA se divide en múltiples áreas de trabajo, garantizando que cada departamento opere desde su propio *hub*. A continuación se desglosan todos los módulos disponibles:
 
-### 👥 2. Recursos Humanos (HR)
-Centraliza la información de los empleados, control horario (fichajes), nóminas y vacaciones. 
-> ![HR Employees](docs/assets/screenshots/hr-employees.png)
+### 📊 1. Dashboard Principal (BI & Métricas)
+Centro de mando con métricas de ventas, rentabilidad, rendimiento del equipo y accesos rápidos a los KPIs más importantes.
+> ![Dashboard](docs/assets/screenshots/1-dashboard.png)
 
-### 💬 3. Chat Omnicanal
-Bandeja de entrada unificada para gestionar tickets de soporte, conversaciones de WhatsApp, correos electrónicos (Email) y llamadas. 
-> ![Chat Omnicanal](docs/assets/screenshots/chat-omnichannel.png)
+### 📈 2. CRM & Pipeline de Ventas
+Gestión de oportunidades (Deals), previsión de ingresos (Forecasting) y embudos comerciales (Kanban).
+> ![CRM Pipeline](docs/assets/screenshots/2-crm-pipeline.png)
 
-### ⚙️ 4. Integraciones (E-commerce & ERP)
-Sincroniza inventarios, precios y catálogos nativamente con Shopify, WooCommerce, PrestaShop, OpenCart y UnoPim, así como ERPs contables (Odoo y Sage).
-> ![Integrations](docs/assets/screenshots/integrations.png)
+### 🎯 3. Planificador Ágil (Proyectos & Tareas)
+Gestión de proyectos con metodologías Scrum/Agile. Asignación de *Sprints*, puntos de historia y control del avance del equipo.
+> ![Agile Planner](docs/assets/screenshots/3-agile-planner.png)
+
+### 👥 4. Directorio de Contactos
+BDR centralizado. Vista 360º de cada contacto, historial de comunicaciones (emails, llamadas) y su asociación a empresas o negocios.
+> ![Contacts](docs/assets/screenshots/4-contacts.png)
+
+### 🏢 5. Gestión de Empresas (B2B)
+Agrupación de contactos bajo entidades corporativas (Cuentas B2B), facturación global e información financiera detallada.
+> ![Companies](docs/assets/screenshots/5-companies.png)
+
+### 💶 6. Facturación y Cotizaciones
+Creación, envío y firma digital de presupuestos, facturas proforma y facturas rectificativas, con integración de impuestos.
+> ![Invoicing](docs/assets/screenshots/6-invoicing.png)
+
+### 📦 7. Inventario y Almacén
+Control de stock en tiempo real, catálogo de productos, seguimiento de lotes y alertas de rotura de stock.
+> ![Inventory](docs/assets/screenshots/7-inventory.png)
+
+### ⚡ 8. Automatizaciones (Workflows)
+Motor de reglas *If-This-Then-That*. Permite crear respuestas automáticas, notificaciones o webhooks a servicios de terceros cuando suceden eventos.
+> ![Workflows](docs/assets/screenshots/8-workflows.png)
+
+### 💬 9. Chat Omnicanal (Soporte & Ventas)
+Bandeja de entrada centralizada que unifica WhatsApp, Email y Chat en vivo de la página web. Permite asignar *tickets* a agentes.
+> ![Omnichannel Chat](docs/assets/screenshots/9-chat-omnichannel.png)
+
+### 📊 10. Reportes y Analítica
+Generador de informes dinámicos y exportación de datos en PDF o CSV para auditorías internas.
+> ![Reports](docs/assets/screenshots/10-reports.png)
+
+### 👔 11. Recursos Humanos (Portal del Empleado)
+Gestión de nóminas, documentación interna de trabajadores, control de vacaciones y bajas laborales.
+> ![HR Portal](docs/assets/screenshots/11-hr-employees.png)
+
+### ⏱️ 12. Mi Jornada (Control Horario)
+Registro legal de la jornada laboral, fichaje de entradas, salidas y pausas (cumplimiento RGPD y laboral).
+> ![My Time](docs/assets/screenshots/14-my-time.png)
+
+### ⚙️ 13. Integraciones de Terceros
+Conexiones oficiales y nativas con WooCommerce, Shopify, PrestaShop, OpenCart, Stripe y plataformas ERP como Sage/Odoo.
+> ![Integrations](docs/assets/screenshots/12-settings-integrations.png)
+
+### 🛡️ 14. Administración de Roles y Permisos
+Configuración de seguridad. Asignación granular de capacidades de lectura, escritura o eliminación a lo largo de toda la empresa.
+> ![Roles Settings](docs/assets/screenshots/13-settings-roles.png)
 
 ---
 
 ## 🏢 Roles, Permisos y God Mode
 
 DAMA-CRM incluye un sofisticado control de acceso basado en roles (RBAC) y aislamiento de datos *Multi-tenant* por empresa (Row-Level Security a nivel de aplicación).
-
-> ![Roles y Permisos](docs/assets/screenshots/roles-permissions.png)
 
 ### Roles Existentes
 1. **God (SuperAdmin):** Acceso absoluto a todos los tenants. Puede crear nuevas empresas, configurar la plataforma a nivel de servidor e instalar módulos.
