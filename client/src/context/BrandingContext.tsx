@@ -178,12 +178,12 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Default DAMA logo placeholders (Permanent official assets from client/public/assets/logos)
       if (variant === 'full') {
-        return dark ? '/assets/logos/dama-logo-white.png' : '/assets/logos/dama-logo-dark.png';
+        return dark ? './assets/logos/dama-logo-white.png' : './assets/logos/dama-logo-dark.png';
       }
       if (variant === 'vertical') {
-        return dark ? '/assets/logos/dama-logo-vertical-white.png' : '/assets/logos/dama-logo-vertical-dark.png';
+        return dark ? './assets/logos/dama-logo-vertical-white.png' : './assets/logos/dama-logo-vertical-dark.png';
       }
-      return dark ? '/assets/logos/dama-symbol-white.png' : '/assets/logos/dama-symbol-dark.png';
+      return dark ? './assets/logos/dama-symbol-white.png' : './assets/logos/dama-symbol-dark.png';
     },
     [branding, isDarkMode]
   );

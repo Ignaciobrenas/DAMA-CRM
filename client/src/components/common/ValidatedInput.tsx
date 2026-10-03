@@ -95,17 +95,17 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
           onBlur={handleBlur}
           disabled={disabled}
           required={required}
-          className={`w-full text-xs rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-all outline-none ${
+          className={`w-full text-xs rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 transition-all outline-none placeholder:text-slate-400 ${
             leftIcon ? 'pl-9' : 'pl-3.5'
           } ${
             isPasswordType || (isValid && showSuccessBadge) || activeError ? 'pr-9' : 'pr-3.5'
           } py-2.5 ${
             activeError
-              ? 'border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-500/20'
+              ? 'border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500'
               : isValid && showSuccessBadge
-              ? 'border-emerald-400 dark:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20'
-              : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-          } ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800' : ''} ${className}`}
+              ? 'border-emerald-400 dark:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500'
+              : 'border-slate-200 dark:border-slate-700/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30'
+          } ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50' : ''} ${className}`}
         />
 
         {/* Right Status Badge / Password Toggle */}

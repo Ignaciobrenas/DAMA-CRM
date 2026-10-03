@@ -530,3 +530,86 @@ export async function getUserAuditTrail(req: Request, res: Response): Promise<vo
     res.status(500).json({ success: false, message: error.message });
   }
 }
+export async function createRole(req: Request, res: Response): Promise<void> {
+  try {
+    const { name, description } = req.body;
+    if (!name) {
+      res.status(400).json({ success: false, message: 'El nombre del rol es obligatorio.' });
+      return;
+    }
+    const exists = await prisma.role.findUnique({ where: { name } });
+    if (exists) {
+      res.status(400).json({ success: false, message: 'Ya existe un rol con ese nombre.' });
+      return;
+    }
+    const newRole = await prisma.role.create({
+      data: { name, description, isSystem: false },
+      include: { permissions: true, _count: { select: { users: true } } },
+    });
+    
+    const user = (req as any).user;
+    await logAudit(
+      user?.id || null,
+      'CREATE_ROLE',
+      'ROLES',
+      newRole.id,
+      { message: `Rol personalizado ${name} creado exitosamente` }
+    );
+    res.status(201).json({ success: true, data: newRole });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteRole(req: Request, res: Response): Promise<void> {
+  try {
+    const { roleId } = req.params;
+    const role = await prisma.role.findUnique({ where: { id: roleId }, include: { _count: { select: { users: true } } } });
+    if (!role) {
+      res.status(404).json({ success: false, message: 'Rol no encontrado.' });
+      return;
+    }
+    if (role.isSystem) {
+      res.status(403).json({ success: false, message: 'No se pueden eliminar roles de sistema.' });
+      return;
+    }
+    if (role._count.users > 0) {
+      res.status(400).json({ success: false, message: 'No se puede eliminar el rol porque tiene usuarios asignados.' });
+      return;
+    }
+    await prisma.role.delete({ where: { id: roleId } });
+    
+    const user = (req as any).user;
+    await logAudit(
+      user?.id || null,
+      'DELETE_ROLE',
+      'ROLES',
+      roleId,
+      { message: `Rol personalizado ${role.name} eliminado` }
+    );
+    res.json({ success: true, message: 'Rol eliminado correctamente.' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function getRbacResources(req: Request, res: Response): Promise<void> {
+  // Database-driven or central application configuration for available modules
+  const resources = [
+    { id: 'companies', label: 'Empresas & Cuentas' },
+    { id: 'contacts', label: 'Contactos & Clientes' },
+    { id: 'deals', label: 'Ventas (Deals)' },
+    { id: 'projects', label: 'Proyectos Ágiles' },
+    { id: 'inventory', label: 'Inventario & Catálogo' },
+    { id: 'omnichannel', label: 'Omnicanal WhatsApp' },
+    { id: 'settings', label: 'Configuración Sistema' },
+  ];
+  const actions = [
+    { id: 'read', label: 'Lectura' },
+    { id: 'create', label: 'Crear' },
+    { id: 'update', label: 'Editar' },
+    { id: 'delete', label: 'Eliminar' },
+    { id: 'manage', label: 'Admin' },
+  ];
+  res.json({ success: true, data: { resources, actions } });
+}

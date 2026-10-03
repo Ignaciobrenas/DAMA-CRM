@@ -27,7 +27,7 @@ test.describe('DAMA-CRM End-to-End User Flow Audit', () => {
 
     // 3. Verify Centered Topbar Popups
     // A) Language Modal
-    const langBtn = page.locator('button[title*="Idioma"], button[title*="Language"], button:has-text("ES"), button:has-text("🇪🇸")').first();
+    const langBtn = page.locator('button[aria-label*="dioma"], button[aria-label*="anguage"], button[title*="dioma"], button[title*="anguage"]').first();
     if (await langBtn.isVisible()) {
       await langBtn.click();
       const langModal = page.locator('div[role="dialog"]').first();

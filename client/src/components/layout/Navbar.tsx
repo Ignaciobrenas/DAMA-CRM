@@ -87,12 +87,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
 
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-slate-50/90 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-2xs">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 shadow-sm text-slate-100">
       {/* Left: Mobile hamburger & Global Search Pill */}
       <div className="flex items-center space-x-3">
         <button
           onClick={onToggleSidebar}
-          className="p-2 rounded-xl md:hidden text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 transition-colors"
+          className="p-2 rounded-xl md:hidden text-slate-200 hover:bg-slate-800/80 border border-slate-700/80 transition-colors"
           title={t('menu')}
           aria-label={t('menu')}
         >
@@ -101,12 +101,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
 
         <button
           onClick={onOpenSearch}
-          className="flex items-center space-x-2.5 px-3.5 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700/90 border border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 text-xs font-medium transition-all shadow-2xs group cursor-pointer w-40 sm:w-56 md:w-64"
+          className="flex items-center space-x-2.5 px-3.5 py-2 rounded-xl bg-slate-800/80 text-slate-200 hover:bg-slate-700/90 border border-slate-700/80 hover:border-slate-600 text-xs font-medium transition-all shadow-2xs group cursor-pointer w-40 sm:w-56 md:w-64"
           title="Buscar"
         >
-          <Search className="w-4 h-4 text-slate-500 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors shrink-0" />
-          <span className="truncate text-slate-600 dark:text-slate-300">Buscar</span>
-          <kbd className="ml-auto hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded-md bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-2xs">
+          <Search className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0" />
+          <span className="truncate text-slate-300">Buscar</span>
+          <kbd className="ml-auto hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded-md bg-slate-900 border border-slate-700 text-slate-300 shadow-2xs">
             ⌘K
           </kbd>
         </button>
@@ -130,16 +130,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
         <ClockWidget compact />
 
         {/* Utility Group Divider */}
-        <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+        <div className="hidden sm:block h-6 w-px bg-slate-700 mx-0.5" />
 
         {/* Audio Mute/Unmute toggle */}
         <button
           onClick={handleToggleSound}
           aria-label={isMuted ? t('enableSound') : t('muteSound')}
-          className="p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
+          className="p-2 rounded-xl text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors"
           title={isMuted ? t('enableSound') : t('muteSound')}
         >
-          {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+          {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
         </button>
 
         {/* Language selector popup - opens centered LanguageModal */}
@@ -150,10 +150,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
           }}
           aria-label={t('languageSelect')}
           title={t('languageSelect')}
-          className="p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors flex items-center space-x-1"
+          className="p-2 rounded-xl text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors flex items-center space-x-1"
         >
           <Globe className="w-4 h-4" />
-          <span className="text-[10px] font-mono font-bold uppercase py-0.5 px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+          <span className="text-[10px] font-mono font-bold uppercase py-0.5 px-1 rounded bg-slate-800 text-slate-300">
             {language}
           </span>
         </button>
@@ -162,10 +162,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
         <button
           onClick={toggleTheme}
           aria-label={t('themeToggle')}
-          className="p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
+          className="p-2 rounded-xl text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors"
           title={theme === 'dark' ? t('lightMode') : t('darkMode')}
         >
-          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
         </button>
 
 
@@ -175,13 +175,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
 
         {/* User Pill & Profile Popup Trigger */}
         {user && (
-          <div className="flex items-center pl-1 sm:pl-2 border-l border-slate-200 dark:border-slate-700">
+          <div className="flex items-center pl-1 sm:pl-2 border-l border-slate-700">
             <button
               onClick={() => {
                 soundService.playPopSound();
                 setIsProfileModalOpen(true);
               }}
-              className="flex items-center space-x-2.5 px-2.5 py-1.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 transition group text-left shadow-2xs"
+              className="flex items-center space-x-2.5 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 transition group text-left shadow-2xs"
               title="Ver perfil de usuario, cambiar cuenta y sesión"
             >
               <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs ring-2 ring-blue-500/30 group-hover:ring-blue-500 transition shrink-0">
@@ -192,8 +192,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
                 )}
               </div>
               <div className="hidden lg:block text-left">
-                <div className="text-xs font-bold leading-tight text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate max-w-[120px]">{user.name}</div>
-                <div className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold flex items-center mt-0.5">
+                <div className="text-xs font-bold leading-tight text-slate-100 group-hover:text-blue-400 transition truncate max-w-[120px]">{user.name}</div>
+                <div className="text-[10px] text-blue-300 font-semibold flex items-center mt-0.5">
                   <Shield className="w-2.5 h-2.5 mr-0.5 inline shrink-0" /> {user.role}
                 </div>
               </div>

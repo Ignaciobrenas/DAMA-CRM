@@ -19,7 +19,12 @@ export interface ApiOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
   suppressToast?: boolean;
   responseType?: string;
+  useCache?: boolean; // NEW: optional cache flag
 }
+
+// Simple in-memory cache for GET requests
+const apiCache = new Map<string, { timestamp: number; data: ApiResponse }>();
+const CACHE_TTL_MS = 60000; // 60 seconds
 
 export async function apiRequest<T = any>(
   endpoint: string,
@@ -41,7 +46,7 @@ export async function apiRequest<T = any>(
     headers.set('X-Switch-Tenant-ID', switchTenant);
   }
 
-  // Automatic Subdomain Tenant Detection (e.g. god.dama.com -> 'god')
+  // Automatic Subdomain Tenant Detection
   try {
     if (typeof window !== 'undefined') {
       const hostParts = window.location.hostname.toLowerCase().split('.');
@@ -75,6 +80,18 @@ export async function apiRequest<T = any>(
     const qs = searchParams.toString();
     if (qs) {
       fullUrl += (fullUrl.includes('?') ? '&' : '?') + qs;
+    }
+  }
+
+  // Check cache for GET requests if useCache is enabled (defaults to true for simple GETs)
+  const isGetRequest = !options.method || options.method.toUpperCase() === 'GET';
+  const shouldCache = isGetRequest && (options.useCache !== false);
+  const cacheKey = fullUrl;
+
+  if (shouldCache) {
+    const cached = apiCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data; // Return fresh cached data instantly
     }
   }
 
@@ -143,6 +160,16 @@ export async function apiRequest<T = any>(
       };
     }
 
+    // Cache successful GET responses
+    if (shouldCache && data.success !== false) {
+      apiCache.set(cacheKey, { timestamp: Date.now(), data });
+    }
+
+    // If mutating data (POST, PUT, DELETE, PATCH), invalidate cache
+    if (!isGetRequest) {
+      apiCache.clear(); // Brutal clear for simplicity to ensure consistency
+    }
+
     return data;
   } catch {
     const errorMsg = 'No se pudo conectar con el servidor. Comprueba tu conexión de red.';
@@ -198,10 +225,16 @@ export async function downloadFile(endpoint: string, fallbackFilename: string): 
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
     return true;
-  } catch (err) {
+  } catch (err: any) {
     console.error('Download failed:', err);
+    window.dispatchEvent(
+      new CustomEvent('app:toast-error', {
+        detail: {
+          title: 'Error de Descarga',
+          message: err.message || 'No se pudo descargar el archivo.',
+        },
+      })
+    );
     return false;
   }
 }
-
-
