@@ -19,14 +19,11 @@
     "build:core": "npm --prefix server run build",
     "build:client": "npm --prefix client run build",
     "build": "npm run build:server && npm run build:client",
-    "db:start": "docker compose up -d crm-db crm-redis",
     "db:setup": "npm --prefix server run db:setup",
     "db:migrate": "npm --prefix server run db:migrate",
     "db:migrate:status": "npm --prefix server run db:migrate:status",
     "db:migrate:dev": "npm --prefix server run db:migrate:dev",
     "db:seed": "npm --prefix server run db:seed",
-    "docker:up": "docker compose up -d --build",
-    "docker:down": "docker compose down",
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "keywords": [

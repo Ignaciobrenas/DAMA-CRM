@@ -14,7 +14,6 @@
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
 [![Node.js 20+](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript 5+](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PostgreSQL 15+](https://img.shields.io/badge/PostgreSQL-15+-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
@@ -42,7 +41,6 @@
 - [🌟 Ecosistema de Módulos](#-ecosistema-de-módulos)
 - [📸 Capturas de Pantalla](#-capturas-de-pantalla)
 - [🛠️ Arquitectura Técnica](#️-arquitectura-técnica)
-- [🚀 Despliegue Rápido](#-despliegue-rápido-con-docker)
 - [⚙️ Variables de Entorno](#️-variables-de-entorno)
 - [🧪 Tests Automatizados](#-batería-de-pruebas-automatizadas)
 - [🌐 Multi-Idioma](#-soporte-multi-idioma-11-idiomas)
@@ -314,7 +312,7 @@ DAMA-CRM es una plataforma **modular** donde cada empresa activa solo lo que nec
 │ Tiempo Real              │ WebSockets nativos (wsClient)        │
 │ Autenticación            │ JWT + 2FA OTP (TOTP/HOTP)           │
 │ Multi-Tenant             │ Row-Level Isolation por tenantId     │
-│ Despliegue               │ Docker Compose + Traefik Proxy       │
+│ Despliegue               │ Manual / Bare Metal                 │
 │ DNS Wildcard             │ Dnsmasq (*.dama.com → 127.0.0.1)    │
 │ Escritorio               │ Electron (Windows / Linux / macOS)   │
 │ Móvil                    │ Capacitor (Android / iOS)            │
@@ -330,55 +328,6 @@ DAMA-CRM es una plataforma **modular** donde cada empresa activa solo lo que nec
 - **CORS estricto** por lista de orígenes permitidos
 - **Cabeceras de seguridad:** HSTS, CSP, X-Frame-Options, X-Content-Type-Options
 - **Auditoría:** log completo de acciones de usuario con diff de cambios
-
----
-
-## 🚀 Despliegue Rápido con Docker
-
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/Ignaciobrenas/DAMA-CRM.git
-cd DAMA-CRM
-```
-
-### 2. Configurar variables de entorno
-
-```bash
-cp server/.env.example server/.env
-# Editar server/.env con tus valores
-```
-
-### 3. Arrancar todos los contenedores
-
-```bash
-docker compose up -d
-```
-
-Esto levanta automáticamente:
-- `crm-db` — PostgreSQL 15
-- `crm-redis` — Redis 7
-- `crm-server` — API Node.js en puerto 4000
-- `crm-client` — Frontend React vía Nginx en puerto 80
-- `crm-proxy` — Traefik reverse proxy
-- `crm-dns` — Dnsmasq wildcard DNS para `*.dama.com`
-- `crm-mailpit` — Servidor SMTP de pruebas (puerto 8025)
-
-### 4. Ejecutar migraciones
-
-```bash
-docker compose exec crm-server npx prisma db push
-```
-
-### 5. Acceso a la aplicación
-
-| Servicio | URL |
-|---|---|
-| **Frontend** | `http://localhost` o `http://app.dama.com` |
-| **API Backend** | `http://localhost:4000/api` |
-| **Swagger Docs** | `http://localhost:4000/api/docs` |
-| **Mailpit SMTP UI** | `http://localhost:8025` |
-| **God Mode SuperAdmin** | `http://god.dama.com` |
 
 ### Desarrollo Local
 
