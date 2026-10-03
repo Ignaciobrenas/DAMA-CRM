@@ -55,6 +55,8 @@ jobs:
 
       - name: Run Backend Unit & Integration Test Suite
         working-directory: server
+        env:
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/dama_crm?schema=public
         run: npm test
 
   frontend-build:
@@ -113,4 +115,6 @@ jobs:
         run: npm run build
 
       - name: Run Full Test Suite & i18n Verification
+        env:
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/dama_crm?schema=public
         run: npm run test:all
