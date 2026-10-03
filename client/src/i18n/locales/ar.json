@@ -1601,5 +1601,6 @@
   "workflows.triggerInvoicePaid": "invoice.paid (تم دفع الفاتورة)",
   "workflows.workflowColumn": "سير العمل",
   "workflowsSubtitle": "أتمتة العمليات التجارية ومحفزات الأحداث التلقائية",
-  "yes": "نعم"
+  "yes": "نعم",
+  "privacy": {}
 }

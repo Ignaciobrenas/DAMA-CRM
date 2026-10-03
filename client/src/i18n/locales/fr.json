@@ -1601,5 +1601,6 @@
   "workflows.triggerInvoicePaid": "invoice.paid (Facture payée)",
   "workflows.workflowColumn": "Workflow",
   "workflowsSubtitle": "Automatisation des processus métier et déclencheurs d'événements",
-  "yes": "Oui"
+  "yes": "Oui",
+  "privacy": {}
 }

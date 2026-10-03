@@ -1601,5 +1601,6 @@
   "workflows.triggerInvoicePaid": "invoice.paid (Счет оплачен)",
   "workflows.workflowColumn": "Рабочий процесс",
   "workflowsSubtitle": "Автоматизация бизнес-процессов и триггеры событий",
-  "yes": "Да"
+  "yes": "Да",
+  "privacy": {}
 }

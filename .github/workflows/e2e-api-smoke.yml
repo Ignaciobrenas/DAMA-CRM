@@ -102,7 +102,7 @@ jobs:
 
       - name: Test Public Quote Inspection Endpoint (404 on non-existent token)
         run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/api/invoices/public/quotes/invalid_token_test_123)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/api/invoices/quotes/public/invalid_token_test_123)
           echo "HTTP Response code for invalid token: $HTTP_CODE"
           if [ "$HTTP_CODE" -ne 404 ]; then
             echo "❌ Expected 404 for invalid public quote token, got $HTTP_CODE"

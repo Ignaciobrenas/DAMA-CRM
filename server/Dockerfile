@@ -14,7 +14,7 @@ COPY tsconfig*.json ./
 COPY prisma ./prisma/
 
 # Install dependencies (including devDependencies for build)
-RUN npm install
+RUN npm ci
 
 # Copy application source and configurations
 COPY src ./src
