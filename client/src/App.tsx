@@ -48,6 +48,9 @@ import { MyTime } from './pages/MyTime';
 import { CalendarPage } from './pages/Calendar';
 import { Appointments } from './pages/Appointments';
 import { Logistics } from './pages/Logistics';
+import { AdminBI } from './pages/AdminBI';
+import { NotFound } from './pages/NotFound';
+import { CookieBanner } from './components/common/CookieBanner';
 
 const normalizeRoute = (pathname: string): string => {
   const p = pathname.toLowerCase();
@@ -60,6 +63,7 @@ const normalizeRoute = (pathname: string): string => {
   if (p === '/tickets') return '/tickets';
   if (p === '/expenses') return '/expenses';
   if (p === '/pipeline') return '/pipeline';
+    if (p === '/admin-bi') return '/admin-bi';
   if (p === '/agile') return '/agile';
   if (p === '/contacts') return '/contacts';
   if (p === '/companies') return '/companies';
@@ -278,8 +282,10 @@ const AppContent: React.FC = () => {
         return isModuleEnabled('appointments') ? <Appointments /> : <ModuleDisabled moduleKey="appointments" onGoBack={() => navigateTo('/')} />;
       case '/logistics':
         return isModuleEnabled('logistics') ? <Logistics /> : <ModuleDisabled moduleKey="logistics" onGoBack={() => navigateTo('/')} />;
-      default:
+      case '/':
         return <Dashboard onNavigate={navigateTo} />;
+      default:
+        return <NotFound onBack={() => navigateTo('/')} />;
     }
   };
 
@@ -382,7 +388,8 @@ export const App: React.FC = () => {
                 <AuthProvider>
                   <AppearanceProvider>
                     <ModulesProvider>
-                      <AppContent />
+                      <CookieBanner />
+                        <AppContent />
                     </ModulesProvider>
                   </AppearanceProvider>
                 </AuthProvider>
@@ -396,3 +403,5 @@ export const App: React.FC = () => {
 };
 
 export default App;
+
+

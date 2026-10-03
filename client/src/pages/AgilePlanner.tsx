@@ -845,7 +845,7 @@ export const AgilePlanner: React.FC = () => {
 
             <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-3">
               <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
-                <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Backlog General</h4>
+                <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">{t('agile.backlog', 'Backlog General')}</h4>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">PENDIENTE</span>
               </div>
               <p className="text-xs text-gray-600 dark:text-slate-300">

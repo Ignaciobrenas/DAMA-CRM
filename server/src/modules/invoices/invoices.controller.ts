@@ -698,6 +698,16 @@ export async function deleteInvoice(req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // VERIFACTU 2027 COMPLIANCE: Invoices cannot be deleted once issued.
+    // Only DRAFT or PROFORMA invoices can be hard-deleted.
+    if (!invoice.proforma && invoice.status !== 'DRAFT') {
+      res.status(403).json({ 
+        success: false, 
+        message: 'Por cumplimiento normativo (Verifactu 2027), no se pueden eliminar facturas emitidas. Debes generar una Factura Rectificativa.' 
+      });
+      return;
+    }
+
     await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
     await prisma.invoice.delete({ where: { id } });
     await logAudit(req.user?.id || null, 'DELETE', 'Invoice', id, { invoiceNumber: invoice.invoiceNumber, tenantId }, req.ip);

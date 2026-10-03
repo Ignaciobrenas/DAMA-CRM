@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ThinkingOrb } from 'thinking-orbs';
 import {
   Shield,
   Lock,
@@ -24,6 +26,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useBranding } from '../context/BrandingContext';
 import { SUPPORTED_LANGUAGES, Language } from '../i18n';
 import { LoadingSpinner } from '../components/common/Loading';
+import { ValidatedInput } from '../components/common/ValidatedInput';
+import { validateEmail, validateRequired, validateNumber, checkPasswordStrength } from '../utils/validators';
 import { apiRequest } from '../services/api';
 import { getSubdomainTenant } from '../utils/subdomain';
 
@@ -223,9 +227,32 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-100/90 dark:bg-slate-950 transition-colors duration-300">
+    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
+      
+      {/* Animated Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+            rotate: [0, 90, 0]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] max-w-[800px] max-h-[800px] rounded-full bg-gradient-to-br from-blue-400/30 to-indigo-500/20 dark:from-blue-600/15 dark:to-indigo-900/15 blur-[100px]"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            opacity: [0.2, 0.4, 0.2],
+            rotate: [0, -90, 0]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -bottom-[20%] -right-[10%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] rounded-full bg-gradient-to-tl from-purple-400/20 to-blue-500/30 dark:from-purple-800/15 dark:to-blue-900/15 blur-[120px]"
+        />
+      </div>
+
       {/* Auth Card Container */}
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 relative z-10 transition-all duration-300">
+      <div className="w-full max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2rem] shadow-2xl shadow-blue-900/10 dark:shadow-none border border-white/60 dark:border-slate-800/80 p-6 sm:p-8 relative z-10 transition-all duration-300">
         
         {/* Top Controls: Language & Dark/Light Mode */}
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-slate-800/80">
@@ -296,29 +323,30 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
         {/* Feedback Alerts */}
         {errorMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400 animate-in fade-in duration-200">
+          <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-center space-x-2 text-xs text-red-600 dark:text-red-400">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {invitedRole && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-200">
+          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300">
             <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
             <span>Invitación activa para unirte con rol <strong>{invitedRole}</strong>. Inicia sesión o introduce tu contraseña para activar tu acceso.</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-200">
+          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{successMessage}</span>
           </div>
         )}
 
-        {/* Form 1: Login */}
+        <AnimatePresence mode="wait">
+          {/* Form 1: Login */}
         {mode === 'login' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
+          <div className="space-y-4">
             {/* Google Sign In Button */}
             <button
               type="button"
@@ -355,22 +383,24 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               <div className="border-t border-gray-200 dark:border-slate-700 w-full" />
             </div>
 
-            <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+            <motion.form key={mode}
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ type: "spring", stiffness: 450, damping: 30 }} onSubmit={handleLoginSubmit} className="space-y-3.5" noValidate>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                   {t('email')}
                 </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="admin@dama-crm.local"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                <ValidatedInput
+                  type="email"
+                  required
+                  placeholder="admin@dama-crm.local"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  leftIcon={<Mail className="w-4 h-4" />}
+                  validator={validateEmail}
+                />
               </div>
 
             <div>
@@ -394,7 +424,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-9 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-9 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all placeholder:text-slate-400"
                 />
                 <button
                   type="button"
@@ -409,12 +439,12 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md shadow-blue-900/20 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
               style={{ backgroundColor: branding.primaryColor }}
             >
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" color="white" />
+                  <ThinkingOrb state="working" size={20} />
                   <span>{t('login.verifyingCredentials')}</span>
                 </>
               ) : (
@@ -424,13 +454,17 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
                 </>
               )}
             </button>
-          </form>
+          </motion.form>
         </div>
       )}
 
         {/* Form 2: Forgot Password */}
         {mode === 'forgot-password' && (
-          <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 animate-in fade-in duration-200">
+          <motion.form key={mode}
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ type: "spring", stiffness: 450, damping: 30 }} onSubmit={handleForgotPasswordSubmit} className="space-y-4" noValidate>
             <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300">
               <p className="font-semibold">{t('forgotPassword')}</p>
               <p className="text-[11px] mt-0.5">
@@ -450,7 +484,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
                   placeholder="usuario@empresa.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -458,12 +492,12 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md shadow-blue-900/20 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
               style={{ backgroundColor: branding.primaryColor }}
             >
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" color="white" />
+                  <ThinkingOrb state="working" size={20} />
                   <span>{t('login.sendingCode')}</span>
                 </>
               ) : (
@@ -490,12 +524,16 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
                 {t('backToLogin')}
               </button>
             </div>
-          </form>
+          </motion.form>
         )}
 
         {/* Form 4: Reset Password */}
         {mode === 'reset-password' && (
-          <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5 animate-in fade-in duration-200">
+          <motion.form key={mode}
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ type: "spring", stiffness: 450, damping: 30 }} onSubmit={handleResetPasswordSubmit} className="space-y-3.5" noValidate>
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                 {t('email')}
@@ -508,7 +546,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
                   placeholder="usuario@empresa.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -517,42 +555,35 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                 {t('resetCode')} (6 dígitos)
               </label>
-              <div className="relative">
-                <KeyRound className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  placeholder="123456"
-                  value={resetCode}
-                  onChange={(e) => setResetCode(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs font-mono tracking-widest bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
-                />
-              </div>
+              <ValidatedInput
+                type="text"
+                required
+                maxLength={6}
+                placeholder="123456"
+                value={resetCode}
+                onChange={(e) => setResetCode(e.target.value)}
+                leftIcon={<KeyRound className="w-4 h-4" />}
+                className="font-mono tracking-widest text-center"
+                validator={(val) => validateNumber(val, { min: 0, max: 999999, fieldName: 'El código' })}
+              />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                 {t('newPassword')}
               </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full pl-9 pr-9 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+              <ValidatedInput
+                type="password"
+                required
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                leftIcon={<Lock className="w-4 h-4" />}
+                validator={(val) => {
+                  const res = checkPasswordStrength(val);
+                  return { isValid: res.isValid, message: 'La contraseña es muy débil (mínimo 8 caracteres, números y letras)' };
+                }}
+              />
 
               {/* Password strength meter */}
               {newPassword && (
@@ -574,35 +605,29 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
                 {t('confirmPassword')}
               </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-9 pr-9 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+              <ValidatedInput
+                type="password"
+                required
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                leftIcon={<Lock className="w-4 h-4" />}
+                validator={(val) => ({
+                  isValid: val === newPassword,
+                  message: 'Las contraseñas no coinciden'
+                })}
+              />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md shadow-blue-900/20 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
               style={{ backgroundColor: branding.primaryColor }}
             >
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" color="white" />
+                  <ThinkingOrb state="working" size={20} />
                   <span>{t('login.updatingPassword')}</span>
                 </>
               ) : (
@@ -620,12 +645,16 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
             >
               {t('backToLogin')}
             </button>
-          </form>
+          </motion.form>
         )}
 
         {/* Form 5: 2FA OTP */}
         {mode === '2fa' && (
-          <form onSubmit={handle2FASubmit} className="space-y-4 animate-in fade-in duration-200">
+          <motion.form key={mode}
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ type: "spring", stiffness: 450, damping: 30 }} onSubmit={handle2FASubmit} className="space-y-4" noValidate>
             <div className="text-center p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300">
               <p className="font-semibold">{t('twoFactorAuth')}</p>
               <p className="text-[11px] mt-0.5">
@@ -637,26 +666,28 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
               <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 text-center">
                 Código de 6 dígitos
               </label>
-              <input
+              <ValidatedInput
                 type="text"
                 required
                 maxLength={6}
                 placeholder="123456"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
-                className="w-full text-center tracking-widest text-lg font-mono py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-center tracking-widest text-lg font-mono"
+                validator={(val) => validateNumber(val, { min: 0, max: 999999, fieldName: 'El código' })}
+                showSuccessBadge={false}
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white shadow-md shadow-blue-900/20 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 hover:opacity-95"
               style={{ backgroundColor: branding.primaryColor }}
             >
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" color="white" />
+                  <ThinkingOrb state="working" size={20} />
                   <span>{t('login.validating2FA')}</span>
                 </>
               ) : (
@@ -674,12 +705,13 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
             >
               {t('backToLogin')}
             </button>
-          </form>
+          </motion.form>
         )}
 
+        </AnimatePresence>
       </div>
 
-      {/* External Footer Links */}
+        {/* External Footer Links */}
       <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500 dark:text-slate-400 z-10">
         {onNavigatePortal && (
           <button

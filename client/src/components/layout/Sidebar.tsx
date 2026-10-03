@@ -27,6 +27,7 @@ import {
   CalendarCheck,
   Truck,
   ExternalLink,
+  Activity,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -50,7 +51,7 @@ export interface NavItemDefinition {
   category: 'main' | 'commercial' | 'operations' | 'communication' | 'system';
   resource?: string;
   moduleKey?: keyof CompanyModulesConfig;
-  animation?: IconAnimationVariant;
+  animation?: IconAnimationVariant; color?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -96,6 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'integrations', label: t('integrations', 'Conectores & Integraciones'), icon: Blocks, route: '/integrations', category: 'communication', moduleKey: 'integrations', animation: 'spin' },
 
     // Category 5: Sistema & Recursos
+    ...(user?.role === 'ADMIN' || user?.role === 'god' ? [{ id: 'admin-bi', label: 'BI & Analítica (Admin)', icon: Activity, route: '/admin-bi', category: 'system' as const, animation: 'pulse' as const }] : []),
     { id: 'reports', label: t('reportsBI', 'Informes BI & Analytics'), icon: BarChart3, route: '/reports', category: 'system', resource: 'reports', moduleKey: 'reports', animation: 'bounce' },
     { id: 'settings', label: t('settings', 'Configuración'), icon: Settings, route: '/settings', category: 'system', resource: 'users', animation: 'spin' },
     { id: 'portal', label: t('clientPortal', 'Portal Cliente'), icon: ExternalLink, route: '/portal', category: 'system', resource: 'invoices', moduleKey: 'clientPortal', animation: 'float' },
@@ -253,7 +255,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           variant={item.animation || 'bounce'}
                           size={16}
                           active={isActive}
-                          className={isActive ? 'text-white' : 'text-slate-700 dark:text-slate-400'}
+                          className={`transition-colors duration-300 ${isActive ? 'text-white' : item.color || 'text-slate-700 dark:text-slate-400'}`}
                         />
                         {!isCollapsed && <span className="truncate">{item.label}</span>}
                       </span>

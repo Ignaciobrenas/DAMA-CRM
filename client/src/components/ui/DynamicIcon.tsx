@@ -43,81 +43,81 @@ export const DynamicIcon: React.FC<DynamicIconProps> = ({
       case 'spin':
         return {
           hover: { rotate: 360, transition: { duration: 0.6, ease: 'easeInOut' } },
-          tap: { scale: 0.85, rotate: 180 },
+          tap: { scale: 0.95, rotate: 180 },
         };
 
       case 'pulse':
         return {
           hover: {
-            scale: [1, 1.28, 1.12],
+            scale: [1, 1.1, 1.05],
             transition: { duration: 0.45, repeat: Infinity, repeatType: 'reverse' as const },
           },
-          tap: { scale: 0.88 },
+          tap: { scale: 0.95 },
         };
 
       case 'glow':
         return {
           hover: {
-            scale: 1.18,
+            scale: 1.05,
             filter: 'drop-shadow(0px 0px 8px rgba(59, 130, 246, 0.85)) brightness(1.2)',
             transition: { duration: 0.25 },
           },
-          tap: { scale: 0.9 },
+          tap: { scale: 0.95 },
         };
 
       case 'tilt':
         return {
           hover: {
             rotate: [-12, 12, -6, 6, 0],
-            scale: 1.15,
+            scale: 1.05,
             transition: { duration: 0.45, ease: 'easeOut' },
           },
-          tap: { scale: 0.88 },
+          tap: { scale: 0.95 },
         };
 
       case 'float':
         return {
           hover: {
-            y: -4,
-            scale: 1.12,
+            y: -2,
+            scale: 1.05,
             transition: { duration: 0.25, ease: 'easeOut' },
           },
-          tap: { y: 0, scale: 0.92 },
+          tap: { y: 0, scale: 0.95 },
         };
 
       case 'wiggle':
         return {
           hover: {
             rotate: [0, -15, 15, -10, 10, -5, 5, 0],
-            scale: 1.16,
+            scale: 1.05,
             transition: { duration: 0.5, ease: 'easeInOut' },
           },
-          tap: { scale: 0.85 },
+          tap: { scale: 0.95 },
         };
 
       case 'flip':
         return {
           hover: {
             rotateY: 180,
-            scale: 1.12,
+            scale: 1.05,
             transition: { duration: 0.45, ease: 'easeInOut' },
           },
-          tap: { scale: 0.9 },
+          tap: { scale: 0.95 },
         };
 
       case 'elastic':
         return {
           hover: {
-            scale: [1, 1.35, 0.92, 1.18, 1],
+            scale: [1, 1.15, 0.95, 1.05, 1],
             transition: { duration: 0.55, ease: 'easeInOut' },
           },
-          tap: { scale: 0.85 },
+          tap: { scale: 0.95 },
         };
 
       case 'shimmer':
         return {
           hover: {
-            scale: 1.14,
+            scale: 1.05,
             filter: [
               'brightness(1) drop-shadow(0 0 0px transparent)',
               'brightness(1.5) drop-shadow(0 0 10px rgba(234, 179, 8, 0.9))',
@@ -125,7 +125,7 @@ export const DynamicIcon: React.FC<DynamicIconProps> = ({
             ],
             transition: { duration: 0.5 },
           },
-          tap: { scale: 0.9 },
+          tap: { scale: 0.95 },
         };
 
       case 'none':
@@ -135,11 +135,11 @@ export const DynamicIcon: React.FC<DynamicIconProps> = ({
       default:
         return {
           hover: {
-            y: [0, -5, 1, -2, 0],
-            scale: 1.18,
+            y: [0, -3, 1, -1, 0],
+            scale: 1.05,
             transition: { type: 'spring', stiffness: 450, damping: 14 },
           },
-          tap: { scale: 0.85 },
+          tap: { scale: 0.95 },
         };
     }
   };
