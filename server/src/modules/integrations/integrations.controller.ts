@@ -5,7 +5,7 @@ import { ConnectorType } from './integrations.types';
 export function getIntegrations(req: Request, res: Response): void {
   try {
     const config = IntegrationsService.getPublicConfig();
-    const host = req.get('host') || 'localhost:3000';
+    const host = req.get('host') || 'localhost:4000';
     const protocol = req.protocol || 'http';
     const baseUrl = `${protocol}://${host}`;
 
@@ -32,7 +32,7 @@ export function getIntegrations(req: Request, res: Response): void {
 export function getIntegracionesDeTerceros(req: Request, res: Response): void {
   try {
     const config = IntegrationsService.getPublicConfig();
-    const host = req.get('host') || 'localhost:3000';
+    const host = req.get('host') || 'localhost:4000';
     const protocol = req.protocol || 'http';
     const baseUrl = `${protocol}://${host}`;
 

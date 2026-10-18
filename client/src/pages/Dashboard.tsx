@@ -350,7 +350,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                   </div>
                 </div>
                 <div className="mt-2 text-xl font-bold text-teal-600 dark:text-teal-400">
-                  <AnimatedCounter to={conversionRate} formatter={(val) => `${val}%`} />
+                  <AnimatedCounter to={conversionRate} formatter={(val) => `${Math.round(val)}%`} />
                 </div>
                 <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">{activeDeals} {t('deals')}</div>
               </motion.div>

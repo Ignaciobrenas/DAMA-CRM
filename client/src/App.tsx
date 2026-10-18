@@ -293,7 +293,7 @@ const AppContent: React.FC = () => {
   const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
 
   return (
-    <div className="min-h-screen bg-slate-100/90 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
+    <div className="min-h-screen bg-slate-100/90 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex overflow-x-hidden max-w-full">
       {/* Sidebar */}
       <Sidebar
         currentRoute={currentRoute}
@@ -303,7 +303,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 pb-16 md:pb-0 ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 max-w-full transition-all duration-200 pb-16 md:pb-0 overflow-x-hidden ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}

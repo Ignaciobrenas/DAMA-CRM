@@ -101,28 +101,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
 
         <button
           onClick={onOpenSearch}
-          className="flex items-center space-x-2.5 px-3.5 py-2 rounded-xl bg-slate-800/80 text-slate-200 hover:bg-slate-700/90 border border-slate-700/80 hover:border-slate-600 text-xs font-medium transition-all shadow-2xs group cursor-pointer w-40 sm:w-56 md:w-64"
+          className="flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-800/80 text-slate-200 hover:bg-slate-700/90 border border-slate-700/80 hover:border-slate-600 text-xs font-medium transition-all shadow-2xs group cursor-pointer w-9 sm:w-36 md:w-40 lg:w-60 justify-center sm:justify-start"
           title="Buscar"
         >
           <Search className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0" />
-          <span className="truncate text-slate-300">Buscar</span>
-          <kbd className="ml-auto hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded-md bg-slate-900 border border-slate-700 text-slate-300 shadow-2xs">
+          <span className="hidden sm:inline truncate text-slate-300">Buscar</span>
+          <kbd className="ml-auto hidden md:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded-md bg-slate-900 border border-slate-700 text-slate-300 shadow-2xs">
             ⌘K
           </kbd>
         </button>
       </div>
 
       {/* Right: Real-time status, God Mode, Sound, Language, Theme & User Profile */}
-      <div className="flex items-center space-x-2 sm:space-x-2.5">
+      <div className="flex items-center space-x-1.5 sm:space-x-2">
         {/* God Mode SuperAdmin Tenant Switcher */}
         {isSuperAdmin && (
           <button
             onClick={() => setIsGodModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 hover:bg-amber-500/25 transition shadow-2xs"
+            className="inline-flex items-center space-x-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 hover:bg-amber-500/25 transition shadow-2xs"
             title="Panel de SuperAdmin God Mode & Multi-Tenant"
           >
-            <ShieldAlert className="w-4 h-4 text-amber-500" />
-            <span className="hidden md:inline font-mono font-bold">{activeTenant?.name || 'God Mode'}</span>
+            <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+            <span className="hidden xl:inline font-mono font-bold max-w-[100px] truncate">{activeTenant?.name || 'God Mode'}</span>
           </button>
         )}
 
@@ -130,13 +130,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
         <ClockWidget compact />
 
         {/* Utility Group Divider */}
-        <div className="hidden sm:block h-6 w-px bg-slate-700 mx-0.5" />
+        <div className="hidden lg:block h-6 w-px bg-slate-700 mx-0.5" />
 
-        {/* Audio Mute/Unmute toggle */}
+        {/* Audio Mute/Unmute toggle (desktop only) */}
         <button
           onClick={handleToggleSound}
           aria-label={isMuted ? t('enableSound') : t('muteSound')}
-          className="p-2 rounded-xl text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors"
+          className="hidden lg:inline-flex p-2 rounded-xl text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors"
           title={isMuted ? t('enableSound') : t('muteSound')}
         >
           {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
@@ -150,7 +150,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onToggleSidebar, o
           }}
           aria-label={t('languageSelect')}
           title={t('languageSelect')}
-          className="p-2 rounded-xl text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors flex items-center space-x-1"
+          className="hidden sm:flex p-2 rounded-xl text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors items-center space-x-1"
         >
           <Globe className="w-4 h-4" />
           <span className="text-[10px] font-mono font-bold uppercase py-0.5 px-1 rounded bg-slate-800 text-slate-300">

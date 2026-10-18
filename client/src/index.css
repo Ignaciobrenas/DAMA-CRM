@@ -13,10 +13,14 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   body {
     @apply bg-slate-100/90 text-slate-950 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   * {
