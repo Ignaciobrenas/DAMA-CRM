@@ -10,6 +10,7 @@ import {
   getTicketStats,
   exportTicketsCsv,
   exportTicketsPdf,
+  deleteTicket,
 } from './tickets.controller';
 
 const router = Router();
@@ -22,6 +23,7 @@ router.get('/', authMiddleware, requirePermission('tickets', 'read'), getTickets
 router.get('/:id', authMiddleware, requirePermission('tickets', 'read'), getTicketById);
 router.post('/', createTicket); // Supports both authenticated agents and customer self-service
 router.patch('/:id', authMiddleware, requirePermission('tickets', 'update'), updateTicket);
+router.delete('/:id', authMiddleware, requirePermission('tickets', 'delete'), deleteTicket);
 router.post('/:id/messages', authMiddleware, addTicketMessage);
 
 export default router;

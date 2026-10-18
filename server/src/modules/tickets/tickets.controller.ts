@@ -25,7 +25,7 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = getRequestTenant(req);
     const isSuper = isGodSuperAdmin(req);
-    const { status, priority, category, search, contactId, companyId } = req.query;
+    const { status, priority, category, search, contactId, companyId, assignedToId } = req.query;
 
     const where: any = {};
     if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
@@ -46,6 +46,9 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
     }
     if (companyId) {
       where.companyId = companyId as string;
+    }
+    if (assignedToId) {
+      where.assignedToId = assignedToId === 'unassigned' ? null : (assignedToId as string);
     }
 
     if (search && typeof search === 'string' && search.trim()) {
@@ -279,7 +282,41 @@ export async function updateTicket(req: Request, res: Response): Promise<void> {
       data.slaDueAt = calculateSlaDeadline(priority);
     }
     if (category !== undefined) data.category = category;
-    if (assignedToId !== undefined) data.assignedToId = assignedToId || null;
+    if (assignedToId !== undefined && assignedToId !== existing.assignedToId) {
+      data.assignedToId = assignedToId || null;
+      if (assignedToId) {
+        const assignee = await prisma.user.findUnique({ where: { id: assignedToId }, select: { name: true } });
+        if (assignee) {
+          await prisma.ticketMessage.create({
+            data: {
+              ticketId: id,
+              senderType: 'SYSTEM',
+              senderName: 'Sistema DAMA',
+              message: `Ticket reasignado a ${assignee.name}`,
+              isInternal: true,
+            },
+          });
+          await NotificationService.notifyTicketAssigned({
+            id: existing.id,
+            ticketNumber: existing.ticketNumber,
+            title: title || existing.title,
+            assignedToId,
+            assigneeName: assignee.name,
+            tenantId,
+          });
+        }
+      } else {
+        await prisma.ticketMessage.create({
+          data: {
+            ticketId: id,
+            senderType: 'SYSTEM',
+            senderName: 'Sistema DAMA',
+            message: 'Ticket desasignado',
+            isInternal: true,
+          },
+        });
+      }
+    }
     if (title !== undefined) data.title = title.trim();
     if (description !== undefined) data.description = description.trim();
 
@@ -584,5 +621,52 @@ export async function exportTicketsPdf(req: Request, res: Response): Promise<voi
     res.send(pdfBuf);
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Error al exportar informe de tickets en PDF', error: error.message });
+  }
+}
+
+/**
+ * DELETE /api/tickets/:id
+ * Delete a support ticket and cascade associated messages
+ */
+export async function deleteTicket(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      res.status(404).json({ success: false, message: 'Ticket no encontrado' });
+      return;
+    }
+
+    if (!isSuper && ticket.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permiso para eliminar este ticket' });
+      return;
+    }
+
+    await prisma.ticket.delete({ where: { id } });
+
+    // Broadcast live WebSocket event to tenant
+    wsService.broadcastToTenant(tenantId, 'ticket:deleted', { id, ticketNumber: ticket.ticketNumber });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user?.id,
+        action: 'DELETE_TICKET',
+        entity: 'Ticket',
+        entityId: id,
+        tenantId,
+        details: JSON.stringify({ ticketNumber: ticket.ticketNumber, title: ticket.title }),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Ticket eliminado correctamente',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al eliminar ticket', error: error.message });
   }
 }

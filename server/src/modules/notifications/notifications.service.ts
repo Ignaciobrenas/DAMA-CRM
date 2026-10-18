@@ -81,6 +81,19 @@ export class NotificationService {
     });
   }
 
+  public static async notifyTicketAssigned(ticket: { id: string; ticketNumber: string; title: string; assignedToId: string; assigneeName: string; tenantId?: string | null }) {
+    return this.dispatch({
+      userId: ticket.assignedToId,
+      tenantId: ticket.tenantId || 'master',
+      title: `👤 Ticket #${ticket.ticketNumber} Asignado`,
+      message: `Se te ha asignado el ticket: "${ticket.title}"`,
+      type: 'ticket',
+      priority: 'high',
+      actionUrl: '/tickets',
+      metadata: { ticketId: ticket.id, ticketNumber: ticket.ticketNumber },
+    });
+  }
+
   public static async notifyQuoteSigned(quote: { id: string; quoteNumber: string; companyName: string; total: number; tenantId?: string | null }) {
     return this.dispatch({
       tenantId: quote.tenantId || 'master',

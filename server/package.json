@@ -9,7 +9,7 @@
     "dev:migrate": "prisma migrate deploy --schema=prisma/schema.prisma && ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "prisma migrate deploy --schema=prisma/schema.prisma && node dist/server.js",
-    "test": "ts-node tests/unit.test.ts && ts-node tests/integration.test.ts && ts-node tests/rbac-security.test.ts && ts-node tests/data-integrity.test.ts",
+    "test": "ts-node tests/unit.test.ts && ts-node tests/integration.test.ts && ts-node tests/rbac-security.test.ts && ts-node tests/data-integrity.test.ts && ts-node tests/tickets.test.ts",
     "data:check": "ts-node scripts/data-healthcheck.ts",
     "prisma:generate": "prisma generate --schema=prisma/schema.sqlite.prisma",
     "prisma:generate:pg": "prisma generate --schema=prisma/schema.prisma",
