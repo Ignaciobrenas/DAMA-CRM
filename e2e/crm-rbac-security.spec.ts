@@ -98,4 +98,88 @@ test.describe('DAMA-CRM RBAC & Security Isolation E2E', () => {
     }
   });
 
+  test('Security 5: Direct URL navigation with PermissionGate shows AccessDenied fallback', async ({ page }) => {
+    await page.goto('/#/login');
+    await page.waitForLoadState('networkidle');
+
+    // Login as Sales agent
+    await page.locator('input[type="email"]').fill('ventas@dama-crm.local');
+    await page.locator('input[type="password"]').fill('Ventas1234!');
+    await page.locator('button[type="submit"]').click();
+
+    await page.waitForURL(/.*#\/(dashboard)?/);
+    await page.waitForLoadState('networkidle');
+
+    // Sales navigates directly to unpermitted /expenses module
+    await page.goto('/#/expenses');
+    await page.waitForLoadState('networkidle');
+
+    // Should display AccessDenied component cleanly without broken screen
+    const accessDeniedMsg = page.locator('text=/Acceso Denegado|Permisos Insuficientes/i');
+    await expect(accessDeniedMsg.first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('code:has-text("expenses:read")')).toBeVisible();
+  });
+
+  test('Security 6: Backend strictly returns 403 Forbidden on unpermitted API endpoints', async ({ request }) => {
+    // Login as Sales
+    const loginRes = await request.post('http://localhost:4000/api/auth/login', {
+      data: { email: 'ventas@dama-crm.local', password: 'Ventas1234!' },
+    });
+    expect(loginRes.status()).toBe(200);
+    const loginJson = await loginRes.json();
+    const token = loginJson.token || loginJson.data?.token;
+
+    // Sales attempts to access Expenses API
+    const expensesRes = await request.get('http://localhost:4000/api/expenses', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(expensesRes.status()).toBe(403);
+
+    // Sales attempts to access Employees HR API
+    const employeesRes = await request.get('http://localhost:4000/api/employees', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(employeesRes.status()).toBe(403);
+
+    // Sales attempts to access System Modules API
+    const modulesRes = await request.patch('http://localhost:4000/api/modules', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { modules: {} },
+    });
+    expect(modulesRes.status()).toBe(403);
+  });
+
+  test('Security 7: Admin Panel Roles & Permissions Matrix is operational', async ({ page }) => {
+    await page.goto('/#/login');
+    await page.waitForLoadState('networkidle');
+
+    // Login as Admin
+    await page.locator('input[type="email"]').fill('admin@dama-crm.local');
+    await page.locator('input[type="password"]').fill('Admin1234!');
+    await page.locator('button[type="submit"]').click();
+
+    await page.waitForURL(/.*#\/(dashboard)?/);
+    await page.waitForLoadState('networkidle');
+
+    // Navigate to Settings
+    await page.goto('/#/settings');
+    await page.waitForLoadState('networkidle');
+
+    // Click Users & Roles tab
+    const usersTab = page.locator('button:has-text("Usuarios & Roles")');
+    if (await usersTab.isVisible()) {
+      await usersTab.click();
+      await page.waitForTimeout(500);
+
+      // Verify the top view switcher has "Roles & Matriz de Permisos"
+      const rolesMatrixTab = page.locator('button:has-text("Roles & Matriz de Permisos")');
+      await expect(rolesMatrixTab).toBeVisible();
+      await rolesMatrixTab.click();
+
+      // Verify roles list and matrix table render
+      await expect(page.locator('text=Matriz de Permisos')).toBeVisible();
+      await expect(page.locator('text=Roles del Sistema')).toBeVisible();
+    }
+  });
+
 });

@@ -154,6 +154,22 @@ Total: 146 tests pasados, 0 fallos. Duración: 2.6s
 ✓ built in 5.01s (0 errores TypeScript)
 ```
 
+### Pruebas E2E de Navegación y Permisos (Playwright Chromium):
+```bash
+> npx playwright test e2e/crm-rbac-security.spec.ts
+
+Running 7 tests using 1 worker
+  ✓ 1 Security 1: Rejection of invalid credentials (2.8s)
+  ✓ 2 Security 2: God Mode (SuperAdmin) access and tenant switching (1.1s)
+  ✓ 3 Security 3: Sales role RBAC restrictions (1.2s)
+  ✓ 4 Security 4: API Tenant isolation prevents header spoofing (88ms)
+  ✓ 5 Security 5: Direct URL navigation with PermissionGate shows AccessDenied fallback (1.2s)
+  ✓ 6 Security 6: Backend strictly returns 403 Forbidden on unpermitted API endpoints (71ms)
+  ✓ 7 Security 7: Admin Panel Roles & Permissions Matrix is operational (1.1s)
+
+7 passed (13.7s - 100% verde)
+```
+
 ---
 
 ## 7. CONCLUSIÓN
