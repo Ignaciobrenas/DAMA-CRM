@@ -517,5 +517,20 @@ export async function getAdminSystemAnalytics(req: Request, res: Response): Prom
   }
 }
 
+export async function getDataHealth(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const targetTenant = isSuper && !req.query.tenantId ? undefined : tenantId;
 
+    const { runDataHealthCheck } = await import('../../utils/data-healthcheck');
+    const health = await runDataHealthCheck(targetTenant);
 
+    res.json({
+      success: true,
+      data: health,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
