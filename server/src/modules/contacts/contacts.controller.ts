@@ -222,6 +222,40 @@ export async function deleteContact(req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // SPANISH COMPLIANCE: RGPD vs Fiscal Obligation Conflict (Art. 32 LOPDGDD & Arts. 66-70 LGT)
+    // If contact has emitted invoices, physical deletion is prohibited by tax law. The data must be BLOCKED.
+    const invoiceCount = await prisma.invoice.count({ where: { contactId: id } });
+    if (invoiceCount > 0) {
+      await prisma.contact.update({
+        where: { id },
+        data: {
+          isLead: false,
+          notes: `[BLOQUEO DE DATOS RGPD ART. 32 / LGT]: Sujeto a deber de conservación fiscal por ${invoiceCount} facturas emitidas. Acceso restringido exclusivamente a requerimientos judiciales o de la AEAT. Registrado el ${new Date().toISOString()}`,
+        },
+      });
+
+      await logAudit(
+        req.user?.id || null,
+        'DATA_BLOCKING_RGPD_LGT',
+        'Contact',
+        id,
+        {
+          name: `${existing.firstName} ${existing.lastName}`,
+          invoiceCount,
+          legalBasis: 'Art. 32 LOPDGDD & Arts. 66-70 LGT',
+          tenantId,
+        },
+        req.ip
+      );
+
+      res.status(409).json({
+        success: false,
+        isBlocked: true,
+        message: `Por imperativo legal (Art. 32 LOPDGDD y Arts. 66-70 de la Ley General Tributaria), este contacto no puede ser suprimido físicamente al tener ${invoiceCount} facturas emitidas vinculadas durante el plazo de prescripción fiscal (4 a 6 años). Los datos han sido BLOQUEADOS para impedir cualquier tratamiento comercial o comunicación.`,
+      });
+      return;
+    }
+
     await prisma.contact.delete({ where: { id } });
     await logAudit(req.user?.id || null, 'DELETE', 'Contact', id, { name: `${existing.firstName} ${existing.lastName}`, tenantId }, req.ip);
     res.json({ success: true, message: 'Contacto eliminado correctamente' });
@@ -241,19 +275,51 @@ export async function bulkDeleteContacts(req: Request, res: Response): Promise<v
       return;
     }
 
-    const where: any = { id: { in: ids } };
-    if (!isSuper) {
-      where.tenantId = tenantId;
+    // Filter contacts that have invoices to prevent destroying fiscal audit trails
+    const contactsWithInvoices = await prisma.invoice.findMany({
+      where: { contactId: { in: ids } },
+      select: { contactId: true },
+      distinct: ['contactId'],
+    });
+    const blockedIds = new Set(contactsWithInvoices.map((inv) => inv.contactId).filter(Boolean) as string[]);
+
+    // Block contacts with invoices
+    if (blockedIds.size > 0) {
+      await prisma.contact.updateMany({
+        where: { id: { in: Array.from(blockedIds) } },
+        data: {
+          isLead: false,
+          notes: `[BLOQUEO DE DATOS RGPD ART. 32 / LGT]: Sujeto a deber de conservación fiscal por facturas emitidas. Acceso restringido exclusivamente a requerimientos judiciales o de la AEAT. Registrado el ${new Date().toISOString()}`,
+        },
+      });
+      await logAudit(
+        req.user?.id || null,
+        'DATA_BLOCKING_BULK_RGPD_LGT',
+        'Contact',
+        undefined,
+        { count: blockedIds.size, blockedIds: Array.from(blockedIds), tenantId },
+        req.ip
+      );
     }
 
-    const result = await prisma.contact.deleteMany({ where });
+    const deletableIds = ids.filter((cid: string) => !blockedIds.has(cid));
+    let deletedCount = 0;
 
-    await logAudit(req.user?.id || null, 'BULK_DELETE', 'Contact', undefined, { count: result.count, ids, tenantId }, req.ip);
+    if (deletableIds.length > 0) {
+      const where: any = { id: { in: deletableIds } };
+      if (!isSuper) {
+        where.tenantId = tenantId;
+      }
+      const result = await prisma.contact.deleteMany({ where });
+      deletedCount = result.count;
+      await logAudit(req.user?.id || null, 'BULK_DELETE', 'Contact', undefined, { count: deletedCount, deletableIds, tenantId }, req.ip);
+    }
 
     res.json({
       success: true,
-      message: `${result.count} contactos eliminados correctamente`,
-      deletedCount: result.count,
+      message: `${deletedCount} contactos eliminados.${blockedIds.size > 0 ? ` ${blockedIds.size} contactos no se eliminaron y fueron BLOQUEADOS conforme al Art. 32 LOPDGDD por tener facturas emitidas asociadas.` : ''}`,
+      deletedCount,
+      blockedCount: blockedIds.size,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

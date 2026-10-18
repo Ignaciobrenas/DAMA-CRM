@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../prisma';
+import { maskSensitiveData } from '../utils/sanitizer';
 
 export async function errorHandler(err: any, req: Request, res: Response, next: NextFunction): Promise<void> {
   // Safe server-side logging
@@ -26,10 +27,16 @@ export async function errorHandler(err: any, req: Request, res: Response, next: 
     friendlyMessage = err.message;
   }
 
-  // Asynchronously log to database
+  // Asynchronously log to database with sensitive data redaction (RGPD Art. 32 / OWASP ASVS 8.3)
   try {
     const safeHeaders = { ...req.headers };
     delete safeHeaders['authorization']; // do not log auth tokens
+    delete safeHeaders['cookie'];
+    delete safeHeaders['x-unopim-secret'];
+
+    const safeBody = ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body
+      ? JSON.stringify(maskSensitiveData(req.body))
+      : null;
     
     await prisma.systemErrorLog.create({
       data: {
@@ -41,9 +48,12 @@ export async function errorHandler(err: any, req: Request, res: Response, next: 
         userId: (req as any).user?.userId || null,
         ipAddress: req.ip || req.socket?.remoteAddress || null,
         headers: JSON.stringify(safeHeaders),
-        body: ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body ? JSON.stringify(req.body) : null
+        body: safeBody,
       }
     });
+  } catch (dbErr) {
+    console.error('🔴 [DB Logging Error] Failed to save error log:', dbErr);
+  }
   } catch (dbErr) {
     console.error('🔴 [DB Logging Error] Failed to save error log:', dbErr);
   }

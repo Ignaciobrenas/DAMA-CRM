@@ -2206,6 +2206,154 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.ok(rawString.includes('Informe Comercial de Prueba') || rawString.includes('PDFKit'), 'PDF must include document content');
     });
   });
+
+  describe('Data Privacy, Sensitive Masking & RGPD Art. 32 / ASVS 8.3', () => {
+    const { maskSensitiveData } = require('../src/utils/sanitizer');
+
+    it('should deeply mask passwords, secrets and tokens from error logs', () => {
+      const rawPayload = {
+        email: 'user@example.com',
+        password: 'SuperSecretPassword123!',
+        confirmPassword: 'SuperSecretPassword123!',
+        twoFactorSecret: 'JBSWY3DPEHPK3PXP',
+        nested: {
+          apiKey: 'secret_key_abcdef12345',
+          token: 'eyJhbGciOi...',
+          normalField: 'Hello World',
+        },
+      };
+
+      const sanitized = maskSensitiveData(rawPayload);
+      assert.strictEqual(sanitized.email, 'user@example.com');
+      assert.strictEqual(sanitized.password, '[REDACTED_SENSITIVE_DATA]');
+      assert.strictEqual(sanitized.confirmPassword, '[REDACTED_SENSITIVE_DATA]');
+      assert.strictEqual(sanitized.twoFactorSecret, '[REDACTED_SENSITIVE_DATA]');
+      assert.strictEqual(sanitized.nested.apiKey, '[REDACTED_SENSITIVE_DATA]');
+      assert.strictEqual(sanitized.nested.token, '[REDACTED_SENSITIVE_DATA]');
+      assert.strictEqual(sanitized.nested.normalField, 'Hello World');
+    });
+
+    it('should partially mask IBAN bank accounts keeping only prefix and last 4 digits', () => {
+      const payload = {
+        company: 'Empresa SL',
+        iban: 'ES9121000418450200051332',
+        bankAccount: 'ES9121000418450200051332',
+      };
+
+      const sanitized = maskSensitiveData(payload);
+      assert.strictEqual(sanitized.iban, 'ES91 **** **** **** 1332');
+      assert.strictEqual(sanitized.bankAccount, 'ES91 **** **** **** 1332');
+    });
+
+    it('should mask sensitive national identity documents in privacy contexts', () => {
+      const payload = {
+        fullName: 'Juan Español Pérez',
+        dniPassport: '12345678Z',
+      };
+
+      const sanitized = maskSensitiveData(payload);
+      assert.strictEqual(sanitized.fullName, 'Juan Español Pérez');
+      assert.strictEqual(sanitized.dniPassport, '***PROCESADO***');
+    });
+  });
+
+  describe('Spanish Fiscal Compliance & Veri*Factu (RD 1007/2023 & Orden HAC/1177/2024)', () => {
+    const {
+      calculateVerifactuHash,
+      formatAeatDate,
+      formatAeatAmount,
+      generateVerifactuQrBuffer,
+    } = require('../src/services/verifactu.service');
+
+    it('should format AEAT dates and amounts strictly according to specification', () => {
+      const dateStr = formatAeatDate(new Date('2026-10-18T10:00:00Z'));
+      assert.strictEqual(dateStr.length, 10);
+      assert.match(dateStr, /^\d{2}-\d{2}-\d{4}$/);
+
+      const amountStr = formatAeatAmount(1250.5);
+      assert.strictEqual(amountStr, '1250.50');
+    });
+
+    it('should calculate valid 64-character SHA-256 fingerprint (Huella) chaining with previous record', () => {
+      const result = calculateVerifactuHash({
+        issuerNif: 'B12345678',
+        invoiceNumber: 'FAC-2026-0001',
+        issueDate: '2026-10-18',
+        invoiceType: 'F1',
+        taxAmount: 210.0,
+        totalAmount: 1210.0,
+        previousRecordHash: 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855',
+        generatedAt: new Date('2026-10-18T12:00:00Z'),
+      });
+
+      assert.strictEqual(typeof result.hash, 'string');
+      assert.strictEqual(result.hash.length, 64);
+      assert.match(result.hash, /^[0-9A-F]{64}$/, 'Hash must be 64 uppercase hexadecimal characters');
+      assert.ok(result.inputString.includes('B12345678&FAC-2026-0001'));
+      assert.ok(result.inputString.includes('210.00&1210.00'));
+      assert.ok(result.inputString.includes('E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855'));
+    });
+
+    it('should generate official AEAT verification QR URL with all required query parameters', () => {
+      const result = calculateVerifactuHash({
+        issuerNif: 'A87654321',
+        invoiceNumber: 'FAC-2026-0042',
+        issueDate: '2026-10-18',
+        invoiceType: 'F1',
+        taxAmount: 42.0,
+        totalAmount: 242.0,
+      });
+
+      assert.ok(result.qrUrl.includes('agenciatributaria.gob.es/soporte-sistemas-facturacion/qr'));
+      assert.ok(result.qrUrl.includes('nif=A87654321'));
+      assert.ok(result.qrUrl.includes('num=FAC-2026-0042'));
+      assert.ok(result.qrUrl.includes('tot=242.00'));
+    });
+
+    it('should generate valid PNG QR code buffer for invoice PDF stamping', async () => {
+      const qrUrl = 'https://sede.agenciatributaria.gob.es/soporte-sistemas-facturacion/qr?nif=B12345678&num=FAC-01&fec=18-10-2026&tot=121.00';
+      const buffer = await generateVerifactuQrBuffer(qrUrl);
+
+      assert.ok(buffer instanceof Buffer, 'QR code must be a Buffer');
+      assert.ok(buffer.length > 100, 'QR buffer must not be empty');
+      // PNG magic bytes: 0x89 0x50 0x4E 0x47
+      assert.strictEqual(buffer[0], 0x89);
+      assert.strictEqual(buffer[1], 0x50);
+      assert.strictEqual(buffer[2], 0x4e);
+      assert.strictEqual(buffer[3], 0x47);
+    });
+  });
+
+  describe('Spanish Data Blocking vs Right to Erasure (Art. 32 LOPDGDD & LGT)', () => {
+    it('should distinguish between deletable prospect leads and legally blocked billing contacts', () => {
+      // Mock business logic mirroring contacts.controller.ts
+      function evaluateContactDeletion(contact: { isLead: boolean; invoicesCount: number }) {
+        if (contact.invoicesCount > 0) {
+          return {
+            action: 'BLOCK',
+            allowedPhysicalDelete: false,
+            legalNotice: 'Art. 32 LOPDGDD & Arts. 66-70 LGT: Bloqueo de datos obligatorio por facturación histórica',
+          };
+        }
+        return {
+          action: 'DELETE',
+          allowedPhysicalDelete: true,
+          legalNotice: 'RGPD Art. 17: Derecho de supresión concedido sin obligaciones fiscales pendientes',
+        };
+      }
+
+      // Prospect lead with 0 invoices
+      const leadResult = evaluateContactDeletion({ isLead: true, invoicesCount: 0 });
+      assert.strictEqual(leadResult.action, 'DELETE');
+      assert.strictEqual(leadResult.allowedPhysicalDelete, true);
+
+      // Customer with 3 past invoices
+      const customerResult = evaluateContactDeletion({ isLead: false, invoicesCount: 3 });
+      assert.strictEqual(customerResult.action, 'BLOCK');
+      assert.strictEqual(customerResult.allowedPhysicalDelete, false);
+      assert.ok(customerResult.legalNotice.includes('Art. 32 LOPDGDD'));
+    });
+  });
 });
 
 

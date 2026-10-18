@@ -37,6 +37,10 @@ export interface InvoicePdfData {
   notes?: string;
   paymentTerms?: string;
   bankAccount?: string;
+  verifactuQrBuffer?: Buffer;
+  verifactuHash?: string;
+  issuerNif?: string;
+  isVerifactu?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -459,6 +463,36 @@ export function generatePdfBuffer(data: InvoicePdfData): Promise<Buffer> {
         totalBoxY + 9,
         { width: totalsWidth, align: 'right' }
       );
+
+      // -----------------------------------------------------------------------
+      // 5. Veri*Factu Compliance Block (RD 1007/2023 & Orden HAC/1177/2024)
+      // -----------------------------------------------------------------------
+      if (data.type === 'FACTURA' && data.verifactuQrBuffer) {
+        let vfBoxY = Math.max(leftSummaryCursor + 10, totalBoxY + 38);
+        if (vfBoxY > 710) {
+          doc.addPage();
+          renderContinuationHeader();
+          vfBoxY = 60;
+        }
+
+        const vfBoxHeight = 56;
+        const vfBoxWidth = contentWidth;
+
+        doc.roundedRect(margin, vfBoxY, vfBoxWidth, vfBoxHeight, 3).fill('#F8FAFC');
+        doc.roundedRect(margin, vfBoxY, vfBoxWidth, vfBoxHeight, 3).strokeColor('#CBD5E1').lineWidth(0.5).stroke();
+
+        try {
+          doc.image(data.verifactuQrBuffer, margin + 6, vfBoxY + 4, { width: 48, height: 48 });
+        } catch {}
+
+        const textX = margin + 60;
+        doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#0F172A').text('VERI*FACTU · Factura verificable en la sede electrónica de la AEAT', textX, vfBoxY + 7);
+        doc.fontSize(6.5).font('Helvetica').fillColor('#475569').text('Documento expedido mediante Sistema Informático de Facturación (SIF) conforme al RD 1007/2023 y Orden HAC/1177/2024.', textX, vfBoxY + 18);
+        
+        const shortHash = data.verifactuHash ? `${data.verifactuHash.slice(0, 24)}...${data.verifactuHash.slice(-8)}` : 'REG-INIT-CHAIN-OK';
+        doc.fontSize(6).font('Courier').fillColor('#1E293B').text(`Huella SHA-256: ${shortHash}`, textX, vfBoxY + 30);
+        doc.fontSize(5.5).font('Helvetica').fillColor('#64748B').text('Escanee el código QR con cualquier dispositivo para cotejar este registro con la Agencia Tributaria.', textX, vfBoxY + 42);
+      }
 
       // -----------------------------------------------------------------------
       // 6. Multi-Page Footer Stamping (ISO Compliant & Dynamic Pagination)

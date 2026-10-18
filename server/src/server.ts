@@ -43,7 +43,7 @@ const app = express();
 
 app.set('trust proxy', 1);
 
-// Global Middlewares & TLS/HSTS Security Headers
+// Global Middlewares & TLS/HSTS Security Headers (OWASP ASVS / CCN-STIC)
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -54,6 +54,19 @@ app.use(
     },
     frameguard: { action: 'deny' },
     noSniff: true,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+        connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:'],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
+      },
+    },
   })
 );
 

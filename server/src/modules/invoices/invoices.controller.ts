@@ -5,6 +5,11 @@ import { logAudit } from '../../middlewares/audit.middleware';
 import { getBrandingConfig } from '../branding/branding.controller';
 import { NotificationService } from '../notifications/notifications.service';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import {
+  calculateVerifactuHash,
+  generateVerifactuQrBuffer,
+  getPreviousInvoiceHash,
+} from '../../services/verifactu.service';
 
 export async function listInvoices(req: Request, res: Response): Promise<void> {
   try {
@@ -286,6 +291,31 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       }
     } catch {}
 
+    // Generate Veri*Factu Chaining Hash & AEAT QR Code Buffer (RD 1007/2023 & Orden HAC/1177/2024)
+    let verifactuHash: string | undefined;
+    let verifactuQrBuffer: Buffer | undefined;
+
+    if (!invoice.proforma) {
+      try {
+        const issuerNif = branding.companyTaxId || 'B00000000';
+        const prevHash = await getPreviousInvoiceHash(invoice.tenantId);
+        const vfResult = calculateVerifactuHash({
+          issuerNif,
+          invoiceNumber: invoice.invoiceNumber,
+          issueDate: invoice.issueDate,
+          invoiceType: invoice.isRectifying ? 'R1' : 'F1',
+          taxAmount: invoice.taxAmount,
+          totalAmount: invoice.total,
+          previousRecordHash: prevHash,
+        });
+
+        verifactuHash = vfResult.hash;
+        verifactuQrBuffer = await generateVerifactuQrBuffer(vfResult.qrUrl);
+      } catch (vfErr) {
+        console.error('Veri*Factu hash/QR computation note:', vfErr);
+      }
+    }
+
     const pdfData: InvoicePdfData = {
       invoiceNumber: invoice.invoiceNumber,
       type: 'FACTURA',
@@ -319,6 +349,10 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       total: invoice.total,
       currency: invoice.currency,
       notes: invoice.notes || undefined,
+      verifactuHash,
+      verifactuQrBuffer,
+      issuerNif: branding.companyTaxId || undefined,
+      isVerifactu: !invoice.proforma,
     };
 
     const buffer = await generatePdfBuffer(pdfData);
