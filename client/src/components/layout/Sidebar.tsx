@@ -72,34 +72,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const rawNavItems: NavItemDefinition[] = [
     // Category 1: Principal & Agenda
     { id: 'dashboard', label: t('dashboard', 'Panel Principal'), icon: LayoutDashboard, route: '/', category: 'main', animation: 'elastic' },
-    { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', category: 'main', animation: 'bounce' },
-    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Servicios'), icon: CalendarCheck, route: '/appointments', category: 'main', moduleKey: 'appointments', animation: 'wiggle' },
+    { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', category: 'main', resource: 'calendar', animation: 'bounce' },
+    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Servicios'), icon: CalendarCheck, route: '/appointments', category: 'main', resource: 'appointments', moduleKey: 'appointments', animation: 'wiggle' },
     { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', category: 'main', animation: 'pulse' },
-    { id: 'logistics', label: t('sidebar.logistics', 'Logística & Envíos'), icon: Truck, route: '/logistics', category: 'main', moduleKey: 'logistics', animation: 'tilt' },
+    { id: 'logistics', label: t('sidebar.logistics', 'Logística & Envíos'), icon: Truck, route: '/logistics', category: 'main', resource: 'logistics', moduleKey: 'logistics', animation: 'tilt' },
 
     // Category 2: Gestión Comercial
     { id: 'pipeline', label: t('pipeline', 'Oportunidades & Pipeline'), icon: TrendingUp, route: '/pipeline', category: 'commercial', resource: 'deals', moduleKey: 'pipeline', animation: 'bounce' },
     { id: 'contacts', label: t('contacts', 'Contactos & Leads'), icon: Users, route: '/contacts', category: 'commercial', resource: 'contacts', moduleKey: 'contacts', animation: 'float' },
     { id: 'companies', label: t('companies', 'Empresas & Cuentas'), icon: Building2, route: '/companies', category: 'commercial', resource: 'companies', moduleKey: 'companies', animation: 'glow' },
-    { id: 'lead-capture', label: t('leadCapture', 'Captura de Leads'), icon: Zap, route: '/lead-capture', category: 'commercial', moduleKey: 'leadCapture', animation: 'shimmer' },
+    { id: 'lead-capture', label: t('leadCapture', 'Captura de Leads'), icon: Zap, route: '/lead-capture', category: 'commercial', resource: 'contacts', moduleKey: 'leadCapture', animation: 'shimmer' },
 
     // Category 3: Operaciones & Finanzas
     { id: 'invoicing', label: t('invoicing', 'Facturación & Cobros'), icon: Receipt, route: '/invoicing', category: 'operations', resource: 'invoices', moduleKey: 'invoicing', animation: 'glow' },
     { id: 'expenses', label: t('sidebar.expenses', 'Gastos & Compras'), icon: WalletCards, route: '/expenses', category: 'operations', resource: 'expenses', moduleKey: 'expenses', animation: 'flip' },
     { id: 'inventory', label: t('inventory', 'Inventario & Stock'), icon: Package, route: '/inventory', category: 'operations', resource: 'inventory', moduleKey: 'inventory', animation: 'tilt' },
     { id: 'agile', label: t('agile', 'Proyectos & Tareas'), icon: CheckSquare, route: '/agile', category: 'operations', resource: 'projects', moduleKey: 'agile', animation: 'elastic' },
-    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', category: 'operations', moduleKey: 'portalEmpleado', animation: 'float' },
+    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', category: 'operations', resource: 'employees', moduleKey: 'portalEmpleado', animation: 'float' },
 
     // Category 4: Comunicación & Servicios
     { id: 'tickets', label: t('sidebar.tickets', 'Mesa de Ayuda / Tickets'), icon: Ticket, route: '/tickets', category: 'communication', resource: 'tickets', moduleKey: 'tickets', animation: 'wiggle' },
     { id: 'omnichannel', label: t('omnichannel', 'Omnicanal / WhatsApp'), icon: MessageSquare, route: '/omnichannel', category: 'communication', resource: 'omnichannel', moduleKey: 'omnichannel', animation: 'pulse' },
     { id: 'workflows', label: t('workflows', 'Flujos de Trabajo'), icon: Cpu, route: '/workflows', category: 'communication', resource: 'workflows', moduleKey: 'workflows', animation: 'spin' },
-    { id: 'integrations', label: t('integrations', 'Conectores & Integraciones'), icon: Blocks, route: '/integrations', category: 'communication', moduleKey: 'integrations', animation: 'spin' },
+    { id: 'integrations', label: t('integrations', 'Conectores & Integraciones'), icon: Blocks, route: '/integrations', category: 'communication', resource: 'integrations', moduleKey: 'integrations', animation: 'spin' },
 
     // Category 5: Sistema & Recursos
-    ...(user?.role === 'ADMIN' || user?.role === 'god' ? [{ id: 'admin-bi', label: 'BI & Analítica (Admin)', icon: Activity, route: '/admin-bi', category: 'system' as const, animation: 'pulse' as const }] : []),
+    ...(user?.role === 'ADMIN' || user?.role === 'god' ? [{ id: 'admin-bi', label: 'BI & Analítica (Admin)', icon: Activity, route: '/admin-bi', category: 'system' as const, resource: 'reports', animation: 'pulse' as const }] : []),
     { id: 'reports', label: t('reportsBI', 'Informes BI & Analytics'), icon: BarChart3, route: '/reports', category: 'system', resource: 'reports', moduleKey: 'reports', animation: 'bounce' },
-    { id: 'settings', label: t('settings', 'Configuración'), icon: Settings, route: '/settings', category: 'system', resource: 'users', animation: 'spin' },
+    { id: 'settings', label: t('settings', 'Configuración'), icon: Settings, route: '/settings', category: 'system', animation: 'spin' },
     { id: 'portal', label: t('clientPortal', 'Portal Cliente'), icon: ExternalLink, route: '/portal', category: 'system', resource: 'invoices', moduleKey: 'clientPortal', animation: 'float' },
     { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq', category: 'system', animation: 'bounce' },
     { id: 'privacy', label: t('privacyPolicy', 'Política de Privacidad'), icon: Lock, route: '/privacy', category: 'system', animation: 'tilt' },

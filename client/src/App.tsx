@@ -182,10 +182,14 @@ const AppContent: React.FC = () => {
       case '/':
         return <Dashboard onNavigate={navigateTo} />;
       case '/portal-empleado':
-        return isModuleEnabled('portalEmpleado') ? (
-          <EmployeePortal />
-        ) : (
-          <ModuleDisabled moduleKey="portalEmpleado" onGoBack={() => navigateTo('/')} />
+        return (
+          <PermissionGate resource="employees" action="read" fallback={<AccessDenied resource="employees" onGoBack={() => navigateTo('/')} />}>
+            {isModuleEnabled('portalEmpleado') ? (
+              <EmployeePortal />
+            ) : (
+              <ModuleDisabled moduleKey="portalEmpleado" onGoBack={() => navigateTo('/')} />
+            )}
+          </PermissionGate>
         );
       case '/my-time':
         return <MyTime />;
@@ -262,7 +266,11 @@ const AppContent: React.FC = () => {
           </PermissionGate>
         );
       case '/lead-capture':
-        return isModuleEnabled('leadCapture') ? <LeadCapture /> : <ModuleDisabled moduleKey="leadCapture" onGoBack={() => navigateTo('/')} />;
+        return (
+          <PermissionGate resource="contacts" action="read" fallback={<AccessDenied resource="contacts" onGoBack={() => navigateTo('/')} />}>
+            {isModuleEnabled('leadCapture') ? <LeadCapture /> : <ModuleDisabled moduleKey="leadCapture" onGoBack={() => navigateTo('/')} />}
+          </PermissionGate>
+        );
       case '/reports':
         return (
           <PermissionGate resource="reports" action="read" fallback={<AccessDenied resource="reports" onGoBack={() => navigateTo('/')} />}>
@@ -270,21 +278,33 @@ const AppContent: React.FC = () => {
           </PermissionGate>
         );
       case '/settings':
-        return (
-          <PermissionGate resource="users" action="read" fallback={<AccessDenied resource="users" onGoBack={() => navigateTo('/')} />}>
-            <Settings />
-          </PermissionGate>
-        );
+        return <Settings />;
       case '/faq':
         return <FAQ onNavigate={navigateTo} />;
       case '/calendar':
-        return <CalendarPage />;
+        return (
+          <PermissionGate resource="calendar" action="read" fallback={<AccessDenied resource="calendar" onGoBack={() => navigateTo('/')} />}>
+            <CalendarPage />
+          </PermissionGate>
+        );
       case '/appointments':
-        return isModuleEnabled('appointments') ? <Appointments /> : <ModuleDisabled moduleKey="appointments" onGoBack={() => navigateTo('/')} />;
+        return (
+          <PermissionGate resource="appointments" action="read" fallback={<AccessDenied resource="appointments" onGoBack={() => navigateTo('/')} />}>
+            {isModuleEnabled('appointments') ? <Appointments /> : <ModuleDisabled moduleKey="appointments" onGoBack={() => navigateTo('/')} />}
+          </PermissionGate>
+        );
       case '/logistics':
-        return isModuleEnabled('logistics') ? <Logistics /> : <ModuleDisabled moduleKey="logistics" onGoBack={() => navigateTo('/')} />;
+        return (
+          <PermissionGate resource="logistics" action="read" fallback={<AccessDenied resource="logistics" onGoBack={() => navigateTo('/')} />}>
+            {isModuleEnabled('logistics') ? <Logistics /> : <ModuleDisabled moduleKey="logistics" onGoBack={() => navigateTo('/')} />}
+          </PermissionGate>
+        );
       case '/admin-bi':
-        return <AdminBI />;
+        return (
+          <PermissionGate resource="reports" action="read" fallback={<AccessDenied resource="reports" onGoBack={() => navigateTo('/')} />}>
+            <AdminBI />
+          </PermissionGate>
+        );
       default:
         return <NotFound onBack={() => navigateTo('/')} />;
     }
