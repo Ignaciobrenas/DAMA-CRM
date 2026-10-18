@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { getNextDocumentNumber } from '../../utils/document-number';
 
 export async function listContracts(req: Request, res: Response): Promise<void> {
   try {
@@ -84,14 +85,8 @@ export async function createContract(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const currentYear = new Date().getFullYear();
-    const count = await prisma.contract.count({
-      where: {
-        tenantId,
-        contractNumber: { startsWith: `CTR-${currentYear}` },
-      },
-    });
-    const contractNumber = `CTR-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+    // Generate unique, sequential contract number scoped per tenant
+    const contractNumber = await getNextDocumentNumber(prisma, 'contract', 'CTR', tenantId);
 
     const contract = await prisma.contract.create({
       data: {

@@ -781,12 +781,31 @@ export class IntegrationsService {
             },
           });
 
-          // Check default deal stage
+          // Check default deal stage & ensure idempotent deal processing (prevent duplicate deals on webhook re-delivery)
+          const dealTitlePrefix = `Pedido WC #${body.id || body.number}`;
+          const existingDeal = await prisma.deal.findFirst({
+            where: {
+              contactId: contact.id,
+              title: { startsWith: dealTitlePrefix },
+            },
+          });
+
+          if (existingDeal) {
+            await prisma.deal.update({
+              where: { id: existingDeal.id },
+              data: {
+                value: parseFloat(body.total || '0') || existingDeal.value,
+                currency: body.currency || existingDeal.currency,
+              },
+            });
+            return { handled: true, action: `Pedido WC #${body.id} ya existente actualizado (idempotente)` };
+          }
+
           const firstStage = await prisma.dealStage.findFirst({ orderBy: { order: 'asc' } });
           if (firstStage) {
             await prisma.deal.create({
               data: {
-                title: `Pedido WC #${body.id || body.number} - ${body.billing?.first_name || 'Cliente'}`,
+                title: `${dealTitlePrefix} - ${body.billing?.first_name || 'Cliente'}`,
                 value: parseFloat(body.total || '0') || 0,
                 currency: body.currency || 'EUR',
                 stageId: firstStage.id,
@@ -859,11 +878,30 @@ export class IntegrationsService {
           contactId = contact.id;
         }
 
+        const orderTitle = `Shopify Orden ${body.name || ('#' + body.order_number)}`;
+        const existingDeal = await prisma.deal.findFirst({
+          where: {
+            title: orderTitle,
+            contactId: contactId || undefined,
+          },
+        });
+
+        if (existingDeal) {
+          await prisma.deal.update({
+            where: { id: existingDeal.id },
+            data: {
+              value: parseFloat(body.total_price || '0') || existingDeal.value,
+              currency: body.currency || existingDeal.currency,
+            },
+          });
+          return { handled: true, action: `Orden de Shopify ${body.name} ya existente actualizada (idempotente)` };
+        }
+
         const firstStage = await prisma.dealStage.findFirst({ orderBy: { order: 'asc' } });
         if (firstStage) {
           await prisma.deal.create({
             data: {
-              title: `Shopify Orden ${body.name || ('#' + body.order_number)}`,
+              title: orderTitle,
               value: parseFloat(body.total_price || '0') || 0,
               currency: body.currency || 'EUR',
               stageId: firstStage.id,

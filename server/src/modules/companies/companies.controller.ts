@@ -114,9 +114,46 @@ export async function createCompany(req: Request, res: Response): Promise<void> 
       return;
     }
 
+    const trimmedName = name.trim();
+    const normalizedTaxId = taxId ? taxId.trim().toUpperCase().replace(/[\s-]/g, '') : null;
+
+    // Check duplicate by Tax ID (CIF/NIF) in tenant
+    if (normalizedTaxId) {
+      const existingTax = await prisma.company.findFirst({
+        where: {
+          tenantId,
+          taxId: normalizedTaxId,
+        },
+      });
+      if (existingTax) {
+        res.status(409).json({
+          success: false,
+          message: `Ya existe una empresa con el NIF/CIF "${taxId.trim()}" (${existingTax.name}) en esta organización`,
+          data: existingTax,
+        });
+        return;
+      }
+    }
+
+    // Check duplicate by company name in tenant
+    const existingName = await prisma.company.findFirst({
+      where: {
+        tenantId,
+        name: { equals: trimmedName, mode: 'insensitive' },
+      },
+    });
+    if (existingName) {
+      res.status(409).json({
+        success: false,
+        message: `Ya existe una empresa registrada con el nombre "${trimmedName}" en esta organización`,
+        data: existingName,
+      });
+      return;
+    }
+
     const company = await prisma.company.create({
       data: {
-        name: name.trim(),
+        name: trimmedName,
         industry: industry?.trim() || null,
         website: website?.trim() || null,
         phone: phone?.trim() || null,
@@ -124,7 +161,7 @@ export async function createCompany(req: Request, res: Response): Promise<void> 
         address: address?.trim() || null,
         city: city?.trim() || null,
         country: country?.trim() || null,
-        taxId: taxId?.trim() || null,
+        taxId: normalizedTaxId,
         annualRevenue: annualRevenue !== undefined && annualRevenue !== '' ? parseFloat(annualRevenue) : null,
         employeesCount: employeesCount !== undefined && employeesCount !== '' ? parseInt(employeesCount, 10) : null,
         notes: notes?.trim() || null,
@@ -159,6 +196,24 @@ export async function updateCompany(req: Request, res: Response): Promise<void> 
 
     const { name, industry, website, phone, email, address, city, country, taxId, annualRevenue, employeesCount, notes } = req.body;
 
+    const normalizedTaxId = taxId !== undefined ? (taxId ? taxId.trim().toUpperCase().replace(/[\s-]/g, '') : null) : undefined;
+    if (normalizedTaxId && normalizedTaxId !== existing.taxId) {
+      const existingTax = await prisma.company.findFirst({
+        where: {
+          tenantId,
+          taxId: normalizedTaxId,
+          id: { not: id },
+        },
+      });
+      if (existingTax) {
+        res.status(409).json({
+          success: false,
+          message: `Ya existe otra empresa con el NIF/CIF "${taxId.trim()}" (${existingTax.name})`,
+        });
+        return;
+      }
+    }
+
     const updated = await prisma.company.update({
       where: { id },
       data: {
@@ -170,7 +225,7 @@ export async function updateCompany(req: Request, res: Response): Promise<void> 
         address: address !== undefined ? (address?.trim() || null) : undefined,
         city: city !== undefined ? (city?.trim() || null) : undefined,
         country: country !== undefined ? (country?.trim() || null) : undefined,
-        taxId: taxId !== undefined ? (taxId?.trim() || null) : undefined,
+        taxId: normalizedTaxId,
         annualRevenue: annualRevenue !== undefined ? (annualRevenue !== '' ? parseFloat(annualRevenue) : null) : undefined,
         employeesCount: employeesCount !== undefined ? (employeesCount !== '' ? parseInt(employeesCount, 10) : null) : undefined,
         notes: notes !== undefined ? (notes?.trim() || null) : undefined,

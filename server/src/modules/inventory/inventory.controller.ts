@@ -186,76 +186,93 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
       ? sku.trim().toUpperCase()
       : `SKU-${Date.now().toString().slice(-6)}`;
 
+    // Check duplicate by SKU
+    const existingProduct = await prisma.product.findUnique({
+      where: { sku: finalSku },
+    });
+    if (existingProduct) {
+      res.status(409).json({
+        success: false,
+        message: `Ya existe un producto registrado con el SKU "${finalSku}" (${existingProduct.name})`,
+        data: existingProduct,
+      });
+      return;
+    }
+
     const initialStock = parseInt(stock, 10) || 0;
 
-    const product = await prisma.product.create({
-      data: {
-        sku: finalSku,
-        name: name.trim(),
-        description: description?.trim() || null,
-        price: parseFloat(price) || 0,
-        costPrice: costPrice !== undefined && costPrice !== '' ? parseFloat(costPrice) : 0,
-        stock: initialStock,
-        minStock: minStock !== undefined && minStock !== '' ? parseInt(minStock, 10) : 5,
-        maxStock: maxStock !== undefined && maxStock !== '' ? parseInt(maxStock, 10) : null,
-        unit: unit?.trim() || 'UNIT',
-        category: category?.trim() || 'General',
-        barcode: barcode?.trim() || null,
-        imageUrl: imageUrl?.trim() || null,
-        images: Array.isArray(images) ? JSON.stringify(images) : (images || '[]'),
-        location: location?.trim() || null,
-        supplierName: supplierName?.trim() || null,
-        supplierSku: supplierSku?.trim() || null,
-        taxRate: taxRate !== undefined && taxRate !== '' ? parseFloat(taxRate) : 21.0,
-        weight: weight !== undefined && weight !== '' ? parseFloat(weight) : null,
-        dimensions: dimensions?.trim() || null,
-        brand: brand?.trim() || null,
-        tags: tags?.trim() || null,
-        notes: notes?.trim() || null,
-        isActive: typeof isActive === 'boolean' ? isActive : true,
-        externalId: externalId?.trim() || null,
-        isSync: Boolean(externalId),
-        lastSyncedAt: externalId ? new Date() : null,
-        tenantId,
-        attributes: req.body.attributes
-          ? (typeof req.body.attributes === 'string' ? req.body.attributes : JSON.stringify(req.body.attributes))
-          : JSON.stringify(
-              IntegrationsService.autoMapProductAttributes({
-                sku: finalSku,
-                name: name.trim(),
-                price: parseFloat(price) || 0,
-                costPrice: costPrice !== undefined && costPrice !== '' ? parseFloat(costPrice) : 0,
-                stock: initialStock,
-                minStock: minStock !== undefined && minStock !== '' ? parseInt(minStock, 10) : 5,
-                category: category?.trim() || 'General',
-                barcode: barcode?.trim() || null,
-                brand: brand?.trim() || null,
-                weight: weight !== undefined && weight !== '' ? parseFloat(weight) : null,
-                dimensions: dimensions?.trim() || null,
-                supplierSku: supplierSku?.trim() || null,
-                supplierName: supplierName?.trim() || null,
-                taxRate: taxRate !== undefined && taxRate !== '' ? parseFloat(taxRate) : 21.0,
-              })
-            ),
-      },
-    });
-
-    // Record initial stock movement audit entry if stock > 0
-    if (initialStock > 0) {
-      await prisma.stockMovement.create({
+    const product = await prisma.$transaction(async (tx) => {
+      const p = await tx.product.create({
         data: {
-          productId: product.id,
-          type: 'INBOUND',
-          quantity: initialStock,
-          previousStock: 0,
-          newStock: initialStock,
-          reason: 'Inventario inicial al dar de alta el producto',
-          reference: 'ALTA-INICIAL',
-          performedBy: req.user?.name || req.user?.email || 'Sistema',
+          sku: finalSku,
+          name: name.trim(),
+          description: description?.trim() || null,
+          price: parseFloat(price) || 0,
+          costPrice: costPrice !== undefined && costPrice !== '' ? parseFloat(costPrice) : 0,
+          stock: initialStock,
+          minStock: minStock !== undefined && minStock !== '' ? parseInt(minStock, 10) : 5,
+          maxStock: maxStock !== undefined && maxStock !== '' ? parseInt(maxStock, 10) : null,
+          unit: unit?.trim() || 'UNIT',
+          category: category?.trim() || 'General',
+          barcode: barcode?.trim() || null,
+          imageUrl: imageUrl?.trim() || null,
+          images: Array.isArray(images) ? JSON.stringify(images) : (images || '[]'),
+          location: location?.trim() || null,
+          supplierName: supplierName?.trim() || null,
+          supplierSku: supplierSku?.trim() || null,
+          taxRate: taxRate !== undefined && taxRate !== '' ? parseFloat(taxRate) : 21.0,
+          weight: weight !== undefined && weight !== '' ? parseFloat(weight) : null,
+          dimensions: dimensions?.trim() || null,
+          brand: brand?.trim() || null,
+          tags: tags?.trim() || null,
+          notes: notes?.trim() || null,
+          isActive: typeof isActive === 'boolean' ? isActive : true,
+          externalId: externalId?.trim() || null,
+          isSync: Boolean(externalId),
+          lastSyncedAt: externalId ? new Date() : null,
           tenantId,
+          attributes: req.body.attributes
+            ? (typeof req.body.attributes === 'string' ? req.body.attributes : JSON.stringify(req.body.attributes))
+            : JSON.stringify(
+                IntegrationsService.autoMapProductAttributes({
+                  sku: finalSku,
+                  name: name.trim(),
+                  price: parseFloat(price) || 0,
+                  costPrice: costPrice !== undefined && costPrice !== '' ? parseFloat(costPrice) : 0,
+                  stock: initialStock,
+                  minStock: minStock !== undefined && minStock !== '' ? parseInt(minStock, 10) : 5,
+                  category: category?.trim() || 'General',
+                  barcode: barcode?.trim() || null,
+                  brand: brand?.trim() || null,
+                  weight: weight !== undefined && weight !== '' ? parseFloat(weight) : null,
+                  dimensions: dimensions?.trim() || null,
+                  supplierSku: supplierSku?.trim() || null,
+                  supplierName: supplierName?.trim() || null,
+                  taxRate: taxRate !== undefined && taxRate !== '' ? parseFloat(taxRate) : 21.0,
+                })
+              ),
         },
       });
-    }
+
+      // Record initial stock movement audit entry if stock > 0
+      if (initialStock > 0) {
+        await tx.stockMovement.create({
+          data: {
+            productId: p.id,
+            type: 'INBOUND',
+            quantity: initialStock,
+            previousStock: 0,
+            newStock: initialStock,
+            reason: 'Inventario inicial al dar de alta el producto',
+            reference: 'ALTA-INICIAL',
+            performedBy: req.user?.name || req.user?.email || 'Sistema',
+            tenantId,
+          },
+        });
+      }
+
+      return p;
+    });
 
     await logAudit(req.user?.id || null, 'CREATE', 'Product', product.id, { sku: product.sku, name: product.name, tenantId }, req.ip);
 

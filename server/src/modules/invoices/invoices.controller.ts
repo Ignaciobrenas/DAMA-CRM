@@ -10,6 +10,7 @@ import {
   generateVerifactuQrBuffer,
   getPreviousInvoiceHash,
 } from '../../services/verifactu.service';
+import { getNextDocumentNumber } from '../../utils/document-number';
 
 export async function listInvoices(req: Request, res: Response): Promise<void> {
   try {
@@ -146,11 +147,9 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
 
     const total = Number((taxableBase + taxAmount - computedIrpfAmount).toFixed(2));
 
-    // Generate unique invoice number scoped to current tenant: FAC-YYYY-SEQ / REC-YYYY-SEQ / PRO-YYYY-SEQ
-    const year = new Date().getFullYear();
-    const count = await prisma.invoice.count({ where: { tenantId } });
+    // Generate unique, sequential invoice number scoped per prefix, year, and tenant
     const prefix = isRectifying ? 'REC' : proforma ? 'PRO' : 'FAC';
-    const invoiceNumber = `${prefix}-${year}-${String(count + 1).padStart(4, '0')}`;
+    const invoiceNumber = await getNextDocumentNumber(prisma, 'invoice', prefix, tenantId);
 
     const parsedIssueDate = rawIssueDate ? new Date(rawIssueDate) : new Date();
 
@@ -422,9 +421,7 @@ export async function createQuote(req: Request, res: Response): Promise<void> {
     const taxAmount = Number(((subtotal * taxRateNum) / 100).toFixed(2));
     const total = Number((subtotal + taxAmount).toFixed(2));
 
-    const year = new Date().getFullYear();
-    const count = await prisma.quote.count({ where: { tenantId } });
-    const quoteNumber = `PRE-${year}-${String(count + 1).padStart(4, '0')}`;
+    const quoteNumber = await getNextDocumentNumber(prisma, 'quote', 'PRE', tenantId);
     const publicToken = `qsign_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     const quote = await prisma.quote.create({
@@ -641,60 +638,70 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
       return;
     }
 
-    const existingInvoice = await prisma.invoice.findFirst({
-      where: { quoteId: quote.id },
-    });
+    let invoice: any;
+    try {
+      invoice = await prisma.$transaction(async (tx) => {
+        const existingInvoice = await tx.invoice.findFirst({
+          where: { quoteId: quote.id },
+        });
 
-    if (existingInvoice) {
-      res.status(400).json({
-        success: false,
-        message: `Este presupuesto ya ha sido convertido previamente a la factura ${existingInvoice.invoiceNumber}`,
-        data: existingInvoice,
+        if (existingInvoice) {
+          throw new Error(`ALREADY_CONVERTED:${existingInvoice.invoiceNumber}`);
+        }
+
+        const invoiceNumber = await getNextDocumentNumber(tx, 'invoice', 'FAC', quote.tenantId || 'master');
+
+        const createdInvoice = await tx.invoice.create({
+          data: {
+            invoiceNumber,
+            quoteId: quote.id,
+            contactId: quote.contactId,
+            companyId: quote.companyId,
+            issueDate: new Date(),
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            status: 'DRAFT',
+            subtotal: quote.subtotal,
+            taxRate: quote.taxRate,
+            taxAmount: quote.taxAmount,
+            total: quote.total,
+            currency: quote.currency,
+            notes: quote.notes ? `${quote.notes} (Convertido de ${quote.quoteNumber})` : `Convertido de presupuesto ${quote.quoteNumber}`,
+            tenantId: quote.tenantId || 'master',
+            items: {
+              create: quote.items.map((it) => ({
+                description: it.description,
+                quantity: it.quantity,
+                unitPrice: it.unitPrice,
+                amount: it.amount,
+              })),
+            },
+          },
+          include: {
+            items: true,
+            company: true,
+            contact: true,
+            quote: true,
+          },
+        });
+
+        await tx.quote.update({
+          where: { id: quote.id },
+          data: { status: 'ACCEPTED' },
+        });
+
+        return createdInvoice;
       });
-      return;
+    } catch (txError: any) {
+      if (txError.message && txError.message.startsWith('ALREADY_CONVERTED:')) {
+        const num = txError.message.split(':')[1];
+        res.status(400).json({
+          success: false,
+          message: `Este presupuesto ya ha sido convertido previamente a la factura ${num}`,
+        });
+        return;
+      }
+      throw txError;
     }
-
-    const year = new Date().getFullYear();
-    const count = await prisma.invoice.count({ where: { tenantId: quote.tenantId || 'master' } });
-    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
-
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        quoteId: quote.id,
-        contactId: quote.contactId,
-        companyId: quote.companyId,
-        issueDate: new Date(),
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        status: 'DRAFT',
-        subtotal: quote.subtotal,
-        taxRate: quote.taxRate,
-        taxAmount: quote.taxAmount,
-        total: quote.total,
-        currency: quote.currency,
-        notes: quote.notes ? `${quote.notes} (Convertido de ${quote.quoteNumber})` : `Convertido de presupuesto ${quote.quoteNumber}`,
-        tenantId: quote.tenantId || 'master',
-        items: {
-          create: quote.items.map((it) => ({
-            description: it.description,
-            quantity: it.quantity,
-            unitPrice: it.unitPrice,
-            amount: it.amount,
-          })),
-        },
-      },
-      include: {
-        items: true,
-        company: true,
-        contact: true,
-        quote: true,
-      },
-    });
-
-    await prisma.quote.update({
-      where: { id: quote.id },
-      data: { status: 'ACCEPTED' },
-    });
 
     await logAudit(
       req.user?.id || null,
@@ -1262,45 +1269,8 @@ export async function generateInvoiceFromRecurring(req: Request, res: Response):
       return;
     }
 
-    // Generate isolated invoice sequence for tenant
-    const currentYear = new Date().getFullYear();
-    const invoiceCount = await prisma.invoice.count({
-      where: {
-        tenantId: recurring.tenantId || tenantId,
-        invoiceNumber: { startsWith: `FAC-${currentYear}` },
-      },
-    });
-    const invoiceNumber = `FAC-${currentYear}-${String(invoiceCount + 1).padStart(4, '0')}`;
-
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30);
-
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        companyId: recurring.companyId,
-        contactId: recurring.contactId,
-        status: 'SENT',
-        issueDate: new Date(),
-        dueDate,
-        subtotal: recurring.subtotal,
-        taxRate: recurring.taxRate,
-        taxAmount: recurring.taxAmount,
-        total: recurring.total,
-        currency: recurring.currency,
-        notes: `Generada automáticamente desde suscripción recurrente: ${recurring.title}. ${recurring.notes || ''}`.trim(),
-        tenantId: recurring.tenantId || tenantId,
-        items: {
-          create: recurring.items.map((it) => ({
-            description: it.description,
-            quantity: it.quantity,
-            unitPrice: it.unitPrice,
-            amount: it.amount,
-          })),
-        },
-      },
-      include: { company: true, contact: true, items: true },
-    });
 
     // Compute next issue date according to frequency
     const nextDate = new Date(recurring.nextIssueDate || new Date());
@@ -1323,12 +1293,45 @@ export async function generateInvoiceFromRecurring(req: Request, res: Response):
         break;
     }
 
-    await prisma.recurringInvoice.update({
-      where: { id },
-      data: {
-        lastIssuedAt: new Date(),
-        nextIssueDate: nextDate,
-      },
+    const invoice = await prisma.$transaction(async (tx) => {
+      const invoiceNumber = await getNextDocumentNumber(tx, 'invoice', 'FAC', recurring.tenantId || tenantId);
+
+      const created = await tx.invoice.create({
+        data: {
+          invoiceNumber,
+          companyId: recurring.companyId,
+          contactId: recurring.contactId,
+          status: 'SENT',
+          issueDate: new Date(),
+          dueDate,
+          subtotal: recurring.subtotal,
+          taxRate: recurring.taxRate,
+          taxAmount: recurring.taxAmount,
+          total: recurring.total,
+          currency: recurring.currency,
+          notes: `Generada automáticamente desde suscripción recurrente: ${recurring.title}. ${recurring.notes || ''}`.trim(),
+          tenantId: recurring.tenantId || tenantId,
+          items: {
+            create: recurring.items.map((it) => ({
+              description: it.description,
+              quantity: it.quantity,
+              unitPrice: it.unitPrice,
+              amount: it.amount,
+            })),
+          },
+        },
+        include: { company: true, contact: true, items: true },
+      });
+
+      await tx.recurringInvoice.update({
+        where: { id },
+        data: {
+          lastIssuedAt: new Date(),
+          nextIssueDate: nextDate,
+        },
+      });
+
+      return created;
     });
 
     res.json({

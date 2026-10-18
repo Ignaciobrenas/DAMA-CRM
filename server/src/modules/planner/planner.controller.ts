@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 import { NotificationService } from '../notifications/notifications.service';
+import { getNextBoardTaskKey } from '../../utils/document-number';
 
 // -----------------------------------------------------------------------------
 // Boards (Agile Projects / Kanban Boards)
@@ -266,7 +267,7 @@ export async function createBoardTask(req: Request, res: Response): Promise<void
     }
 
     const targetColumnId = columnId || (board.columns[0] ? board.columns[0].id : null);
-    const key = (board.key || 'TASK') + '-' + Math.floor(1000 + Math.random() * 9000);
+    const key = await getNextBoardTaskKey(prisma, boardId, board.key || 'TASK');
 
     const task = await prisma.boardTask.create({
       data: {

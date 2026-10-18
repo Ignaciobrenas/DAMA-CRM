@@ -149,6 +149,23 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
 
     // Multi-tenant permission rule: Company Admin can ONLY create in own tenant, God can assign to any tenant
     const assignedTenantId = isSuper ? (targetTenantId || currentUser?.tenantId || 'master') : (currentUser?.tenantId || 'master');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check duplicate employee by email in tenant
+    const existingEmployee = await prisma.employee.findFirst({
+      where: {
+        tenantId: assignedTenantId,
+        email: normalizedEmail,
+      },
+    });
+    if (existingEmployee) {
+      res.status(409).json({
+        success: false,
+        message: `Ya existe un empleado con el correo electrónico "${normalizedEmail}" (${existingEmployee.firstName} ${existingEmployee.lastName}) en esta organización`,
+        data: existingEmployee,
+      });
+      return;
+    }
 
     let linkedUserId: string | null = null;
 

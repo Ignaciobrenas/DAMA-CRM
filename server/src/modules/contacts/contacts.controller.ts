@@ -136,12 +136,27 @@ export async function createContact(req: Request, res: Response): Promise<void> 
       }
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check duplicate by email
+    const existingContact = await prisma.contact.findFirst({
+      where: { email: normalizedEmail },
+    });
+    if (existingContact) {
+      res.status(409).json({
+        success: false,
+        message: `Ya existe un contacto registrado con el correo electrónico "${normalizedEmail}" (${existingContact.firstName} ${existingContact.lastName})`,
+        data: existingContact,
+      });
+      return;
+    }
+
     const contact = await prisma.contact.create({
       data: {
         companyId: companyId || null,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        email: email.toLowerCase().trim(),
+        email: normalizedEmail,
         phone: phone?.trim() || null,
         mobile: mobile?.trim() || null,
         position: position?.trim() || null,

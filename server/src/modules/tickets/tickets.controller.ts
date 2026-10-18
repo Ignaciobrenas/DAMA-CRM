@@ -3,6 +3,7 @@ import { prisma } from '../../prisma';
 import { wsService } from '../../services/websocket.service';
 import { NotificationService } from '../notifications/notifications.service';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import { getNextDocumentNumber } from '../../utils/document-number';
 
 function calculateSlaDeadline(priority: string): Date {
   const now = Date.now();
@@ -172,10 +173,7 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
     }
 
     // Generate sequential ticket number scoped per tenant
-    const count = await prisma.ticket.count({ where: { tenantId } });
-    const year = new Date().getFullYear();
-    const seq = String(count + 1).padStart(4, '0');
-    const ticketNumber = `TCK-${year}-${seq}`;
+    const ticketNumber = await getNextDocumentNumber(prisma, 'ticket', 'TCK', tenantId);
 
     const slaDueAt = calculateSlaDeadline(priority);
 
