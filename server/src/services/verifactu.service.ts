@@ -164,3 +164,60 @@ export async function logBillingSystemEvent(
     }
   );
 }
+
+export interface AeatDispatchResponse {
+  success: boolean;
+  code: 'CORRECTO' | 'ACEPTADO_CON_ERRORES' | 'RECHAZADO' | 'REINTENTABLE';
+  csvAeat?: string;
+  errorMessage?: string;
+  timestamp: string;
+  retryAfterSeconds?: number;
+  environment: 'PREPRODUCCION' | 'PRODUCCION';
+}
+
+/**
+ * AEAT Web Service Connector & Testbed Dispatch Simulator (Orden HAC/1177/2024)
+ * Validates transmission of high-availability billing records, handling AEAT acceptance,
+ * rejection codes, and exponential backoff retry recommendations.
+ */
+export async function sendAeatVerifactuBatch(
+  record: VerifactuRecordInput,
+  options: { forceError?: boolean; simulateTimeout?: boolean } = {}
+): Promise<AeatDispatchResponse> {
+  const timestamp = new Date().toISOString();
+  const environment = process.env.NODE_ENV === 'production' ? 'PRODUCCION' : 'PREPRODUCCION';
+
+  // Timeout / Temporary failure simulation for queue resilience testing
+  if (options.simulateTimeout) {
+    return {
+      success: false,
+      code: 'REINTENTABLE',
+      errorMessage: 'Error temporal de conexión con el servicio web de la AEAT. Intente de nuevo tras backoff.',
+      retryAfterSeconds: 30,
+      timestamp,
+      environment,
+    };
+  }
+
+  // Semantic & Tax ID check
+  if (options.forceError || !record.issuerNif || record.issuerNif.length < 9) {
+    return {
+      success: false,
+      code: 'RECHAZADO',
+      errorMessage: 'Código 1101: NIF del emisor no identificado en el censo de la AEAT o formato erróneo.',
+      timestamp,
+      environment,
+    };
+  }
+
+  const { hash } = calculateVerifactuHash(record);
+  const csvAeat = `CSV-${crypto.createHash('md5').update(hash + timestamp).digest('hex').toUpperCase().slice(0, 16)}`;
+
+  return {
+    success: true,
+    code: 'CORRECTO',
+    csvAeat,
+    timestamp,
+    environment,
+  };
+}

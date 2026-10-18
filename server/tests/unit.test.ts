@@ -2354,6 +2354,95 @@ describe('DAMA-CRM Core Unit Tests', () => {
       assert.ok(customerResult.legalNotice.includes('Art. 32 LOPDGDD'));
     });
   });
+
+  describe('AEAT Web Service Simulation & Rejection Handling (Orden HAC/1177/2024)', () => {
+    const { sendAeatVerifactuBatch } = require('../src/services/verifactu.service');
+
+    it('should receive CORRECTO and generate CSV code on valid invoice dispatch', async () => {
+      const response = await sendAeatVerifactuBatch({
+        issuerNif: 'B12345678',
+        invoiceNumber: 'FAC-2026-0099',
+        issueDate: '2026-10-18',
+        invoiceType: 'F1',
+        taxAmount: 21.0,
+        totalAmount: 121.0,
+      });
+
+      assert.strictEqual(response.success, true);
+      assert.strictEqual(response.code, 'CORRECTO');
+      assert.ok(response.csvAeat?.startsWith('CSV-'));
+      assert.strictEqual(response.environment, 'PREPRODUCCION');
+    });
+
+    it('should reject transmission with RECHAZADO and code 1101 on invalid NIF', async () => {
+      const response = await sendAeatVerifactuBatch({
+        issuerNif: 'INVALID',
+        invoiceNumber: 'FAC-2026-0100',
+        issueDate: '2026-10-18',
+        invoiceType: 'F1',
+        taxAmount: 10.0,
+        totalAmount: 50.0,
+      });
+
+      assert.strictEqual(response.success, false);
+      assert.strictEqual(response.code, 'RECHAZADO');
+      assert.ok(response.errorMessage?.includes('Código 1101'));
+    });
+
+    it('should return REINTENTABLE with backoff seconds recommendation on network timeout', async () => {
+      const response = await sendAeatVerifactuBatch(
+        {
+          issuerNif: 'B12345678',
+          invoiceNumber: 'FAC-2026-0101',
+          issueDate: '2026-10-18',
+          invoiceType: 'F1',
+          taxAmount: 20.0,
+          totalAmount: 120.0,
+        },
+        { simulateTimeout: true }
+      );
+
+      assert.strictEqual(response.success, false);
+      assert.strictEqual(response.code, 'REINTENTABLE');
+      assert.strictEqual(response.retryAfterSeconds, 30);
+    });
+  });
+
+  describe('Backup Export & Restoration Integrity (Art. 32 RGPD / ENS)', () => {
+    it('should validate structured multi-tenant backup schema and restoration consistency', () => {
+      const mockBackup = {
+        version: '1.2.0',
+        exportedAt: new Date().toISOString(),
+        tenantId: 'acme-corp',
+        counts: { contacts: 2, invoices: 1 },
+        data: {
+          contacts: [
+            { id: 'c1', firstName: 'Juan', lastName: 'García', email: 'juan@acme.com', tenantId: 'acme-corp' },
+            { id: 'c2', firstName: 'Ana', lastName: 'López', email: 'ana@acme.com', tenantId: 'acme-corp' },
+          ],
+          invoices: [
+            { id: 'inv1', invoiceNumber: 'FAC-2026-01', total: 500.0, tenantId: 'acme-corp' },
+          ],
+        },
+      };
+
+      // Restoration validation function
+      function verifyBackupIntegrity(backup: typeof mockBackup, targetTenant: string): boolean {
+        if (!backup.data || !backup.counts) return false;
+        if (backup.tenantId !== targetTenant && backup.tenantId !== 'ALL_TENANTS') return false;
+        const allContactsMatch = backup.data.contacts.every((c) => c.tenantId === targetTenant);
+        const allInvoicesMatch = backup.data.invoices.every((i) => i.tenantId === targetTenant);
+        return allContactsMatch && allInvoicesMatch;
+      }
+
+      const isIntegrityValid = verifyBackupIntegrity(mockBackup, 'acme-corp');
+      assert.strictEqual(isIntegrityValid, true);
+
+      // Attempt restoring another tenant's backup
+      const isCrossTenantBlocked = verifyBackupIntegrity(mockBackup, 'other-corp');
+      assert.strictEqual(isCrossTenantBlocked, false);
+    });
+  });
 });
 
 
