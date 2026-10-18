@@ -18,15 +18,15 @@
   }
 
   body {
-    @apply bg-slate-100/90 text-slate-950 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans;
+    @apply bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans;
     overflow-x: hidden;
     max-width: 100vw;
   }
 
-  * {
-    border-color: #94A3B8;
+  *, ::before, ::after {
+    border-color: #E2E8F0;
   }
-  .dark * {
+  .dark *, .dark ::before, .dark ::after {
     border-color: #334155;
   }
 
@@ -37,59 +37,92 @@
   }
 }
 
-/* Ultra High-Contrast Light Mode Surfaces & Sharp Contrast */
+/* ==========================================================================
+   Modern Anti-Glare Light Theme (Linear / Stripe / Vercel Standards)
+   ========================================================================== */
 html:not(.dark) {
-  --surface-bg: #F8FAFC;
+  --surface-bg: #F1F5F9;
   --surface-card: #FFFFFF;
-  --surface-well: #F1F5F9;
-  --surface-hover: #E2E8F0;
+  --surface-well: #F8FAFC;
+  --surface-hover: #F1F5F9;
   --border-subtle: #E2E8F0;
+  --border-medium: #CBD5E1;
   --border-strong: #94A3B8;
-  --text-primary: #020617;
-  --text-secondary: #0F172A;
-  --text-muted: #334155;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
 }
 
+/* Light Mode Canvas & Background: Soft, relaxing slate canvas, strictly eliminating blinding glare */
+html:not(.dark) body {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+/* Card surfaces: Crisp clean surface on top of slate canvas with subtle border and ambient shadow */
 html:not(.dark) .bg-white {
   background-color: #FFFFFF !important;
-  border-color: #CBD5E1;
-  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.04), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03) !important;
 }
 
+/* Sidebar & Navigation: Grounded soft slate-50 with refined border */
+html:not(.dark) aside {
+  background-color: #F8FAFC !important;
+  border-right: 1px solid #E2E8F0 !important;
+}
+
+html:not(.dark) header {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+/* Subtle border tokens */
 html:not(.dark) .border-gray-200,
 html:not(.dark) .border-slate-200 {
-  border-color: #CBD5E1 !important;
+  border-color: #E2E8F0 !important;
 }
 
 html:not(.dark) .border-gray-100,
 html:not(.dark) .border-slate-100 {
-  border-color: #E2E8F0 !important;
+  border-color: #F1F5F9 !important;
 }
 
 html:not(.dark) .border-gray-300,
 html:not(.dark) .border-slate-300 {
-  border-color: #94A3B8 !important;
+  border-color: #CBD5E1 !important;
 }
 
+/* Wells and nested sections */
 html:not(.dark) .bg-gray-50,
 html:not(.dark) .bg-slate-50 {
-  background-color: #F8FAFC;
-  border-color: #E2E8F0;
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
 }
 
 html:not(.dark) .bg-gray-100,
 html:not(.dark) .bg-slate-100 {
-  background-color: #F1F5F9;
-  border-color: #CBD5E1;
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
 }
 
+/* Form Controls & Inputs: Clean, stable, comfortable contrast */
 html:not(.dark) input:not([type="checkbox"]):not([type="radio"]),
 html:not(.dark) select,
 html:not(.dark) textarea {
   background-color: #FFFFFF !important;
-  border-color: #CBD5E1 !important;
+  border: 1px solid #CBD5E1 !important;
   color: #0F172A !important;
-  font-weight: 500;
+  font-weight: 500 !important;
+  border-radius: 0.75rem !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):hover,
+html:not(.dark) select:hover,
+html:not(.dark) textarea:hover {
+  border-color: #94A3B8 !important;
 }
 
 html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):focus,
@@ -97,7 +130,16 @@ html:not(.dark) select:focus,
 html:not(.dark) textarea:focus {
   border-color: #2563EB !important;
   background-color: #FFFFFF !important;
-  outline: 2px solid #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  outline: none !important;
+  transform: none !important;
+}
+
+/* Buttons: Subtle tactile feedback according to Emil Kowalski standards */
+html:not(.dark) button:not(:disabled):active,
+html:not(.dark) a[href]:not(:disabled):active,
+html:not(.dark) [role="button"]:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 /* Light Mode Typography: Zero Washed-Out Text */
@@ -480,91 +522,4 @@ html:not(.dark) [class*="bg-violet-50"] {
   color: #C4B5FD !important;
   border: 1px solid #7C3AED !important;
   font-weight: 700;
-}
-
-
-/* ==========================================================================
-   UI REDESIGN: FRIENDLY, ROUNDED & ANIMATED LIGHT MODE
-   ========================================================================== */
-
-/* Redefine light mode background to be warmer, softer (Zinc/Neutral instead of cold Slate) */
-html:not(.dark) body {
-  background-color: #FAFAFA !important;
-  color: #18181B !important;
-}
-
-/* Make all cards pure white with extremely soft and friendly shadows */
-html:not(.dark) .bg-white {
-  background-color: #FFFFFF !important;
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.03) !important;
-  border: 1px solid #F4F4F5 !important;
-}
-
-/* Force heavily rounded corners globally for a friendly look */
-html:not(.dark) .rounded-3xl,
-html:not(.dark) .rounded-2xl {
-  border-radius: 28px !important;
-}
-
-html:not(.dark) .rounded-xl {
-  border-radius: 20px !important;
-}
-
-html:not(.dark) .rounded-lg {
-  border-radius: 16px !important;
-}
-
-/* Friendly Interactive Animations (Spring-like Hover) */
-html:not(.dark) button, 
-html:not(.dark) a[href], 
-html:not(.dark) [role="button"] {
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background-color 0.2s ease !important;
-}
-
-html:not(.dark) button:not(:disabled):hover, 
-html:not(.dark) a[href]:not(:disabled):hover, 
-html:not(.dark) [role="button"]:not(:disabled):hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 14px 24px -8px rgba(0, 0, 0, 0.1) !important;
-}
-
-html:not(.dark) button:not(:disabled):active, 
-html:not(.dark) a[href]:not(:disabled):active, 
-html:not(.dark) [role="button"]:not(:disabled):active {
-  transform: translateY(1px) scale(0.96);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
-}
-
-/* Inputs & Form Elements - Floating & Friendly */
-html:not(.dark) input:not([type="checkbox"]):not([type="radio"]), 
-html:not(.dark) select, 
-html:not(.dark) textarea {
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease !important;
-  border-radius: 16px !important;
-  border: 2px solid transparent !important;
-  background-color: #F4F4F5 !important; /* Zinc 100 */
-  color: #27272A !important;
-}
-
-html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):hover, 
-html:not(.dark) select:hover, 
-html:not(.dark) textarea:hover {
-  background-color: #E4E4E7 !important; /* Zinc 200 */
-}
-
-html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):focus, 
-html:not(.dark) select:focus, 
-html:not(.dark) textarea:focus {
-  transform: translateY(-2px);
-  background-color: #FFFFFF !important;
-  border-color: #3B82F6 !important; /* Blue 500 */
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15) !important;
-  outline: none !important;
-}
-
-/* Sidebar & Navigation friendly adjustments */
-html:not(.dark) aside, html:not(.dark) nav {
-  background-color: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(16px) !important;
-  border-right: 1px solid #F4F4F5 !important;
 }
