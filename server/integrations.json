@@ -9,7 +9,7 @@
     "syncInvoices": true,
     "syncProducts": true,
     "status": "connected",
-    "lastSyncAt": "2026-10-18T16:58:33.014Z"
+    "lastSyncAt": "2026-10-18T18:29:07.701Z"
   },
   "woocommerce": {
     "enabled": true,
@@ -18,7 +18,7 @@
     "consumerSecret": "cs_2a917375491c0cb54e8c6b9d9ec0ee69a712b3dc",
     "webhookSecret": "",
     "status": "connected",
-    "lastSyncAt": "2026-10-18T16:58:33.282Z"
+    "lastSyncAt": "2026-10-18T18:29:07.739Z"
   },
   "shopify": {
     "enabled": false,
@@ -37,7 +37,7 @@
     "syncOrders": true,
     "syncCustomers": true,
     "status": "connected",
-    "lastSyncAt": "2026-10-18T16:58:33.318Z"
+    "lastSyncAt": "2026-10-18T18:29:07.749Z"
   },
   "n8n": {
     "enabled": false,
@@ -58,7 +58,7 @@
     "publishableKey": "pk_test_sample",
     "secretKey": "sk_test_sample",
     "webhookSecret": "whsec_sample",
-    "lastSyncAt": "2026-10-18T16:58:33.304Z"
+    "lastSyncAt": "2026-10-18T18:29:07.744Z"
   },
   "zapier": {
     "enabled": false,

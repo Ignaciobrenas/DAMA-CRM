@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../middlewares/auth.middleware';
+import { requirePermission } from '../../middlewares/rbac.middleware';
 import { auditMiddleware } from '../../middlewares/audit.middleware';
 import {
   listEmployees,
@@ -28,24 +29,24 @@ const router = Router();
 router.use(authMiddleware);
 
 // --- Time Tracking & Fichajes Endpoints ---
-router.get('/time-tracking/export/csv', exportTimeRecordsCsv);
-router.get('/time-tracking/export/pdf', exportTimeRecordsPdf);
+router.get('/time-tracking/export/csv', requirePermission('employees', 'read'), exportTimeRecordsCsv);
+router.get('/time-tracking/export/pdf', requirePermission('employees', 'read'), exportTimeRecordsPdf);
 router.post('/time-tracking/clock-in', clockIn);
 router.post('/time-tracking/clock-out', clockOut);
 router.get('/time-tracking/status', getClockStatus);
 router.get('/time-tracking/history', getTimeHistory);
-router.post('/time-tracking/sync-odoo', auditMiddleware('SYNC', 'ODOO_ATTENDANCE'), syncWithOdooAttendance);
+router.post('/time-tracking/sync-odoo', requirePermission('employees', 'manage'), auditMiddleware('SYNC', 'ODOO_ATTENDANCE'), syncWithOdooAttendance);
 
 // --- Payrolls & Nóminas Endpoints ---
 router.get('/payrolls', listPayrolls);
-router.post('/payrolls', auditMiddleware('ISSUE', 'PAYROLL'), issuePayroll);
-router.patch('/payrolls/:id/status', auditMiddleware('UPDATE', 'PAYROLL_STATUS'), updatePayrollStatus);
+router.post('/payrolls', requirePermission('employees', 'create'), auditMiddleware('ISSUE', 'PAYROLL'), issuePayroll);
+router.patch('/payrolls/:id/status', requirePermission('employees', 'update'), auditMiddleware('UPDATE', 'PAYROLL_STATUS'), updatePayrollStatus);
 
 // --- Employees Directory Endpoints ---
-router.get('/', listEmployees);
-router.post('/', auditMiddleware('CREATE', 'EMPLOYEE'), createEmployee);
+router.get('/', requirePermission('employees', 'read'), listEmployees);
+router.post('/', requirePermission('employees', 'create'), auditMiddleware('CREATE', 'EMPLOYEE'), createEmployee);
 router.get('/:id', getEmployeeById);
-router.patch('/:id', auditMiddleware('UPDATE', 'EMPLOYEE'), updateEmployee);
-router.delete('/:id', auditMiddleware('DELETE', 'EMPLOYEE'), deleteEmployee);
+router.patch('/:id', requirePermission('employees', 'update'), auditMiddleware('UPDATE', 'EMPLOYEE'), updateEmployee);
+router.delete('/:id', requirePermission('employees', 'delete'), auditMiddleware('DELETE', 'EMPLOYEE'), deleteEmployee);
 
 export default router;

@@ -8,15 +8,16 @@ import {
   saveEntityValues,
 } from './custom-fields.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
+import { requirePermission } from '../../middlewares/rbac.middleware';
 
 const router = Router();
 
 router.use(authMiddleware);
 
 router.get('/', listFields);
-router.post('/', createField);
-router.put('/:id', updateField);
-router.delete('/:id', deleteField);
+router.post('/', requirePermission('settings', 'create'), createField);
+router.put('/:id', requirePermission('settings', 'update'), updateField);
+router.delete('/:id', requirePermission('settings', 'delete'), deleteField);
 router.get('/entity/:entityId', getEntityValues);
 router.post('/entity/:entityId', saveEntityValues);
 

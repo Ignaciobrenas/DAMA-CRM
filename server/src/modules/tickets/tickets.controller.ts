@@ -56,6 +56,11 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
       ];
     }
 
+    const isClient = req.user?.role === 'CLIENT';
+    if (isClient) {
+      where.contact = { email: req.user?.email };
+    }
+
     const tickets = await prisma.ticket.findMany({
       where,
       include: {
@@ -65,6 +70,7 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
           select: { id: true, name: true, email: true, avatar: true },
         },
         messages: {
+          where: isClient ? { isInternal: false } : {},
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -109,6 +115,14 @@ export async function getTicketById(req: Request, res: Response): Promise<void> 
     if (!isSuper && ticket.tenantId !== tenantId) {
       res.status(403).json({ success: false, message: 'No tienes acceso a este ticket' });
       return;
+    }
+
+    if (req.user?.role === 'CLIENT') {
+      if (ticket.contact?.email !== req.user.email) {
+        res.status(403).json({ success: false, message: 'No tienes acceso a este ticket' });
+        return;
+      }
+      ticket.messages = ticket.messages.filter((m) => !m.isInternal);
     }
 
     res.json({
@@ -317,6 +331,25 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
       return;
     }
 
+    if (req.user?.role === 'CLIENT') {
+      const contact = await prisma.contact.findUnique({ where: { email: req.user.email } });
+      if (!contact || ticket.contactId !== contact.id) {
+        res.status(403).json({ success: false, message: 'No tienes acceso para responder en este ticket' });
+        return;
+      }
+    } else if (req.user) {
+      const hasTicketsUpdate =
+        req.user.role === 'ADMIN' ||
+        isSuper ||
+        req.user.permissions?.some(
+          (p: any) => (p.resource === 'tickets' || p.resource === '*') && (p.action === 'update' || p.action === 'manage')
+        );
+      if (!hasTicketsUpdate) {
+        res.status(403).json({ success: false, message: 'Permiso insuficiente para responder en tickets' });
+        return;
+      }
+    }
+
     const { message, isInternal = false, attachments } = req.body;
 
     if (!message || !message.trim()) {
@@ -324,8 +357,10 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const senderType = req.user ? 'AGENT' : 'CUSTOMER';
-    const senderName = req.user?.name || 'Agente DAMA';
+    const isClient = req.user?.role === 'CLIENT';
+    const finalIsInternal = isClient ? false : Boolean(isInternal);
+    const senderType = isClient ? 'CUSTOMER' : req.user ? 'AGENT' : 'CUSTOMER';
+    const senderName = req.user?.name || (isClient ? 'Cliente' : 'Agente DAMA');
 
     const newMessage = await prisma.ticketMessage.create({
       data: {
@@ -334,13 +369,13 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
         senderId: req.user?.id || null,
         senderName,
         message: message.trim(),
-        isInternal: Boolean(isInternal),
+        isInternal: finalIsInternal,
         attachments: typeof attachments === 'string' ? attachments : attachments ? JSON.stringify(attachments) : null,
       },
     });
 
     // Update ticket's firstResponseAt if this is first agent reply
-    if (senderType === 'AGENT' && !ticket.firstResponseAt && !isInternal) {
+    if (senderType === 'AGENT' && !ticket.firstResponseAt && !finalIsInternal) {
       await prisma.ticket.update({
         where: { id },
         data: { firstResponseAt: new Date() },

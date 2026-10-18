@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../middlewares/auth.middleware';
+import { requirePermission } from '../../middlewares/rbac.middleware';
 import {
   getTickets,
   getTicketById,
@@ -13,15 +14,14 @@ import {
 
 const router = Router();
 
-router.get('/export/csv', authMiddleware, exportTicketsCsv);
-router.get('/export/pdf', authMiddleware, exportTicketsPdf);
+router.get('/export/csv', authMiddleware, requirePermission('tickets', 'read'), exportTicketsCsv);
+router.get('/export/pdf', authMiddleware, requirePermission('tickets', 'read'), exportTicketsPdf);
 
-// Allow public access for customer ticket creation or authenticated access
-router.get('/stats/summary', authMiddleware, getTicketStats);
-router.get('/', authMiddleware, getTickets);
-router.get('/:id', authMiddleware, getTicketById);
+router.get('/stats/summary', authMiddleware, requirePermission('tickets', 'read'), getTicketStats);
+router.get('/', authMiddleware, requirePermission('tickets', 'read'), getTickets);
+router.get('/:id', authMiddleware, requirePermission('tickets', 'read'), getTicketById);
 router.post('/', createTicket); // Supports both authenticated agents and customer self-service
-router.patch('/:id', authMiddleware, updateTicket);
+router.patch('/:id', authMiddleware, requirePermission('tickets', 'update'), updateTicket);
 router.post('/:id/messages', authMiddleware, addTicketMessage);
 
 export default router;

@@ -114,10 +114,12 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     const tenantId = getRequestTenant(req);
     const isSuper = isGodSuperAdmin(req);
+    const currentUserId = req.user?.id;
+    const isSelf = currentUserId === id;
 
     const existingUser = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, email: true, preferences: true, tenantId: true },
+      include: { role: true },
     });
     if (!existingUser) {
       res.status(404).json({ success: false, message: 'Usuario no encontrado' });
@@ -130,6 +132,63 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
     }
 
     const { name, email, roleId, password, isActive, customPermissions } = req.body;
+
+    // Self-escalation and self-lockout protections
+    if (isSelf) {
+      if (roleId && roleId !== existingUser.roleId) {
+        res.status(403).json({ success: false, message: 'No puedes modificar tu propio rol por motivos de seguridad.' });
+        return;
+      }
+      if (customPermissions !== undefined) {
+        res.status(403).json({ success: false, message: 'No puedes modificar tus propios permisos personalizados.' });
+        return;
+      }
+      if (isActive === false) {
+        res.status(400).json({ success: false, message: 'No puedes desactivar tu propia cuenta en sesión activa.' });
+        return;
+      }
+    }
+
+    // Protection for ADMIN role assignment / modifications
+    let targetRole = null;
+    if (roleId && roleId !== existingUser.roleId) {
+      targetRole = await prisma.role.findUnique({ where: { id: roleId } });
+      if (!targetRole) {
+        res.status(400).json({ success: false, message: 'El rol especificado no existe.' });
+        return;
+      }
+      if (targetRole.name === 'ADMIN' && req.user?.role !== 'ADMIN' && !isSuper) {
+        res.status(403).json({ success: false, message: 'Solo un administrador puede asignar el rol de Administrador.' });
+        return;
+      }
+    }
+
+    if (existingUser.role.name === 'ADMIN' && req.user?.role !== 'ADMIN' && !isSuper) {
+      res.status(403).json({ success: false, message: 'Solo un administrador puede modificar a otro administrador.' });
+      return;
+    }
+
+    // Last admin protection: cannot deactivate or downgrade the only active ADMIN in tenant
+    const isDowngradingAdmin = existingUser.role.name === 'ADMIN' && targetRole && targetRole.name !== 'ADMIN';
+    const isDeactivatingAdmin = existingUser.role.name === 'ADMIN' && isActive === false;
+
+    if (isDowngradingAdmin || isDeactivatingAdmin) {
+      const otherAdminsCount = await prisma.user.count({
+        where: {
+          tenantId: existingUser.tenantId,
+          role: { name: 'ADMIN' },
+          isActive: true,
+          id: { not: id },
+        },
+      });
+      if (otherAdminsCount === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Operación denegada: no puedes desactivar ni degradar al único administrador activo de la organización.',
+        });
+        return;
+      }
+    }
 
     const dataToUpdate: any = {};
     if (name) dataToUpdate.name = name.trim();
@@ -217,7 +276,10 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { role: true },
+    });
     if (!user) {
       res.status(404).json({ success: false, message: 'Usuario no encontrado' });
       return;
@@ -226,6 +288,31 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
     if (!isSuper && user.tenantId !== tenantId) {
       res.status(403).json({ success: false, message: 'No tienes permisos para eliminar este usuario' });
       return;
+    }
+
+    // Admin protections
+    if (user.role.name === 'ADMIN') {
+      if (req.user?.role !== 'ADMIN' && !isSuper) {
+        res.status(403).json({ success: false, message: 'Solo un administrador puede eliminar a otro administrador.' });
+        return;
+      }
+
+      // Check if it's the last active admin
+      const otherAdminsCount = await prisma.user.count({
+        where: {
+          tenantId: user.tenantId,
+          role: { name: 'ADMIN' },
+          isActive: true,
+          id: { not: id },
+        },
+      });
+      if (otherAdminsCount === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Operación denegada: no se puede eliminar al único administrador activo de la organización.',
+        });
+        return;
+      }
     }
 
     await prisma.user.delete({ where: { id } });
@@ -593,23 +680,153 @@ export async function deleteRole(req: Request, res: Response): Promise<void> {
   }
 }
 
+export async function updateRole(req: Request, res: Response): Promise<void> {
+  try {
+    const { roleId } = req.params;
+    const { name, description } = req.body;
+
+    const role = await prisma.role.findUnique({ where: { id: roleId } });
+    if (!role) {
+      res.status(404).json({ success: false, message: 'Rol no encontrado.' });
+      return;
+    }
+
+    const dataToUpdate: any = {};
+    if (description !== undefined) dataToUpdate.description = description;
+
+    if (name && name.trim() !== role.name) {
+      if (role.isSystem) {
+        res.status(400).json({ success: false, message: 'No se puede cambiar el nombre de un rol de sistema.' });
+        return;
+      }
+      const existing = await prisma.role.findUnique({ where: { name: name.trim().toUpperCase() } });
+      if (existing) {
+        res.status(400).json({ success: false, message: 'Ya existe un rol con ese nombre.' });
+        return;
+      }
+      dataToUpdate.name = name.trim().toUpperCase();
+    }
+
+    const updatedRole = await prisma.role.update({
+      where: { id: roleId },
+      data: dataToUpdate,
+      include: {
+        permissions: true,
+        _count: { select: { users: true } },
+      },
+    });
+
+    await logAudit(
+      req.user?.id || null,
+      'UPDATE_ROLE',
+      'ROLES',
+      roleId,
+      { changes: dataToUpdate },
+      req.ip
+    );
+
+    res.json({ success: true, data: updatedRole, message: 'Rol actualizado con éxito' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function duplicateRole(req: Request, res: Response): Promise<void> {
+  try {
+    const { roleId } = req.params;
+    const { name: customName, description: customDescription } = req.body;
+
+    const sourceRole = await prisma.role.findUnique({
+      where: { id: roleId },
+      include: { permissions: true },
+    });
+
+    if (!sourceRole) {
+      res.status(404).json({ success: false, message: 'Rol de origen no encontrado.' });
+      return;
+    }
+
+    const generatedName = (customName || `${sourceRole.name}_COPIA_${Date.now().toString().slice(-4)}`).trim().toUpperCase();
+    const existing = await prisma.role.findUnique({ where: { name: generatedName } });
+    if (existing) {
+      res.status(400).json({ success: false, message: `Ya existe un rol con el nombre ${generatedName}.` });
+      return;
+    }
+
+    const newRole = await prisma.role.create({
+      data: {
+        name: generatedName,
+        description: customDescription || `Copia de ${sourceRole.name} - ${sourceRole.description || ''}`.trim(),
+        isSystem: false,
+      },
+    });
+
+    if (sourceRole.permissions.length > 0) {
+      await prisma.permission.createMany({
+        data: sourceRole.permissions.map((p) => ({
+          roleId: newRole.id,
+          resource: p.resource,
+          action: p.action,
+        })),
+      });
+    }
+
+    const fullRole = await prisma.role.findUnique({
+      where: { id: newRole.id },
+      include: {
+        permissions: true,
+        _count: { select: { users: true } },
+      },
+    });
+
+    await logAudit(
+      req.user?.id || null,
+      'DUPLICATE_ROLE',
+      'ROLES',
+      newRole.id,
+      { sourceRoleId: roleId, newRoleName: generatedName },
+      req.ip
+    );
+
+    res.status(201).json({
+      success: true,
+      data: fullRole,
+      message: `Rol ${generatedName} duplicado con éxito`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export async function getRbacResources(req: Request, res: Response): Promise<void> {
-  // Database-driven or central application configuration for available modules
   const resources = [
-    { id: 'companies', label: 'Empresas & Cuentas' },
-    { id: 'contacts', label: 'Contactos & Clientes' },
-    { id: 'deals', label: 'Ventas (Deals)' },
-    { id: 'projects', label: 'Proyectos Ágiles' },
-    { id: 'inventory', label: 'Inventario & Catálogo' },
-    { id: 'omnichannel', label: 'Omnicanal WhatsApp' },
-    { id: 'settings', label: 'Configuración Sistema' },
+    { id: 'companies', label: 'Empresas & Cuentas', category: 'CRM' },
+    { id: 'contacts', label: 'Contactos & Leads', category: 'CRM' },
+    { id: 'deals', label: 'Ventas & Pipeline', category: 'CRM' },
+    { id: 'quotes', label: 'Presupuestos & Ofertas', category: 'Facturación' },
+    { id: 'invoices', label: 'Facturas & Cobros', category: 'Facturación' },
+    { id: 'inventory', label: 'Inventario & Catálogo', category: 'Operaciones' },
+    { id: 'projects', label: 'Proyectos Ágiles & Tableros', category: 'Operaciones' },
+    { id: 'tasks', label: 'Tareas & Backlog', category: 'Operaciones' },
+    { id: 'tickets', label: 'Soporte & Helpdesk', category: 'Atención al Cliente' },
+    { id: 'expenses', label: 'Gastos & Finanzas', category: 'Finanzas' },
+    { id: 'employees', label: 'Empleados & RRHH', category: 'RRHH' },
+    { id: 'calendar', label: 'Calendario & Citas', category: 'Organización' },
+    { id: 'appointments', label: 'Reservas & Citas Online', category: 'Organización' },
+    { id: 'logistics', label: 'Logística & Envíos', category: 'Operaciones' },
+    { id: 'workflows', label: 'Automatizaciones & Flujos', category: 'Sistema' },
+    { id: 'omnichannel', label: 'Omnicanal WhatsApp & Chat', category: 'Atención al Cliente' },
+    { id: 'reports', label: 'Informes & Métricas BI', category: 'Dirección' },
+    { id: 'integrations', label: 'Integraciones & Webhooks', category: 'Sistema' },
+    { id: 'users', label: 'Usuarios & Permisos RBAC', category: 'Administración' },
+    { id: 'settings', label: 'Configuración del Sistema', category: 'Administración' },
   ];
   const actions = [
     { id: 'read', label: 'Lectura' },
     { id: 'create', label: 'Crear' },
     { id: 'update', label: 'Editar' },
     { id: 'delete', label: 'Eliminar' },
-    { id: 'manage', label: 'Admin' },
+    { id: 'manage', label: 'Control Total' },
   ];
   res.json({ success: true, data: { resources, actions } });
 }

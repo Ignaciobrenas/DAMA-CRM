@@ -12,6 +12,25 @@ export const isSuperAdminUser = (user: any): boolean => {
   );
 };
 
+export const hasEmployeePermission = (user: any, action: string = 'read'): boolean => {
+  if (
+    user?.role === 'ADMIN' ||
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'GOD' ||
+    user?.tenantId === 'god' ||
+    isSuperAdminUser(user)
+  ) {
+    return true;
+  }
+  return Boolean(
+    user?.permissions?.some(
+      (p: any) =>
+        (p.resource === 'employees' || p.resource === '*') &&
+        (p.action === action || p.action === 'manage')
+    )
+  );
+};
+
 export const listEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
@@ -36,7 +55,7 @@ export const listEmployees = async (req: Request, res: Response): Promise<void> 
     });
 
     // Privacy Masking: If requester is standard employee and not HR/Admin, mask confidential salary & IBAN of others
-    const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(user, 'read');
     const sanitized = employees.map((emp) => {
       const isSelf = emp.userId === user?.id;
       if (!isHrOrAdmin && !isSelf) {
@@ -82,7 +101,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     }
 
     // Privacy check for standard employees
-    const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(user, 'read');
     const isSelf = employee.userId === user?.id;
 
     if (!isHrOrAdmin && !isSelf) {
@@ -193,7 +212,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
     const currentUser = (req as any).user;
     const isSuper = isSuperAdminUser(currentUser);
-    const isHrOrAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(currentUser, 'update');
 
     if (!isHrOrAdmin) {
       res.status(403).json({ success: false, message: 'Permisos insuficientes para editar empleados' });
@@ -243,6 +262,11 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
     const currentUser = (req as any).user;
     const isSuper = isSuperAdminUser(currentUser);
+
+    if (!hasEmployeePermission(currentUser, 'delete')) {
+      res.status(403).json({ success: false, message: 'Permisos insuficientes para eliminar empleados' });
+      return;
+    }
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) {

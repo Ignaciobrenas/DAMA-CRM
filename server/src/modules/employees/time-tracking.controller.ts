@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { wsService } from '../../services/websocket.service';
-import { isSuperAdminUser } from './employees.controller';
+import { isSuperAdminUser, hasEmployeePermission } from './employees.controller';
 
 export const clockIn = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -195,7 +195,7 @@ export const getTimeHistory = async (req: Request, res: Response): Promise<void>
   try {
     const user = (req as any).user;
     const isSuper = isSuperAdminUser(user);
-    const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(user, 'read');
     const { employeeId, startDate, endDate, limit = 50 } = req.query;
 
     let where: any = {};
