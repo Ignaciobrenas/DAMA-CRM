@@ -36,8 +36,8 @@ export function rateLimiter(options: RateLimitOptions) {
   } = options;
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    // Disable rate limiting during automated integration tests
-    if (process.env.NODE_ENV === 'test') {
+    // Disable rate limiting during automated tests or when explicitly disabled
+    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMITING === 'true') {
       return next();
     }
 
@@ -88,7 +88,7 @@ export const globalLimiter = rateLimiter({
 
 export const authLimiter = rateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: process.env.NODE_ENV === 'production' ? 15 : 1000,
   message: 'Demasiados intentos de autenticación. Por seguridad, su IP ha sido restringida por 15 minutos.',
 });
 

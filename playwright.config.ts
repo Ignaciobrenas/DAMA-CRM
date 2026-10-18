@@ -25,8 +25,11 @@ export default defineConfig({
     {
       command: 'npm --prefix server run dev',
       port: 4000,
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 30000,
+      env: {
+        DISABLE_RATE_LIMITING: 'true',
+      },
     },
     {
       command: 'npm --prefix client run dev',
