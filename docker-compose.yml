@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL Database Service
+  # ----------------------------------------------------------------------------
+  crm-db:
+    image: postgres:15-alpine
+    container_name: crm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm_password}
+      POSTGRES_DB: ${POSTGRES_DB:-dama_crm}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - crm-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crm_user} -d ${POSTGRES_DB:-dama_crm}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crm-net
+
+  # ----------------------------------------------------------------------------
+  # 2. Redis Cache & Queue Broker
+  # ----------------------------------------------------------------------------
+  crm-redis:
+    image: redis:7-alpine
+    container_name: crm-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - crm-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - crm-net
+
+  # ----------------------------------------------------------------------------
+  # 3. DAMA-CRM Backend API Server (Node.js 20 + Prisma)
+  # ----------------------------------------------------------------------------
+  crm-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: crm-server
+    restart: unless-stopped
+    ports:
+      - "${PORT:-4000}:4000"
+    depends_on:
+      crm-db:
+        condition: service_healthy
+      crm-redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-crm_user}:${POSTGRES_PASSWORD:-crm_password}@crm-db:5432/${POSTGRES_DB:-dama_crm}?schema=public
+      REDIS_HOST: crm-redis
+      REDIS_PORT: 6379
+    networks:
+      - crm-net
+
+  # ----------------------------------------------------------------------------
+  # 4. DAMA-CRM Frontend Client (Nginx Reverse Proxy & Static SPA)
+  # ----------------------------------------------------------------------------
+  crm-client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: crm-client
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_HTTP_PORT:-80}:80"
+    depends_on:
+      - crm-server
+    networks:
+      - crm-net
+
+volumes:
+  crm-pgdata:
+    driver: local
+  crm-redisdata:
+    driver: local
+
+networks:
+  crm-net:
+    driver: bridge

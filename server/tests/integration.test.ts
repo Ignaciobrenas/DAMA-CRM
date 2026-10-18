@@ -197,5 +197,87 @@ describe('DAMA-CRM Integration & Automation Tests', () => {
       assert.strictEqual(shouldTriggerInventory, false);
     });
   });
+
+  describe('Shopify HMAC-SHA256 Webhook Verification & Timing-Safe Security', () => {
+    const crypto = require('crypto');
+
+    const verifyShopifyHmac = (rawBody: string, hmacHeader: string, secret: string): boolean => {
+      try {
+        const generatedHmac = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
+        return crypto.timingSafeEqual(Buffer.from(generatedHmac), Buffer.from(hmacHeader));
+      } catch {
+        return false;
+      }
+    };
+
+    it('should verify genuine Shopify webhook signature', () => {
+      const secret = 'shpss_test_secret_key_123';
+      const body = JSON.stringify({ id: 987654321, email: 'cliente@shopify-test.es' });
+      const validHmac = crypto.createHmac('sha256', secret).update(body, 'utf8').digest('base64');
+
+      const isGenuine = verifyShopifyHmac(body, validHmac, secret);
+      assert.strictEqual(isGenuine, true);
+    });
+
+    it('should reject tampered or fraudulent webhook signatures', () => {
+      const secret = 'shpss_test_secret_key_123';
+      const body = JSON.stringify({ id: 987654321, email: 'cliente@shopify-test.es' });
+      const tamperedBody = JSON.stringify({ id: 987654321, email: 'hacker@malicious.com' });
+      const validHmac = crypto.createHmac('sha256', secret).update(body, 'utf8').digest('base64');
+
+      const isGenuine = verifyShopifyHmac(tamperedBody, validHmac, secret);
+      assert.strictEqual(isGenuine, false);
+    });
+  });
+
+  describe('Multi-Platform Product Attribute & Catalog Auto-Mapping (UnoPIM, OpenCart, Sage, Odoo)', () => {
+    it('should auto-map CRM product into eCommerce & ERP catalog representations', () => {
+      const { IntegrationsService } = require('../src/modules/integrations/integrations.service');
+      const testProduct = {
+        name: 'Workstation Industrial Xeon v4',
+        sku: 'WKS-IND-01',
+        category: 'Hardware',
+        price: 3200,
+        costPrice: 2100,
+        taxRate: 21,
+        weight: 12.5,
+      };
+
+      const mapped = IntegrationsService.autoMapProductAttributes(testProduct);
+      assert.ok(mapped.unopim);
+      assert.strictEqual(mapped.unopim.family, 'hardware');
+      assert.strictEqual(mapped.unopim.attributes.sku, 'WKS-IND-01');
+
+      assert.ok(mapped.opencart);
+      assert.strictEqual(mapped.opencart.model, 'WKS-IND-01');
+      assert.strictEqual(mapped.opencart.weight, 12.5);
+
+      assert.ok(mapped.sage);
+      assert.strictEqual(mapped.sage.supplier_part_number, 'WKS-IND-01');
+      assert.strictEqual(mapped.sage.nominal_code, '4000.0000');
+
+      assert.ok(mapped.odoo);
+      assert.strictEqual(mapped.odoo.default_code, 'WKS-IND-01');
+      assert.strictEqual(mapped.odoo.list_price, 3200);
+
+      assert.ok(mapped.woocommerce);
+      assert.strictEqual(mapped.woocommerce.sku, 'WKS-IND-01');
+    });
+  });
+
+  describe('Webhook Idempotency & Exponential Backoff Resilience', () => {
+    it('should compute exponential backoff intervals with jitter cap', () => {
+      const calculateBackoff = (attempt: number, maxDelayMs: number = 30000): number => {
+        const baseDelayMs = 1000;
+        return Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);
+      };
+
+      assert.strictEqual(calculateBackoff(0), 1000);
+      assert.strictEqual(calculateBackoff(1), 2000);
+      assert.strictEqual(calculateBackoff(2), 4000);
+      assert.strictEqual(calculateBackoff(3), 8000);
+      assert.strictEqual(calculateBackoff(6), 30000); // Capped at maxDelayMs
+    });
+  });
 });
 
