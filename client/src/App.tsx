@@ -63,7 +63,8 @@ const normalizeRoute = (pathname: string): string => {
   if (p === '/tickets') return '/tickets';
   if (p === '/expenses') return '/expenses';
   if (p === '/pipeline') return '/pipeline';
-    if (p === '/admin-bi') return '/admin-bi';
+  if (p === '/admin-bi') return '/admin-bi';
+  if (p === '/planner') return '/planner';
   if (p === '/agile') return '/agile';
   if (p === '/contacts') return '/contacts';
   if (p === '/companies') return '/companies';
@@ -282,8 +283,8 @@ const AppContent: React.FC = () => {
         return isModuleEnabled('appointments') ? <Appointments /> : <ModuleDisabled moduleKey="appointments" onGoBack={() => navigateTo('/')} />;
       case '/logistics':
         return isModuleEnabled('logistics') ? <Logistics /> : <ModuleDisabled moduleKey="logistics" onGoBack={() => navigateTo('/')} />;
-      case '/':
-        return <Dashboard onNavigate={navigateTo} />;
+      case '/admin-bi':
+        return <AdminBI />;
       default:
         return <NotFound onBack={() => navigateTo('/')} />;
     }
