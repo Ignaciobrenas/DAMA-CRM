@@ -54,9 +54,6 @@ export async function errorHandler(err: any, req: Request, res: Response, next: 
   } catch (dbErr) {
     console.error('🔴 [DB Logging Error] Failed to save error log:', dbErr);
   }
-  } catch (dbErr) {
-    console.error('🔴 [DB Logging Error] Failed to save error log:', dbErr);
-  }
 
   res.status(statusCode).json({
     success: false,
