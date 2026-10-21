@@ -184,7 +184,7 @@ export const LeadCapture: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-1.5 overflow-x-auto pb-1 border-b border-gray-200 dark:border-slate-800">
+      <div role="tablist" aria-label="Estrategias de captura de prospectos" className="flex space-x-1.5 overflow-x-auto pb-1 border-b border-gray-200 dark:border-slate-800">
         {[
           { id: 'smart_forms', label: '1. Formulario Inteligente', icon: Sparkles },
           { id: 'lead_magnets', label: '2. Lead Magnets (E-books/Cupones)', icon: Gift },
@@ -199,6 +199,8 @@ export const LeadCapture: React.FC = () => {
           return (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={isActive}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 isActive

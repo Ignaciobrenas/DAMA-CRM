@@ -47,8 +47,8 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | **00** | **Autenticación, RBAC & Onboarding** | `/login`, `/onboarding`, `/privacy`, Guards | Ninguna (Núcleo) | 🟢 CERRADO | 6 tests passed (100%) |
 | **01** | **Layout Global, Navegación & Modales** | Sidebar, Navbar, CommandMenu, Modales | Módulo 00 | 🟢 CERRADO | 6 tests passed (100%) |
 | **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | 🟢 CERRADO | 7 tests passed (100%) |
-| **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | 🟡 EN CURSO | En preparación |
-| **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | ⚪ PENDIENTE | Base existente |
+| **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | 🟢 CERRADO | 7 tests passed (100%) |
+| **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | 🟡 EN CURSO | En desarrollo |
 | **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | ⚪ PENDIENTE | Base existente |
 | **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
 | **07** | **Inventario, Catálogo & Almacenes** | `/inventory` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
@@ -125,6 +125,34 @@ Los módulos se auditan en estricto orden de dependencia funcional:
   3. **Suite Playwright robusta**: `e2e/module-02-companies.spec.ts` con 7 pruebas completas: listado y filtros, validación de CIF, creación feliz con generador dinámico de CIF válido, edición, borrado con confirmación centrada, operaciones masivas/exportación CSV y adaptabilidad responsive (375px/768px/1440px) (7/7 en verde).
 - **Mejoras Pendientes**:
   - Ninguna. Módulo 02 cerrado y validado al 100%.
+
+### Módulo 03 · CRM Core · Contactos & Lead Capture
+- **Estado**: 🟢 CERRADO
+- **Issues Encontrados**:
+  1. *Falta de centrado y atributos de accesibilidad en modal general y ficha de contacto*: `Modal.tsx` carecía de la clase obligatoria `m-auto` en el contenedor del diálogo interior y `Contacts.tsx` no contaba con listeners para la tecla `Escape`.
+  2. *Violación WAI-ARIA en pestañas de Lead Capture*: En `LeadCapture.tsx`, el contenedor `<div role="tablist">` envolvía botones `<button>` sin el atributo `role="tab"`, provocando una violación crítica de Axe Core (`aria-required-children`).
+  3. *Etiquetas y accesibilidad en formularios de Lead Capture*: Los campos del configurador de formularios web carecían de etiquetas descriptivas asociadas, generando advertencias en lectores de pantalla.
+- **Issues Arreglados**:
+  1. Actualizado `Modal.tsx` y `Contacts.tsx` para garantizar posicionamiento estricto centrado `fixed inset-0 z-50 flex items-center justify-center p-4 m-auto`, con `role="dialog"`, `aria-modal="true"` y listener de tecla `Escape` para cierre inmediato.
+  2. Asignado `role="tab"`, `aria-selected` y nombres accesibles en todas las pestañas de `LeadCapture.tsx`.
+  3. Añadidos atributos `aria-label` en controles de filtrado, inputs de búsqueda y botones de acciones masivas.
+- **Mejoras Implementadas**:
+  1. **UX de Ficha de Contacto**: Navegación fluida por pestañas (Resumen, Actividad, Notas, Tareas), con estados visuales claros, insignias de estado (Lead, Cualificado, Cliente, Inactivo) y paleta pastel anti-glare.
+  2. **Diseño Visual Anti-Glare**: Fondos suaves en tarjetas de contacto, contraste óptimo con tipografía carbón (`#0F172A`) y bordes `border-slate-200`.
+  3. **Suite Playwright Integral**: `e2e/module-03-contacts-lead-capture.spec.ts` con 7 tests completos: directorio y búsqueda, validación de formulario centrado, creación y asociación con empresa, ficha detallada con navegación interna, selección masiva con exportación CSV, hub de captación de leads con envío de formulario inteligente, y pruebas responsive en 375px y 768px (7/7 en verde).
+- **Mejoras Pendientes**:
+  - Ninguna. Módulo 03 cerrado y verificado al 100%.
+
+### Módulo 04 · Pipeline de Ventas, Kanban & Deals
+- **Estado**: 🟡 EN CURSO
+- **Issues Encontrados**:
+  - En auditoría.
+- **Issues Arreglados**:
+  - En auditoría.
+- **Mejoras Implementadas**:
+  - En diseño y desarrollo.
+- **Mejoras Pendientes**:
+  - Validación completa con Playwright.
 
 ---
 *(Se actualiza automáticamente al finalizar cada módulo)*
