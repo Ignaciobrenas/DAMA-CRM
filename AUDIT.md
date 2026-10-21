@@ -45,8 +45,8 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | # | Módulo | Rutas / Áreas | Dependencias Previas | Estado | Tests Playwright |
 | :-: | :--- | :--- | :--- | :---: | :---: |
 | **00** | **Autenticación, RBAC & Onboarding** | `/login`, `/onboarding`, `/privacy`, Guards | Ninguna (Núcleo) | 🟢 CERRADO | 6 tests passed (100%) |
-| **01** | **Layout Global, Navegación & Modales** | Sidebar, Navbar, CommandMenu, Modales | Módulo 00 | 🟡 EN CURSO | En preparación |
-| **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
+| **01** | **Layout Global, Navegación & Modales** | Sidebar, Navbar, CommandMenu, Modales | Módulo 00 | 🟢 CERRADO | 6 tests passed (100%) |
+| **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | 🟡 EN CURSO | En preparación |
 | **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | ⚪ PENDIENTE | Base existente |
 | **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | ⚪ PENDIENTE | Base existente |
 | **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | ⚪ PENDIENTE | Base existente |
@@ -86,6 +86,24 @@ Los módulos se auditan en estricto orden de dependencia funcional:
   - Creación de suite `e2e/module-00-auth-rbac.spec.ts` validando flujo feliz, casos límite, alternancia de visibilidad de clave, roles RBAC y auditoría con Axe Core en viewports móvil, tablet y desktop (6/6 en verde).
 - **Mejoras Pendientes**:
   - Ninguna. Módulo 00 cerrado y verificado al 100%.
+
+### Módulo 01 · Layout Global, Navegación & Modales
+- **Estado**: 🟢 CERRADO
+- **Issues Encontrados**:
+  1. *LanguageModal sin cierre con Escape*: El modal de idiomas no escuchaba el evento `keydown` de la tecla `Escape`, impidiendo el cierre accesible por teclado.
+  2. *Atajo global Cmd+K inactivo*: El buscador mostraba la tecla `⌘K`, pero la aplicación no escuchaba `Ctrl+K / Cmd+K` de forma global para desplegar el `CommandMenu`.
+  3. *Accesibilidad en ClockWidget en Mobile*: El botón de fichaje de entrada y salida ocultaba el texto en pantallas pequeñas (`hidden sm:inline`), dejando el botón sin nombre accesible para Axe Core (`button-name` critical violation).
+  4. *Botones de cierre sin aria-label*: Los botones de cerrar en `UserProfileModal`, `GodModeModal` y `CommandMenu` no tenían `aria-label="Cerrar"`.
+- **Issues Arreglados**:
+  1. Añadido listener de `Escape` en `LanguageModal` y en `CommandMenu`.
+  2. Añadido listener global en `client/src/App.tsx` para `(e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'`, abriendo el menú de comandos desde cualquier pantalla.
+  3. Añadidos atributos `aria-label={t('timeTracking.clockIn')}` y `title={t('timeTracking.clockIn')}` a los botones del fichador de jornada `ClockWidget`.
+  4. Añadidos `aria-label` en los botones de cierre y alternancia de todos los modales del layout.
+  5. Asegurado el centrado estricto de pantalla con `m-auto` y `fixed inset-0 z-50 flex items-center justify-center p-4`.
+- **Mejoras Implementadas**:
+  - Nueva suite `e2e/module-01-layout-navigation.spec.ts` con 6 tests completos: jerarquía de Sidebar/Topbar, LanguageModal, UserProfileModal, GodModeModal, CommandMenu y navegación responsive móvil con Axe Core (6/6 en verde).
+- **Mejoras Pendientes**:
+  - Ninguna. Módulo 01 cerrado y verificado al 100%.
 
 ---
 *(Se actualiza automáticamente al finalizar cada módulo)*

@@ -151,7 +151,8 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
             <button
               onClick={() => setIsClockOutModalOpen(true)}
               disabled={actionLoading}
-              title={t('timeTracking.clockOut')}
+              aria-label={t('timeTracking.clockOut', 'Fichar Salida')}
+              title={t('timeTracking.clockOut', 'Fichar Salida')}
               className="p-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:bg-rose-500/10 rounded"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
@@ -161,6 +162,8 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
           <button
             onClick={() => setIsModalOpen(true)}
             disabled={actionLoading}
+            aria-label={t('timeTracking.clockIn', 'Fichar Entrada')}
+            title={t('timeTracking.clockIn', 'Fichar Entrada')}
             className="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition"
           >
             <Play className="w-3 h-3 fill-current" />

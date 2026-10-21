@@ -112,6 +112,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </span>
               <button
                 onClick={onClose}
+                aria-label={t("close", "Cerrar")}
                 className="p-1 rounded-full bg-black/20 hover:bg-black/40 text-white transition"
               >
                 <X className="w-4 h-4" />
@@ -160,6 +161,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
+                  aria-label="Recordar sesión en este equipo"
                   checked={rememberSession}
                   onChange={(e) => handleToggleRemember(e.target.checked)}
                   className="sr-only peer"
