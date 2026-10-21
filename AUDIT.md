@@ -49,8 +49,8 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | 🟢 CERRADO | 7 tests passed (100%) |
 | **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | 🟢 CERRADO | 7 tests passed (100%) |
 | **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | 🟢 CERRADO | 8 tests passed (100%) |
-| **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | 🟡 EN CURSO | En desarrollo |
-| **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
+| **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | 🟢 CERRADO | 8 tests passed (100%) |
+| **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | 🟡 EN CURSO | En desarrollo |
 | **07** | **Inventario, Catálogo & Almacenes** | `/inventory` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
 | **08** | **Logística & Envíos con Transportistas** | `/logistics` | Módulo 00, 07 | ⚪ PENDIENTE | Base existente |
 | **09** | **Planificador Ágil, Tableros & Sprints** | `/agile`, `/planner` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
@@ -165,6 +165,25 @@ Los módulos se auditan en estricto orden de dependencia funcional:
   - Ninguna. Módulo 04 cerrado y validado al 100%.
 
 ### Módulo 05 · Facturación, Presupuestos & Firma
+- **Estado**: 🟢 CERRADO
+- **Issues Encontrados**:
+  1. *Falta de centrado y atributos de accesibilidad en múltiples modales*: `AgingReportModal.tsx`, `QuoteSignModal.tsx`, `ExcelCsvImportModal.tsx` y `ConfirmModal.tsx` carecían de la clase `m-auto` en sus contenedores internos, y no contaban con `role="dialog"`, `aria-modal="true"` ni listener de tecla `Escape`.
+  2. *Bug de extracción de token público en HashRouter*: En `PublicQuoteSign.tsx`, el token se extraía con `window.location.pathname.split('/').pop()`. En modo SPA Hash (`/#/quote/sign/:token`), el pathname es `/`, dejando el token en cadena vacía y bloqueando la consulta del presupuesto para firma pública de clientes.
+  3. *Violación WAI-ARIA en barra de pestañas*: El contenedor de pestañas de Facturación carecía de `role="tablist"` y los botones de navegación no tenían `role="tab"` ni `aria-selected`.
+  4. *Ausencia de métricas financieras de cabecera*: No se visualizaba el balance en vivo de Total Facturado, Cobrado, Pendiente de Cobro y Presupuestos activos.
+- **Issues Arreglados**:
+  1. Actualizados `AgingReportModal.tsx`, `QuoteSignModal.tsx`, `ExcelCsvImportModal.tsx` y `ConfirmModal.tsx` con centrado estricto `fixed inset-0 z-50 flex items-center justify-center p-4 m-auto`, `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, listener global de `Escape` y `aria-label="Cerrar"` en los botones de cierre.
+  2. Corregido el algoritmo de extracción de token en `PublicQuoteSign.tsx` para soportar tanto rutas directas (`/quote/sign/:token`) como rutas en Hash (`/#/quote/sign/:token`).
+  3. Añadido `role="tablist"` con `aria-label="Secciones de Facturación"` y `role="tab"` con `aria-selected` en cada pestaña.
+  4. Incorporada franja de 4 tarjetas KPI con cálculos reactivos en tiempo real: Total Facturado, Total Cobrado, Pendiente de Cobro y Presupuestos Activos.
+- **Mejoras Implementadas**:
+  1. **UX de Facturación & Cálculos en Vivo**: Cálculo dinámico en el modal de factura/presupuesto con desglose instantáneo de Base Imponible, Descuento Global e Individual, IVA (21%, 10%, 4%, 0%, 7%) y Retención IRPF.
+  2. **Diseño Visual Anti-Glare**: Badges de estado con paleta pastel funcional (Verde esmeralda para Cobrada, Azul para Pendiente, Púrpura para Proforma, Rosa para Rectificativa/Abono), y micro-contraste descansado con bordes `border-slate-200`.
+  3. **Suite Playwright Integral**: `e2e/module-05-invoicing-quotes.spec.ts` con 8 tests completos: dashboard y KPIs con Axe a11y, filtros de estado (Todas, Cobradas, Pendientes, Borrador), creación de factura con cálculo matemático en vivo y comprobación de centrado, marcado como cobrado y exportación PDF, creación y listado de presupuestos, modal de firma digital en pantalla, modales de aging/morosidad e importación con Escape, y viewports responsive 375px y 768px (8/8 en verde).
+- **Mejoras Pendientes**:
+  - Ninguna. Módulo 05 cerrado y validado al 100%.
+
+### Módulo 06 · Gastos & Control Financiero
 - **Estado**: 🟡 EN CURSO
 - **Issues Encontrados**:
   - En auditoría.

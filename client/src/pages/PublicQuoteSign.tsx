@@ -6,7 +6,13 @@ import { LoadingScreen } from '../components/common/Loading';
 import { QuoteSignModal } from '../components/invoicing/QuoteSignModal';
 
 export const PublicQuoteSign: React.FC = () => {
-  const token = typeof window !== 'undefined' ? window.location.pathname.split('/').pop() : '';
+  const token = typeof window !== 'undefined'
+    ? (window.location.hash.includes('/quote/sign/')
+        ? window.location.hash.split('/quote/sign/')[1]?.split('?')[0] || ''
+        : window.location.pathname.includes('/quote/sign/')
+        ? window.location.pathname.split('/quote/sign/')[1]?.split('?')[0] || ''
+        : window.location.pathname.split('/').pop() || '')
+    : '';
   const { t } = useTranslation();
   const [quote, setQuote] = useState<any>(null);
   const [loading, setLoading] = useState(true);

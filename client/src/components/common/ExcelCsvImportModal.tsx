@@ -44,6 +44,16 @@ export const ExcelCsvImportModal: React.FC<ExcelCsvImportModalProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isProcessing) onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isProcessing, onClose]);
+
   const targetConfig = {
     invoices: {
       title: 'Importador Masivo de Facturas & Cobros',
@@ -215,14 +225,17 @@ export const ExcelCsvImportModal: React.FC<ExcelCsvImportModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-modal-title"
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] m-auto"
       >
         {/* Header */}
         <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-950/20">
@@ -231,7 +244,7 @@ export const ExcelCsvImportModal: React.FC<ExcelCsvImportModalProps> = ({
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+              <h2 id="import-modal-title" className="text-sm font-bold text-gray-900 dark:text-white">
                 {targetConfig.title}
               </h2>
               <p className="text-xs text-gray-500 dark:text-slate-400">
@@ -243,6 +256,7 @@ export const ExcelCsvImportModal: React.FC<ExcelCsvImportModalProps> = ({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Cerrar"
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800"
           >
             <X className="w-4 h-4" />

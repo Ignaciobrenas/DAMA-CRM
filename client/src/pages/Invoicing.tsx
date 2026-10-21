@@ -522,65 +522,31 @@ export const Invoicing: React.FC = () => {
     toast.success(t('success'), `${quotes.length} presupuestos exportados a CSV`);
   };
 
+  const kpiTotals = useMemo(() => {
+    const totalInvoiced = invoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
+    const totalCollected = invoices.filter((i) => i.status === 'PAID').reduce((acc, inv) => acc + (inv.total || 0), 0);
+    const totalPending = invoices.filter((i) => i.status !== 'PAID').reduce((acc, inv) => acc + (inv.total || 0), 0);
+    const quotesTotal = quotes.reduce((acc, q) => acc + (q.total || 0), 0);
+    return { totalInvoiced, totalCollected, totalPending, quotesTotal };
+  }, [invoices, quotes]);
+
   return (
     <div className="space-y-4">
-      {/* Header & Tabs */}
+      {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
             {t('invoicing')}
           </h1>
-          <p className="text-xs text-gray-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('invoicingSubtitle')}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
-            <button
-              onClick={() => setActiveTab('invoices')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'invoices'
-                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
-              }`}
-            >
-              Facturas ({invoices.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('quotes')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'quotes'
-                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
-              }`}
-            >
-              {t('quotes')} ({quotes.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('recurring')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'recurring'
-                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
-              }`}
-            >
-              Suscripciones ({recurringInvoices.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('contracts')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'contracts'
-                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
-              }`}
-            >
-              Contratos ({contracts.length})
-            </button>
-          </div>
-
           <button
             onClick={() => setIsAgingModalOpen(true)}
+            data-testid="btn-aging-report"
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             title="Informe de Antigüedad de Deuda y Control de Morosidad"
           >
@@ -590,7 +556,8 @@ export const Invoicing: React.FC = () => {
 
           <button
             onClick={activeTab === 'invoices' ? handleExportInvoicesCsv : handleExportQuotesCsv}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            data-testid="btn-export-csv"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             title="Exportar listado a archivo CSV compatible con Excel"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
@@ -600,6 +567,7 @@ export const Invoicing: React.FC = () => {
           <PermissionGate resource="invoices" action="create">
             <button
               onClick={() => setIsImportModalOpen(true)}
+              data-testid="btn-import-invoices"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
               title="Importar Facturas por Excel o CSV"
             >
@@ -614,6 +582,7 @@ export const Invoicing: React.FC = () => {
                 setModalType('invoice');
                 setIsModalOpen(true);
               }}
+              data-testid="btn-new-invoice"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -626,6 +595,7 @@ export const Invoicing: React.FC = () => {
                 setModalType('quote');
                 setIsModalOpen(true);
               }}
+              data-testid="btn-new-quote"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -638,6 +608,7 @@ export const Invoicing: React.FC = () => {
                 setModalType('recurring');
                 setIsModalOpen(true);
               }}
+              data-testid="btn-new-recurring"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -650,6 +621,7 @@ export const Invoicing: React.FC = () => {
                 setModalType('contract');
                 setIsModalOpen(true);
               }}
+              data-testid="btn-new-contract"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -657,6 +629,113 @@ export const Invoicing: React.FC = () => {
             </button>
           </PermissionGate>
         </div>
+      </div>
+
+      {/* KPI Metrics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+            <Receipt className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Total Facturado</p>
+            <p className="text-base font-bold text-slate-900 dark:text-white" data-testid="kpi-total-invoiced">
+              {kpiTotals.totalInvoiced.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Cobrado (Pagado)</p>
+            <p className="text-base font-bold text-slate-900 dark:text-white" data-testid="kpi-total-paid">
+              {kpiTotals.totalCollected.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Pendiente de Cobro</p>
+            <p className="text-base font-bold text-slate-900 dark:text-white" data-testid="kpi-total-pending">
+              {kpiTotals.totalPending.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Presupuestos ({quotes.length})</p>
+            <p className="text-base font-bold text-slate-900 dark:text-white" data-testid="kpi-total-quotes">
+              {kpiTotals.quotesTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div role="tablist" aria-label="Secciones de Facturación" className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-fit">
+        <button
+          role="tab"
+          aria-selected={activeTab === 'invoices'}
+          data-testid="tab-invoices"
+          onClick={() => setActiveTab('invoices')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'invoices'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          Facturas ({invoices.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'quotes'}
+          data-testid="tab-quotes"
+          onClick={() => setActiveTab('quotes')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'quotes'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          {t('quotes')} ({quotes.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'recurring'}
+          data-testid="tab-recurring"
+          onClick={() => setActiveTab('recurring')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'recurring'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          Suscripciones ({recurringInvoices.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'contracts'}
+          data-testid="tab-contracts"
+          onClick={() => setActiveTab('contracts')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'contracts'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          Contratos ({contracts.length})
+        </button>
       </div>
 
       {/* Tab: Invoices List */}
@@ -1367,6 +1446,7 @@ export const Invoicing: React.FC = () => {
                 <div key={idx} className="flex items-center space-x-2">
                   <input
                     type="text"
+                    data-testid={`item-desc-${idx}`}
                     placeholder={t('conceptDescription')}
                     required
                     value={it.description}
@@ -1375,6 +1455,7 @@ export const Invoicing: React.FC = () => {
                   />
                   <input
                     type="number"
+                    data-testid={`item-qty-${idx}`}
                     placeholder={t('quantity')}
                     required
                     min="1"
@@ -1384,6 +1465,7 @@ export const Invoicing: React.FC = () => {
                   />
                   <input
                     type="number"
+                    data-testid={`item-price-${idx}`}
                     placeholder={t('invoicing.pricePlaceholder')}
                     required
                     step="0.01"
@@ -1479,6 +1561,7 @@ export const Invoicing: React.FC = () => {
             </button>
             <button
               type="submit"
+              data-testid="invoice-submit-btn"
               className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs"
             >
               {modalType === 'invoice'

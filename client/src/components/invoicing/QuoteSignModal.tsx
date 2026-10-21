@@ -42,7 +42,14 @@ export const QuoteSignModal: React.FC<QuoteSignModalProps> = ({
         ctx.lineJoin = 'round';
       }
     }
-  }, [isOpen]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting) onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, submitting, onClose]);
 
   if (!isOpen) return null;
 
@@ -125,15 +132,18 @@ export const QuoteSignModal: React.FC<QuoteSignModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="quote-sign-title"
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-up"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden m-auto animate-in zoom-in-95"
       >
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h3 id="quote-sign-title" className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <PenTool className="w-5 h-5 text-amber-500" />
               <span>{t('quotes.digitalAcceptanceTitle')}</span>
             </h3>
@@ -143,6 +153,7 @@ export const QuoteSignModal: React.FC<QuoteSignModalProps> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Cerrar"
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
             <X className="w-5 h-5" />
