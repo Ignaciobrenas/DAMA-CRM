@@ -197,17 +197,20 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/50 backdrop-blur-xs animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="record-drawer-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg h-full bg-white dark:bg-slate-900 shadow-2xl border-l border-gray-200 dark:border-slate-800 p-6 flex flex-col"
+        className="w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col m-auto overflow-hidden animate-in zoom-in-95"
       >
         {/* Drawer Header */}
         <div className="flex items-start justify-between pb-4 border-b border-gray-200 dark:border-slate-800">
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">{title}</h2>
+              <h2 id="record-drawer-title" className="text-base font-bold text-gray-900 dark:text-white">{title}</h2>
               {extraBadge && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
                   {extraBadge}
@@ -219,15 +222,17 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
           <button
             onClick={onClose}
             className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            aria-label={t('close')}
+            aria-label={t('close', 'Cerrar')}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tab Selector */}
-        <div className="flex space-x-1 p-1 mt-3 bg-gray-100 dark:bg-slate-800 rounded-lg text-xs font-semibold">
+        <div role="tablist" aria-label="Secciones del registro" className="flex space-x-1 p-1 mt-3 bg-gray-100 dark:bg-slate-800 rounded-lg text-xs font-semibold">
           <button
+            role="tab"
+            aria-selected={activeTab === 'activities'}
             onClick={() => setActiveTab('activities')}
             className={`flex-1 py-1.5 rounded-md transition-colors flex items-center justify-center space-x-1.5 ${
               activeTab === 'activities'
@@ -239,6 +244,8 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
             <span>{t('recordDrawer.activities')} ({activities.length})</span>
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === 'customFields'}
             onClick={() => setActiveTab('customFields')}
             className={`flex-1 py-1.5 rounded-md transition-colors flex items-center justify-center space-x-1.5 ${
               activeTab === 'customFields'
@@ -251,11 +258,13 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
           </button>
           {entityType === 'CONTACT' && (
             <button
+              role="tab"
+              aria-selected={activeTab === 'messages'}
               onClick={() => setActiveTab('messages')}
               className={`flex-1 py-1.5 rounded-md transition-colors flex items-center justify-center space-x-1.5 ${
                 activeTab === 'messages'
                   ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
+                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900'
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
@@ -308,6 +317,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                   <input
                     type="text"
                     required
+                    data-testid="activity-title-input"
                     placeholder={t('recordDrawer.activityTitlePlaceholder')}
                     value={activityTitle}
                     onChange={(e) => setActivityTitle(e.target.value)}
@@ -348,6 +358,7 @@ export const RecordDrawer: React.FC<RecordDrawerProps> = ({
                   <div className="flex justify-end pt-1">
                     <button
                       type="submit"
+                      data-testid="submit-activity-btn"
                       className="px-3 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-xs"
                     >
                       {t('recordDrawer.saveActivity')}

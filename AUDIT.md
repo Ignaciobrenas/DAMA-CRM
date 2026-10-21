@@ -48,8 +48,8 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | **01** | **Layout Global, Navegación & Modales** | Sidebar, Navbar, CommandMenu, Modales | Módulo 00 | 🟢 CERRADO | 6 tests passed (100%) |
 | **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | 🟢 CERRADO | 7 tests passed (100%) |
 | **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | 🟢 CERRADO | 7 tests passed (100%) |
-| **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | 🟡 EN CURSO | En desarrollo |
-| **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | ⚪ PENDIENTE | Base existente |
+| **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | 🟢 CERRADO | 8 tests passed (100%) |
+| **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | 🟡 EN CURSO | En desarrollo |
 | **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
 | **07** | **Inventario, Catálogo & Almacenes** | `/inventory` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
 | **08** | **Logística & Envíos con Transportistas** | `/logistics` | Módulo 00, 07 | ⚪ PENDIENTE | Base existente |
@@ -144,6 +144,27 @@ Los módulos se auditan en estricto orden de dependencia funcional:
   - Ninguna. Módulo 03 cerrado y verificado al 100%.
 
 ### Módulo 04 · Pipeline de Ventas, Kanban & Deals
+- **Estado**: 🟢 CERRADO
+- **Issues Encontrados**:
+  1. *Violación de la Regla #3 en `RecordDrawer`*: La ficha de detalle de oportunidad se desplegaba como panel lateral derecho pegado (`justify-end`, `border-l`, `h-full`) en lugar de modal centrado con `m-auto`.
+  2. *Imposibilidad de cambiar de etapa en dispositivos táctiles / lectores de pantalla*: El pipeline dependía exclusivamente de HTML5 Drag and Drop nativo de escritorio, impidiendo a usuarios de móvil, tablet o teclado mover oportunidades entre columnas.
+  3. *Inexistencia de flujo de edición y borrado de oportunidades*: Aunque el backend contaba con endpoints `PATCH /deals/:id` y `DELETE /deals/:id`, la interfaz carecía de controles de edición y borrado de tratos.
+  4. *Semántica WAI-ARIA en RecordDrawer*: Faltaba `role="tablist"` y `role="tab"` con `aria-selected` en las pestañas del diálogo.
+  5. *Ausencia de métricas ejecutivas visuales*: El resumen de KPIs del pipeline se mostraba como texto plano diminuto sin tarjetas estructuradas.
+- **Issues Arreglados**:
+  1. Refactorizado `RecordDrawer.tsx` como diálogo modal centrado exacto en pantalla (`fixed inset-0 z-50 flex items-center justify-center p-4 m-auto`) con `role="dialog"`, `aria-modal="true"` y tecla `Escape`.
+  2. Incorporado selector accesible de cambio rápido de etapa en cada tarjeta de oportunidad, con disparo automático de confeti al mover a "Ganada" / "Won".
+  3. Añadidos modales centrados para Edición de Oportunidad y Diálogo de Confirmación de Borrado con `m-auto` y estilos anti-glare.
+  4. Atributos de accesibilidad completos `data-testid`, `role="tablist"`, `role="tab"`, `aria-controls` y `aria-label` en inputs, filtros y botones de exportación.
+  5. Diseñada franja de KPIs ejecutivos con 4 tarjetas de micro-contraste: Oportunidades Activas, Volumen Total Pipeline, Valor Ponderado (Prob.) y Tratos Ganados.
+- **Mejoras Implementadas**:
+  1. **UX de Tablero Kanban**: Desplazamiento horizontal fluido con alineación `snap-x`, badges de probabilidad por columna, filtros por importes preestablecidos (> 5k €, > 20k €, > 50k €) y búsqueda en tiempo real.
+  2. **Diseño Visual Anti-Glare**: Superficies en `#FFFFFF` con sutil delimitación `border-slate-200`, chips pastel para estado, números monospaciados en verde esmeralda y soporte completo modo claro/oscuro.
+  3. **Suite Playwright Integral**: `e2e/module-04-pipeline-deals.spec.ts` con 8 tests completos: kanban y KPIs con Axe a11y, multifiltros y presets, creación de trato con validación centrada, ficha `RecordDrawer` centrada con registro de actividades, cambio rápido de etapa con celebración confeti, edición y borrado con modal centrado, exportación Excel/PDF y viewports responsive 375px y 768px (8/8 en verde).
+- **Mejoras Pendientes**:
+  - Ninguna. Módulo 04 cerrado y validado al 100%.
+
+### Módulo 05 · Facturación, Presupuestos & Firma
 - **Estado**: 🟡 EN CURSO
 - **Issues Encontrados**:
   - En auditoría.
