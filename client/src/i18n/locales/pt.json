@@ -1626,5 +1626,18 @@
   "privacy.cookieExpiry": "Expiración",
   "privacy.cookiePurpose": "Finalidad Técnica",
   "privacy.securityTitle": "7. Estándares de Seguridad, Cifrado TLS 1.3 y Aislamiento RLS",
-  "privacy.securityDesc": "Toda la comunicación entre el navegador y el servidor está cifrada mediante TLS 1.3 (HSTS). Los datos almacenados en reposo están aislados por organización mediante Row Level Security (RLS) y claves criptográficas de servidor."
+  "privacy.securityDesc": "Toda la comunicación entre el navegador y el servidor está cifrada mediante TLS 1.3 (HSTS). Los datos almacenados en reposo están aislados por organización mediante Row Level Security (RLS) y claves criptográficas de servidor.",
+  "tickets.allStatuses": "Todos os estados",
+  "tickets.allAgents": "Todos os agentes",
+  "tickets.assignToMe": "Atribuir a mim",
+  "tickets.assignedToYou": "Atribuído a si",
+  "tickets.reassign": "Reatribuir",
+  "tickets.resolveAction": "Resolver Ticket",
+  "tickets.closeAction": "Fechar Ticket",
+  "tickets.reopenAction": "Reabrir Ticket",
+  "tickets.deleteTicket": "Eliminar Ticket",
+  "tickets.confirmDelete": "Tem a certeza de que deseja eliminar este ticket permanentemente? Esta ação apagará todas as mensagens e não pode ser anulada.",
+  "tickets.deletedSuccess": "Ticket eliminado com sucesso",
+  "tickets.ticketDeletedAlert": "Ticket eliminado",
+  "tickets.pressCtrlEnter": "Ctrl+Enter para enviar"
 }

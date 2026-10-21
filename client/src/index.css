@@ -41,47 +41,58 @@
    Modern Anti-Glare Light Theme (Linear / Stripe / Vercel Standards)
    ========================================================================== */
 html:not(.dark) {
-  --surface-bg: #F1F5F9;
+  --surface-bg: #EEF0F3;
+  --surface-canvas: #EEF0F3;
+  --surface-sidebar: #F6F7F9;
   --surface-card: #FFFFFF;
-  --surface-well: #F8FAFC;
-  --surface-hover: #F1F5F9;
-  --border-subtle: #E2E8F0;
+  --surface-well: #EEF2F6;
+  --surface-hover: #E5E9EE;
+  --border-subtle: #D9DDE3;
   --border-medium: #CBD5E1;
   --border-strong: #94A3B8;
   --text-primary: #0F172A;
   --text-secondary: #334155;
   --text-muted: #64748B;
+  --color-primary-soft: #2563EB;
+  --color-success-bg: #D1FAE5;
+  --color-success-text: #065F46;
+  --color-warning-bg: #FEF3C7;
+  --color-warning-text: #92400E;
+  --color-danger-bg: #FFE4E6;
+  --color-danger-text: #9F1239;
+  --color-info-bg: #DBEAFE;
+  --color-info-text: #1E40AF;
 }
 
 /* Light Mode Canvas & Background: Soft, relaxing slate canvas, strictly eliminating blinding glare */
 html:not(.dark) body {
-  background-color: #F1F5F9 !important;
+  background-color: #EEF0F3 !important;
   color: #0F172A !important;
 }
 
 /* Card surfaces: Crisp clean surface on top of slate canvas with subtle border and ambient shadow */
 html:not(.dark) .bg-white {
   background-color: #FFFFFF !important;
-  border-color: #E2E8F0 !important;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03) !important;
+  border-color: #D9DDE3 !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.04) !important;
 }
 
 /* Sidebar & Navigation: Grounded soft slate-50 with refined border */
 html:not(.dark) aside {
-  background-color: #F8FAFC !important;
-  border-right: 1px solid #E2E8F0 !important;
+  background-color: #F6F7F9 !important;
+  border-right: 1px solid #D9DDE3 !important;
 }
 
 html:not(.dark) header {
   background-color: rgba(248, 250, 252, 0.95) !important;
   backdrop-filter: blur(12px) !important;
-  border-bottom: 1px solid #E2E8F0 !important;
+  border-bottom: 1px solid #D9DDE3 !important;
 }
 
 /* Subtle border tokens */
 html:not(.dark) .border-gray-200,
 html:not(.dark) .border-slate-200 {
-  border-color: #E2E8F0 !important;
+  border-color: #D9DDE3 !important;
 }
 
 html:not(.dark) .border-gray-100,
@@ -97,14 +108,14 @@ html:not(.dark) .border-slate-300 {
 /* Wells and nested sections */
 html:not(.dark) .bg-gray-50,
 html:not(.dark) .bg-slate-50 {
-  background-color: #F8FAFC !important;
-  border-color: #E2E8F0 !important;
+  background-color: #F6F7F9 !important;
+  border-color: #D9DDE3 !important;
 }
 
 html:not(.dark) .bg-gray-100,
 html:not(.dark) .bg-slate-100 {
-  background-color: #F1F5F9 !important;
-  border-color: #E2E8F0 !important;
+  background-color: #EEF0F3 !important;
+  border-color: #D9DDE3 !important;
 }
 
 /* Form Controls & Inputs: Clean, stable, comfortable contrast */

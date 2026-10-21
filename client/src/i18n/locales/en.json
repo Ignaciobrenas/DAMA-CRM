@@ -1626,5 +1626,18 @@
   "workflows.triggerInvoicePaid": "invoice.paid (Invoice Paid)",
   "workflows.workflowColumn": "Workflow",
   "workflowsSubtitle": "Business process automation and event-driven triggers",
-  "yes": "Yes"
+  "yes": "Yes",
+  "tickets.allStatuses": "All statuses",
+  "tickets.allAgents": "All agents",
+  "tickets.assignToMe": "Assign to me",
+  "tickets.assignedToYou": "Assigned to you",
+  "tickets.reassign": "Reassign",
+  "tickets.resolveAction": "Resolve Ticket",
+  "tickets.closeAction": "Close Ticket",
+  "tickets.reopenAction": "Reopen Ticket",
+  "tickets.deleteTicket": "Delete Ticket",
+  "tickets.confirmDelete": "Are you sure you want to delete this ticket permanently? This action will delete all its messages and cannot be undone.",
+  "tickets.deletedSuccess": "Ticket deleted successfully",
+  "tickets.ticketDeletedAlert": "Ticket deleted",
+  "tickets.pressCtrlEnter": "Ctrl+Enter to send"
 }

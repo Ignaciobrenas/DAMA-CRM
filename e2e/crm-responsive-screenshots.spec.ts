@@ -4,6 +4,12 @@ import path from 'path';
 
 test.describe('DAMA-CRM Responsive & Design System Visual Audit (Desktop, Tablet, Mobile)', () => {
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('dama_cookie_consent', JSON.stringify({ technical: true, analytics: true, timestamp: new Date().toISOString() }));
+    });
+  });
+
   const viewports = [
     { name: 'desktop', width: 1280, height: 800 },
     { name: 'tablet', width: 768, height: 1024 },

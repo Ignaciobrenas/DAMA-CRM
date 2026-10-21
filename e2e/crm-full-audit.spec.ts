@@ -2,6 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.describe('DAMA-CRM End-to-End User Flow Audit', () => {
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('dama_cookie_consent', JSON.stringify({ technical: true, analytics: true, timestamp: new Date().toISOString() }));
+    });
+  });
+
   test('Complete user journey across all modules, modals, and integrations', async ({ page }) => {
     // 1. Visit Login Page
     await page.goto('/#/login');

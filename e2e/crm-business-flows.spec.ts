@@ -3,6 +3,11 @@ import { test, expect } from '@playwright/test';
 test.describe('DAMA-CRM Complete Business Flows E2E', () => {
 
   test.beforeEach(async ({ page }) => {
+    // Pre-seed cookie consent so it does not intercept modals
+    await page.addInitScript(() => {
+      localStorage.setItem('dama_cookie_consent', JSON.stringify({ technical: true, analytics: true, timestamp: new Date().toISOString() }));
+    });
+
     // Standard login flow
     await page.goto('/#/login');
     await page.waitForLoadState('networkidle');
