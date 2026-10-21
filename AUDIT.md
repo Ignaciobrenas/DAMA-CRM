@@ -46,8 +46,8 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | :-: | :--- | :--- | :--- | :---: | :---: |
 | **00** | **Autenticación, RBAC & Onboarding** | `/login`, `/onboarding`, `/privacy`, Guards | Ninguna (Núcleo) | 🟢 CERRADO | 6 tests passed (100%) |
 | **01** | **Layout Global, Navegación & Modales** | Sidebar, Navbar, CommandMenu, Modales | Módulo 00 | 🟢 CERRADO | 6 tests passed (100%) |
-| **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | 🟡 EN CURSO | En preparación |
-| **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | ⚪ PENDIENTE | Base existente |
+| **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | 🟢 CERRADO | 7 tests passed (100%) |
+| **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | 🟡 EN CURSO | En preparación |
 | **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | ⚪ PENDIENTE | Base existente |
 | **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | ⚪ PENDIENTE | Base existente |
 | **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
@@ -104,6 +104,27 @@ Los módulos se auditan en estricto orden de dependencia funcional:
   - Nueva suite `e2e/module-01-layout-navigation.spec.ts` con 6 tests completos: jerarquía de Sidebar/Topbar, LanguageModal, UserProfileModal, GodModeModal, CommandMenu y navegación responsive móvil con Axe Core (6/6 en verde).
 - **Mejoras Pendientes**:
   - Ninguna. Módulo 01 cerrado y verificado al 100%.
+
+### Módulo 02 · CRM Core · Empresas (Accounts)
+- **Estado**: 🟢 CERRADO
+- **Issues Encontrados**:
+  1. *Falta de soporte y validación de CIF/NIF en formularios*: `Companies.tsx` importaba `validateSpanishTaxId` pero no incluía el campo CIF/NIF ni en creación ni en edición, a pesar de que el backend y la base de datos lo soportan y validan duplicados por organización.
+  2. *Regex de IVA internacional demasiado permisiva*: La expresión regular `/^[A-Z]{2}[0-9A-Z]{5,15}$/` en `client/src/utils/validators.ts` aceptaba cadenas arbitrarias como `INVALIDCIF999` (al coincidir `IN` con 2 letras).
+  3. *Datos semilla con checksum CIF inválido*: Los registros iniciales de prueba en `seed.ts` (`B-87654321`, `A-12345678`, `B-99887766`) tenían dígitos de control no conformes con el algoritmo oficial de Hacienda/CIF español, bloqueando la edición.
+  4. *Ambigüedad de selectores en barra de acciones masivas*: El contenedor de bulk actions usaba `.fixed.bottom-6`, colisionando con widgets flotantes del layout global.
+  5. *Modales sin centrado estricto `m-auto` ni listener de Escape*: Los modales de creación, edición y borrado carecían del centrado exacto y de accesibilidad `role="dialog"`, `aria-modal="true"`.
+- **Issues Arreglados**:
+  1. Integrado campo obligatorio/validado de CIF/NIF español tanto en creación como en edición con chip distintivo en cada tarjeta de empresa.
+  2. Ajustada la validación de IVA internacional a prefijos de países válidos (EU, GB, US, CH, NO).
+  3. Sincronizados los datos semilla en base de datos y en `seed.ts` con CIFs matemáticamente válidos (`B87654323`, `A12345674`, `B99887762`).
+  4. Añadidos atributos `data-testid="bulk-toolbar"`, `role="region"` y `aria-label="Operaciones masivas"` para aislar la barra flotante.
+  5. Aplicado centrado estricto `fixed inset-0 z-50 flex items-center justify-center p-4 m-auto`, `role="dialog"` y escucha de la tecla `Escape` para cierre inmediato en todos los modales.
+- **Mejoras Implementadas**:
+  1. **Rediseño visual anti-glare**: Tarjetas en fondo blanco nítido con borde sutil `border-slate-200`, chips de sector en gris neutro y badges de CIF en tonalidad índigo suave.
+  2. **Micro-interacciones y accesibilidad**: Efectos táctiles `active:scale-[0.98]`, atributos `aria-label` en buscador, filtros de sector, ordenación y acciones individuales por tarjeta.
+  3. **Suite Playwright robusta**: `e2e/module-02-companies.spec.ts` con 7 pruebas completas: listado y filtros, validación de CIF, creación feliz con generador dinámico de CIF válido, edición, borrado con confirmación centrada, operaciones masivas/exportación CSV y adaptabilidad responsive (375px/768px/1440px) (7/7 en verde).
+- **Mejoras Pendientes**:
+  - Ninguna. Módulo 02 cerrado y validado al 100%.
 
 ---
 *(Se actualiza automáticamente al finalizar cada módulo)*
