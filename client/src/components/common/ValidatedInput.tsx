@@ -113,6 +113,7 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
           {isPasswordType && (
             <button
               type="button"
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               onClick={() => setShowPassword(!showPassword)}
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
             >

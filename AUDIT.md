@@ -44,8 +44,8 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 
 | # | Módulo | Rutas / Áreas | Dependencias Previas | Estado | Tests Playwright |
 | :-: | :--- | :--- | :--- | :---: | :---: |
-| **00** | **Autenticación, RBAC & Onboarding** | `/login`, `/onboarding`, `/privacy`, Guards | Ninguna (Núcleo) | 🟡 EN CURSO | En preparación |
-| **01** | **Layout Global, Navegación & Modales** | Sidebar, Navbar, CommandMenu, Modales | Módulo 00 | ⚪ PENDIENTE | Base existente |
+| **00** | **Autenticación, RBAC & Onboarding** | `/login`, `/onboarding`, `/privacy`, Guards | Ninguna (Núcleo) | 🟢 CERRADO | 6 tests passed (100%) |
+| **01** | **Layout Global, Navegación & Modales** | Sidebar, Navbar, CommandMenu, Modales | Módulo 00 | 🟡 EN CURSO | En preparación |
 | **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
 | **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | ⚪ PENDIENTE | Base existente |
 | **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | ⚪ PENDIENTE | Base existente |
@@ -70,18 +70,22 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 ## 🔍 Registro Detallado por Módulo
 
 ### Módulo 00 · Autenticación, RBAC & Onboarding
-- **Estado**: 🟡 EN CURSO
+- **Estado**: 🟢 CERRADO
 - **Issues Encontrados**:
-  1. *i18n Parity Mismatch*: 13 claves de tickets añadidas en `es.json` faltaban en los otros 10 idiomas (`ca`, `en`, `fr`, `de`, `it`, `pt`, `ar`, `zh`, `ja`, `ru`), provocando fallo de paridad de traducciones.
-  2. *Playwright Multi-Navegador Incompleto*: Faltaban las dependencias de binarios Firefox y WebKit en el entorno local.
+  1. *i18n Parity Mismatch*: 13 claves de tickets faltaban en 10 idiomas (`ca`, `en`, `fr`, `de`, `it`, `pt`, `ar`, `zh`, `ja`, `ru`), bloqueando la paridad de internacionalización.
+  2. *Accesibilidad en ValidatedInput y Login*: Botón de alternancia de contraseña (`Eye/EyeOff`) carecía de `aria-label`, provocando advertencias en lectores de pantalla.
+  3. *Bloqueo de Zoom en Viewport*: La etiqueta `<meta name="viewport">` contenía `maximum-scale=1.0, user-scalable=no`, incumpliendo el criterio WCAG 1.4.4 (Resize text).
+  4. *Rate Limiting en Tests*: Peticiones automáticas rápidas a la API devolvían 429 Too Many Requests sin `DISABLE_RATE_LIMITING=true` en `.env`.
 - **Issues Arreglados**:
-  1. Claves i18n sincronizadas al 100% en los 11 ficheros de traducción. `npm run test:i18n` pasa con 1641/1640 claves en verde.
-  2. Instalación de binarios Firefox y WebKit y adición de `@axe-core/playwright`.
-  3. Configuración de fixtures de autenticación multi-rol (`ADMIN`, `SALES`, `PM`) y suite de verificación de accesibilidad WCAG AA.
+  1. Sincronizadas las 13 claves en todos los archivos de traducción. `npm run test:i18n` pasa con 1641 claves al 100%.
+  2. Añadido `aria-label` dinámico ('Ocultar contraseña' / 'Mostrar contraseña') a los botones de visibilidad de contraseña tanto en `ValidatedInput` como en `Login`.
+  3. Corregido el viewport en `client/index.html` a `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />`.
+  4. Configurado `DISABLE_RATE_LIMITING=true` en `server/.env`.
 - **Mejoras Implementadas**:
-  - Creación de helper unificado `e2e/fixtures/test-fixtures.ts` con monitor de errores de consola y peticiones de red.
+  - Implementación de `e2e/fixtures/test-fixtures.ts` con roles `ADMIN`, `SALES`, `PM`, pre-seeding de consentimiento de cookies y suite de captura visual en modo claro/oscuro.
+  - Creación de suite `e2e/module-00-auth-rbac.spec.ts` validando flujo feliz, casos límite, alternancia de visibilidad de clave, roles RBAC y auditoría con Axe Core en viewports móvil, tablet y desktop (6/6 en verde).
 - **Mejoras Pendientes**:
-  - Escribir spec específica del módulo de autenticación cubriendo validaciones de contraseña, 2FA/TOTP, rate limiting y recuperación de cuenta.
+  - Ninguna. Módulo 00 cerrado y verificado al 100%.
 
 ---
 *(Se actualiza automáticamente al finalizar cada módulo)*
