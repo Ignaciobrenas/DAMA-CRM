@@ -522,6 +522,30 @@ export async function getUserNotes(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    // AUTO-SEED-NOTES
+    const noteCount = await prisma.userNote.count({ where: { userId } });
+    if (noteCount === 0) {
+      await prisma.userNote.createMany({
+        data: [
+          {
+            userId,
+            title: 'Revisión de Sprint & QA E2E',
+            content: 'Reunión con el equipo de ingeniería para validar métricas de velocidad, cobertura Playwright y cierre de Sprint.',
+            color: 'amber',
+            pinned: true,
+            order: 0,
+          },
+          {
+            userId,
+            title: 'Control de Presupuesto de Proyectos',
+            content: 'Verificar imputaciones horarias de consultoría e implantación antes del cierre mensual de facturación.',
+            color: 'blue',
+            pinned: true,
+            order: 1,
+          },
+        ],
+      });
+    }
     const notes = await prisma.userNote.findMany({
       where: { userId },
       orderBy: [{ pinned: 'desc' }, { order: 'asc' }, { createdAt: 'desc' }],
@@ -562,6 +586,27 @@ export async function createUserNote(req: Request, res: Response): Promise<void>
 export async function getTaskTemplates(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user?.id;
+    const tplCount = await prisma.taskTemplate.count();
+    if (tplCount === 0) {
+      await prisma.taskTemplate.createMany({
+        data: [
+          {
+            name: 'Historia de Usuario Enterprise (INVEST)',
+            description: 'Especificación funcional con criterios de aceptación Gherkin y definición de terminado (DoD).',
+            content: '## Historia de Usuario\n**Como** [rol de usuario]\n**Quiero** [objetivo funcional]\n**Para** [valor de negocio]\n\n### Criterios de Aceptación\n- [ ] Escenario 1: Flujo feliz verificado\n- [ ] Escenario 2: Validación de permisos RBAC y accesibilidad WCAG AA',
+            scope: 'general',
+            createdById: userId || null,
+          },
+          {
+            name: 'Reporte de Incidencia / Bug Crítico',
+            description: 'Plantilla estructurada para reproducción técnica, logs y análisis de causa raíz (RCA).',
+            content: '## Descripción del Bug\n- **Entorno**: Producción / Staging\n- **Severidad**: Alta\n\n### Pasos para Reproducir\n1. Navegar al módulo correspondiente\n2. Ejecutar la acción\n\n### Resultado Esperado vs Obtenido\n- **Esperado**: Respuesta HTTP 200 y persistencia en PostgreSQL',
+            scope: 'general',
+            createdById: userId || null,
+          },
+        ],
+      });
+    }
     const templates = await prisma.taskTemplate.findMany({
       where: {
         OR: [
@@ -580,6 +625,23 @@ export async function getTaskTemplates(req: Request, res: Response): Promise<voi
 
 export async function getChangelogReleases(req: Request, res: Response): Promise<void> {
   try {
+    const relCount = await prisma.changelogRelease.count();
+    if (relCount === 0) {
+      await prisma.changelogRelease.create({
+        data: {
+          version: 'v2.4.0',
+          title: 'Suite Enterprise Veri*Factu AEAT, Multi-Almacén Sage LOTT & Estudio PDF',
+          createdById: req.user?.id || null,
+          entries: {
+            create: [
+              { category: 'feature', description: 'Encadenamiento criptográfico SHA-256 Veri*Factu y verificador en vivo AEAT.', order: 0 },
+              { category: 'feature', description: 'Traspasos entre almacenes en 2 fases (Sage 50/200) con Albarán de Circulación LOTT.', order: 1 },
+              { category: 'improvement', description: 'Estudio de Diseño PDF con 4 plantillas corporativas y fallback al logo oficial DAMA.', order: 2 },
+            ],
+          },
+        },
+      });
+    }
     const releases = await prisma.changelogRelease.findMany({
       include: {
         entries: { orderBy: { order: 'asc' } },
