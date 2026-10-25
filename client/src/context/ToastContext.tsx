@@ -110,7 +110,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       {children}
 
       {/* Floating Animated Toast Container with Mobile & Desktop Ergonomics */}
-      <div className="fixed sm:top-4 sm:right-4 sm:bottom-auto bottom-20 left-4 right-4 sm:left-auto z-50 flex flex-col gap-2.5 max-w-sm w-auto sm:w-full pointer-events-none">
+      <div className="fixed top-4 right-4 left-4 sm:left-auto z-[70] flex flex-col gap-2.5 max-w-sm w-auto sm:w-full pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => {
             const Icon = toastIcons[toast.type];

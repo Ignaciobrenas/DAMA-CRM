@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package,
+  Globe,
   Boxes,
   TrendingUp,
   AlertTriangle,
@@ -935,7 +936,7 @@ export const Inventory: React.FC = () => {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
               }`}
             >
-              {t('inventory.allChannels', '🌐 Todos los Canales')} ({products.length})
+              <span className="inline-flex items-center gap-1"><Globe className="w-3.5 h-3.5" />{t('inventory.allChannels', 'Todos los Canales')} ({products.length})</span>
             </button>
             {activeStores.map((store) => (
               <button

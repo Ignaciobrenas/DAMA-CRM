@@ -64,7 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header
       data-testid="app-topbar"
-      className="sticky top-0 z-30 flex items-center justify-between h-14 px-3 sm:px-6 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800/80 text-slate-800 dark:text-slate-100 transition-colors"
+      className="sticky top-0 z-50 flex items-center justify-between h-14 px-3 sm:px-6 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800/80 text-slate-800 dark:text-slate-100 transition-colors"
     >
       {/* Left: Mobile Menu + Contextual Breadcrumb + Command Bar (⌘K) */}
       <div className="flex items-center gap-2.5 min-w-0">

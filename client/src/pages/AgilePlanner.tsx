@@ -794,7 +794,7 @@ export const AgilePlanner: React.FC = () => {
                 <option value="LOW">Baja</option>
                 <option value="MEDIUM">Media</option>
                 <option value="HIGH">Alta</option>
-                <option value="URGENT">Urgente ⚠️</option>
+                <option value="URGENT">Urgente</option>
               </select>
             </div>
           </div>
@@ -1195,7 +1195,7 @@ export const AgilePlanner: React.FC = () => {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                    📌 {n.title || 'Nota de Proyecto'}
+                    <Pin className="w-3.5 h-3.5 inline mr-1 text-amber-500 shrink-0" />{n.title || 'Nota de Proyecto'}
                   </span>
                   <div className="flex items-center gap-1">
                     <button

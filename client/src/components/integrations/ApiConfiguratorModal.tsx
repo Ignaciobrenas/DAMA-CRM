@@ -511,11 +511,11 @@ echo "Respuesta DAMA-CRM: " . $response;
                       onChange={(e: any) => setEmailTemplate(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                     >
-                      <option value="2fa_otp">🔐 Verificación 2FA OTP (Código de Seguridad)</option>
-                      <option value="welcome_invitation">👋 Invitación y Bienvenida a Empresa</option>
-                      <option value="quote_signature">✍️ Presupuesto para Firma Digital</option>
-                      <option value="invoice_issued">📑 Factura Emitida con Vencimiento</option>
-                      <option value="alert_notification">⚠️ Alerta Operativa / SLA Helpdesk</option>
+                      <option value="2fa_otp">Verificación 2FA OTP (Código de Seguridad)</option>
+                      <option value="welcome_invitation">Invitación y Bienvenida a Empresa</option>
+                      <option value="quote_signature">Presupuesto para Firma Digital</option>
+                      <option value="invoice_issued">Factura Emitida con Vencimiento</option>
+                      <option value="alert_notification">Alerta Operativa / SLA Helpdesk</option>
                     </select>
                   </div>
 

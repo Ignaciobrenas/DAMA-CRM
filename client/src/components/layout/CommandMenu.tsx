@@ -131,7 +131,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed top-14 inset-x-0 bottom-0 z-40 flex items-center justify-center p-3 sm:p-4 bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto"
     >
       <div
         className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[85vh] flex flex-col m-auto"

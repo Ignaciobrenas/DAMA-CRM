@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, X, Check, Search } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
@@ -37,30 +38,30 @@ export const LanguageModal: React.FC<LanguageModalProps> = ({ isOpen, onClose })
     onClose();
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <div
         role="dialog"
         aria-modal="true"
         onClick={onClose}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+        className="fixed top-14 inset-x-0 bottom-0 z-40 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto"
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          initial={{ opacity: 0, scale: 0.96, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
+          exit={{ opacity: 0, scale: 0.96, y: 8 }}
+          transition={{ type: 'spring', stiffness: 450, damping: 30 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col z-10 m-auto"
+          className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden max-h-[85vh] flex flex-col z-50 m-auto"
         >
           {/* Header */}
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/50">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-2xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                 <Globe className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
                   {t('languageSelect') || 'Seleccionar Idioma'}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -70,10 +71,10 @@ export const LanguageModal: React.FC<LanguageModalProps> = ({ isOpen, onClose })
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               aria-label={t('close')}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -86,7 +87,7 @@ export const LanguageModal: React.FC<LanguageModalProps> = ({ isOpen, onClose })
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder={t('searchLanguage') || 'Buscar idioma (ej. Español, English, Català)...'}
-                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all"
               />
             </div>
           </div>
@@ -100,7 +101,7 @@ export const LanguageModal: React.FC<LanguageModalProps> = ({ isOpen, onClose })
                   key={l.code}
                   type="button"
                   onClick={() => handleSelectLanguage(l.code as Language)}
-                  className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between group ${
+                  className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between group active:scale-[0.98] ${
                     isSelected
                       ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-500/80 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/20 shadow-xs'
                       : 'border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-800 dark:text-slate-200'
@@ -133,20 +134,21 @@ export const LanguageModal: React.FC<LanguageModalProps> = ({ isOpen, onClose })
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/50 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>
               {t('activeLanguage') || 'Idioma activo'}: <strong className="text-slate-900 dark:text-white uppercase">{language}</strong>
             </span>
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-300/80 dark:hover:bg-slate-700 transition"
+              className="px-4 py-2 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-300/80 dark:hover:bg-slate-700 transition"
             >
               {t('close') || 'Cerrar'}
             </button>
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
