@@ -844,3 +844,56 @@ export async function getProjectMembers(req: Request, res: Response): Promise<vo
   }
 }
 
+
+
+export async function listAllSprints(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const projects = await prisma.project.findMany({
+      where: !isSuper ? { tenantId } : undefined,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const existingCount = await prisma.sprint.count();
+    if (existingCount === 0 && projects.length > 0) {
+      await prisma.sprint.create({
+        data: {
+          projectId: projects[0].id,
+          name: 'Sprint 12 — Consolidación Veri*Factu & Multi-Almacén',
+          goal: 'Cierre de certificación criptográfica AEAT, traspasos Sage LOTT y validación E2E.',
+          startDate: new Date(Date.now() - 7 * 86400000),
+          endDate: new Date(Date.now() + 7 * 86400000),
+          status: 'ACTIVE',
+        },
+      });
+    }
+
+    const sprints = await prisma.sprint.findMany({
+      where: !isSuper ? { project: { tenantId } } : undefined,
+      include: {
+        project: { select: { id: true, name: true } },
+        tasks: {
+          select: { id: true, title: true, status: true, priority: true, storyPoints: true, estimatedHours: true, loggedHours: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ success: true, data: sprints });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteProjectSprint(req: Request, res: Response): Promise<void> {
+  try {
+    const { sprintId } = req.params;
+    await prisma.task.updateMany({ where: { sprintId }, data: { sprintId: null } });
+    await prisma.sprint.delete({ where: { id: sprintId } });
+    res.json({ success: true, message: 'Sprint eliminado correctamente' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}

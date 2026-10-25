@@ -6,6 +6,8 @@ import {
   updateProject,
   deleteProject,
   createSprint,
+  listAllSprints,
+  deleteProjectSprint,
   listTasks,
   createTask,
   patchTask,
@@ -35,6 +37,8 @@ router.use(authMiddleware);
 // Mobile & user specific
 router.get('/my-tasks', getMyTasks);
 router.get('/my-worklogs', getMyWorkLogs);
+router.get('/sprints/all', requirePermission('projects', 'read'), listAllSprints);
+router.delete('/sprints/:sprintId', requirePermission('projects', 'delete'), deleteProjectSprint);
 
 // Export
 router.get('/export/csv', requirePermission('projects', 'read'), exportProjectsCSV);
