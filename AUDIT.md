@@ -53,17 +53,17 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | 🟢 CERRADO | 8 tests passed (100%) |
 | **07** | **Inventario Multi-Almacén, Traspasos Sage 2 Fases, Lotes FEFO & Kardex** | `/inventory` | Módulo 00, 01 | 🟢 CERRADO | 3 tests passed (100%) |
 | **08** | **Logística, 22 Agencias SVG, Comparador Tarifas & Etiqueta 10x15** | `/logistics` | Módulo 00, 07 | 🟢 CERRADO | 3 tests passed (100%) |
-| **09** | **Planificador Ágil, Tableros & Sprints** | `/agile`, `/planner` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
-| **10** | **Calendario & Reserva de Citas** | `/calendar`, `/appointments` | Módulo 00, 03 | ⚪ PENDIENTE | Base existente |
-| **11** | **Helpdesk & Sistema de Tickets** | `/tickets` | Módulo 00, 02, 03 | ⚪ PENDIENTE | Base existente |
-| **12** | **Omnicanalidad (WhatsApp / Email)** | `/omnichannel` | Módulo 00, 03 | ⚪ PENDIENTE | Base existente |
-| **13** | **Flujos de Trabajo & Automatizaciones** | `/workflows` | Módulo 00, 03, 04, 05 | ⚪ PENDIENTE | Base existente |
-| **14** | **Portal del Empleado & Mi Tiempo** | `/portal-empleado`, `/my-time` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
-| **15** | **Portal de Clientes** | `/portal` | Módulo 00, 05, 11 | ⚪ PENDIENTE | Base existente |
-| **16** | **Informes & Business Intelligence** | `/reports`, `/admin-bi` | Módulo 00, 04, 05, 06 | ⚪ PENDIENTE | Base existente |
-| **17** | **Integraciones & Webhooks** | `/integrations`, `/faq` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
+| **09** | **Planificador Ágil, Tableros & Sprints** | `/agile`, `/planner` | Módulo 00, 01 | 🟢 CERRADO | 2 tests passed (100%) |
+| **10** | **Calendario & Reserva de Citas** | `/calendar`, `/appointments` | Módulo 00, 03 | 🟢 CERRADO | 2 tests passed (100%) |
+| **11** | **Helpdesk & Sistema de Tickets** | `/tickets` | Módulo 00, 02, 03 | 🟢 CERRADO | 2 tests passed (100%) |
+| **12** | **Omnicanalidad (WhatsApp / Email)** | `/omnichannel` | Módulo 00, 03 | 🟢 CERRADO | 2 tests passed (100%) |
+| **13** | **Flujos de Trabajo & Automatizaciones** | `/workflows` | Módulo 00, 03, 04, 05 | 🟢 CERRADO | 1 test passed (100%) |
+| **14** | **Portal del Empleado & Mi Tiempo** | `/portal-empleado`, `/my-time` | Módulo 00, 01 | 🟢 CERRADO | 2 tests passed (100%) |
+| **15** | **Portal de Clientes** | `/portal` | Módulo 00, 05, 11 | 🟢 CERRADO | 1 test passed (100%) |
+| **16** | **Informes & Business Intelligence** | `/reports`, `/admin-bi` | Módulo 00, 04, 05, 06 | 🟢 CERRADO | 2 tests passed (100%) |
+| **17** | **Integraciones & Webhooks** | `/integrations`, `/faq` | Módulo 00, 01 | 🟢 CERRADO | 2 tests passed (100%) |
 | **18** | **Configuración, Logo Placeholder DAMA & Estudio de Diseño PDF** | `/settings` | Módulo 00, 01 | 🟢 CERRADO | 2 tests passed (100%) |
-| **19** | **Dashboard Ejecutivo & Manejo de Errores** | `/`, 404, ErrorBoundary | Todos los módulos | ⚪ PENDIENTE | Base existente |
+| **19** | **Dashboard Ejecutivo & Manejo de Errores** | `/`, 404, ErrorBoundary | Todos los módulos | 🟢 CERRADO | 2 tests passed (100%) |
 
 ---
 
@@ -237,6 +237,51 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 - **Mejoras Pendientes**:
   - Ninguna. Módulo 08 cerrado y validado al 100%.
 
+### Módulo 09 · Planificador Ágil, Tableros Scrum/Kanban, Sprints & Gantt
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Tablero Scrum/Kanban interactivo (`/agile`) y Planificador de Proyectos con vista Gantt y Sprints (`/planner`), modales centrados (`m-auto`) con soporte `Escape`, persistencia real en PostgreSQL (`Project`, `Sprint`, `Task`, `TaskComment`) y validación WCAG AA (`e2e/module-09-agile-planner.spec.ts` — 2/2 en verde).
+
+### Módulo 10 · Calendario Corporativo & Reserva de Citas
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Calendario unificado de eventos, reuniones de oportunidades y reserva de citas con modales centrados (`m-auto`), cierre con `Escape`, persistencia en base de datos (`Activity`) y validación WCAG AA (`e2e/module-10-calendar-appointments.spec.ts` — 2/2 en verde).
+
+### Módulo 11 · Helpdesk, Sistema de Tickets & SLA
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Centro de Soporte y Helpdesk (`/tickets`) con creación de tickets, hilos de respuesta públicos y notas internas, indicadores de SLA, modales centrados (`m-auto`), persistencia en PostgreSQL (`Ticket`, `TicketReply`) y validación WCAG AA (`e2e/module-11-tickets-helpdesk.spec.ts` — 2/2 en verde).
+
+### Módulo 12 · Omnicanalidad (WhatsApp Meta Cloud / Email) & Chat Interno de Equipo
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Bandeja Omnicanal 24/7 (`/omnichannel`) y canales internos de equipo (`TeamChannel`, `TeamMessage`) con envío en tiempo real, creación de canales centrada (`m-auto`), persistencia en BD y validación WCAG AA (`e2e/module-12-omnichannel.spec.ts` — 2/2 en verde).
+
+### Módulo 13 · Flujos de Trabajo & Automatizaciones (Motor de Reglas)
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Motor de reglas y automatizaciones (`/workflows`) con asistente centrado (`m-auto`), plantillas preconfiguradas, ejecución real contra base de datos (`Workflow`, `WorkflowLog`) y validación WCAG AA (`e2e/module-13-workflows.spec.ts` — 1/1 en verde).
+
+### Módulo 14 · Portal del Empleado, RRHH, Nóminas PDF & Mi Tiempo
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Portal de RRHH (`/portal-empleado` / `/employee-portal`) y registro horario obligatorio RDL 8/2019 (`/my-time`) con directorio de plantilla (`Employee`), emisión de nóminas con cálculo de IRPF y Seguridad Social (`Payroll`), recibo oficial de salario con logotipo corporativo de DAMA, modales centrados (`m-auto`) y validación WCAG AA (`e2e/module-14-employee-portal-time.spec.ts` — 2/2 en verde).
+
+### Módulo 15 · Portal de Clientes (Self-Service & Portabilidad RGPD)
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Área Privada de Clientes (`/portal` / `/client-portal`) con logotipo de empresa o fallback oficial DAMA (`dama-logo-white.png`), descarga de facturas PDF, apertura de tickets de soporte en base de datos y exportación de portabilidad RGPD en JSON (`e2e/module-15-client-portal.spec.ts` — 1/1 en verde).
+
+### Módulo 16 · Informes Ejecutivos & Business Intelligence
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Centro de Analítica (`/reports`) y Telemetría de Ecosistema (`/admin-bi`) con exportación de Informe Ejecutivo en PDF con logotipo oficial DAMA, exportación CSV homologada (incluyendo Libros Registro de IVA AEAT Modelo 303) y métricas de servidor/BD en vivo (`e2e/module-16-reports-bi.spec.ts` — 2/2 en verde).
+
+### Módulo 17 · Integraciones, Conectores, Webhooks & Centro de Ayuda FAQ
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Hub de Conectores (`/integrations`) con configuración RBAC centrada (`m-auto`), inspector de trazas y logs de auditoría centrado (`m-auto`) y Centro de Ayuda interactivo (`/faq`) con búsqueda en vivo y valoración de respuestas (`e2e/module-17-integrations-faq.spec.ts` — 2/2 en verde).
+
 ### Módulo 18 · Configuración, Identidad Corporativa, Logo Placeholder DAMA & Estudio de Diseño PDF (Veri*Factu)
 - **Estado**: 🟢 CERRADO
 - **Issues Encontrados**:
@@ -252,5 +297,10 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 - **Mejoras Pendientes**:
   - Ninguna. Módulo 18 cerrado y validado al 100%.
 
+### Módulo 19 · Dashboard Ejecutivo & Manejo de Errores (404 / ErrorBoundary)
+- **Estado**: 🟢 CERRADO
+- **Mejoras Implementadas**:
+  - Dashboard Ejecutivo (`/`) con KPIs ponderados, previsión de tesorería (`cashflow_forecast`), reordenación de widgets persistente en preferencias de usuario en BD, restablecimiento de layout y pantalla corporativa 404 (`NotFound.tsx`) para rutas desconocidas (`e2e/module-19-dashboard-errors.spec.ts` — 2/2 en verde).
+
 ---
-*(Se actualiza automáticamente al finalizar cada módulo)*
+✅ **AUDITORÍA END-TO-END COMPLETADA AL 100% (20/20 MÓDULOS EN VERDE)**
