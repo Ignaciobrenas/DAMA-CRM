@@ -954,7 +954,7 @@ export const Inventory: React.FC = () => {
 
           {/* Category Filter */}
           <select
-            value={categoryFilter}
+            aria-label="Filtrar por categoría" title="Filtrar por categoría" value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -968,7 +968,7 @@ export const Inventory: React.FC = () => {
 
           {/* Stock Status Filter */}
           <select
-            value={stockFilter}
+            aria-label="Filtrar por estado de stock" title="Filtrar por estado de stock" value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value as any)}
             className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -980,7 +980,7 @@ export const Inventory: React.FC = () => {
 
           {/* Sort By */}
           <select
-            value={sortBy}
+            aria-label="Ordenar productos" title="Ordenar productos" value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >

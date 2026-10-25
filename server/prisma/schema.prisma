@@ -646,14 +646,16 @@ model Product {
 model Warehouse {
   id                String           @id @default(uuid())
   tenantId          String           @default("master")
-  code              String
+  code              String           @unique
   name              String
-  type              String           @default("PHYSICAL") // PHYSICAL, TRANSIT, VEHICLE, VIRTUAL
+  type              String           @default("PHYSICAL") // PHYSICAL, CENTRAL, REGIONAL_HUB, STORE, TRANSIT_VAN, VIRTUAL
   address           String?
   city              String?
   postalCode        String?
+  province          String?
   country           String           @default("España")
   contactPerson     String?
+  managerName       String?
   phone             String?
   email             String?
   isDefault         Boolean          @default(false)
@@ -672,22 +674,24 @@ model Warehouse {
 }
 
 model WarehouseStock {
-  id             String    @id @default(uuid())
-  tenantId       String    @default("master")
-  warehouseId    String
-  warehouse      Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  productId      String
-  product        Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  stock          Int       @default(0)
-  reservedStock  Int       @default(0)
-  inTransitStock Int       @default(0)
-  minStock       Int       @default(5)
-  maxStock       Int?
-  aisle          String?
-  rack           String?
-  shelf          String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id              String    @id @default(uuid())
+  tenantId        String    @default("master")
+  warehouseId     String
+  warehouse       Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stock           Int       @default(0)
+  reservedStock   Int       @default(0)
+  inTransitStock  Int       @default(0)
+  minStock        Int       @default(5)
+  maxStock        Int?
+  binLocation     String?   @default("PAS-01-EST-01")
+  weightedAvgCost Float     @default(0.0)
+  aisle           String?
+  rack            String?
+  shelf           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@unique([warehouseId, productId])
   @@index([tenantId, warehouseId])
@@ -697,12 +701,12 @@ model WarehouseStock {
 model StockTransfer {
   id                String              @id @default(uuid())
   tenantId          String              @default("master")
-  transferNumber    String
+  transferNumber    String              @unique
   sourceWarehouseId String
   sourceWarehouse   Warehouse           @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id])
   targetWarehouseId String
   targetWarehouse   Warehouse           @relation("TargetWarehouse", fields: [targetWarehouseId], references: [id])
-  status            String              @default("DRAFT") // DRAFT, IN_TRANSIT, RECEIVED, WITH_DISCREPANCIES, CANCELLED
+  status            String              @default("DRAFT") // DRAFT, IN_TRANSIT, RECEIVED, DISCREPANCY, WITH_DISCREPANCIES, CANCELLED
   items             StockTransferItem[]
   notes             String?
   legalNotice       String?             @default("Documento de circulación y traslado interno de existencias sin transmisión de titularidad jurídica ni repercusión de IVA (Art. 9 Ley 37/1992 del IVA y normativa LOTT)")
@@ -712,10 +716,13 @@ model StockTransfer {
   driverName        String?
   driverTaxId       String?
   parcelsCount      Int                 @default(1)
+  totalPackages     Int                 @default(1)
   totalWeightKg     Float               @default(1.0)
   shippedAt         DateTime?
+  dispatchedAt      DateTime?
   receivedAt        DateTime?
   shippedBy         String?
+  dispatchedBy      String?
   receivedBy        String?
   hasDiscrepancies  Boolean             @default(false)
   discrepancyNotes  String?
@@ -729,62 +736,76 @@ model StockTransfer {
 }
 
 model StockTransferItem {
-  id             String        @id @default(uuid())
-  transferId     String
-  transfer       StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  productId      String
-  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  requestedQty   Int
-  shippedQty     Int           @default(0)
-  receivedQty    Int           @default(0)
-  discrepancyQty Int           @default(0)
-  batchNumber    String?
-  expiryDate     DateTime?
-  unitCost       Float         @default(0.0)
-  createdAt      DateTime      @default(now())
+  id                String        @id @default(uuid())
+  transferId        String
+  transfer          StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  requestedQty      Int
+  shippedQty        Int           @default(0)
+  receivedQty       Int           @default(0)
+  discrepancyQty    Int           @default(0)
+  damagedQty        Int           @default(0)
+  batchNumber       String?
+  expiryDate        DateTime?
+  sourceBinLocation String?
+  targetBinLocation String?
+  unitCost          Float         @default(0.0)
+  unitCostPmp       Float         @default(0.0)
+  notes             String?
+  createdAt         DateTime      @default(now())
 
   @@map("stock_transfer_items")
 }
 
 model StockBatch {
-  id          String    @id @default(uuid())
-  tenantId    String    @default("master")
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  warehouseId String
-  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  batchNumber String
-  expiryDate  DateTime?
-  quantity    Int       @default(0)
-  costPrice   Float     @default(0.0)
-  status      String    @default("ACTIVE") // ACTIVE, QUARANTINE, EXPIRED
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String     @id @default(uuid())
+  tenantId       String     @default("master")
+  productId      String
+  product        Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId    String?
+  warehouse      Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  batchNumber    String
+  serialNumbers  String?    @default("[]")
+  initialQty     Int        @default(1)
+  remainingQty   Int        @default(1)
+  quantity       Int        @default(0)
+  unitCost       Float      @default(0.0)
+  costPrice      Float      @default(0.0)
+  manufacturedAt DateTime?  @default(now())
+  expiryDate     DateTime?
+  supplierRef    String?
+  status         String     @default("ACTIVE") // ACTIVE, QUARANTINE, EXPIRED
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  @@unique([tenantId, productId, warehouseId, batchNumber])
   @@index([expiryDate])
+  @@index([tenantId, productId])
   @@map("stock_batches")
 }
 
 model StockMovement {
-  id            String         @id @default(uuid())
-  productId     String
-  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  warehouseId   String?
-  warehouse     Warehouse?     @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
-  transferId    String?
-  transfer      StockTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
-  type          String         // INBOUND, OUTBOUND, ADJUSTMENT, TRANSFER_OUT, TRANSFER_IN, SHRINKAGE, RETURN
-  quantity      Int            // Delta quantity (positive or negative)
-  previousStock Int
-  newStock      Int
-  batchNumber   String?
-  unitCost      Float?
-  reason        String?
-  reference     String?
-  performedBy   String?
-  tenantId      String?        @default("master")
-  createdAt     DateTime       @default(now())
+  id                String         @id @default(uuid())
+  productId         String
+  product           Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId       String?
+  warehouse         Warehouse?     @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  sourceWarehouseId String?
+  targetWarehouseId String?
+  transferId        String?
+  transfer          StockTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+  type              String         // INBOUND, OUTBOUND, ADJUSTMENT, TRANSFER_OUT, TRANSFER_IN, SHRINKAGE, RETURN
+  quantity          Int            // Delta quantity (positive or negative)
+  previousStock     Int
+  newStock          Int
+  batchNumber       String?
+  unitCost          Float?
+  unitCostPmp       Float?         @default(0.0)
+  reason            String?
+  reference         String?
+  performedBy       String?
+  tenantId          String?        @default("master")
+  createdAt         DateTime       @default(now())
 
   @@index([productId, createdAt])
   @@index([warehouseId, createdAt])

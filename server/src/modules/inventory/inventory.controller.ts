@@ -1123,8 +1123,8 @@ export async function listWarehouses(req: Request, res: Response): Promise<void>
         _count: {
           select: {
             stocks: true,
-            outboundTransfers: true,
-            inboundTransfers: true,
+            outgoingTransfers: true,
+            incomingTransfers: true,
           },
         },
       },
