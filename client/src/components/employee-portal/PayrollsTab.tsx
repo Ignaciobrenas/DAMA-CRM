@@ -76,6 +76,16 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
     fetchPayrolls();
   }, [yearFilter, statusFilter]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && viewingPayroll) {
+        setViewingPayroll(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewingPayroll]);
+
   const handleUpdateStatus = async (payrollId: string, newStatus: string) => {
     try {
       const res = await apiRequest(`/employees/payrolls/${payrollId}/status`, {
@@ -224,6 +234,7 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <select
+            aria-label="Filtrar nóminas por año"
             value={yearFilter}
             onChange={(e) => setYearFilter(Number(e.target.value))}
             className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-gray-700 dark:text-slate-200 focus:outline-none"
@@ -236,6 +247,7 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
           </select>
 
           <select
+            aria-label="Filtrar nóminas por estado"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-gray-700 dark:text-slate-200 focus:outline-none"
@@ -249,6 +261,7 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
 
         {isManagerOrAdmin && (
           <button
+            data-testid="issue-payroll-btn"
             onClick={() => setIsNewModalOpen(true)}
             className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-xs transition"
           >
@@ -301,7 +314,7 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
                   <tr key={p.id} className="hover:bg-gray-50/75 dark:hover:bg-slate-800/40 transition">
                     {isManagerOrAdmin && (
                       <td className="py-3 px-4 font-semibold text-gray-900 dark:text-white">
-                        {p.employee?.user?.name || 'Empleado'}
+                        {p.employee?.user?.name || `${(p.employee as any)?.firstName || ''} ${(p.employee as any)?.lastName || ''}`.trim() || 'Empleado'}
                       </td>
                     )}
                     <td className="py-3 px-4 font-semibold text-gray-900 dark:text-white">
@@ -322,6 +335,8 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
                     <td className="py-3 px-4">{getStatusBadge(p.status)}</td>
                     <td className="py-3 px-4 text-right">
                       <button
+                        data-testid={`view-payroll-${p.id}`}
+                        aria-label={`Ver recibo de nómina de ${monthNames[p.month - 1]} ${p.year}`}
                         onClick={() => setViewingPayroll(p)}
                         className="p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition inline-flex items-center space-x-1"
                         title={t('payrolls.viewReceipt')}
@@ -347,14 +362,27 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
 
       {/* Detailed Official Payslip / Recibo de Nómina Modal */}
       {viewingPayroll && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Recibo oficial de nómina"
+          data-testid="payroll-receipt-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 m-auto"
+        >
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto m-auto">
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-slate-800">
               <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-blue-50 dark:bg-blue-950/50 rounded-xl text-blue-600 dark:text-blue-400">
-                  <FileText className="w-6 h-6" />
-                </div>
+                <img
+                  src="/assets/logos/dama-logo-dark.png"
+                  alt="DAMA Corporate Logo"
+                  className="h-8 w-auto object-contain dark:hidden"
+                />
+                <img
+                  src="/assets/logos/dama-logo-white.png"
+                  alt="DAMA Corporate Logo"
+                  className="h-8 w-auto object-contain hidden dark:block"
+                />
                 <div>
                   <h3 className="font-bold text-gray-900 dark:text-white text-base">
                     {t('payrolls.receiptTitle')}
@@ -365,6 +393,7 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
                 </div>
               </div>
               <button
+                aria-label="Cerrar recibo de nómina"
                 onClick={() => setViewingPayroll(null)}
                 className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
               >
@@ -389,7 +418,7 @@ export const PayrollsTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
                     {t('payrolls.employeeData')}
                   </span>
                   <p className="font-bold text-gray-900 dark:text-white">
-                    {viewingPayroll.employee?.user?.name || 'Empleado'}
+                    {viewingPayroll.employee?.user?.name || `${(viewingPayroll.employee as any)?.firstName || ''} ${(viewingPayroll.employee as any)?.lastName || ''}`.trim() || 'Empleado'}
                   </p>
                   <p className="text-gray-500">
                     DNI/NIE: {viewingPayroll.employee?.dniNie || '***PROTEGIDO***'}

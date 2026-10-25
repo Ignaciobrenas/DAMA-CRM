@@ -50,6 +50,17 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isModalOpen) setIsModalOpen(false);
+        if (isClockOutModalOpen) setIsClockOutModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen, isClockOutModalOpen]);
+
   // Timer counter when clocked in
   useEffect(() => {
     if (!status?.isClockedIn || !status.activeRecord?.clockIn) {
@@ -384,6 +395,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
 
           {status?.isClockedIn ? (
             <button
+              data-testid="clock-out-btn"
               onClick={() => setIsClockOutModalOpen(true)}
               disabled={actionLoading}
               className="px-5 py-2.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-md hover:shadow-lg transition flex items-center space-x-2"
@@ -393,6 +405,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
             </button>
           ) : (
             <button
+              data-testid="clock-in-btn"
               onClick={() => setIsModalOpen(true)}
               disabled={actionLoading}
               className="px-5 py-2.5 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition flex items-center space-x-2"
@@ -407,8 +420,12 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
       {/* Modal de Fichaje Entrada */}
       {isModalOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Fichaje de entrada"
+          data-testid="clock-in-modal"
           onClick={() => setIsModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 m-auto"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -459,6 +476,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
                   {t('timeTracking.notesOptional')}
                 </label>
                 <textarea
+                  aria-label="Notas opcionales de entrada"
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -477,6 +495,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
                 {t('cancel')}
               </button>
               <button
+                data-testid="confirm-clock-in-btn"
                 type="button"
                 onClick={handleClockIn}
                 disabled={actionLoading}
@@ -493,8 +512,12 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
       {/* Modal de Fichaje Salida */}
       {isClockOutModalOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Fichaje de salida"
+          data-testid="clock-out-modal"
           onClick={() => setIsClockOutModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 m-auto"
         >
           <div
             onClick={(e) => e.stopPropagation()}

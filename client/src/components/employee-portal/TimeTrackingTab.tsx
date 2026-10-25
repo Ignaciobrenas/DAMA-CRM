@@ -235,6 +235,7 @@ export const TimeTrackingTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
           <div className="flex items-center space-x-1 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-xs">
             <Calendar className="w-3.5 h-3.5 text-gray-400 mr-1" />
             <input
+              aria-label="Fecha de inicio de filtro"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -242,6 +243,7 @@ export const TimeTrackingTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
             />
             <span className="text-gray-400">-</span>
             <input
+              aria-label="Fecha de fin de filtro"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -250,6 +252,7 @@ export const TimeTrackingTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
           </div>
 
           <select
+            aria-label="Filtrar por motivo de fichaje"
             value={reasonFilter}
             onChange={(e) => setReasonFilter(e.target.value)}
             className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-gray-700 dark:text-slate-200 focus:outline-none"
@@ -266,6 +269,7 @@ export const TimeTrackingTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
 
         <div className="flex items-center space-x-2">
           <button
+            data-testid="time-export-csv-btn"
             onClick={handleExportCSV}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-800 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition shadow-xs"
             title="Exportar a CSV/Excel"
@@ -275,6 +279,7 @@ export const TimeTrackingTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
           </button>
 
           <button
+            data-testid="time-export-pdf-btn"
             onClick={handleExportPDF}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-800 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition shadow-xs"
             title="Exportar Informe Oficial PDF"

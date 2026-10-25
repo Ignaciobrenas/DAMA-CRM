@@ -58,7 +58,7 @@ const normalizeRoute = (pathname: string): string => {
   if (p === '/calendar') return '/calendar';
   if (p === '/appointments') return '/appointments';
   if (p === '/logistics') return '/logistics';
-  if (p === '/portal-empleado') return '/portal-empleado';
+  if (p === '/portal-empleado' || p === '/employee-portal') return '/portal-empleado';
   if (p === '/my-time') return '/my-time';
   if (p === '/tickets') return '/tickets';
   if (p === '/expenses') return '/expenses';
@@ -78,9 +78,10 @@ const normalizeRoute = (pathname: string): string => {
   if (p === '/lead-capture') return '/lead-capture';
   if (p === '/reports') return '/reports';
   if (p === '/settings') return '/settings';
-  if (p === '/portal') return '/portal';
+  if (p === '/portal' || p === '/client-portal') return '/portal';
   if (p === '/privacy') return '/privacy';
-  return '/';
+  if (p === '' || p === '/' || p === '/dashboard' || p === '/login' || p === '/index.html') return '/';
+  return p;
 };
 
 const AppContent: React.FC = () => {
