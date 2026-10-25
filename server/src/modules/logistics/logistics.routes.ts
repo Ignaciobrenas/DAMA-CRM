@@ -7,6 +7,8 @@ import {
   getLogisticsStats,
   exportShipmentsCsv,
   exportShipmentsPdf,
+  compareCarrierRates,
+  downloadShipmentLabelPdf,
 } from './logistics.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -18,10 +20,12 @@ router.use(authMiddleware);
 router.get('/export/csv', requirePermission('logistics', 'read'), exportShipmentsCsv);
 router.get('/export/pdf', requirePermission('logistics', 'read'), exportShipmentsPdf);
 
+router.post('/rates/compare', requirePermission('logistics', 'read'), compareCarrierRates);
 router.get('/stats', requirePermission('logistics', 'read'), getLogisticsStats);
 
 router.get('/shipments', requirePermission('logistics', 'read'), listShipments);
 router.post('/shipments', requirePermission('logistics', 'create'), createShipment);
+router.get('/shipments/:id/label', requirePermission('logistics', 'read'), downloadShipmentLabelPdf);
 router.get('/shipments/:id', requirePermission('logistics', 'read'), getShipmentDetails);
 router.put('/shipments/:id/status', requirePermission('logistics', 'update'), updateShipmentStatus);
 
