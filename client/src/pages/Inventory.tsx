@@ -36,6 +36,7 @@ import {
   History,
   ShieldCheck,
   Upload,
+  Truck,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { integrationsService } from '../services/integrations.service';
@@ -44,6 +45,7 @@ import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { soundService } from '../services/sound';
 import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
+import { SageWarehouseOperations } from '../components/inventory/SageWarehouseOperations';
 
 export interface ProductItem {
   id: string;
@@ -113,6 +115,12 @@ export const Inventory: React.FC = () => {
   const { hasPermission } = useAuth();
 
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [globalMovements, setGlobalMovements] = useState<any[]>([]);
+  const [inventorySection, setInventorySection] = useState<'catalog' | 'transfers' | 'batches' | 'kardex'>('catalog');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('ALL');
   const [stats, setStats] = useState<InventoryStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -190,11 +198,19 @@ export const Inventory: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [resProducts, resStats, resIntegrations] = await Promise.all([
+      const [resProducts, resStats, resIntegrations, resWh, resTr, resBatches, resMovs] = await Promise.all([
         apiRequest('/inventory'),
         apiRequest('/inventory/analytics/stats').catch(() => ({ success: false, data: null })),
         integrationsService.getIntegrations().catch(() => null),
+        apiRequest('/inventory/warehouses').catch(() => ({ success: false, data: [] })),
+        apiRequest('/inventory/transfers').catch(() => ({ success: false, data: [] })),
+        apiRequest('/inventory/batches').catch(() => ({ success: false, data: [] })),
+        apiRequest('/inventory/movements/all').catch(() => ({ success: false, data: [] })),
       ]);
+      if (resWh && resWh.success && Array.isArray((resWh as any).data)) setWarehouses((resWh as any).data);
+      if (resTr && resTr.success && Array.isArray((resTr as any).data)) setTransfers((resTr as any).data);
+      if (resBatches && resBatches.success && Array.isArray((resBatches as any).data)) setBatches((resBatches as any).data);
+      if (resMovs && resMovs.success && Array.isArray((resMovs as any).data)) setGlobalMovements((resMovs as any).data);
 
       if (resProducts.success && resProducts.data) {
         setProducts(resProducts.data);
@@ -236,6 +252,19 @@ export const Inventory: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (deletingProduct) setDeletingProduct(null);
+        else if (isMovementModalOpen) setIsMovementModalOpen(false);
+        else if (isFormModalOpen) setIsFormModalOpen(false);
+        else if (selectedProduct) setSelectedProduct(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [deletingProduct, isMovementModalOpen, isFormModalOpen, selectedProduct]);
 
   const parseProductAttributes = (product?: ProductItem | null): Record<string, any> => {
     if (!product || !product.attributes) return {};
@@ -789,6 +818,88 @@ export const Inventory: React.FC = () => {
         </div>
       </div>
 
+      {/* Enterprise Inventory & Sage Multi-Warehouse Navigation Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div role="tablist" aria-label="Secciones de Inventario y Logística Interna" className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inventorySection === 'catalog'}
+            data-testid="tab-inventory-catalog"
+            onClick={() => setInventorySection('catalog')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+              inventorySection === 'catalog'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Boxes className="w-3.5 h-3.5" />
+            <span>Catálogo Multi-Almacén ({products.length})</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inventorySection === 'transfers'}
+            data-testid="tab-inventory-transfers"
+            onClick={() => setInventorySection('transfers')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+              inventorySection === 'transfers'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Truck className="w-3.5 h-3.5" />
+            <span>Traspasos Inter-Almacén Sage 2 Fases ({transfers.length})</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inventorySection === 'batches'}
+            data-testid="tab-inventory-batches"
+            onClick={() => setInventorySection('batches')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+              inventorySection === 'batches'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Lotes, Series & Caducidad FEFO ({batches.length})</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inventorySection === 'kardex'}
+            data-testid="tab-inventory-kardex"
+            onClick={() => setInventorySection('kardex')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+              inventorySection === 'kardex'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Libro Kardex Contable PMP ({globalMovements.length})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Multi-Warehouse Operations & Switcher */}
+      <SageWarehouseOperations
+        activeSection={inventorySection === 'catalog' ? 'transfers' : inventorySection}
+        warehouses={warehouses}
+        transfers={transfers}
+        batches={batches}
+        globalMovements={globalMovements}
+        products={products}
+        selectedWarehouseId={selectedWarehouseId}
+        onSelectWarehouse={(id) => setSelectedWarehouseId(id)}
+        onRefresh={loadData}
+      />
+
       {/* Filter Toolbar */}
       <div className="p-4 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col md:flex-row items-center justify-between gap-3">
         {/* Search */}
@@ -804,6 +915,7 @@ export const Inventory: React.FC = () => {
           {search && (
             <button
               onClick={() => setSearch('')}
+              aria-label="Limpiar búsqueda"
               className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
             >
               <X className="w-3.5 h-3.5" />
@@ -1301,7 +1413,7 @@ export const Inventory: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
+              role="dialog" aria-modal="true" aria-label="Detalle del artículo" className="w-full max-w-3xl m-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
             >
               {/* Header with image preview & title */}
               <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-start justify-between gap-4">
@@ -1349,6 +1461,7 @@ export const Inventory: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setSelectedProduct(null)}
+                    aria-label="Cerrar detalle"
                     className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
                   >
                     <X className="w-5 h-5" />
@@ -1890,7 +2003,7 @@ export const Inventory: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
+              role="dialog" aria-modal="true" aria-label="Formulario de artículo" className="w-full max-w-2xl m-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
             >
               <div className="p-6 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -1903,6 +2016,7 @@ export const Inventory: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsFormModalOpen(false)}
+                  aria-label="Cerrar formulario"
                   className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg"
                 >
                   <X className="w-5 h-5" />
@@ -2162,7 +2276,7 @@ export const Inventory: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden"
+              role="dialog" aria-modal="true" aria-label="Registrar movimiento de stock" className="w-full max-w-md m-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden"
             >
               <div className="p-5 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -2176,6 +2290,7 @@ export const Inventory: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsMovementModalOpen(false)}
+                  aria-label="Cerrar movimiento"
                   className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg"
                 >
                   <X className="w-4 h-4" />
@@ -2277,7 +2392,7 @@ export const Inventory: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-gray-200 dark:border-slate-800 text-center"
+              role="dialog" aria-modal="true" aria-label="Confirmar eliminación de artículo" className="w-full max-w-sm m-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-gray-200 dark:border-slate-800 text-center"
             >
               <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 mx-auto flex items-center justify-center mb-3">
                 <Trash2 className="w-6 h-6" />
