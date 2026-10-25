@@ -131,6 +131,8 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
+              data-testid="directory-search-input"
+              aria-label="Buscar empleados en directorio"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -140,6 +142,7 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
           </div>
 
           <select
+            aria-label="Filtrar empleados por departamento"
             value={deptFilter}
             onChange={(e) => setDeptFilter(e.target.value)}
             className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-gray-700 dark:text-slate-200 focus:outline-none"
@@ -154,6 +157,7 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
           </select>
 
           <select
+            aria-label="Filtrar empleados por tipo de contrato"
             value={contractFilter}
             onChange={(e) => setContractFilter(e.target.value)}
             className="bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-gray-700 dark:text-slate-200 focus:outline-none"
@@ -168,6 +172,7 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
 
         {isManagerOrAdmin && (
           <button
+            data-testid="new-employee-btn"
             onClick={() => setIsNewModalOpen(true)}
             className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-xs transition"
           >
@@ -216,20 +221,24 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
                   </td>
                 </tr>
               ) : (
-                employees.map((emp) => (
+                employees.map((emp: any) => {
+                  const empFullName = emp.user?.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Empleado';
+                  const empEmail = emp.user?.email || emp.email || 'N/A';
+                  const empSalary = emp.salary ?? emp.baseSalary;
+                  return (
                   <tr key={emp.id} className="hover:bg-gray-50/75 dark:hover:bg-slate-800/40 transition">
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 rounded-full bg-blue-600/10 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
-                          {emp.user?.name?.charAt(0) || 'E'}
+                          {empFullName.charAt(0) || 'E'}
                         </div>
                         <div>
                           <div className="font-semibold text-gray-900 dark:text-white">
-                            {emp.user?.name || 'Empleado'}
+                            {empFullName}
                           </div>
                           <div className="text-[11px] text-gray-400 flex items-center space-x-1">
                             <Mail className="w-3 h-3 inline" />
-                            <span>{emp.user?.email || 'N/A'}</span>
+                            <span>{empEmail}</span>
                           </div>
                         </div>
                       </div>
@@ -247,7 +256,7 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
                     </td>
                     {isManagerOrAdmin && (
                       <td className="py-3 px-4 font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                        {emp.salary ? `€${emp.salary.toLocaleString()}/año` : '—'}
+                        {empSalary ? `€${empSalary.toLocaleString()}/año` : '—'}
                       </td>
                     )}
                     <td className="py-3 px-4 text-gray-500 dark:text-slate-400">
@@ -257,7 +266,8 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
                     {isManagerOrAdmin && (
                       <td className="py-3 px-4 text-right">
                         <button
-                          onClick={() => handleDelete(emp.id, emp.user?.name || 'Empleado')}
+                          aria-label={`Eliminar empleado ${empFullName}`}
+                          onClick={() => handleDelete(emp.id, empFullName)}
                           className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition"
                           title={t('delete')}
                         >
@@ -266,7 +276,8 @@ export const DirectoryTab: React.FC<{ isManagerOrAdmin?: boolean }> = ({
                       </td>
                     )}
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

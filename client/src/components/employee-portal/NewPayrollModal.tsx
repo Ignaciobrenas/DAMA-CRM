@@ -42,6 +42,15 @@ export const NewPayrollModal: React.FC<NewPayrollModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     const fetchEmployees = async () => {
       setLoadingEmployees(true);
       try {
@@ -50,11 +59,10 @@ export const NewPayrollModal: React.FC<NewPayrollModalProps> = ({
           setEmployees(res.data);
           if (res.data.length > 0 && !employeeId) {
             setEmployeeId(res.data[0].id);
-            if (res.data[0].salary) {
-              const monthlyBase = Number((res.data[0].salary / 12).toFixed(2));
-              setBaseSalary(monthlyBase);
-              setDeductions(Number((monthlyBase * 0.19).toFixed(2))); // ~19% standard deduction (IRPF + SS)
-            }
+            const annualSal = res.data[0].salary || res.data[0].baseSalary || 24000;
+            const monthlyBase = Number((annualSal / 12).toFixed(2));
+            setBaseSalary(monthlyBase);
+            setDeductions(Number((monthlyBase * 0.19).toFixed(2)));
           }
         }
       } catch {
@@ -117,8 +125,14 @@ export const NewPayrollModal: React.FC<NewPayrollModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Emitir nueva nómina"
+      data-testid="new-payroll-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 m-auto"
+    >
+      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 m-auto">
         <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 rounded-xl text-emerald-600 dark:text-emerald-400">
@@ -134,6 +148,7 @@ export const NewPayrollModal: React.FC<NewPayrollModalProps> = ({
             </div>
           </div>
           <button
+            aria-label="Cerrar modal de nómina"
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
           >
@@ -147,14 +162,16 @@ export const NewPayrollModal: React.FC<NewPayrollModalProps> = ({
               {t('payrolls.employeeLabel')}
             </label>
             <select
+              data-testid="payroll-employee-select"
+              aria-label="Seleccionar empleado para nómina"
               value={employeeId}
               onChange={(e) => handleEmployeeChange(e.target.value)}
               className="w-full text-xs rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               required
             >
-              {employees.map((emp) => (
+              {employees.map((emp: any) => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.user?.name || 'Empleado'} - {emp.jobTitle || 'Puesto'} ({emp.user?.email})
+                  {emp.user?.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Empleado'} - {emp.jobTitle || 'Puesto'} ({emp.user?.email || emp.email})
                 </option>
               ))}
             </select>
@@ -270,6 +287,7 @@ export const NewPayrollModal: React.FC<NewPayrollModalProps> = ({
               {t('cancel')}
             </button>
             <button
+              data-testid="submit-payroll-btn"
               type="submit"
               disabled={submitting}
               className="px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md transition flex items-center space-x-1.5"
