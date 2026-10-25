@@ -139,8 +139,11 @@ export const Reports: React.FC = () => {
         <div className="flex items-center space-x-2 relative">
           {/* Admin Telemetry Tab Switcher */}
           {adminBiData && (
-            <div className="flex bg-slate-200 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold mr-2">
+            <div role="tablist" aria-label="Vistas de Business Intelligence" className="flex bg-slate-200 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold mr-2">
               <button
+                role="tab"
+                aria-selected={activeTab === 'commercial'}
+                data-testid="reports-tab-commercial"
                 onClick={() => setActiveTab('commercial')}
                 className={`px-3 py-1.5 rounded-lg transition-colors ${
                   activeTab === 'commercial'
@@ -151,6 +154,9 @@ export const Reports: React.FC = () => {
                 BI Comercial
               </button>
               <button
+                role="tab"
+                aria-selected={activeTab === 'admin_telemetry'}
+                data-testid="reports-tab-telemetry"
                 onClick={() => setActiveTab('admin_telemetry')}
                 className={`px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1 ${
                   activeTab === 'admin_telemetry'
@@ -166,6 +172,7 @@ export const Reports: React.FC = () => {
           {/* Period selector */}
           <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
             <button
+              data-testid="reports-period-30d"
               onClick={() => setTimePeriod('30d')}
               className={`px-2.5 py-1 rounded-md transition-colors ${
                 timePeriod === '30d'
@@ -176,6 +183,7 @@ export const Reports: React.FC = () => {
               30 días
             </button>
             <button
+              data-testid="reports-period-90d"
               onClick={() => setTimePeriod('90d')}
               className={`px-2.5 py-1 rounded-md transition-colors ${
                 timePeriod === '90d'
@@ -186,6 +194,7 @@ export const Reports: React.FC = () => {
               Trimestre
             </button>
             <button
+              data-testid="reports-period-year"
               onClick={() => setTimePeriod('year')}
               className={`px-2.5 py-1 rounded-md transition-colors ${
                 timePeriod === 'year'
@@ -199,6 +208,8 @@ export const Reports: React.FC = () => {
 
           {/* Export Executive PDF Button */}
           <button
+            data-testid="reports-export-pdf-btn"
+            aria-label="Generar y descargar informe ejecutivo en PDF"
             onClick={handleExportPdf}
             disabled={isExportingPdf}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0 disabled:opacity-50"
@@ -211,6 +222,7 @@ export const Reports: React.FC = () => {
           {/* Export Dropdown Menu */}
           <div className="relative">
             <button
+              data-testid="reports-export-csv-btn"
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
