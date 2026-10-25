@@ -86,9 +86,7 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
         take: limitNum,
         orderBy,
         include: {
-          _count: {
-            select: { stockMovements: true },
-          },
+          _count: { select: { stockMovements: true } }, warehouseStocks: { include: { warehouse: true } }, batches: true,
         },
       }),
     ]);
@@ -890,3 +888,863 @@ export async function updateProductAttributesHandler(req: Request, res: Response
 }
 
 
+
+import { generateStockTransferPdf } from './transfer-pdf.service';
+
+/**
+ * Ensures the tenant has default operational warehouses, per-warehouse stock allocations,
+ * FEFO batches, and at least one initial inter-warehouse transfer in PostgreSQL.
+ */
+export async function ensureDefaultWarehousesAndSeed(tenantId: string): Promise<void> {
+  const count = await prisma.warehouse.count({ where: { tenantId } });
+  if (count > 0) return;
+
+  const defaultWarehouses = [
+    {
+      code: `ALM-MAD-01${tenantId === 'master' ? '' : `-${tenantId.slice(0, 4).toUpperCase()}`}`,
+      name: 'Almacén Central Madrid (Hub Principal)',
+      type: 'CENTRAL',
+      address: 'Polígono Industrial Las Mercedes, Calle Campezo 14',
+      city: 'Madrid',
+      postalCode: '28022',
+      province: 'Madrid',
+      country: 'ES',
+      managerName: 'Carlos Mendoza (Jefe de Logística)',
+      phone: '+34 910 245 800',
+      isDefault: true,
+      tenantId,
+    },
+    {
+      code: `ALM-BCN-02${tenantId === 'master' ? '' : `-${tenantId.slice(0, 4).toUpperCase()}`}`,
+      name: 'Hub Logístico Barcelona Zona Franca',
+      type: 'REGIONAL_HUB',
+      address: 'Carrer Longitudinal 6, Sector B, Nave 8',
+      city: 'Barcelona',
+      postalCode: '08040',
+      province: 'Barcelona',
+      country: 'ES',
+      managerName: 'Laia Puigdomènech (Resp. Operaciones)',
+      phone: '+34 932 410 920',
+      isDefault: false,
+      tenantId,
+    },
+    {
+      code: `ALM-SEV-03${tenantId === 'master' ? '' : `-${tenantId.slice(0, 4).toUpperCase()}`}`,
+      name: 'Delegación Sur Sevilla (Cross-Docking)',
+      type: 'STORE',
+      address: 'Parque Empresarial Torneo, Torre 3',
+      city: 'Sevilla',
+      postalCode: '41015',
+      province: 'Sevilla',
+      country: 'ES',
+      managerName: 'Javier Jiménez',
+      phone: '+34 954 901 112',
+      isDefault: false,
+      tenantId,
+    },
+    {
+      code: `FURG-TEC-01${tenantId === 'master' ? '' : `-${tenantId.slice(0, 4).toUpperCase()}`}`,
+      name: 'Flota Técnica SAT & Unidades Móviles',
+      type: 'TRANSIT_VAN',
+      address: 'Base Operativa Móvil (Flota Vehículos SAT)',
+      city: 'Madrid',
+      postalCode: '28022',
+      province: 'Madrid',
+      country: 'ES',
+      managerName: 'Equipo SAT / Instalaciones',
+      phone: '+34 600 890 123',
+      isDefault: false,
+      tenantId,
+    },
+  ];
+
+  const createdWarehouses = [];
+  for (const w of defaultWarehouses) {
+    const wh = await prisma.warehouse.upsert({
+      where: { code: w.code },
+      update: {},
+      create: w,
+    });
+    createdWarehouses.push(wh);
+  }
+
+  const products = await prisma.product.findMany({
+    where: { tenantId },
+    take: 25,
+  });
+
+  if (products.length > 0 && createdWarehouses.length >= 2) {
+    const mad = createdWarehouses[0];
+    const bcn = createdWarehouses[1];
+    const sev = createdWarehouses[2] || bcn;
+
+    for (let i = 0; i < products.length; i++) {
+      const prod = products[i];
+      const totalStock = Math.max(10, prod.stock || 24);
+      const madStock = Math.ceil(totalStock * 0.6);
+      const bcnStock = Math.floor(totalStock * 0.3);
+      const sevStock = Math.max(0, totalStock - madStock - bcnStock);
+
+      await prisma.warehouseStock.upsert({
+        where: { warehouseId_productId: { warehouseId: mad.id, productId: prod.id } },
+        update: {},
+        create: {
+          warehouseId: mad.id,
+          productId: prod.id,
+          stock: madStock,
+          reservedStock: i === 0 ? 2 : 0,
+          inTransitStock: 0,
+          minStock: prod.minStock || 5,
+          binLocation: `PAS-A${i + 1}-EST-02`,
+          weightedAvgCost: prod.costPrice || Math.round(prod.price * 0.6 * 100) / 100,
+          tenantId,
+        },
+      });
+
+      await prisma.warehouseStock.upsert({
+        where: { warehouseId_productId: { warehouseId: bcn.id, productId: prod.id } },
+        update: {},
+        create: {
+          warehouseId: bcn.id,
+          productId: prod.id,
+          stock: bcnStock,
+          reservedStock: 0,
+          inTransitStock: i === 0 ? 4 : 0,
+          minStock: 3,
+          binLocation: `ZONA-B-NIV-${(i % 4) + 1}`,
+          weightedAvgCost: prod.costPrice || Math.round(prod.price * 0.6 * 100) / 100,
+          tenantId,
+        },
+      });
+
+      if (sevStock > 0) {
+        await prisma.warehouseStock.upsert({
+          where: { warehouseId_productId: { warehouseId: sev.id, productId: prod.id } },
+          update: {},
+          create: {
+            warehouseId: sev.id,
+            productId: prod.id,
+            stock: sevStock,
+            reservedStock: 0,
+            inTransitStock: 0,
+            minStock: 2,
+            binLocation: `MOD-S-${i + 1}`,
+            weightedAvgCost: prod.costPrice || Math.round(prod.price * 0.6 * 100) / 100,
+            tenantId,
+          },
+        });
+      }
+
+      // Create FEFO Batch for traceability
+      const batchCode = `LOTE-2026-${String(i + 1).padStart(3, '0')}`;
+      const existingBatch = await prisma.stockBatch.findFirst({
+        where: { productId: prod.id, batchNumber: batchCode },
+      });
+      if (!existingBatch) {
+        await prisma.stockBatch.create({
+          data: {
+            productId: prod.id,
+            warehouseId: mad.id,
+            batchNumber: batchCode,
+            serialNumbers: JSON.stringify([`SN-${prod.sku}-001`, `SN-${prod.sku}-002`]),
+            initialQty: madStock,
+            remainingQty: madStock,
+            unitCost: prod.costPrice || Math.round(prod.price * 0.6 * 100) / 100,
+            manufacturedAt: new Date(Date.now() - 45 * 86400000),
+            expiryDate: new Date(Date.now() + (120 + i * 30) * 86400000),
+            status: 'ACTIVE',
+            supplierRef: `ALB-PROV-2026-0${i + 1}`,
+            tenantId,
+          },
+        });
+      }
+    }
+
+    // Create sample Sage 2-phase Stock Transfer if none exist
+    const transferCount = await prisma.stockTransfer.count({ where: { tenantId } });
+    if (transferCount === 0 && products[0]) {
+      const p0 = products[0];
+      const unitPmp = p0.costPrice || Math.round(p0.price * 0.6 * 100) / 100;
+      const tNum = `TRASP-2026-0001${tenantId === 'master' ? '' : `-${tenantId.slice(0, 3).toUpperCase()}`}`;
+      await prisma.stockTransfer.create({
+        data: {
+          transferNumber: tNum,
+          sourceWarehouseId: mad.id,
+          targetWarehouseId: bcn.id,
+          status: 'IN_TRANSIT',
+          carrierName: 'DHL Supply Chain Iberia',
+          driverName: 'Roberto Gómez Sánchez',
+          driverTaxId: '47892103-L',
+          vehiclePlate: '4892-MNP',
+          trackingNumber: 'ES-DHL-99281726',
+          totalPackages: 2,
+          totalWeightKg: 18.5,
+          dispatchedBy: 'Carlos Mendoza',
+          dispatchedAt: new Date(Date.now() - 3600 * 1000 * 5),
+          notes: 'Reposición urgente de stock de seguridad para delegación Cataluña.',
+          tenantId,
+          items: {
+            create: [
+              {
+                productId: p0.id,
+                requestedQty: 4,
+                shippedQty: 4,
+                receivedQty: 0,
+                damagedQty: 0,
+                batchNumber: 'LOTE-2026-001',
+                sourceBinLocation: 'PAS-A1-EST-02',
+                targetBinLocation: 'ZONA-B-NIV-1',
+                unitCostPmp: unitPmp,
+                notes: 'Palet retractilado con precinto de seguridad #8841',
+              },
+            ],
+          },
+        },
+      });
+    }
+  }
+}
+
+export async function listWarehouses(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    await ensureDefaultWarehousesAndSeed(tenantId);
+
+    const warehouses = await prisma.warehouse.findMany({
+      where: { tenantId },
+      include: {
+        stocks: {
+          include: {
+            product: {
+              select: { id: true, sku: true, name: true, price: true, costPrice: true, unit: true, category: true },
+            },
+          },
+        },
+        _count: {
+          select: {
+            stocks: true,
+            outboundTransfers: true,
+            inboundTransfers: true,
+          },
+        },
+      },
+      orderBy: [{ isDefault: 'desc' }, { code: 'asc' }],
+    });
+
+    res.json({ success: true, data: warehouses });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function createWarehouse(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const {
+      code,
+      name,
+      type = 'REGIONAL_HUB',
+      address,
+      city,
+      postalCode,
+      province,
+      country = 'ES',
+      managerName,
+      phone,
+      isDefault = false,
+    } = req.body;
+
+    if (!name || !name.trim()) {
+      res.status(400).json({ success: false, message: 'El nombre del almacén es obligatorio' });
+      return;
+    }
+
+    const finalCode = code && code.trim()
+      ? code.trim().toUpperCase()
+      : `ALM-${Date.now().toString().slice(-4)}`;
+
+    if (isDefault) {
+      await prisma.warehouse.updateMany({
+        where: { tenantId },
+        data: { isDefault: false },
+      });
+    }
+
+    const warehouse = await prisma.warehouse.create({
+      data: {
+        code: finalCode,
+        name: name.trim(),
+        type,
+        address: address?.trim() || null,
+        city: city?.trim() || null,
+        postalCode: postalCode?.trim() || null,
+        province: province?.trim() || null,
+        country,
+        managerName: managerName?.trim() || null,
+        phone: phone?.trim() || null,
+        isDefault: Boolean(isDefault),
+        tenantId,
+      },
+    });
+
+    await logAudit(req.user?.id || null, 'CREATE', 'Warehouse', warehouse.id, { code: warehouse.code, name: warehouse.name, tenantId }, req.ip);
+
+    res.status(201).json({
+      success: true,
+      data: warehouse,
+      message: `Almacén ${warehouse.code} (${warehouse.name}) registrado correctamente`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function listBatches(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    await ensureDefaultWarehousesAndSeed(tenantId);
+
+    const batches = await prisma.stockBatch.findMany({
+      where: { tenantId },
+      include: {
+        product: {
+          select: { id: true, sku: true, name: true, category: true, unit: true },
+        },
+      },
+      orderBy: [{ expiryDate: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    res.json({ success: true, data: batches });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function createBatch(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const {
+      productId,
+      warehouseId,
+      batchNumber,
+      serialNumbers,
+      initialQty,
+      unitCost,
+      manufacturedAt,
+      expiryDate,
+      supplierRef,
+    } = req.body;
+
+    if (!productId || !batchNumber) {
+      res.status(400).json({ success: false, message: 'Producto y código de lote son obligatorios' });
+      return;
+    }
+
+    const qty = Math.max(1, parseInt(initialQty, 10) || 1);
+    const cost = parseFloat(unitCost) || 0;
+
+    const batch = await prisma.$transaction(async (tx) => {
+      const b = await tx.stockBatch.create({
+        data: {
+          productId,
+          warehouseId: warehouseId || null,
+          batchNumber: String(batchNumber).trim().toUpperCase(),
+          serialNumbers: Array.isArray(serialNumbers) ? JSON.stringify(serialNumbers) : (serialNumbers || '[]'),
+          initialQty: qty,
+          remainingQty: qty,
+          unitCost: cost,
+          manufacturedAt: manufacturedAt ? new Date(manufacturedAt) : new Date(),
+          expiryDate: expiryDate ? new Date(expiryDate) : null,
+          status: 'ACTIVE',
+          supplierRef: supplierRef?.trim() || null,
+          tenantId,
+        },
+        include: {
+          product: { select: { id: true, sku: true, name: true } },
+        },
+      });
+
+      const prod = await tx.product.findUnique({ where: { id: productId } });
+      if (prod) {
+        const newTotal = prod.stock + qty;
+        await tx.product.update({
+          where: { id: productId },
+          data: { stock: newTotal },
+        });
+
+        if (warehouseId) {
+          await tx.warehouseStock.upsert({
+            where: { warehouseId_productId: { warehouseId, productId } },
+            update: { stock: { increment: qty } },
+            create: {
+              warehouseId,
+              productId,
+              stock: qty,
+              minStock: prod.minStock || 5,
+              binLocation: 'RECEP-GENERAL',
+              weightedAvgCost: cost || prod.costPrice || 0,
+              tenantId,
+            },
+          });
+        }
+
+        await tx.stockMovement.create({
+          data: {
+            productId,
+            type: 'INBOUND',
+            quantity: qty,
+            previousStock: prod.stock,
+            newStock: newTotal,
+            unitCostPmp: cost || prod.costPrice || 0,
+            batchNumber: b.batchNumber,
+            targetWarehouseId: warehouseId || null,
+            reason: `Alta de lote ${b.batchNumber} (${supplierRef || 'Entrada almacén'})`,
+            reference: b.batchNumber,
+            performedBy: req.user?.name || req.user?.email || 'Operador',
+            tenantId,
+          },
+        });
+      }
+
+      return b;
+    });
+
+    res.status(201).json({
+      success: true,
+      data: batch,
+      message: `Lote ${batch.batchNumber} registrado y stock actualizado (+${qty} uds)`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function listGlobalMovements(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const movements = await prisma.stockMovement.findMany({
+      where: { tenantId },
+      include: {
+        product: {
+          select: { id: true, sku: true, name: true, category: true, costPrice: true, price: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 150,
+    });
+
+    res.json({ success: true, data: movements });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function listStockTransfers(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    await ensureDefaultWarehousesAndSeed(tenantId);
+
+    const transfers = await prisma.stockTransfer.findMany({
+      where: { tenantId },
+      include: {
+        sourceWarehouse: true,
+        targetWarehouse: true,
+        items: {
+          include: {
+            product: {
+              select: { id: true, sku: true, name: true, price: true, costPrice: true, unit: true },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ success: true, data: transfers });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * SAGE 50 / 200 PHASE 1: Create & Dispatch Inter-Warehouse Transfer
+ * Decrements source WarehouseStock.stock, increments target WarehouseStock.inTransitStock,
+ * and creates a StockMovement of type TRANSFER_OUT with PMP valuation.
+ */
+export async function createStockTransfer(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const {
+      sourceWarehouseId,
+      targetWarehouseId,
+      carrierName,
+      driverName,
+      driverTaxId,
+      vehiclePlate,
+      trackingNumber,
+      totalPackages = 1,
+      totalWeightKg = 5.0,
+      notes,
+      items,
+    } = req.body;
+
+    if (!sourceWarehouseId || !targetWarehouseId) {
+      res.status(400).json({ success: false, message: 'Debes seleccionar el Almacén de Origen y el Almacén de Destino' });
+      return;
+    }
+
+    if (sourceWarehouseId === targetWarehouseId) {
+      res.status(400).json({ success: false, message: 'El almacén de destino debe ser distinto al almacén de origen' });
+      return;
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ success: false, message: 'Debes incluir al menos una línea de artículo a traspasar' });
+      return;
+    }
+
+    const count = await prisma.stockTransfer.count({ where: { tenantId } });
+    const transferNumber = `TRASP-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}${
+      tenantId === 'master' ? '' : `-${tenantId.slice(0, 3).toUpperCase()}`
+    }`;
+    const operator = req.user?.name || req.user?.email || 'Responsable Logística';
+
+    const createdTransfer = await prisma.$transaction(async (tx) => {
+      const preparedItems = [];
+
+      for (const rawItem of items) {
+        const qty = Math.max(1, parseInt(rawItem.quantity || rawItem.requestedQty || 1, 10));
+        const product = await tx.product.findUnique({ where: { id: rawItem.productId } });
+        if (!product) {
+          throw new Error(`Producto no encontrado (${rawItem.productId})`);
+        }
+
+        const unitPmp = Number(product.costPrice || Math.round(product.price * 0.6 * 100) / 100);
+
+        // Update or create source warehouse stock (decrement available stock)
+        const srcStock = await tx.warehouseStock.findUnique({
+          where: { warehouseId_productId: { warehouseId: sourceWarehouseId, productId: product.id } },
+        });
+
+        const prevSrcQty = srcStock ? srcStock.stock : product.stock;
+        const newSrcQty = Math.max(0, prevSrcQty - qty);
+
+        await tx.warehouseStock.upsert({
+          where: { warehouseId_productId: { warehouseId: sourceWarehouseId, productId: product.id } },
+          update: { stock: newSrcQty },
+          create: {
+            warehouseId: sourceWarehouseId,
+            productId: product.id,
+            stock: newSrcQty,
+            minStock: product.minStock || 5,
+            binLocation: rawItem.sourceBinLocation || 'PAS-A1',
+            weightedAvgCost: unitPmp,
+            tenantId,
+          },
+        });
+
+        // Update or create target warehouse stock (increment inTransitStock)
+        await tx.warehouseStock.upsert({
+          where: { warehouseId_productId: { warehouseId: targetWarehouseId, productId: product.id } },
+          update: { inTransitStock: { increment: qty } },
+          create: {
+            warehouseId: targetWarehouseId,
+            productId: product.id,
+            stock: 0,
+            inTransitStock: qty,
+            minStock: product.minStock || 5,
+            binLocation: rawItem.targetBinLocation || 'RECEP-01',
+            weightedAvgCost: unitPmp,
+            tenantId,
+          },
+        });
+
+        preparedItems.push({
+          productId: product.id,
+          requestedQty: qty,
+          shippedQty: qty,
+          receivedQty: 0,
+          damagedQty: 0,
+          batchNumber: rawItem.batchNumber || `LOTE-${new Date().getFullYear()}-001`,
+          sourceBinLocation: rawItem.sourceBinLocation || srcStock?.binLocation || 'PAS-A1',
+          targetBinLocation: rawItem.targetBinLocation || 'ZONA-RECEP',
+          unitCostPmp: unitPmp,
+          notes: rawItem.notes || null,
+        });
+      }
+
+      const transfer = await tx.stockTransfer.create({
+        data: {
+          transferNumber,
+          sourceWarehouseId,
+          targetWarehouseId,
+          status: 'IN_TRANSIT',
+          carrierName: carrierName?.trim() || 'Transporte Interno / Agencia autorizada',
+          driverName: driverName?.trim() || 'Conductor Asignado',
+          driverTaxId: driverTaxId?.trim() || 'N/A',
+          vehiclePlate: vehiclePlate?.trim().toUpperCase() || 'INTERNO',
+          trackingNumber: trackingNumber?.trim() || transferNumber,
+          totalPackages: Math.max(1, parseInt(String(totalPackages), 10) || 1),
+          totalWeightKg: Math.max(0.5, parseFloat(String(totalWeightKg)) || 5.0),
+          dispatchedBy: operator,
+          dispatchedAt: new Date(),
+          notes: notes?.trim() || null,
+          tenantId,
+          items: {
+            create: preparedItems,
+          },
+        },
+        include: {
+          sourceWarehouse: true,
+          targetWarehouse: true,
+          items: { include: { product: true } },
+        },
+      });
+
+      // Record Phase 1 Kardex movements (TRANSFER_OUT)
+      for (const it of transfer.items) {
+        await tx.stockMovement.create({
+          data: {
+            productId: it.productId,
+            type: 'TRANSFER_OUT',
+            quantity: -it.shippedQty,
+            previousStock: it.product.stock,
+            newStock: it.product.stock, // Global company stock remains unchanged while in transit (Art. 9 LIVA)
+            unitCostPmp: it.unitCostPmp,
+            sourceWarehouseId,
+            targetWarehouseId,
+            transferId: transfer.id,
+            batchNumber: it.batchNumber,
+            reason: `Salida en Tránsito (${transfer.transferNumber}): ${transfer.sourceWarehouse.code} -> ${transfer.targetWarehouse.code}`,
+            reference: transfer.transferNumber,
+            performedBy: operator,
+            tenantId,
+          },
+        });
+      }
+
+      return transfer;
+    });
+
+    await logAudit(
+      req.user?.id || null,
+      'CREATE_STOCK_TRANSFER',
+      'StockTransfer',
+      createdTransfer.id,
+      { transferNumber: createdTransfer.transferNumber, tenantId },
+      req.ip
+    );
+
+    res.status(201).json({
+      success: true,
+      data: createdTransfer,
+      message: `Traspaso ${createdTransfer.transferNumber} expedido en Fase 1 (Stock en Tránsito) y Albarán de Circulación emitido.`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * SAGE 50 / 200 PHASE 2: Receive Inter-Warehouse Transfer at Destination
+ * Decrements target WarehouseStock.inTransitStock, increments target WarehouseStock.stock,
+ * records TRANSFER_IN movement, and if receivedQty < shippedQty records a SHRINKAGE movement.
+ */
+export async function receiveStockTransfer(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const { receivedItems, notes } = req.body;
+    const operator = req.user?.name || req.user?.email || 'Responsable Recepción';
+
+    const existing = await prisma.stockTransfer.findUnique({
+      where: { id },
+      include: {
+        sourceWarehouse: true,
+        targetWarehouse: true,
+        items: { include: { product: true } },
+      },
+    });
+
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Albarán de traspaso no encontrado' });
+      return;
+    }
+
+    if (existing.status === 'RECEIVED' || existing.status === 'DISCREPANCY') {
+      res.status(400).json({ success: false, message: 'Este traspaso ya ha sido recepcionado previamente' });
+      return;
+    }
+
+    let hasDiscrepancy = false;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      for (const item of existing.items) {
+        const customRec = Array.isArray(receivedItems)
+          ? receivedItems.find((r: any) => r.itemId === item.id || r.productId === item.productId)
+          : null;
+
+        const receivedQty =
+          customRec && customRec.receivedQty !== undefined
+            ? Math.max(0, parseInt(String(customRec.receivedQty), 10))
+            : item.shippedQty;
+        const damagedQty = Math.max(0, item.shippedQty - receivedQty);
+
+        if (damagedQty > 0) {
+          hasDiscrepancy = true;
+        }
+
+        await tx.stockTransferItem.update({
+          where: { id: item.id },
+          data: {
+            receivedQty,
+            damagedQty,
+          },
+        });
+
+        // Update destination WarehouseStock: release inTransitStock and add receivedQty to physical stock
+        const dstStock = await tx.warehouseStock.findUnique({
+          where: {
+            warehouseId_productId: {
+              warehouseId: existing.targetWarehouseId,
+              productId: item.productId,
+            },
+          },
+        });
+
+        const newInTransit = Math.max(0, (dstStock?.inTransitStock || item.shippedQty) - item.shippedQty);
+        const newDstStock = (dstStock?.stock || 0) + receivedQty;
+
+        await tx.warehouseStock.upsert({
+          where: {
+            warehouseId_productId: {
+              warehouseId: existing.targetWarehouseId,
+              productId: item.productId,
+            },
+          },
+          update: {
+            stock: newDstStock,
+            inTransitStock: newInTransit,
+            binLocation: item.targetBinLocation || dstStock?.binLocation || 'ZONA-RECEP',
+          },
+          create: {
+            warehouseId: existing.targetWarehouseId,
+            productId: item.productId,
+            stock: receivedQty,
+            inTransitStock: 0,
+            minStock: item.product.minStock || 5,
+            binLocation: item.targetBinLocation || 'ZONA-RECEP',
+            weightedAvgCost: item.unitCostPmp,
+            tenantId,
+          },
+        });
+
+        // Record Phase 2 Kardex movement (TRANSFER_IN)
+        await tx.stockMovement.create({
+          data: {
+            productId: item.productId,
+            type: 'TRANSFER_IN',
+            quantity: receivedQty,
+            previousStock: item.product.stock,
+            newStock: item.product.stock - damagedQty,
+            unitCostPmp: item.unitCostPmp,
+            sourceWarehouseId: existing.sourceWarehouseId,
+            targetWarehouseId: existing.targetWarehouseId,
+            transferId: existing.id,
+            batchNumber: item.batchNumber,
+            reason: `Recepción Traspaso (${existing.transferNumber}) en ${existing.targetWarehouse.code}`,
+            reference: existing.transferNumber,
+            performedBy: operator,
+            tenantId,
+          },
+        });
+
+        // If there is shrinkage/damage in transit, adjust global Product.stock and log SHRINKAGE movement
+        if (damagedQty > 0) {
+          const updatedGlobalStock = Math.max(0, item.product.stock - damagedQty);
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: updatedGlobalStock },
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              type: 'SHRINKAGE',
+              quantity: -damagedQty,
+              previousStock: item.product.stock,
+              newStock: updatedGlobalStock,
+              unitCostPmp: item.unitCostPmp,
+              sourceWarehouseId: existing.sourceWarehouseId,
+              targetWarehouseId: existing.targetWarehouseId,
+              transferId: existing.id,
+              batchNumber: item.batchNumber,
+              reason: `Merma / Rotura en transporte detectada al recepcionar ${existing.transferNumber}`,
+              reference: existing.transferNumber,
+              performedBy: operator,
+              tenantId,
+            },
+          });
+        }
+      }
+
+      const finalStatus = hasDiscrepancy ? 'DISCREPANCY' : 'RECEIVED';
+      return tx.stockTransfer.update({
+        where: { id },
+        data: {
+          status: finalStatus,
+          receivedBy: operator,
+          receivedAt: new Date(),
+          notes: notes ? `${existing.notes ? existing.notes + ' | ' : ''}${notes}` : existing.notes,
+        },
+        include: {
+          sourceWarehouse: true,
+          targetWarehouse: true,
+          items: { include: { product: true } },
+        },
+      });
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: hasDiscrepancy
+        ? `Traspaso ${updated.transferNumber} recepcionado con acta de incidencia/merma registrada.`
+        : `Traspaso ${updated.transferNumber} recepcionado íntegramente en ${updated.targetWarehouse.name}.`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function downloadStockTransferPdf(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+
+    const transfer = await prisma.stockTransfer.findUnique({
+      where: { id },
+      include: {
+        sourceWarehouse: true,
+        targetWarehouse: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!transfer) {
+      res.status(404).json({ success: false, message: 'Traspaso no encontrado' });
+      return;
+    }
+
+    const pdfBuffer = await generateStockTransferPdf(transfer, transfer.tenantId || tenantId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Albaran-Circulacion-${transfer.transferNumber}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
