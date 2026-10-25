@@ -38,6 +38,7 @@ import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import calendarRoutes from './modules/calendar/calendar.routes';
 import appointmentsRoutes from './modules/appointments/appointments.routes';
 import logisticsRoutes from './modules/logistics/logistics.routes';
+import diagnosticsRoutes from './modules/diagnostics/diagnostics.routes';
 
 const app = express();
 
@@ -212,6 +213,9 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/logistics', logisticsRoutes);
 
+// Interactive Diagnostic Console & Health Dashboard
+app.use(diagnosticsRoutes);
+
 // Explicit third-party integrations catalog endpoint
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';
 app.get('/api/integraciones-de-terceros', getIntegracionesDeTerceros);
@@ -228,19 +232,15 @@ wsService.init(server);
 if (process.env.NODE_ENV !== 'test') {
   server.listen(config.port, () => {
     console.log(`
-  🚀 DAMA-CRM Core API running on port ${config.port} [${config.env}]
-  📡 Healthcheck: http://localhost:${config.port}/api/health
-  ⚡ WebSockets: ws://localhost:${config.port}/ws
-  🔒 Security: JWT + Dynamic RBAC + Multi-Tenant God Mode + 2FA Enabled
-  🏢 Tenants & God Mode: http://localhost:${config.port}/api/god/tenants
-  🎫 Helpdesk Tickets: http://localhost:${config.port}/api/tickets
-  💸 Expenses & P&L: http://localhost:${config.port}/api/expenses
-  📦 Inventory UnoPIM Webhook: http://localhost:${config.port}/api/inventory/webhooks/unopim
-  💬 WhatsApp Meta Webhook: http://localhost:${config.port}/api/omnichannel/webhooks/whatsapp
-  🛍️ WooCommerce Webhook: http://localhost:${config.port}/api/integrations/woocommerce/webhook
-  🛒 Shopify Webhook: http://localhost:${config.port}/api/integrations/shopify/webhook
-  ⚡ n8n Webhook / Action: http://localhost:${config.port}/api/integrations/n8n/action
-    `);
+  ======================================================================
+  DAMA-CRM Enterprise Core API running on port ${config.port} [${config.env}]
+  ----------------------------------------------------------------------
+  Consola de Diagnóstico & API Explorer: http://localhost:${config.port}/
+  Chequeo de Salud del Servicio:         http://localhost:${config.port}/api/health
+  Telemetría en Tiempo Real:             http://localhost:${config.port}/api/status
+  Documentación Interactiva Swagger:     http://localhost:${config.port}/api/docs
+  Pasarela WebSockets en Tiempo Real:    ws://localhost:${config.port}/ws
+  ======================================================================`);
   });
 }
 
