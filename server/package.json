@@ -1,6 +1,6 @@
 {
   "name": "dama-crm-server",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Server Backend API for DAMA-CRM",
   "main": "dist/server.js",

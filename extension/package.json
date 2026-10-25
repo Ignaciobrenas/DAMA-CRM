@@ -1,6 +1,6 @@
 {
   "name": "dama-agile-planner-extension",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "DAMA Agile Planner companion browser extension (Chrome & Firefox: timer, notifications, pinned notes)",
   "private": true,
   "type": "module",
