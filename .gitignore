@@ -39,9 +39,18 @@ redis-data/
 .DS_Store
 Thumbs.db
 
-# Playwright
+# Playwright & E2E Test Artifacts
 playwright-report/
 test-results/
+client/playwright-report/
+client/test-results/
+**/playwright-report/
+**/test-results/
+
+# Archived internal documentation
+.archive-docs/
+.archive/
+archive/
 
 # Docusaurus
 .docusaurus/
