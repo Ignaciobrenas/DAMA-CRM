@@ -11,7 +11,7 @@ export const NotFound: React.FC<NotFoundProps> = ({ onBack }) => {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+    <div data-testid="notfound-page" className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -27,7 +27,7 @@ export const NotFound: React.FC<NotFoundProps> = ({ onBack }) => {
             <Compass className="w-10 h-10 text-slate-800 dark:text-slate-200" />
           </div>
 
-          <h1 className="text-6xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">
+          <h1 data-testid="notfound-code" className="text-6xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">
             404
           </h1>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
@@ -38,6 +38,7 @@ export const NotFound: React.FC<NotFoundProps> = ({ onBack }) => {
           </p>
 
           <button
+            data-testid="notfound-back-btn"
             onClick={onBack}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-2xl text-sm font-bold shadow-sm transition-all active:scale-[0.98]"
           >

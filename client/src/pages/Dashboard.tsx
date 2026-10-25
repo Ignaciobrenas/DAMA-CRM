@@ -243,6 +243,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         <div className="flex items-center space-x-1">
           <button
             type="button"
+            aria-label={`Subir widget ${title}`}
+            data-testid={`dashboard-widget-up-${id}`}
             disabled={index === 0}
             onClick={() => moveWidget(index, 'up')}
             title="Subir widget"
@@ -252,6 +254,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           </button>
           <button
             type="button"
+            aria-label={`Bajar widget ${title}`}
+            data-testid={`dashboard-widget-down-${id}`}
             disabled={index === widgets.length - 1}
             onClick={() => moveWidget(index, 'down')}
             title="Bajar widget"
@@ -821,6 +825,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               <button
                 key={period.id}
                 type="button"
+                data-testid={`dashboard-timeframe-${period.id}`}
                 onClick={() => setTimeframe(period.id as any)}
                 className={`px-2.5 py-1 rounded-lg transition-all ${
                   timeframe === period.id
@@ -836,6 +841,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
+            data-testid="dashboard-reset-widgets"
+            aria-label={t('dashboard.resetLayoutDefault')}
             onClick={resetWidgets}
             title={t('dashboard.resetLayoutDefault')}
             className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium transition-colors"
@@ -874,6 +881,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           return (
             <div
               key={widgetId}
+              data-testid={`dashboard-widget-${widgetId}`}
               draggable
               onDragStart={(e) => handleDragStart(e, widgetId)}
               onDragOver={(e) => handleDragOver(e, widgetId)}
