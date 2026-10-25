@@ -22,6 +22,7 @@ import {
   Percent,
   Receipt,
   FileCheck2,
+  ShieldCheck,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
@@ -31,6 +32,7 @@ import { ConfirmModal } from '../components/common/ConfirmModal';
 import { PermissionGate } from '../components/common/PermissionGate';
 import { AgingReportModal } from '../components/invoicing/AgingReportModal';
 import { QuoteSignModal } from '../components/invoicing/QuoteSignModal';
+import { VerifactuChainModal } from '../components/invoicing/VerifactuChainModal';
 import { exportToCSV } from '../utils/exportUtils';
 import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
 
@@ -58,6 +60,7 @@ export const Invoicing: React.FC = () => {
   // SME Suite Modals
   const [isAgingModalOpen, setIsAgingModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isVerifactuModalOpen, setIsVerifactuModalOpen] = useState(false);
   const [signingQuote, setSigningQuote] = useState<any>(null);
 
   // Custom Confirm Modal state
@@ -97,6 +100,8 @@ export const Invoicing: React.FC = () => {
   const [irpfRate, setIrpfRate] = useState('0');
   const [paymentTerms, setPaymentTerms] = useState('DAYS_30');
   const [isProforma, setIsProforma] = useState(false);
+  const [invoiceType, setInvoiceType] = useState('F1');
+  const [invoiceSeries, setInvoiceSeries] = useState('A');
   const [frequency, setFrequency] = useState('MONTHLY');
   const [contractType, setContractType] = useState('SERVICE');
   const [contractValue, setContractValue] = useState('');
@@ -372,6 +377,8 @@ export const Invoicing: React.FC = () => {
 
       if (modalType === 'invoice') {
         body.invoiceNumber = number;
+        body.invoiceType = invoiceType;
+        body.invoiceSeries = invoiceSeries;
       } else {
         body.quoteNumber = number;
       }
@@ -544,6 +551,16 @@ export const Invoicing: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setIsVerifactuModalOpen(true)}
+            data-testid="btn-verifactu-audit"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-lg text-xs font-bold shadow-xs transition-all active:scale-[0.98] shrink-0"
+            title="Auditoría Criptográfica Veri*Factu (AEAT RD 1007/2023)"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Veri*Factu AEAT</span>
+          </button>
+
           <button
             onClick={() => setIsAgingModalOpen(true)}
             data-testid="btn-aging-report"
@@ -803,6 +820,15 @@ export const Invoicing: React.FC = () => {
                             {inv.proforma && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
                                 Proforma
+                              </span>
+                            )}
+                            {!inv.proforma && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                                title={`Veri*Factu SHA-256: ${inv.verifactuHash || 'VERIFIED'}`}
+                              >
+                                <ShieldCheck className="w-2.5 h-2.5" />
+                                <span>{inv.invoiceType || 'F1'}</span>
                               </span>
                             )}
                           </div>
@@ -1228,25 +1254,63 @@ export const Invoicing: React.FC = () => {
         size="lg"
       >
         <form onSubmit={handleCreateDocument} className="space-y-4">
-          {/* Proforma toggle for Invoices */}
+          {/* Proforma & AEAT Veri*Factu Type for Invoices */}
           {modalType === 'invoice' && (
-            <div className="flex items-center justify-between p-2.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900/40">
-              <div className="flex items-center space-x-2">
-                <FileText className="w-4 h-4 text-blue-600" />
-                <div>
-                  <div className="text-xs font-bold text-gray-900 dark:text-white">Factura Proforma</div>
-                  <div className="text-[10px] text-gray-500 dark:text-slate-400">Genera un documento informativo previo sin validez contable fiscal</div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-2.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900/40">
+                <div className="flex items-center space-x-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <div className="text-xs font-bold text-gray-900 dark:text-white">Factura Proforma</div>
+                    <div className="text-[10px] text-gray-500 dark:text-slate-400">Genera un documento informativo previo sin validez contable fiscal</div>
+                  </div>
                 </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isProforma}
+                    onChange={(e) => setIsProforma(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isProforma}
-                  onChange={(e) => setIsProforma(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
+
+              {!isProforma && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-2.5 bg-emerald-50/60 dark:bg-emerald-950/20 rounded-lg border border-emerald-200/80 dark:border-emerald-900/40">
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-900 dark:text-emerald-300 mb-1">
+                      Tipo de Factura AEAT (Veri*Factu)
+                    </label>
+                    <select
+                      data-testid="select-invoice-type-aeat"
+                      value={invoiceType}
+                      onChange={(e) => setInvoiceType(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg text-slate-900 dark:text-white"
+                    >
+                      <option value="F1">F1 - Factura Ordinaria (Art. 6 RD 1619/2012)</option>
+                      <option value="F2">F2 - Factura Simplificada / Ticket (Art. 7)</option>
+                      <option value="R1">R1 - Rectificativa Error Fundado Derecho (Art. 80.1)</option>
+                      <option value="R2">R2 - Rectificativa Concurso Acreedores (Art. 80.3)</option>
+                      <option value="R4">R4 - Factura Rectificativa Resto Causas</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-900 dark:text-emerald-300 mb-1">
+                      Serie Fiscal Oficial
+                    </label>
+                    <select
+                      value={invoiceSeries}
+                      onChange={(e) => setInvoiceSeries(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg text-slate-900 dark:text-white font-mono"
+                    >
+                      <option value="A">Serie A - Operaciones Nacionales Ordinarias</option>
+                      <option value="E">Serie E - Operaciones Intracomunitarias (ROI/VIES)</option>
+                      <option value="R">Serie R - Serie Especial Rectificativas</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1619,6 +1683,11 @@ export const Invoicing: React.FC = () => {
       </Modal>
 
       {/* SME Modals */}
+      <VerifactuChainModal
+        isOpen={isVerifactuModalOpen}
+        onClose={() => setIsVerifactuModalOpen(false)}
+      />
+
       <AgingReportModal
         isOpen={isAgingModalOpen}
         onClose={() => setIsAgingModalOpen(false)}

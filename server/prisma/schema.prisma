@@ -411,6 +411,14 @@ model Invoice {
   rectifiesInvoiceId String?
   rectifyingReason   String?
   proforma           Boolean       @default(false)
+  invoiceSeries      String        @default("F2026")
+  invoiceType        String        @default("F1") // F1, F2, R1, R2, R3, R4, R5
+  verifactuHash      String?
+  previousInvoiceHash String?
+  verifactuQrUrl     String?
+  verifactuStatus    String        @default("VERIFIED") // VERIFIED, SUBMITTED, PENDING, REJECTED
+  verifactuCsv       String?
+  verifactuGeneratedAt DateTime?
   notes              String?
   paidAt             DateTime?
   tenantId           String?       @default("master")
@@ -622,31 +630,164 @@ model Product {
   isSync         Boolean         @default(false)
   lastSyncedAt   DateTime?
   tenantId       String?         @default("master")
-  attributes     String?         @default("{}") // Mapped multi-app attributes (unopim, opencart, sage, odoo, shopify, woocommerce)
-  stockMovements StockMovement[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  attributes      String?             @default("{}") // Mapped multi-app attributes (unopim, opencart, sage, odoo, shopify, woocommerce)
+  stockMovements  StockMovement[]
+  warehouseStocks WarehouseStock[]
+  transferItems   StockTransferItem[]
+  batches         StockBatch[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@index([tenantId, category])
   @@index([tenantId, sku])
   @@map("products")
 }
 
+model Warehouse {
+  id                String           @id @default(uuid())
+  tenantId          String           @default("master")
+  code              String
+  name              String
+  type              String           @default("PHYSICAL") // PHYSICAL, TRANSIT, VEHICLE, VIRTUAL
+  address           String?
+  city              String?
+  postalCode        String?
+  country           String           @default("España")
+  contactPerson     String?
+  phone             String?
+  email             String?
+  isDefault         Boolean          @default(false)
+  isActive          Boolean          @default(true)
+  stocks            WarehouseStock[]
+  outgoingTransfers StockTransfer[]  @relation("SourceWarehouse")
+  incomingTransfers StockTransfer[]  @relation("TargetWarehouse")
+  movements         StockMovement[]
+  batches           StockBatch[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("warehouses")
+}
+
+model WarehouseStock {
+  id             String    @id @default(uuid())
+  tenantId       String    @default("master")
+  warehouseId    String
+  warehouse      Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stock          Int       @default(0)
+  reservedStock  Int       @default(0)
+  inTransitStock Int       @default(0)
+  minStock       Int       @default(5)
+  maxStock       Int?
+  aisle          String?
+  rack           String?
+  shelf          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([warehouseId, productId])
+  @@index([tenantId, warehouseId])
+  @@map("warehouse_stocks")
+}
+
+model StockTransfer {
+  id                String              @id @default(uuid())
+  tenantId          String              @default("master")
+  transferNumber    String
+  sourceWarehouseId String
+  sourceWarehouse   Warehouse           @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id])
+  targetWarehouseId String
+  targetWarehouse   Warehouse           @relation("TargetWarehouse", fields: [targetWarehouseId], references: [id])
+  status            String              @default("DRAFT") // DRAFT, IN_TRANSIT, RECEIVED, WITH_DISCREPANCIES, CANCELLED
+  items             StockTransferItem[]
+  notes             String?
+  legalNotice       String?             @default("Documento de circulación y traslado interno de existencias sin transmisión de titularidad jurídica ni repercusión de IVA (Art. 9 Ley 37/1992 del IVA y normativa LOTT)")
+  carrierName       String?
+  trackingNumber    String?
+  vehiclePlate      String?
+  driverName        String?
+  driverTaxId       String?
+  parcelsCount      Int                 @default(1)
+  totalWeightKg     Float               @default(1.0)
+  shippedAt         DateTime?
+  receivedAt        DateTime?
+  shippedBy         String?
+  receivedBy        String?
+  hasDiscrepancies  Boolean             @default(false)
+  discrepancyNotes  String?
+  movements         StockMovement[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([tenantId, transferNumber])
+  @@index([tenantId, status])
+  @@map("stock_transfers")
+}
+
+model StockTransferItem {
+  id             String        @id @default(uuid())
+  transferId     String
+  transfer       StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  requestedQty   Int
+  shippedQty     Int           @default(0)
+  receivedQty    Int           @default(0)
+  discrepancyQty Int           @default(0)
+  batchNumber    String?
+  expiryDate     DateTime?
+  unitCost       Float         @default(0.0)
+  createdAt      DateTime      @default(now())
+
+  @@map("stock_transfer_items")
+}
+
+model StockBatch {
+  id          String    @id @default(uuid())
+  tenantId    String    @default("master")
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  batchNumber String
+  expiryDate  DateTime?
+  quantity    Int       @default(0)
+  costPrice   Float     @default(0.0)
+  status      String    @default("ACTIVE") // ACTIVE, QUARANTINE, EXPIRED
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([tenantId, productId, warehouseId, batchNumber])
+  @@index([expiryDate])
+  @@map("stock_batches")
+}
+
 model StockMovement {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   productId     String
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  type          String   // INBOUND, OUTBOUND, ADJUSTMENT, TRANSFER, RETURN
-  quantity      Int      // Delta quantity (positive or negative)
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId   String?
+  warehouse     Warehouse?     @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  transferId    String?
+  transfer      StockTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+  type          String         // INBOUND, OUTBOUND, ADJUSTMENT, TRANSFER_OUT, TRANSFER_IN, SHRINKAGE, RETURN
+  quantity      Int            // Delta quantity (positive or negative)
   previousStock Int
   newStock      Int
+  batchNumber   String?
+  unitCost      Float?
   reason        String?
   reference     String?
   performedBy   String?
-  tenantId      String?  @default("master")
-  createdAt     DateTime @default(now())
+  tenantId      String?        @default("master")
+  createdAt     DateTime       @default(now())
 
   @@index([productId, createdAt])
+  @@index([warehouseId, createdAt])
   @@index([tenantId, createdAt])
   @@map("stock_movements")
 }
