@@ -55,6 +55,17 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
     }
   }, [ticket?.id]);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showDeleteConfirm) setShowDeleteConfirm(false);
+        else if (ticket) onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [ticket, showDeleteConfirm, onClose]);
+
   if (!ticket) return null;
 
   const canDelete = hasPermission('tickets', 'delete') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -65,19 +76,21 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
 
     setSending(true);
     try {
-      const res = await api.post(`/tickets/${ticket.id}/messages`, {
+      const res: any = await api.post(`/tickets/${ticket.id}/messages`, {
         message: replyMessage,
         isInternal,
       });
 
-      if (res.data?.success) {
+      if (res.success || res.data?.success) {
         toast.success(isInternal ? t('tickets.internalNoteSaved') : t('tickets.replySent'));
         setReplyMessage('');
         setIsInternal(false);
 
         // Fetch refreshed ticket
-        const refRes = await api.get(`/tickets/${ticket.id}`);
-        if (refRes.data?.success) {
+        const refRes: any = await api.get(`/tickets/${ticket.id}`);
+        if (refRes.success && refRes.data) {
+          onTicketUpdated(refRes.data);
+        } else if (refRes.data?.success) {
           onTicketUpdated(refRes.data.data);
         }
       }
@@ -90,15 +103,17 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      const res = await api.patch(`/tickets/${ticket.id}`, { status: newStatus });
-      if (res.data?.success) {
+      const res: any = await api.patch(`/tickets/${ticket.id}`, { status: newStatus });
+      if (res.success || res.data?.success) {
         toast.success(t('tickets.statusUpdated'));
         // Fetch refreshed ticket to get system messages
-        const refRes = await api.get(`/tickets/${ticket.id}`);
-        if (refRes.data?.success) {
+        const refRes: any = await api.get(`/tickets/${ticket.id}`);
+        if (refRes.success && refRes.data) {
+          onTicketUpdated(refRes.data);
+        } else if (refRes.data?.success) {
           onTicketUpdated(refRes.data.data);
         } else {
-          onTicketUpdated(res.data.data);
+          onTicketUpdated(res.data?.data || res.data);
         }
       }
     } catch (err) {
@@ -108,10 +123,10 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
 
   const handlePriorityChange = async (newPriority: string) => {
     try {
-      const res = await api.patch(`/tickets/${ticket.id}`, { priority: newPriority });
-      if (res.data?.success) {
+      const res: any = await api.patch(`/tickets/${ticket.id}`, { priority: newPriority });
+      if (res.success || res.data?.success) {
         toast.success(t('tickets.priorityUpdated'));
-        onTicketUpdated(res.data.data);
+        onTicketUpdated(res.data?.data || res.data);
       }
     } catch (err) {
       toast.error(t('tickets.updateError'));
@@ -120,16 +135,18 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
 
   const handleAssigneeChange = async (newAssigneeId: string) => {
     try {
-      const res = await api.patch(`/tickets/${ticket.id}`, {
+      const res: any = await api.patch(`/tickets/${ticket.id}`, {
         assignedToId: newAssigneeId ? newAssigneeId : null,
       });
-      if (res.data?.success) {
+      if (res.success || res.data?.success) {
         toast.success(t('tickets.assignedSuccess', 'Asignación actualizada'));
-        const refRes = await api.get(`/tickets/${ticket.id}`);
-        if (refRes.data?.success) {
+        const refRes: any = await api.get(`/tickets/${ticket.id}`);
+        if (refRes.success && refRes.data) {
+          onTicketUpdated(refRes.data);
+        } else if (refRes.data?.success) {
           onTicketUpdated(refRes.data.data);
         } else {
-          onTicketUpdated(res.data.data);
+          onTicketUpdated(res.data?.data || res.data);
         }
       }
     } catch (err) {
@@ -146,8 +163,8 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
   const handleDeleteTicket = async () => {
     setDeleting(true);
     try {
-      const res = await api.delete(`/tickets/${ticket.id}`);
-      if (res.data?.success) {
+      const res: any = await api.delete(`/tickets/${ticket.id}`);
+      if (res.success || res.data?.success) {
         toast.success(t('tickets.deletedSuccess', 'Ticket eliminado correctamente'));
         setShowDeleteConfirm(false);
         onClose();
@@ -197,11 +214,15 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
     <>
       <div
         onClick={onClose}
-        className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs animate-fade-in"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-black/50 backdrop-blur-xs animate-fade-in"
       >
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Detalle del ticket ${ticket.ticketNumber}`}
+          data-testid="ticket-detail-modal"
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl bg-white dark:bg-slate-900 h-full shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col animate-slide-left"
+          className="w-full max-w-2xl m-auto bg-white dark:bg-slate-900 max-h-[90vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/30">
@@ -227,6 +248,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
               {canDelete && (
                 <button
                   type="button"
+                  aria-label="Eliminar ticket"
                   onClick={() => setShowDeleteConfirm(true)}
                   title={t('tickets.deleteTicket')}
                   className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
@@ -235,6 +257,8 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 </button>
               )}
               <button
+                aria-label="Cerrar detalle del ticket"
+                data-testid="ticket-detail-close-btn"
                 onClick={onClose}
                 className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
@@ -250,6 +274,8 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
               <div className="flex items-center gap-1.5">
                 <span className="font-medium text-slate-500 dark:text-slate-400">{t('tickets.status')}:</span>
                 <select
+                  aria-label="Estado del ticket"
+                  data-testid="ticket-detail-status-select"
                   value={ticket.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
                   className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium outline-none"
@@ -266,6 +292,8 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
               <div className="flex items-center gap-1.5">
                 <span className="font-medium text-slate-500 dark:text-slate-400">{t('tickets.priority')}:</span>
                 <select
+                  aria-label="Prioridad del ticket"
+                  data-testid="ticket-detail-priority-select"
                   value={ticket.priority}
                   onChange={(e) => handlePriorityChange(e.target.value)}
                   className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium outline-none"
@@ -283,6 +311,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
               {ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED' && (
                 <button
                   type="button"
+                  data-testid="ticket-detail-resolve-btn"
                   onClick={() => handleStatusChange('RESOLVED')}
                   className="px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100 font-semibold transition flex items-center gap-1"
                 >
@@ -330,6 +359,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 <span>{t('tickets.assignedTo')}:</span>
               </span>
               <select
+                aria-label="Agente asignado"
                 value={ticket.assignedToId || ''}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
                 className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium outline-none text-xs"
@@ -441,6 +471,8 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
               <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
                 <input
                   type="checkbox"
+                  aria-label="Publicar como nota interna confidencial"
+                  data-testid="ticket-detail-internal-checkbox"
                   checked={isInternal}
                   onChange={(e) => setIsInternal(e.target.checked)}
                   className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
@@ -459,6 +491,8 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
             <textarea
               required
               rows={3}
+              aria-label="Mensaje de respuesta o nota interna"
+              data-testid="ticket-detail-reply-input"
               value={replyMessage}
               onChange={(e) => setReplyMessage(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -477,6 +511,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
             <div className="flex justify-end gap-2">
               <button
                 type="submit"
+                data-testid="ticket-detail-send-btn"
                 disabled={sending || !replyMessage.trim()}
                 className={`px-4 py-2 text-sm font-semibold rounded-xl text-white transition disabled:opacity-50 shadow-sm flex items-center gap-1.5 ${
                   isInternal
@@ -505,8 +540,11 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
           className="fixed inset-0 z-60 flex items-center justify-center p-4 m-auto bg-black/60 backdrop-blur-xs animate-fade-in"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirmar eliminación de ticket"
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl animate-scale-up"
+            className="w-full max-w-md m-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl animate-scale-up"
           >
             <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-3">
               <div className="p-2.5 rounded-full bg-red-100 dark:bg-red-950/60">

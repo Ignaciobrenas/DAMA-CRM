@@ -44,6 +44,14 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +73,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
         contactId: contactId || null,
       });
 
-      if (res.data?.success) {
+      if (res.success || res.data?.success) {
         toast.success(t('tickets.ticketCreated'));
         onTicketCreated();
         onClose();
@@ -82,17 +90,22 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 m-auto animate-fade-in"
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('tickets.newTicket')}
+        data-testid="new-ticket-modal"
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-scale-up"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl m-auto shadow-2xl overflow-hidden animate-scale-up"
       >
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">
             {t('tickets.newTicket')}
           </h3>
           <button
+            aria-label="Cerrar modal de nuevo ticket"
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
@@ -108,6 +121,8 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
             <input
               type="text"
               required
+              aria-label="Asunto del ticket"
+              data-testid="new-ticket-title-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('tickets.titlePlaceholder')}
@@ -121,6 +136,8 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
                 {t('tickets.priority')}
               </label>
               <select
+                aria-label="Prioridad del nuevo ticket"
+                data-testid="new-ticket-priority-select"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none"
@@ -137,6 +154,8 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
                 {t('tickets.category')}
               </label>
               <select
+                aria-label="Categoría del nuevo ticket"
+                data-testid="new-ticket-category-select"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none"
@@ -155,6 +174,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
                 {t('tickets.company')}
               </label>
               <select
+                aria-label="Empresa asociada al ticket"
                 value={companyId}
                 onChange={(e) => setCompanyId(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none"
@@ -171,6 +191,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
                 {t('tickets.contact')}
               </label>
               <select
+                aria-label="Contacto asociado al ticket"
                 value={contactId}
                 onChange={(e) => setContactId(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none"
@@ -190,6 +211,8 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
             <textarea
               required
               rows={4}
+              aria-label="Descripción detallada del ticket"
+              data-testid="new-ticket-description-input"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('tickets.descriptionPlaceholder')}
@@ -207,6 +230,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({
             </button>
             <button
               type="submit"
+              data-testid="new-ticket-submit-btn"
               disabled={submitting}
               className="px-5 py-2 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50"
             >
