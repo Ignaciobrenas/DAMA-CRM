@@ -132,6 +132,17 @@ export const Integrations: React.FC = () => {
     fetchIntegrations();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (modalOpen) setModalOpen(false);
+        if (logsModalOpen) setLogsModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalOpen, logsModalOpen]);
+
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(id);
@@ -848,6 +859,8 @@ export const Integrations: React.FC = () => {
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
+              aria-label={t('integrations.searchPlaceholder') || 'Buscar integraciones'}
+              data-testid="integrations-search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('integrations.searchPlaceholder')}
@@ -855,6 +868,7 @@ export const Integrations: React.FC = () => {
             />
             {searchQuery && (
               <button
+                aria-label="Limpiar búsqueda"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
@@ -869,6 +883,8 @@ export const Integrations: React.FC = () => {
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-slate-400 shrink-0" />
               <select
+                aria-label="Filtrar por estado de conexión"
+                data-testid="integrations-status-select"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-color cursor-pointer"
@@ -881,6 +897,7 @@ export const Integrations: React.FC = () => {
 
             {/* Botón de ocultar lo no configurado (Requerimiento explícito del usuario) */}
             <button
+              data-testid="integrations-toggle-configured"
               onClick={() => {
                 setOnlyConfigured(!onlyConfigured);
                 soundService.play('action');
@@ -973,6 +990,7 @@ export const Integrations: React.FC = () => {
             return (
               <motion.div
                 key={item.id}
+                data-testid={`connector-card-${item.id}`}
                 layout
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1002,6 +1020,8 @@ export const Integrations: React.FC = () => {
                       {/* Interactive enable / disable toggle switch on card header */}
                       <button
                         type="button"
+                        aria-label={item.config?.enabled ? `Desactivar integración ${item.name}` : `Activar integración ${item.name}`}
+                        data-testid={`connector-toggle-${item.id}`}
                         onClick={(e) => handleToggleEnable(item.id, Boolean(item.config?.enabled), e)}
                         title={item.config?.enabled ? 'Desactivar integración' : 'Activar integración'}
                         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
@@ -1106,6 +1126,7 @@ export const Integrations: React.FC = () => {
 
                     {/* Botón de Logs / Traza de Auditoría */}
                     <button
+                      data-testid={`connector-logs-btn-${item.id}`}
                       onClick={(e) => openLogsModal(item, e)}
                       className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors active:scale-95"
                       title="Revisar registros de auditoría y traza de errores"
@@ -1129,6 +1150,7 @@ export const Integrations: React.FC = () => {
 
                     {/* Botón de configuración */}
                     <button
+                      data-testid={`connector-config-btn-${item.id}`}
                       onClick={() => openConfigModal(item.id)}
                       className="py-2 px-3 bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-opacity active:scale-95"
                       title={isAdmin ? 'Configurar credenciales' : 'Ver parámetros configurados'}
@@ -1147,12 +1169,18 @@ export const Integrations: React.FC = () => {
       {/* Configuration & Credentials Modal (RBAC Guarded) */}
       <AnimatePresence>
         {modalOpen && selectedConnector && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Configuración de ${selectedConnector}`}
+            data-testid="connector-config-modal"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 m-auto bg-slate-950/60 backdrop-blur-sm"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col m-auto"
             >
               {/* Modal Header */}
               <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-10">
@@ -1179,6 +1207,7 @@ export const Integrations: React.FC = () => {
                   </div>
                 </div>
                 <button
+                  aria-label="Cerrar modal de configuración"
                   onClick={() => setModalOpen(false)}
                   className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
@@ -2257,6 +2286,7 @@ export const Integrations: React.FC = () => {
                   </button>
                   {isAdmin && (
                     <button
+                      data-testid="connector-save-btn"
                       onClick={handleSaveConfig}
                       disabled={modalTesting}
                       className="px-5 py-2 bg-brand-color text-white rounded-xl text-xs font-semibold hover:opacity-95 transition-opacity active:scale-95 shadow-sm disabled:opacity-50"
@@ -2274,7 +2304,13 @@ export const Integrations: React.FC = () => {
       {/* Centered Logs & Audit Inspector Modal */}
       <AnimatePresence>
         {logsModalOpen && selectedLogsConnector && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 m-auto bg-slate-950/60 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Auditoría de ${selectedLogsConnector.name}`}
+            data-testid="connector-logs-modal"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 m-auto bg-slate-950/60 backdrop-blur-sm"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -2297,6 +2333,8 @@ export const Integrations: React.FC = () => {
                   </div>
                 </div>
                 <button
+                  aria-label="Cerrar modal de auditoría"
+                  data-testid="connector-logs-close-btn"
                   onClick={() => setLogsModalOpen(false)}
                   className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800"
                 >
