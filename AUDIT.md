@@ -49,10 +49,10 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | **02** | **CRM Core · Empresas (Accounts)** | `/companies` | Módulo 00, 01 | 🟢 CERRADO | 7 tests passed (100%) |
 | **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | 🟢 CERRADO | 7 tests passed (100%) |
 | **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | 🟢 CERRADO | 8 tests passed (100%) |
-| **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | 🟢 CERRADO | 8 tests passed (100%) |
+| **05** | **Facturación, Presupuestos, Veri*Factu AEAT & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | 🟢 CERRADO | 9 tests passed (100%) |
 | **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | 🟢 CERRADO | 8 tests passed (100%) |
-| **07** | **Inventario, Catálogo & Almacenes** | `/inventory` | Módulo 00, 01 | 🟡 EN CURSO | En desarrollo |
-| **08** | **Logística & Envíos con Transportistas** | `/logistics` | Módulo 00, 07 | ⚪ PENDIENTE | Base existente |
+| **07** | **Inventario Multi-Almacén, Traspasos Sage 2 Fases, Lotes FEFO & Kardex** | `/inventory` | Módulo 00, 01 | 🟢 CERRADO | 3 tests passed (100%) |
+| **08** | **Logística, 22 Agencias SVG, Comparador Tarifas & Etiqueta 10x15** | `/logistics` | Módulo 00, 07 | 🟢 CERRADO | 3 tests passed (100%) |
 | **09** | **Planificador Ágil, Tableros & Sprints** | `/agile`, `/planner` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
 | **10** | **Calendario & Reserva de Citas** | `/calendar`, `/appointments` | Módulo 00, 03 | ⚪ PENDIENTE | Base existente |
 | **11** | **Helpdesk & Sistema de Tickets** | `/tickets` | Módulo 00, 02, 03 | ⚪ PENDIENTE | Base existente |
@@ -62,7 +62,7 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | **15** | **Portal de Clientes** | `/portal` | Módulo 00, 05, 11 | ⚪ PENDIENTE | Base existente |
 | **16** | **Informes & Business Intelligence** | `/reports`, `/admin-bi` | Módulo 00, 04, 05, 06 | ⚪ PENDIENTE | Base existente |
 | **17** | **Integraciones & Webhooks** | `/integrations`, `/faq` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
-| **18** | **Configuración, Marca & Multi-Tenant** | `/settings` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
+| **18** | **Configuración, Logo Placeholder DAMA & Estudio de Diseño PDF** | `/settings` | Módulo 00, 01 | 🟢 CERRADO | 2 tests passed (100%) |
 | **19** | **Dashboard Ejecutivo & Manejo de Errores** | `/`, 404, ErrorBoundary | Todos los módulos | ⚪ PENDIENTE | Base existente |
 
 ---
@@ -204,16 +204,53 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 - **Mejoras Pendientes**:
   - Ninguna. Módulo 06 cerrado y validado al 100%.
 
-### Módulo 07 · Inventario, Catálogo & Almacenes
-- **Estado**: 🟡 EN CURSO
+### Módulo 07 · Inventario Multi-Almacén, Traspasos Sage 2 Fases, Lotes FEFO & Kardex
+- **Estado**: 🟢 CERRADO
 - **Issues Encontrados**:
-  - En auditoría.
+  1. *Stock plano monolítico sin desglose por almacenes ni ubicaciones*: El modelo anterior solo almacenaba una cifra global en `Product.stock`, sin distinguir almacenes regionales, furgonetas SAT ni stock en tránsito.
+  2. *Ausencia de flujo legal de Traspaso entre Almacenes (Metodología Sage 50/200)*: Los movimientos internos carecían de las 2 fases contables (Fase 1: Salida a `inTransitStock` + Fase 2: Recepción e inspección de mermas) y no emitían el **Albarán de Circulación Interno** exigido por la LOTT (Orden FOM/2861/2012) y exento de IVA conforme al Art. 9.1º de la Ley 37/1992 del IVA.
+  3. *Carencia de trazabilidad por Lotes/Series FEFO y Libro Mayor Kardex PMP*: No existía registro de caducidades por lote ni valoración a Coste Medio Ponderado (Norma 10ª PGC).
+  4. *Accesibilidad en selectores de filtrado*: Los selectores de categoría, estado de stock y ordenación carecían de `aria-label`.
 - **Issues Arreglados**:
-  - En auditoría.
+  1. Creados y sincronizados en PostgreSQL los modelos `Warehouse`, `WarehouseStock`, `StockTransfer`, `StockTransferItem`, `StockBatch` y `StockMovement` con clave única multi-tenant y sembrado automático de 4 centros logísticos (`ALM-MAD-01`, `ALM-BCN-02`, `ALM-SEV-03`, `FURG-TEC-01`).
+  2. Implementado el motor de traspasos en 2 fases en `inventory.controller.ts` y el generador `transfer-pdf.service.ts` para el **Albarán de Circulación Interno Oficial PDF** con logotipo personalizado de empresa o fallback al placeholder oficial inmutable de DAMA (`dama-logo-dark.png`).
+  3. Creado el componente `SageWarehouseOperations.tsx` integrado en `Inventory.tsx` con conmutador multi-almacén, asistente de traspaso en 2 fases, recepción con cálculo automático de mermas (`SHRINKAGE`), matriz de lotes FEFO y Libro Mayor Kardex PMP.
+  4. Añadidos atributos `aria-label` y `title` en todos los controles y centrado estricto `m-auto` en todos los modales.
 - **Mejoras Implementadas**:
-  - En diseño y desarrollo.
+  1. **Cumplimiento Fiscal y de Transporte (Art. 9 LIVA & LOTT)**: Impresión directa de Albarán de Circulación con datos de porteador, conductor, DNI, matrícula, bultos, peso bruto y cláusula legal de no sujeción a IVA.
+  2. **Suite Playwright Integral**: `e2e/module-07-inventory-warehouses.spec.ts` con 3 tests E2E completos: dashboard multi-almacén y Axe a11y, ciclo completo de traspaso Sage Fase 1 (Salida a Tránsito) y Fase 2 (Recepción en Destino) + Albarán PDF, y matriz de Lotes FEFO + Kardex Contable PMP (3/3 en verde).
 - **Mejoras Pendientes**:
-  - Validación completa con Playwright.
+  - Ninguna. Módulo 07 cerrado y validado al 100%.
+
+### Módulo 08 · Logística, 22 Agencias con Logos SVG, Comparador Tarifas & Etiqueta Térmica 10x15
+- **Estado**: 🟢 CERRADO
+- **Issues Encontrados**:
+  1. *Ausencia de identidad visual oficial de transportistas*: Las agencias de transporte se mostraban únicamente como texto plano sin sus logotipos vectoriales reconocibles.
+  2. *Falta de comparador de tarifas y generador de etiquetas térmicas homologadas*: No existía cotizador comparativo por peso/servicio ni generación de etiquetas térmicas 10x15 cm (DIN A6) en PDF.
+  3. *Accesibilidad en filtros de envíos*: Los selectores de filtrado por agencia y por estado carecían de `aria-label`.
+- **Issues Arreglados**:
+  1. Incorporados los logotipos SVG en `client/public/assets/carriers/` y creado el componente `CarrierLogo.tsx` dando soporte a 22 agencias nacionales e internacionales (Correos, Correos Express, SEUR, MRW, GLS, NACEX, TIPSA, Zeleris, Envialia, CTT Express, DHL, UPS, FedEx, TNT, DPD, Mondial Relay, InPost, Sending, Ontime, CBL, Transaher, Rhenus).
+  2. Implementados los endpoints `POST /api/logistics/rates/compare` y `GET /api/logistics/shipments/:id/label` (etiqueta térmica A6 10x15 cm con código de barras Code-128, QR y logo de empresa o placeholder oficial DAMA).
+  3. Añadidos atributos `aria-label` en los selectores de filtrado y centrado estricto `m-auto` en los modales de Comparador de Tarifas y Nuevo Envío.
+- **Mejoras Implementadas**:
+  1. ** Suite Playwright Integral**: `e2e/module-08-logistics-carriers.spec.ts` con 3 tests E2E completos: dashboard de envíos con logos de transportistas y Axe a11y, modal comparador de tarifas y parrilla de 22 conectores, y modal centrado de nueva expedición (3/3 en verde).
+- **Mejoras Pendientes**:
+  - Ninguna. Módulo 08 cerrado y validado al 100%.
+
+### Módulo 18 · Configuración, Identidad Corporativa, Logo Placeholder DAMA & Estudio de Diseño PDF (Veri*Factu)
+- **Estado**: 🟢 CERRADO
+- **Issues Encontrados**:
+  1. *Diseño estático de PDFs sin personalización corporativa*: Los documentos PDF no permitían elegir plantilla estructural, colores de acento, posición del logo, marca de agua, datos del Registro Mercantil ni cláusulas RGPD/LOPDGDD.
+  2. *Regla del Logotipo Placeholder Oficial DAMA vs Logo de Empresa*: Se requería garantizar en toda la plataforma que si la empresa no ha subido su propio logotipo, todos los PDFs y vistas previas utilicen automáticamente el logotipo oficial inmutable de DAMA (`client/public/assets/logos/dama-logo-dark.png`), y si la empresa configura su logo, se estampe el suyo.
+  3. *Verificación criptográfica Veri*Factu AEAT*: Se requería persistir en base de datos la cadena SHA-256 (`verifactuHash`, `previousInvoiceHash`, `verifactuQrUrl`, `invoiceType`) y exponer un verificador interactivo de integridad conforme al RD 1007/2023 y Orden HAC/1177/2024.
+- **Issues Arreglados**:
+  1. Creado `PdfDesignSettings.tsx` en `Settings.tsx` ("Diseño de Documentos & PDF") con 4 plantillas profesionales (`MODERN_STRIPE`, `CORPORATE_SAGE`, `CLASSIC_EXECUTIVE`, `MINIMAL_SWISS`), selector de color, alineación de logo (`LEFT`/`RIGHT`), switches de bloques documentales, textos registrales/RGPD, vista previa A4 interactiva en vivo y descarga de PDF de muestra (`GET /api/branding/sample-pdf`).
+  2. Implementada la función centralizada `resolveLogo()` en `pdf.service.ts`, `transfer-pdf.service.ts`, `report-exporter.service.ts` y `logistics.controller.ts` que aplica el logo personalizado de la empresa o el fallback automático a `client/public/assets/logos/dama-logo-dark.png`.
+  3. Creado `VerifactuChainModal.tsx` y endpoint `GET /api/invoices/verifactu/chain` para auditar en vivo los eslabones criptográficos SHA-256 de las facturas emitidas.
+- **Mejoras Implementadas**:
+  1. **Suite Playwright Integral**: `e2e/module-18-settings-pdf-studio.spec.ts` (2/2 en verde) y `e2e/module-05-invoicing-quotes.spec.ts` actualizado con el test `05.8` de cadena criptográfica Veri*Factu (9/9 en verde).
+- **Mejoras Pendientes**:
+  - Ninguna. Módulo 18 cerrado y validado al 100%.
 
 ---
 *(Se actualiza automáticamente al finalizar cada módulo)*

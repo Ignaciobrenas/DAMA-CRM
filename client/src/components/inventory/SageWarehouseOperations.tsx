@@ -761,7 +761,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 Almacén de Origen (Expedidor) *
               </label>
               <select
-                data-testid="select-source-warehouse"
+                data-testid="select-source-warehouse" aria-label="Almacén de origen"
                 value={sourceWarehouseId}
                 onChange={(e) => setSourceWarehouseId(e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
@@ -779,7 +779,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 Almacén de Destino (Receptor) *
               </label>
               <select
-                data-testid="select-target-warehouse"
+                data-testid="select-target-warehouse" aria-label="Almacén de destino"
                 value={targetWarehouseId}
                 onChange={(e) => setTargetWarehouseId(e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
@@ -810,7 +810,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 </label>
                 <input
                   type="text"
-                  data-testid="input-transfer-carrier"
+                  data-testid="input-transfer-carrier" aria-label="Agencia o porteador"
                   value={carrierName}
                   onChange={(e) => setCarrierName(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg"
@@ -822,7 +822,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 </label>
                 <input
                   type="text"
-                  data-testid="input-transfer-driver"
+                  data-testid="input-transfer-driver" aria-label="Conductor asignado"
                   value={driverName}
                   onChange={(e) => setDriverName(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg"
@@ -834,7 +834,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 </label>
                 <input
                   type="text"
-                  data-testid="input-transfer-plate"
+                  data-testid="input-transfer-plate" aria-label="Matrícula del vehículo"
                   value={vehiclePlate}
                   onChange={(e) => setVehiclePlate(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg"
@@ -846,7 +846,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 </label>
                 <input
                   type="text"
-                  value={driverTaxId}
+                  aria-label="NIF del conductor" value={driverTaxId}
                   onChange={(e) => setDriverTaxId(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg"
                 />
@@ -858,7 +858,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 <input
                   type="number"
                   min="1"
-                  value={totalPackages}
+                  aria-label="Número de bultos" value={totalPackages}
                   onChange={(e) => setTotalPackages(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg"
                 />
@@ -870,7 +870,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 <input
                   type="number"
                   step="0.1"
-                  value={totalWeightKg}
+                  aria-label="Peso bruto total en kg" value={totalWeightKg}
                   onChange={(e) => setTotalWeightKg(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg"
                 />
@@ -911,7 +911,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
               >
                 <div className="sm:col-span-5">
                   <select
-                    data-testid={`transfer-item-product-${idx}`}
+                    data-testid={`transfer-item-product-${idx}`} aria-label={`Producto línea ${idx + 1}`}
                     value={it.productId}
                     onChange={(e) => {
                       const next = [...transferItems];
@@ -931,7 +931,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                   <input
                     type="number"
                     min="1"
-                    data-testid={`transfer-item-qty-${idx}`}
+                    data-testid={`transfer-item-qty-${idx}`} aria-label={`Cantidad línea ${idx + 1}`}
                     value={it.quantity}
                     onChange={(e) => {
                       const next = [...transferItems];
@@ -945,7 +945,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 <div className="sm:col-span-3">
                   <input
                     type="text"
-                    value={it.batchNumber}
+                    aria-label={`Lote línea ${idx + 1}`} value={it.batchNumber}
                     onChange={(e) => {
                       const next = [...transferItems];
                       next[idx].batchNumber = e.target.value;
@@ -958,7 +958,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 <div className="sm:col-span-2">
                   <input
                     type="text"
-                    value={it.targetBinLocation}
+                    aria-label={`Ubicación destino línea ${idx + 1}`} value={it.targetBinLocation}
                     onChange={(e) => {
                       const next = [...transferItems];
                       next[idx].targetBinLocation = e.target.value;
@@ -978,7 +978,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
             </label>
             <input
               type="text"
-              value={transferNotes}
+              aria-label="Observaciones del albarán" value={transferNotes}
               onChange={(e) => setTransferNotes(e.target.value)}
               placeholder="Ej. Mercancía paletizada con precinto de seguridad. No apilar."
               className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
@@ -1047,7 +1047,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                         type="number"
                         min="0"
                         max={item.shippedQty}
-                        data-testid={`input-receive-qty-${item.id}`}
+                        data-testid={`input-receive-qty-${item.id}`} aria-label="Cantidad recibida"
                         value={rec}
                         onChange={(e) =>
                           setReceivedQuantities({
@@ -1074,7 +1074,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
               </label>
               <input
                 type="text"
-                value={receptionNotes}
+                aria-label="Observaciones de recepción" value={receptionNotes}
                 onChange={(e) => setReceptionNotes(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
               />
@@ -1199,7 +1199,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
               Producto *
             </label>
             <select
-              value={batchForm.productId}
+              aria-label="Producto del lote" value={batchForm.productId}
               onChange={(e) => setBatchForm({ ...batchForm, productId: e.target.value })}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
             >
@@ -1219,7 +1219,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
               <input
                 type="text"
                 required
-                value={batchForm.batchNumber}
+                aria-label="Código de lote" value={batchForm.batchNumber}
                 onChange={(e) => setBatchForm({ ...batchForm, batchNumber: e.target.value })}
                 className="w-full px-3 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
               />
@@ -1232,7 +1232,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
                 type="number"
                 min="1"
                 required
-                value={batchForm.initialQty}
+                aria-label="Unidades del lote" value={batchForm.initialQty}
                 onChange={(e) => setBatchForm({ ...batchForm, initialQty: e.target.value })}
                 className="w-full px-3 py-1.5 text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
               />
@@ -1246,7 +1246,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
               </label>
               <input
                 type="date"
-                value={batchForm.expiryDate}
+                aria-label="Fecha de caducidad" value={batchForm.expiryDate}
                 onChange={(e) => setBatchForm({ ...batchForm, expiryDate: e.target.value })}
                 className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
               />
@@ -1257,7 +1257,7 @@ export const SageWarehouseOperations: React.FC<SageWarehouseOperationsProps> = (
               </label>
               <input
                 type="text"
-                value={batchForm.supplierRef}
+                aria-label="Referencia albarán proveedor" value={batchForm.supplierRef}
                 onChange={(e) => setBatchForm({ ...batchForm, supplierRef: e.target.value })}
                 className="w-full px-3 py-1.5 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
               />

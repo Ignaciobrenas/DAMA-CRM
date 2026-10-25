@@ -344,7 +344,7 @@ export const PdfDesignSettings: React.FC = () => {
                   accept="image/png,image/jpeg,image/svg+xml"
                   onChange={handleLogoUpload}
                   className="hidden"
-                  data-testid="input-upload-company-logo"
+                  data-testid="input-upload-company-logo" aria-label="Subir archivo de logotipo de empresa"
                 />
                 <button
                   type="button"
@@ -379,7 +379,7 @@ export const PdfDesignSettings: React.FC = () => {
                   value={form.logoUrl || ''}
                   onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
                   placeholder="https://tu-empresa.es/logo.png (o dejar vacío para usar logo oficial DAMA)"
-                  data-testid="input-pdf-logo-url"
+                  data-testid="input-pdf-logo-url" aria-label="URL o Data URI del logotipo de empresa"
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none"
                 />
               </div>
@@ -544,7 +544,7 @@ export const PdfDesignSettings: React.FC = () => {
                 value={form.pdfWatermarkText || ''}
                 onChange={(e) => setForm({ ...form, pdfWatermarkText: e.target.value })}
                 placeholder="ORIGINAL · VERI*FACTU"
-                data-testid="input-pdf-watermark-text"
+                data-testid="input-pdf-watermark-text" aria-label="Texto de marca de agua diagonal"
                 className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
@@ -568,7 +568,7 @@ export const PdfDesignSettings: React.FC = () => {
                   type="text"
                   value={form.pdfMercantileRegistry || ''}
                   onChange={(e) => setForm({ ...form, pdfMercantileRegistry: e.target.value })}
-                  data-testid="input-pdf-mercantile-registry"
+                  data-testid="input-pdf-mercantile-registry" aria-label="Datos de inscripción en el Registro Mercantil"
                   placeholder="Inscrita en el Registro Mercantil de Madrid · Tomo 41.205 · Folio 112 · Hoja M-730412"
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
@@ -582,7 +582,7 @@ export const PdfDesignSettings: React.FC = () => {
                   rows={2}
                   value={form.pdfLopdText || ''}
                   onChange={(e) => setForm({ ...form, pdfLopdText: e.target.value })}
-                  data-testid="input-pdf-lopd-text"
+                  data-testid="input-pdf-lopd-text" aria-label="Cláusula de Protección de Datos RGPD y LOPDGDD" placeholder="Cláusula informativa RGPD / LOPDGDD..."
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
@@ -595,7 +595,7 @@ export const PdfDesignSettings: React.FC = () => {
                   type="text"
                   value={form.pdfFooterLegalText || ''}
                   onChange={(e) => setForm({ ...form, pdfFooterLegalText: e.target.value })}
-                  data-testid="input-pdf-footer-legal"
+                  data-testid="input-pdf-footer-legal" aria-label="Texto normativo de pie de página" placeholder="Factura verificable en la sede electrónica de la AEAT..."
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>

@@ -45,7 +45,9 @@
     "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.63.0",
     "concurrently": "^10.0.5",
-    "playwright": "^1.63.0"
+    "playwright": "^1.63.0",
+    "simple-icons": "^16.35.0",
+    "svgo": "^4.1.0"
   },
   "dependencies": {
     "thinking-orbs": "^0.3.2"

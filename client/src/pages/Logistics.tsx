@@ -434,7 +434,7 @@ export const Logistics: React.FC = () => {
 
             <div className="flex items-center space-x-2 w-full sm:w-auto">
               <select
-                value={filterCarrier}
+                aria-label="Filtrar por agencia de transporte" title="Filtrar por agencia de transporte" value={filterCarrier}
                 onChange={(e) => setFilterCarrier(e.target.value)}
                 className="px-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium"
               >
@@ -447,7 +447,7 @@ export const Logistics: React.FC = () => {
               </select>
 
               <select
-                value={filterStatus}
+                aria-label="Filtrar por estado de envío" title="Filtrar por estado de envío" value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="px-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium"
               >
