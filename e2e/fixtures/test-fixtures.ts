@@ -110,7 +110,7 @@ export function monitorPageHealth(page: Page): MonitorHandle {
     if (msg.type() === 'error') {
       const text = msg.text();
       // Filter harmless browser or websocket disconnection notices
-      if (!text.includes('net::ERR_CONNECTION_REFUSED') && !text.includes('favicon.ico')) {
+      if (!text.includes('net::ERR_CONNECTION_REFUSED') && !text.includes('favicon.ico') && !text.includes('WebSocket') && !text.includes('ws://')) {
         errors.push(text);
       }
     }

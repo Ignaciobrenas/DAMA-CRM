@@ -50,8 +50,8 @@ Los módulos se auditan en estricto orden de dependencia funcional:
 | **03** | **CRM Core · Contactos & Lead Capture** | `/contacts`, `/lead-capture` | Módulo 00, 01, 02 | 🟢 CERRADO | 7 tests passed (100%) |
 | **04** | **Pipeline de Ventas, Kanban & Deals** | `/pipeline` | Módulo 00, 02, 03 | 🟢 CERRADO | 8 tests passed (100%) |
 | **05** | **Facturación, Presupuestos & Firma** | `/invoicing`, `/quote/sign/:id` | Módulo 00, 02, 03, 04 | 🟢 CERRADO | 8 tests passed (100%) |
-| **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | 🟡 EN CURSO | En desarrollo |
-| **07** | **Inventario, Catálogo & Almacenes** | `/inventory` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
+| **06** | **Gastos & Control Financiero** | `/expenses` | Módulo 00, 01 | 🟢 CERRADO | 8 tests passed (100%) |
+| **07** | **Inventario, Catálogo & Almacenes** | `/inventory` | Módulo 00, 01 | 🟡 EN CURSO | En desarrollo |
 | **08** | **Logística & Envíos con Transportistas** | `/logistics` | Módulo 00, 07 | ⚪ PENDIENTE | Base existente |
 | **09** | **Planificador Ágil, Tableros & Sprints** | `/agile`, `/planner` | Módulo 00, 01 | ⚪ PENDIENTE | Base existente |
 | **10** | **Calendario & Reserva de Citas** | `/calendar`, `/appointments` | Módulo 00, 03 | ⚪ PENDIENTE | Base existente |
@@ -184,6 +184,27 @@ Los módulos se auditan en estricto orden de dependencia funcional:
   - Ninguna. Módulo 05 cerrado y validado al 100%.
 
 ### Módulo 06 · Gastos & Control Financiero
+- **Estado**: 🟢 CERRADO
+- **Issues Encontrados**:
+  1. *Ausencia de flujo de Edición de Gastos*: Existía creación y borrado pero no modal de edición de gastos existentes, impidiendo rectificar proveedores, importes o categorías a pesar de que el backend exponía `PATCH /expenses/:id`.
+  2. *Violación de la Regla #3 en Modales de Gastos*: `NewExpenseModal.tsx` y `ConfirmModal.tsx` carecían de la clase obligatoria `m-auto` en el contenedor del diálogo y no escuchaban la tecla `Escape`.
+  3. *Atributos WAI-ARIA y nombres accesibles*: El buscador de gastos carecía de `aria-label`, los selectores de filtro carecían de identificadores `data-testid`, y los botones de exportación carecían de nombres accesibles WCAG.
+  4. *Accesibilidad crítica en el sistema de Notificaciones (Toast)*: El botón de descarte en `ToastContext.tsx` carecía de `aria-label` y `title`, generando fallos críticos en Axe Core (`button-name`).
+  5. *Cálculos reactivos en franja de P&L*: La barra de métricas financieras no desglosaba con precisión el IVA soportado deducible frente al repercutido ni el margen neto pre-tax.
+- **Issues Arreglados**:
+  1. Creado `EditExpenseModal.tsx` con campos completos (proveedor, NIF/CIF, categoría, base imponible, tipo de IVA con cálculo reactivo, método de pago, justificante y notas), integrado con acción de edición por registro en `ExpenseTable.tsx`.
+  2. Aplicado centrado estricto `fixed inset-0 z-50 flex items-center justify-center p-4 m-auto`, `role="dialog"`, `aria-modal="true"` y listener global de la tecla `Escape` en `NewExpenseModal.tsx`, `EditExpenseModal.tsx` y `ConfirmModal.tsx`.
+  3. Añadidos `aria-label`, `title` y atributos `data-testid` en toda la botonera de acciones, buscador con botón de borrado instantáneo y filtros desplegables.
+  4. Corregido `ToastContext.tsx` incorporando `aria-label="Cerrar notificación"` y `title="Cerrar"`.
+  5. Refactorizado `ExpenseKpis.tsx` y `PnLBreakdown.tsx` con franja anti-glare, tarjetas de micro-contraste y cálculo reactivo en vivo de Margen Operativo y Saldo de IVA.
+- **Mejoras Implementadas**:
+  1. **UX Financiera Anti-Glare**: Superficies en lienzo suave, tarjetas de micro-contraste con delimitación `border-slate-200` e insignias pastel funcionales (esmeralda para pagado, ámbar para pendiente, rosa para cancelado).
+  2. **Alternancia Rápida de Estado**: Capacidad de alternar el estado de pago (Pagado <-> Pendiente) con un solo clic accesible sobre el badge de la tabla con actualización reactiva instantánea.
+  3. **Suite Playwright Integral**: Creada suite `e2e/module-06-expenses.spec.ts` con 8 pruebas completas: dashboard y KPIs con Axe a11y, modal centrado de nuevo gasto con cálculo en vivo de IVA, edición modal centrada con confirmación toast, toggle de estado rápido, filtros combinados con debounce, exportación de informes fiscales AEAT y CSV/PDF, borrado con modal de confirmación centrado y vista adaptativa en viewports móvil (375px) y tablet (768px) (8/8 en verde).
+- **Mejoras Pendientes**:
+  - Ninguna. Módulo 06 cerrado y validado al 100%.
+
+### Módulo 07 · Inventario, Catálogo & Almacenes
 - **Estado**: 🟡 EN CURSO
 - **Issues Encontrados**:
   - En auditoría.

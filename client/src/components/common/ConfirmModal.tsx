@@ -95,7 +95,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+          data-testid="confirm-modal-backdrop"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={() => {
             if (!isLoading) onClose();
           }}
@@ -104,6 +105,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-modal-title"
+            data-testid="confirm-modal-dialog"
             initial={{ opacity: 0, scale: 0.94, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 10 }}
