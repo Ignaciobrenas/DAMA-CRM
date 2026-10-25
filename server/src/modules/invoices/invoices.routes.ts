@@ -25,6 +25,7 @@ import {
   rectifyInvoice,
   duplicateInvoice,
   sendInvoiceEmail,
+  getVerifactuChainStatus,
 } from './invoices.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -42,6 +43,7 @@ router.post('/quotes/public/:token/sign', signPublicQuote);
 router.use(authMiddleware);
 
 // Invoices & Dunning
+router.get('/verifactu/chain', requirePermission('invoices', 'read'), getVerifactuChainStatus);
 router.get('/aging/report', requirePermission('invoices', 'read'), getAgingReport);
 router.get('/', requirePermission('invoices', 'read'), listInvoices);
 router.post('/import', requirePermission('invoices', 'create'), importInvoices);

@@ -26,14 +26,12 @@ interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (route: string) => void;
-  onOpenGodMode?: () => void;
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   isOpen,
   onClose,
   onNavigate,
-  onOpenGodMode,
 }) => {
   const { user, logout, updatePreferences } = useAuth();
   const { branding } = useBranding();
@@ -54,7 +52,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       // fallback
     }
     return [
-      { name: 'Ignacio God Admin', email: 'ignaciobrenas@gmail.com', role: 'ADMIN' },
+      { name: 'Ignacio Admin', email: 'ignaciobrenas@gmail.com', role: 'ADMIN' },
       { name: 'Admin Demo S.L.', email: 'admin@dama-crm.local', role: 'ADMIN' },
       { name: 'Comercial Ventas', email: 'sales@damacrm.local', role: 'SALES' },
       { name: 'Técnico Soporte', email: 'tech@damacrm.local', role: 'TECH' },
@@ -112,6 +110,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </span>
               <button
                 onClick={onClose}
+                aria-label={t("close", "Cerrar")}
                 className="p-1 rounded-full bg-black/20 hover:bg-black/40 text-white transition"
               >
                 <X className="w-4 h-4" />
@@ -160,6 +159,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
+                  aria-label="Recordar sesión en este equipo"
                   checked={rememberSession}
                   onChange={(e) => handleToggleRemember(e.target.checked)}
                   className="sr-only peer"
@@ -205,23 +205,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
-              {/* God Mode Trigger if Admin */}
-              {onOpenGodMode && (user.role === 'ADMIN' || user.email === 'ignaciobrenas@gmail.com') && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenGodMode();
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition border border-amber-200/60 dark:border-amber-800/40"
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <Shield className="w-4 h-4 text-amber-500" />
-                    <span className="font-semibold">Panel SuperAdmin & Multi-Tenant</span>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-amber-500" />
-                </button>
-              )}
-            </div>
+              </div>
 
             {/* Switch Account Section */}
             <div className="pt-2 border-t border-slate-200 dark:border-slate-800">

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../prisma';
+import { maskSensitiveData } from '../utils/sanitizer';
 
 export async function logAudit(
   userId: string | null,
@@ -10,13 +11,14 @@ export async function logAudit(
   ipAddress?: string
 ): Promise<void> {
   try {
+    const sanitizedDetails = details ? maskSensitiveData(details) : null;
     await prisma.auditLog.create({
       data: {
         userId,
         action,
         entity,
         entityId,
-        details: details ? JSON.stringify(details) : null,
+        details: sanitizedDetails ? JSON.stringify(sanitizedDetails) : null,
         ipAddress,
       },
     });

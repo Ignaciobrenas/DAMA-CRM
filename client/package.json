@@ -1,6 +1,6 @@
 {
   "name": "dama-crm-client",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,16 +9,22 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/react-is": "^19.3.0",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.5.5"
+    "react-is": "^19.3.1",
+    "recharts": "^3.10.1",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^2.5.5",
+    "thinking-orbs": "^0.3.2"
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^26.6.3",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
@@ -26,6 +32,6 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.6.3",
-    "vite": "^8.3.1"
+    "vite": "^5.4.11"
   }
 }

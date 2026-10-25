@@ -15,13 +15,15 @@ import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
-import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
+import { ModuleOnboardingModal } from './components/common/ModuleOnboardingModal';
+
 import { PermissionGate, AccessDenied, ModuleDisabled } from './components/common/PermissionGate';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { analytics } from './services/analytics';
 
 // Views
 import { Login } from './pages/Login';
+import { PlannerBoard } from './pages/PlannerBoard';
 import { Dashboard } from './pages/Dashboard';
 import { Pipeline } from './pages/Pipeline';
 import { AgilePlanner } from './pages/AgilePlanner';
@@ -47,6 +49,9 @@ import { MyTime } from './pages/MyTime';
 import { CalendarPage } from './pages/Calendar';
 import { Appointments } from './pages/Appointments';
 import { Logistics } from './pages/Logistics';
+import { AdminBI } from './pages/AdminBI';
+import { NotFound } from './pages/NotFound';
+import { CookieBanner } from './components/common/CookieBanner';
 
 const normalizeRoute = (pathname: string): string => {
   const p = pathname.toLowerCase();
@@ -54,11 +59,13 @@ const normalizeRoute = (pathname: string): string => {
   if (p === '/calendar') return '/calendar';
   if (p === '/appointments') return '/appointments';
   if (p === '/logistics') return '/logistics';
-  if (p === '/portal-empleado') return '/portal-empleado';
+  if (p === '/portal-empleado' || p === '/employee-portal') return '/portal-empleado';
   if (p === '/my-time') return '/my-time';
   if (p === '/tickets') return '/tickets';
   if (p === '/expenses') return '/expenses';
   if (p === '/pipeline') return '/pipeline';
+  if (p === '/admin-bi') return '/admin-bi';
+  if (p === '/planner') return '/planner';
   if (p === '/agile') return '/agile';
   if (p === '/contacts') return '/contacts';
   if (p === '/companies') return '/companies';
@@ -72,9 +79,10 @@ const normalizeRoute = (pathname: string): string => {
   if (p === '/lead-capture') return '/lead-capture';
   if (p === '/reports') return '/reports';
   if (p === '/settings') return '/settings';
-  if (p === '/portal') return '/portal';
+  if (p === '/portal' || p === '/client-portal') return '/portal';
   if (p === '/privacy') return '/privacy';
-  return '/';
+  if (p === '' || p === '/' || p === '/dashboard' || p === '/login' || p === '/index.html') return '/';
+  return p;
 };
 
 const AppContent: React.FC = () => {
@@ -147,7 +155,10 @@ const AppContent: React.FC = () => {
 
   if (currentRoute === '/portal') {
     return isModuleEnabled('clientPortal') ? (
-      <ClientPortal />
+      <div className="p-3 sm:p-6 max-w-4xl mx-auto">
+        <ModuleOnboardingModal currentRoute={currentRoute} />
+        <ClientPortal />
+      </div>
     ) : (
       <ModuleDisabled moduleKey="clientPortal" onGoBack={() => navigateTo('/')} />
     );
@@ -176,10 +187,14 @@ const AppContent: React.FC = () => {
       case '/':
         return <Dashboard onNavigate={navigateTo} />;
       case '/portal-empleado':
-        return isModuleEnabled('portalEmpleado') ? (
-          <EmployeePortal />
-        ) : (
-          <ModuleDisabled moduleKey="portalEmpleado" onGoBack={() => navigateTo('/')} />
+        return (
+          <PermissionGate resource="employees" action="read" fallback={<AccessDenied resource="employees" onGoBack={() => navigateTo('/')} />}>
+            {isModuleEnabled('portalEmpleado') ? (
+              <EmployeePortal />
+            ) : (
+              <ModuleDisabled moduleKey="portalEmpleado" onGoBack={() => navigateTo('/')} />
+            )}
+          </PermissionGate>
         );
       case '/my-time':
         return <MyTime />;
@@ -205,6 +220,12 @@ const AppContent: React.FC = () => {
         return (
           <PermissionGate resource="projects" action="read" fallback={<AccessDenied resource="projects" onGoBack={() => navigateTo('/')} />}>
             {isModuleEnabled('agile') ? <AgilePlanner /> : <ModuleDisabled moduleKey="agile" onGoBack={() => navigateTo('/')} />}
+          </PermissionGate>
+        );
+      case '/planner':
+        return (
+          <PermissionGate resource="projects" action="read" fallback={<AccessDenied resource="projects" onGoBack={() => navigateTo('/')} />}>
+            <PlannerBoard />
           </PermissionGate>
         );
       case '/contacts':
@@ -250,7 +271,11 @@ const AppContent: React.FC = () => {
           </PermissionGate>
         );
       case '/lead-capture':
-        return isModuleEnabled('leadCapture') ? <LeadCapture /> : <ModuleDisabled moduleKey="leadCapture" onGoBack={() => navigateTo('/')} />;
+        return (
+          <PermissionGate resource="contacts" action="read" fallback={<AccessDenied resource="contacts" onGoBack={() => navigateTo('/')} />}>
+            {isModuleEnabled('leadCapture') ? <LeadCapture /> : <ModuleDisabled moduleKey="leadCapture" onGoBack={() => navigateTo('/')} />}
+          </PermissionGate>
+        );
       case '/reports':
         return (
           <PermissionGate resource="reports" action="read" fallback={<AccessDenied resource="reports" onGoBack={() => navigateTo('/')} />}>
@@ -258,28 +283,42 @@ const AppContent: React.FC = () => {
           </PermissionGate>
         );
       case '/settings':
-        return (
-          <PermissionGate resource="users" action="read" fallback={<AccessDenied resource="users" onGoBack={() => navigateTo('/')} />}>
-            <Settings />
-          </PermissionGate>
-        );
+        return <Settings />;
       case '/faq':
         return <FAQ onNavigate={navigateTo} />;
       case '/calendar':
-        return <CalendarPage />;
+        return (
+          <PermissionGate resource="calendar" action="read" fallback={<AccessDenied resource="calendar" onGoBack={() => navigateTo('/')} />}>
+            <CalendarPage />
+          </PermissionGate>
+        );
       case '/appointments':
-        return isModuleEnabled('appointments') ? <Appointments /> : <ModuleDisabled moduleKey="appointments" onGoBack={() => navigateTo('/')} />;
+        return (
+          <PermissionGate resource="appointments" action="read" fallback={<AccessDenied resource="appointments" onGoBack={() => navigateTo('/')} />}>
+            {isModuleEnabled('appointments') ? <Appointments /> : <ModuleDisabled moduleKey="appointments" onGoBack={() => navigateTo('/')} />}
+          </PermissionGate>
+        );
       case '/logistics':
-        return isModuleEnabled('logistics') ? <Logistics /> : <ModuleDisabled moduleKey="logistics" onGoBack={() => navigateTo('/')} />;
+        return (
+          <PermissionGate resource="logistics" action="read" fallback={<AccessDenied resource="logistics" onGoBack={() => navigateTo('/')} />}>
+            {isModuleEnabled('logistics') ? <Logistics /> : <ModuleDisabled moduleKey="logistics" onGoBack={() => navigateTo('/')} />}
+          </PermissionGate>
+        );
+      case '/admin-bi':
+        return (
+          <PermissionGate resource="reports" action="read" fallback={<AccessDenied resource="reports" onGoBack={() => navigateTo('/')} />}>
+            <AdminBI />
+          </PermissionGate>
+        );
       default:
-        return <Dashboard onNavigate={navigateTo} />;
+        return <NotFound onBack={() => navigateTo('/')} />;
     }
   };
 
   const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
 
   return (
-    <div className="min-h-screen bg-slate-300/80 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
+    <div className="min-h-screen bg-slate-100/90 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex overflow-x-hidden max-w-full">
       {/* Sidebar */}
       <Sidebar
         currentRoute={currentRoute}
@@ -289,14 +328,16 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 pb-16 md:pb-0 ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 max-w-full transition-all duration-200 pb-16 md:pb-0 overflow-x-hidden ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
         <Navbar
+          currentRoute={currentRoute}
           onOpenSearch={() => setIsSearchOpen(true)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onNavigate={navigateTo}
         />
 
         <main className="flex-1 p-3 sm:p-6 max-w-7xl w-full mx-auto">
+          <ModuleOnboardingModal currentRoute={currentRoute} />
           <AnimatePresence mode="wait">
             <motion.div
               key={currentRoute}
@@ -360,8 +401,6 @@ const AppContent: React.FC = () => {
       {/* Floating Lead & WhatsApp Live Capture Widget */}
       <FloatingCaptureWidget />
 
-      {/* Role-based Onboarding & Capabilities Welcome Tour Modal */}
-      <OnboardingTourModal />
     </div>
   );
 };
@@ -377,7 +416,8 @@ export const App: React.FC = () => {
                 <AuthProvider>
                   <AppearanceProvider>
                     <ModulesProvider>
-                      <AppContent />
+                      <CookieBanner />
+                        <AppContent />
                     </ModulesProvider>
                   </AppearanceProvider>
                 </AuthProvider>
@@ -391,3 +431,5 @@ export const App: React.FC = () => {
 };
 
 export default App;
+
+

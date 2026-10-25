@@ -36,6 +36,7 @@ import {
   History,
   ShieldCheck,
   Upload,
+  Truck,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { integrationsService } from '../services/integrations.service';
@@ -44,6 +45,7 @@ import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { soundService } from '../services/sound';
 import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
+import { SageWarehouseOperations } from '../components/inventory/SageWarehouseOperations';
 
 export interface ProductItem {
   id: string;
@@ -113,10 +115,21 @@ export const Inventory: React.FC = () => {
   const { hasPermission } = useAuth();
 
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [globalMovements, setGlobalMovements] = useState<any[]>([]);
+  const [inventorySection, setInventorySection] = useState<'catalog' | 'transfers' | 'batches' | 'kardex'>('catalog');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('ALL');
   const [stats, setStats] = useState<InventoryStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState('');
+
+  // Stores online activas
+  const [activeStores, setActiveStores] = useState<Array<{ id: string; name: string }>>([
+    { id: 'unopim', name: 'UnoPIM (Catálogo Central)' },
+  ]);
 
   // View & Filter States
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
@@ -185,16 +198,49 @@ export const Inventory: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [resProducts, resStats] = await Promise.all([
+      const [resProducts, resStats, resIntegrations, resWh, resTr, resBatches, resMovs] = await Promise.all([
         apiRequest('/inventory'),
         apiRequest('/inventory/analytics/stats').catch(() => ({ success: false, data: null })),
+        integrationsService.getIntegrations().catch(() => null),
+        apiRequest('/inventory/warehouses').catch(() => ({ success: false, data: [] })),
+        apiRequest('/inventory/transfers').catch(() => ({ success: false, data: [] })),
+        apiRequest('/inventory/batches').catch(() => ({ success: false, data: [] })),
+        apiRequest('/inventory/movements/all').catch(() => ({ success: false, data: [] })),
       ]);
+      if (resWh && resWh.success && Array.isArray((resWh as any).data)) setWarehouses((resWh as any).data);
+      if (resTr && resTr.success && Array.isArray((resTr as any).data)) setTransfers((resTr as any).data);
+      if (resBatches && resBatches.success && Array.isArray((resBatches as any).data)) setBatches((resBatches as any).data);
+      if (resMovs && resMovs.success && Array.isArray((resMovs as any).data)) setGlobalMovements((resMovs as any).data);
 
       if (resProducts.success && resProducts.data) {
         setProducts(resProducts.data);
       }
       if (resStats && resStats.success && (resStats as any).data) {
         setStats((resStats as any).data);
+      }
+
+      // Populate list of only active and configured online stores
+      if (resIntegrations && resIntegrations.data) {
+        const d = resIntegrations.data;
+        const stores: Array<{ id: string; name: string }> = [
+          { id: 'unopim', name: 'UnoPIM (Catálogo Central)' },
+        ];
+        if (d.woocommerce?.enabled || d.woocommerce?.status === 'connected') {
+          stores.push({ id: 'woocommerce', name: 'WooCommerce Store' });
+        }
+        if (d.shopify?.enabled || d.shopify?.status === 'connected') {
+          stores.push({ id: 'shopify', name: 'Shopify Store' });
+        }
+        if (d.opencart?.enabled || d.opencart?.status === 'connected') {
+          stores.push({ id: 'opencart', name: 'OpenCart Store' });
+        }
+        if (d.odoo?.enabled || d.odoo?.status === 'connected') {
+          stores.push({ id: 'odoo', name: 'Odoo ERP' });
+        }
+        if (d.sage_one?.enabled || d.sage_50?.enabled || d.sage_200?.enabled) {
+          stores.push({ id: 'sage', name: 'Sage ERP' });
+        }
+        setActiveStores(stores);
       }
     } catch (err: any) {
       toast.error('Error al cargar inventario', err.message);
@@ -206,6 +252,19 @@ export const Inventory: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (deletingProduct) setDeletingProduct(null);
+        else if (isMovementModalOpen) setIsMovementModalOpen(false);
+        else if (isFormModalOpen) setIsFormModalOpen(false);
+        else if (selectedProduct) setSelectedProduct(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [deletingProduct, isMovementModalOpen, isFormModalOpen, selectedProduct]);
 
   const parseProductAttributes = (product?: ProductItem | null): Record<string, any> => {
     if (!product || !product.attributes) return {};
@@ -655,7 +714,7 @@ export const Inventory: React.FC = () => {
           <button
             onClick={handleBulkAutoMap}
             disabled={isBulkMapping}
-            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             title="Mapea atributos y metadatos automáticamente para UnoPim, OpenCart, Sage, Odoo, Shopify y WooCommerce"
           >
             <Sparkles className={`w-3.5 h-3.5 ${isBulkMapping ? 'animate-spin' : ''}`} />
@@ -731,7 +790,7 @@ export const Inventory: React.FC = () => {
         </div>
 
         {/* Card 3: Stock Bajo */}
-        <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 backdrop-blur-md shadow-xs">
+        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs backdrop-blur-md shadow-xs">
           <div className="flex items-center justify-between text-amber-700 dark:text-amber-300 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Stock Bajo</span>
             <AlertTriangle className="w-4 h-4 text-amber-500" />
@@ -759,6 +818,88 @@ export const Inventory: React.FC = () => {
         </div>
       </div>
 
+      {/* Enterprise Inventory & Sage Multi-Warehouse Navigation Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div role="tablist" aria-label="Secciones de Inventario y Logística Interna" className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inventorySection === 'catalog'}
+            data-testid="tab-inventory-catalog"
+            onClick={() => setInventorySection('catalog')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+              inventorySection === 'catalog'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Boxes className="w-3.5 h-3.5" />
+            <span>Catálogo Multi-Almacén ({products.length})</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inventorySection === 'transfers'}
+            data-testid="tab-inventory-transfers"
+            onClick={() => setInventorySection('transfers')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+              inventorySection === 'transfers'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Truck className="w-3.5 h-3.5" />
+            <span>Traspasos Inter-Almacén Sage 2 Fases ({transfers.length})</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inventorySection === 'batches'}
+            data-testid="tab-inventory-batches"
+            onClick={() => setInventorySection('batches')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+              inventorySection === 'batches'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Lotes, Series & Caducidad FEFO ({batches.length})</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inventorySection === 'kardex'}
+            data-testid="tab-inventory-kardex"
+            onClick={() => setInventorySection('kardex')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+              inventorySection === 'kardex'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Libro Kardex Contable PMP ({globalMovements.length})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Multi-Warehouse Operations & Switcher */}
+      <SageWarehouseOperations
+        activeSection={inventorySection === 'catalog' ? 'transfers' : inventorySection}
+        warehouses={warehouses}
+        transfers={transfers}
+        batches={batches}
+        globalMovements={globalMovements}
+        products={products}
+        selectedWarehouseId={selectedWarehouseId}
+        onSelectWarehouse={(id) => setSelectedWarehouseId(id)}
+        onRefresh={loadData}
+      />
+
       {/* Filter Toolbar */}
       <div className="p-4 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col md:flex-row items-center justify-between gap-3">
         {/* Search */}
@@ -774,6 +915,7 @@ export const Inventory: React.FC = () => {
           {search && (
             <button
               onClick={() => setSearch('')}
+              aria-label="Limpiar búsqueda"
               className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
             >
               <X className="w-3.5 h-3.5" />
@@ -783,25 +925,36 @@ export const Inventory: React.FC = () => {
 
         {/* Filters */}
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-          {/* Multi-App Connector Filter */}
-          <select
-            value={connectorFilter}
-            onChange={(e) => setConnectorFilter(e.target.value)}
-            className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            title="Filtrar por conexión con aplicaciones"
-          >
-            <option value="ALL">Todas las Apps ({products.length})</option>
-            <option value="unopim">UnoPIM (Catálogo/PIM)</option>
-            <option value="opencart">OpenCart Store</option>
-            <option value="sage">Sage ERP (1 / 50 / 200)</option>
-            <option value="odoo">Odoo ERP</option>
-            <option value="shopify">Shopify Store</option>
-            <option value="woocommerce">WooCommerce</option>
-          </select>
+          {/* Active Online Store & Multi-App Filter */}
+          <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar">
+            <button
+              onClick={() => setConnectorFilter('ALL')}
+              className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] ${
+                connectorFilter === 'ALL'
+                  ? 'bg-slate-800 text-white shadow-sm dark:bg-slate-200 dark:text-slate-900'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+              }`}
+            >
+              {t('inventory.allChannels', '🌐 Todos los Canales')} ({products.length})
+            </button>
+            {activeStores.map((store) => (
+              <button
+                key={store.id}
+                onClick={() => setConnectorFilter(store.id)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] ${
+                  connectorFilter === store.id
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                }`}
+              >
+                {store.name}
+              </button>
+            ))}
+          </div>
 
           {/* Category Filter */}
           <select
-            value={categoryFilter}
+            aria-label="Filtrar por categoría" title="Filtrar por categoría" value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -815,7 +968,7 @@ export const Inventory: React.FC = () => {
 
           {/* Stock Status Filter */}
           <select
-            value={stockFilter}
+            aria-label="Filtrar por estado de stock" title="Filtrar por estado de stock" value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value as any)}
             className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -827,7 +980,7 @@ export const Inventory: React.FC = () => {
 
           {/* Sort By */}
           <select
-            value={sortBy}
+            aria-label="Ordenar productos" title="Ordenar productos" value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -1260,7 +1413,7 @@ export const Inventory: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
+              role="dialog" aria-modal="true" aria-label="Detalle del artículo" className="w-full max-w-3xl m-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
             >
               {/* Header with image preview & title */}
               <div className="p-6 border-b border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-start justify-between gap-4">
@@ -1308,6 +1461,7 @@ export const Inventory: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setSelectedProduct(null)}
+                    aria-label="Cerrar detalle"
                     className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
                   >
                     <X className="w-5 h-5" />
@@ -1407,7 +1561,7 @@ export const Inventory: React.FC = () => {
                 {detailTab === 'financials' && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60">
+                      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
                         <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 block mb-1">
                           Precio Venta (PVP)
                         </span>
@@ -1427,7 +1581,7 @@ export const Inventory: React.FC = () => {
                         <span className="text-[10px] text-gray-500">Base imponible de compra</span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60">
+                      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
                         <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block mb-1">
                           Margen Bruto Unitario
                         </span>
@@ -1481,7 +1635,7 @@ export const Inventory: React.FC = () => {
                   return (
                     <div className="space-y-4">
                       {/* Top Action Banner */}
-                      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-200/60 dark:border-blue-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className="p-2.5 rounded-xl bg-blue-600 text-white shrink-0">
                             <Sparkles className="w-5 h-5" />
@@ -1509,7 +1663,7 @@ export const Inventory: React.FC = () => {
                       {/* 6 Connector Cards Grid */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         {/* 1. UnoPim PIM */}
-                        <div className="p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -1561,7 +1715,7 @@ export const Inventory: React.FC = () => {
                         </div>
 
                         {/* 3. Sage Business ERP */}
-                        <div className="p-4 rounded-2xl border border-teal-100 dark:border-teal-900/40 bg-teal-50/30 dark:bg-teal-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-teal-500" />
@@ -1587,7 +1741,7 @@ export const Inventory: React.FC = () => {
                         </div>
 
                         {/* 4. Odoo ERP */}
-                        <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-purple-500" />
@@ -1613,7 +1767,7 @@ export const Inventory: React.FC = () => {
                         </div>
 
                         {/* 5. Shopify Store */}
-                        <div className="p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -1639,7 +1793,7 @@ export const Inventory: React.FC = () => {
                         </div>
 
                         {/* 6. WooCommerce */}
-                        <div className="p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1800,7 +1954,7 @@ export const Inventory: React.FC = () => {
                     </div>
 
                     {selectedProduct.notes && (
-                      <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200">
+                      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-amber-900 dark:text-amber-200">
                         <span className="font-bold block mb-1">Notas Internas de Gestión:</span>
                         {selectedProduct.notes}
                       </div>
@@ -1849,7 +2003,7 @@ export const Inventory: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
+              role="dialog" aria-modal="true" aria-label="Formulario de artículo" className="w-full max-w-2xl m-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
             >
               <div className="p-6 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -1862,6 +2016,7 @@ export const Inventory: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsFormModalOpen(false)}
+                  aria-label="Cerrar formulario"
                   className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg"
                 >
                   <X className="w-5 h-5" />
@@ -2121,7 +2276,7 @@ export const Inventory: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden"
+              role="dialog" aria-modal="true" aria-label="Registrar movimiento de stock" className="w-full max-w-md m-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden"
             >
               <div className="p-5 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -2135,6 +2290,7 @@ export const Inventory: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsMovementModalOpen(false)}
+                  aria-label="Cerrar movimiento"
                   className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg"
                 >
                   <X className="w-4 h-4" />
@@ -2236,7 +2392,7 @@ export const Inventory: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-gray-200 dark:border-slate-800 text-center"
+              role="dialog" aria-modal="true" aria-label="Confirmar eliminación de artículo" className="w-full max-w-sm m-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-gray-200 dark:border-slate-800 text-center"
             >
               <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 mx-auto flex items-center justify-center mb-3">
                 <Trash2 className="w-6 h-6" />
@@ -2277,3 +2433,4 @@ export const Inventory: React.FC = () => {
     </div>
   );
 };
+

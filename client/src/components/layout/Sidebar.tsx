@@ -10,8 +10,6 @@ import {
   Package,
   Cpu,
   MessageSquare,
-  ShieldCheck,
-  ExternalLink,
   ChevronLeft,
   BarChart3,
   Zap,
@@ -28,18 +26,34 @@ import {
   Settings,
   CalendarCheck,
   Truck,
+  ExternalLink,
+  Activity,
+  Kanban,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
 import { useModules, CompanyModulesConfig } from '../../context/ModulesContext';
 import { DynamicIcon, IconAnimationVariant } from '../ui/DynamicIcon';
+import { soundService } from '../../services/sound';
 
 interface SidebarProps {
   currentRoute: string;
   onNavigate: (route: string) => void;
   isOpen: boolean;
   onClose: () => void;
+}
+
+export interface NavItemDefinition {
+  id: string;
+  label: string;
+  icon: any;
+  route: string;
+  category: 'main' | 'commercial' | 'operations' | 'communication' | 'system';
+  resource?: string;
+  moduleKey?: keyof CompanyModulesConfig;
+  animation?: IconAnimationVariant;
+  color?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -54,41 +68,74 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { isModuleEnabled } = useModules();
 
   const isCollapsed = Boolean(user?.preferences?.sidebarCollapsed);
-  const pinnedRoutes = user?.preferences?.sidebarPinnedItems;
+  const userHiddenItems = user?.preferences?.sidebarHiddenItems || [];
+  const userOrder = user?.preferences?.sidebarOrder || [];
 
-  const navItems: Array<{
-    id: string;
-    label: string;
-    icon: any;
-    route: string;
-    resource?: string;
-    moduleKey?: keyof CompanyModulesConfig;
-    animation?: IconAnimationVariant;
-  }> = [
-    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, route: '/', animation: 'bounce' },
-    { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', animation: 'bounce' },
-    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Servicios'), icon: CalendarCheck, route: '/appointments', moduleKey: 'appointments', animation: 'bounce' },
-    { id: 'logistics', label: t('sidebar.logistics', 'Logística & Paquetería'), icon: Truck, route: '/logistics', moduleKey: 'logistics', animation: 'tilt' },
-    { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', animation: 'pulse' },
-    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', moduleKey: 'portalEmpleado', animation: 'float' },
-    { id: 'tickets', label: t('sidebar.tickets'), icon: Ticket, route: '/tickets', resource: 'tickets', moduleKey: 'tickets', animation: 'tilt' },
-    { id: 'expenses', label: t('sidebar.expenses'), icon: WalletCards, route: '/expenses', resource: 'expenses', moduleKey: 'expenses', animation: 'float' },
-    { id: 'pipeline', label: t('pipeline'), icon: TrendingUp, route: '/pipeline', resource: 'deals', moduleKey: 'pipeline', animation: 'bounce' },
-    { id: 'agile', label: t('agile'), icon: CheckSquare, route: '/agile', resource: 'projects', moduleKey: 'agile', animation: 'bounce' },
-    { id: 'contacts', label: t('contacts'), icon: Users, route: '/contacts', resource: 'contacts', moduleKey: 'contacts', animation: 'float' },
-    { id: 'companies', label: t('companies'), icon: Building2, route: '/companies', resource: 'companies', moduleKey: 'companies', animation: 'float' },
-    { id: 'invoicing', label: t('invoicing'), icon: Receipt, route: '/invoicing', resource: 'invoices', moduleKey: 'invoicing', animation: 'glow' },
-    { id: 'inventory', label: t('inventory'), icon: Package, route: '/inventory', resource: 'inventory', moduleKey: 'inventory', animation: 'tilt' },
-    { id: 'workflows', label: t('workflows'), icon: Cpu, route: '/workflows', resource: 'workflows', moduleKey: 'workflows', animation: 'spin' },
-    { id: 'omnichannel', label: t('omnichannel'), icon: MessageSquare, route: '/omnichannel', resource: 'omnichannel', moduleKey: 'omnichannel', animation: 'pulse' },
-    { id: 'integrations', label: t('integrations'), icon: Blocks, route: '/integrations', moduleKey: 'integrations', animation: 'spin' },
-    { id: 'lead-capture', label: t('leadCapture'), icon: Zap, route: '/lead-capture', moduleKey: 'leadCapture', animation: 'glow' },
-    { id: 'reports', label: t('reportsBI'), icon: BarChart3, route: '/reports', resource: 'reports', moduleKey: 'reports', animation: 'bounce' },
-    { id: 'settings', label: t('settings'), icon: Settings, route: '/settings', resource: 'users', animation: 'spin' },
-    { id: 'portal', label: t('clientPortal'), icon: ExternalLink, route: '/portal', resource: 'invoices', moduleKey: 'clientPortal', animation: 'float' },
-    { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq', animation: 'bounce' },
-    { id: 'privacy', label: t('privacyPolicy'), icon: Lock, route: '/privacy', animation: 'tilt' },
+  const rawNavItems: NavItemDefinition[] = [
+    // Category 1: Principal & Agenda
+    { id: 'dashboard', label: t('dashboard', 'Panel Principal'), icon: LayoutDashboard, route: '/', category: 'main' },
+    { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', category: 'main', resource: 'calendar' },
+    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Servicios'), icon: CalendarCheck, route: '/appointments', category: 'main', resource: 'appointments', moduleKey: 'appointments' },
+    { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', category: 'main' },
+    { id: 'logistics', label: t('sidebar.logistics', 'Logística & Envíos'), icon: Truck, route: '/logistics', category: 'main', resource: 'logistics', moduleKey: 'logistics' },
+
+    // Category 2: Gestión Comercial
+    { id: 'pipeline', label: t('pipeline', 'Oportunidades & Pipeline'), icon: TrendingUp, route: '/pipeline', category: 'commercial', resource: 'deals', moduleKey: 'pipeline' },
+    { id: 'contacts', label: t('contacts', 'Contactos & Leads'), icon: Users, route: '/contacts', category: 'commercial', resource: 'contacts', moduleKey: 'contacts' },
+    { id: 'companies', label: t('companies', 'Empresas & Cuentas'), icon: Building2, route: '/companies', category: 'commercial', resource: 'companies', moduleKey: 'companies' },
+    { id: 'lead-capture', label: t('leadCapture', 'Captura de Leads'), icon: Zap, route: '/lead-capture', category: 'commercial', resource: 'contacts', moduleKey: 'leadCapture' },
+
+    // Category 3: Operaciones & Finanzas
+    { id: 'invoicing', label: t('invoicing', 'Facturación & Cobros'), icon: Receipt, route: '/invoicing', category: 'operations', resource: 'invoices', moduleKey: 'invoicing' },
+    { id: 'expenses', label: t('sidebar.expenses', 'Gastos & Compras'), icon: WalletCards, route: '/expenses', category: 'operations', resource: 'expenses', moduleKey: 'expenses' },
+    { id: 'inventory', label: t('inventory', 'Inventario & Stock'), icon: Package, route: '/inventory', category: 'operations', resource: 'inventory', moduleKey: 'inventory' },
+    { id: 'agile', label: t('agile', 'Proyectos & Tareas'), icon: CheckSquare, route: '/agile', category: 'operations', resource: 'projects', moduleKey: 'agile' },
+    { id: 'planner', label: 'Planificador & Sprints', icon: Kanban, route: '/planner', category: 'operations', resource: 'projects', moduleKey: 'agile' },
+    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', category: 'operations', resource: 'employees', moduleKey: 'portalEmpleado' },
+
+    // Category 4: Comunicación & Servicios
+    { id: 'tickets', label: t('sidebar.tickets', 'Mesa de Ayuda / Tickets'), icon: Ticket, route: '/tickets', category: 'communication', resource: 'tickets', moduleKey: 'tickets' },
+    { id: 'omnichannel', label: t('omnichannel', 'Omnicanal / WhatsApp'), icon: MessageSquare, route: '/omnichannel', category: 'communication', resource: 'omnichannel', moduleKey: 'omnichannel' },
+    { id: 'workflows', label: t('workflows', 'Flujos de Trabajo'), icon: Cpu, route: '/workflows', category: 'communication', resource: 'workflows', moduleKey: 'workflows' },
+    { id: 'integrations', label: t('integrations', 'Conectores & Integraciones'), icon: Blocks, route: '/integrations', category: 'communication', resource: 'integrations', moduleKey: 'integrations' },
+
+    // Category 5: Sistema & Recursos
+    ...(user?.role === 'ADMIN' || user?.role === 'god'
+      ? [{ id: 'admin-bi', label: 'BI & Analítica (Admin)', icon: Activity, route: '/admin-bi', category: 'system' as const, resource: 'reports' }]
+      : []),
+    { id: 'reports', label: t('reportsBI', 'Informes BI & Analytics'), icon: BarChart3, route: '/reports', category: 'system', resource: 'reports', moduleKey: 'reports' },
+    { id: 'settings', label: t('settings', 'Configuración'), icon: Settings, route: '/settings', category: 'system' },
+    { id: 'portal', label: t('clientPortal', 'Portal Cliente'), icon: ExternalLink, route: '/portal', category: 'system', resource: 'invoices', moduleKey: 'clientPortal' },
+    { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq', category: 'system' },
+    { id: 'privacy', label: t('privacyPolicy', 'Política de Privacidad'), icon: Lock, route: '/privacy', category: 'system' },
   ];
+
+  const categories: Array<{ id: NavItemDefinition['category']; label: string }> = [
+    { id: 'main', label: 'Principal & Agenda' },
+    { id: 'commercial', label: 'Gestión Comercial' },
+    { id: 'operations', label: 'Operaciones & Finanzas' },
+    { id: 'communication', label: 'Comunicación & Servicios' },
+    { id: 'system', label: 'Sistema & Recursos' },
+  ];
+
+  let orderedItems = [...rawNavItems];
+  if (userOrder && Array.isArray(userOrder) && userOrder.length > 0) {
+    orderedItems.sort((a, b) => {
+      const idxA = userOrder.indexOf(a.id);
+      const idxB = userOrder.indexOf(b.id);
+      if (idxA === -1 && idxB === -1) return 0;
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    });
+  }
+
+  const isGod =
+    user?.tenantId === 'god' ||
+    user?.role === 'GOD' ||
+    user?.role === 'ADMIN' ||
+    user?.email === 'ignaciobrenas@gmail.com' ||
+    user?.email === 'admin@dama-crm.local';
 
   return (
     <>
@@ -96,136 +143,162 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs md:hidden"
+          data-testid="sidebar-mobile-backdrop"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs md:hidden"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 bg-slate-50/95 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-200 ease-in-out md:translate-x-0 ${
+        data-testid="app-sidebar"
+        className={`fixed top-0 bottom-0 left-0 z-40 bg-slate-50/95 dark:bg-slate-900 border-r border-slate-200/90 dark:border-slate-800 flex flex-col transition-all duration-200 ease-out md:translate-x-0 select-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${isCollapsed ? 'w-16' : 'w-60'}`}
       >
         {/* Brand Header */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-3.5'} h-16 border-b border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50`}>
-          <div className="flex items-center space-x-3 truncate">
-            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 p-1.5 border border-slate-200 dark:border-slate-700 shadow-md ring-2 ring-blue-500/20 dark:ring-blue-400/30 flex items-center justify-center shrink-0 transition-all hover:scale-105">
+        <div
+          className={`flex items-center ${
+            isCollapsed ? 'justify-center px-2' : 'justify-between px-4'
+          } h-14 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0`}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate('/');
+              onClose();
+            }}
+            className="flex items-center gap-2.5 truncate text-left focus:outline-none group cursor-pointer"
+          >
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
               <img
                 src={getLogo('symbol')}
                 alt={branding.companyName}
-                className="w-full h-full object-contain filter drop-shadow-xs"
+                className="w-7 h-7 object-contain"
               />
             </div>
             {!isCollapsed && (
               <div className="truncate min-w-0">
-                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white truncate block">
+                <span className="font-bold text-[13px] tracking-tight text-slate-900 dark:text-white truncate block leading-tight">
                   {branding.companyName}
                 </span>
-                <span
-                  className="block text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: branding.primaryColor || '#2563EB' }}
-                >
-                  {t('enterpriseCrm')}
+                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 block leading-tight">
+                  Enterprise Workspace
                 </span>
               </div>
             )}
-          </div>
+          </button>
 
           {!isCollapsed && (
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="p-1.5 rounded-lg md:hidden text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
               aria-label={t('close')}
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isGod =
-              user?.tenantId === 'god' ||
-              user?.role === 'GOD' ||
-              user?.role === 'ADMIN' ||
-              user?.email === 'ignaciobrenas@gmail.com' ||
-              user?.email === 'admin@dama-crm.local';
+        {/* Navigation Items Organized by Categories */}
+        <nav className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto">
+          {categories.map((cat) => {
+            const categoryItems = orderedItems.filter((item) => item.category === cat.id);
 
-            // Check resource RBAC permissions (God / SuperAdmin bypasses)
-            if (!isGod && item.resource && !hasPermission(item.resource, 'read')) {
-              return null;
-            }
+            const visibleCategoryItems = categoryItems.filter((item) => {
+              if (item.id === 'dashboard' || item.id === 'settings') return true;
+              if (userHiddenItems.includes(item.id)) return false;
+              if (item.moduleKey && !isModuleEnabled(item.moduleKey)) return false;
+              if (!isGod && item.resource && !hasPermission(item.resource, 'read')) return false;
+              return true;
+            });
 
-            // Check if module is enabled by company admin (God / SuperAdmin bypasses)
-            if (!isGod && item.moduleKey && !isModuleEnabled(item.moduleKey)) {
-              return null;
-            }
-
-            // Check if user has customized pinned items
-            if (!isGod && pinnedRoutes && Array.isArray(pinnedRoutes) && pinnedRoutes.length > 0) {
-              if (item.route !== '/settings' && item.route !== '/' && !pinnedRoutes.includes(item.route)) {
-                return null;
-              }
-            }
-
-            const isActive = currentRoute === item.route;
+            if (visibleCategoryItems.length === 0) return null;
 
             return (
-              <motion.button
-                key={item.id}
-                whileHover={{ x: isCollapsed ? 0 : 2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  onNavigate(item.route);
-                  onClose();
-                }}
-                title={item.label}
-                className={`relative w-full flex items-center ${
-                  isCollapsed ? 'justify-center px-2 py-2.5' : 'space-x-3 px-3 py-2'
-                } rounded-lg text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'text-white font-semibold'
-                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/60 dark:hover:bg-slate-800/40'
-                }`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeSidebarIndicator"
-                    className="absolute inset-0 rounded-lg shadow-xs"
-                    style={{ backgroundColor: branding.primaryColor }}
-                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  />
+              <div key={cat.id} className="space-y-0.5">
+                {!isCollapsed ? (
+                  <div className="px-2.5 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {cat.label}
+                  </div>
+                ) : (
+                  <div className="border-t border-slate-200/80 dark:border-slate-800/70 my-1.5 mx-2" />
                 )}
-                <span className={`relative z-10 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
-                  <DynamicIcon
-                    icon={item.icon}
-                    variant={item.animation || 'bounce'}
-                    size={16}
-                    active={isActive}
-                    className={isActive ? 'text-white' : 'text-gray-400 dark:text-slate-400'}
-                  />
-                  {!isCollapsed && <span className="truncate">{item.label}</span>}
-                </span>
-              </motion.button>
+
+                {visibleCategoryItems.map((item) => {
+                  const isActive = currentRoute === item.route;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-testid={`sidebar-nav-${item.id}`}
+                      onClick={() => {
+                        soundService.play('navigation');
+                        onNavigate(item.route);
+                        onClose();
+                      }}
+                      title={item.label}
+                      className={`group relative w-full flex items-center transition-all duration-150 cursor-pointer ${
+                        isCollapsed
+                          ? 'w-10 h-10 mx-auto justify-center rounded-xl'
+                          : 'gap-2.5 px-2.5 py-1.5 rounded-xl text-[12.5px]'
+                      } ${
+                        isActive
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 font-medium'
+                      }`}
+                    >
+                      <span className="w-5 h-5 flex items-center justify-center shrink-0">
+                        <DynamicIcon
+                          icon={item.icon}
+                          variant="bounce"
+                          size={16}
+                          active={isActive}
+                          className={
+                            isActive
+                              ? 'text-white dark:text-slate-900'
+                              : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100'
+                          }
+                        />
+                      </span>
+                      {!isCollapsed && (
+                        <>
+                          <span className="truncate flex-1 text-left">{item.label}</span>
+                          {isActive && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: branding.primaryColor || '#3B82F6' }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
 
         {/* System Footer & Collapse/Expand Toggle */}
-        <div className="p-2.5 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between text-[10px] text-gray-400 dark:text-slate-500">
+        <div className="px-3 py-2.5 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
           {!isCollapsed && (
-            <div className="flex items-center space-x-1.5 truncate">
-              <span className="font-mono font-semibold">v1.2.0-staging</span>
-              <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-mono text-[9px]">
-                {t('systemStatusActive')}
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="font-mono text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                v1.6.0 · {t('systemStatusActive')}
               </span>
             </div>
           )}
 
           <button
-            onClick={() => updatePreferences({ sidebarCollapsed: !isCollapsed })}
-            className={`p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors hidden md:flex items-center justify-center ${
+            type="button"
+            onClick={() => {
+              soundService.play('toggle');
+              updatePreferences({ sidebarCollapsed: !isCollapsed });
+            }}
+            className={`w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors hidden md:flex items-center justify-center cursor-pointer ${
               isCollapsed ? 'mx-auto' : ''
             }`}
             title={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}

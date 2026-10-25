@@ -10,6 +10,7 @@ dotenv.config({ override: true });
 export const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   jwt: {
     secret: process.env.JWT_SECRET || 'super_secret_jwt_key_crm_dama_change_me_in_production',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',

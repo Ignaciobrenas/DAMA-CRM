@@ -9,16 +9,16 @@
     "syncInvoices": true,
     "syncProducts": true,
     "status": "connected",
-    "lastSyncAt": "2026-09-27T15:45:40.024Z"
+    "lastSyncAt": "2026-10-18T19:15:58.650Z"
   },
   "woocommerce": {
-    "enabled": false,
-    "storeUrl": "https://tienda.example.com",
-    "consumerKey": "",
-    "consumerSecret": "",
+    "enabled": true,
+    "storeUrl": "http://localhost:8083",
+    "consumerKey": "ck_148cd26e6b15e5591035466047aec78b2b865d82",
+    "consumerSecret": "cs_2a917375491c0cb54e8c6b9d9ec0ee69a712b3dc",
     "webhookSecret": "",
     "status": "connected",
-    "lastSyncAt": "2026-09-27T15:45:40.050Z"
+    "lastSyncAt": "2026-10-18T19:15:58.691Z"
   },
   "shopify": {
     "enabled": false,
@@ -37,7 +37,7 @@
     "syncOrders": true,
     "syncCustomers": true,
     "status": "connected",
-    "lastSyncAt": "2026-09-27T15:45:40.077Z"
+    "lastSyncAt": "2026-10-18T19:15:58.704Z"
   },
   "n8n": {
     "enabled": false,
@@ -58,7 +58,7 @@
     "publishableKey": "pk_test_sample",
     "secretKey": "sk_test_sample",
     "webhookSecret": "whsec_sample",
-    "lastSyncAt": "2026-09-27T15:45:40.057Z"
+    "lastSyncAt": "2026-10-18T19:15:58.698Z"
   },
   "zapier": {
     "enabled": false,
@@ -84,7 +84,7 @@
     "syncInvoices": true,
     "syncProducts": true,
     "status": "connected",
-    "lastSyncAt": "2026-09-27T15:44:16.294Z"
+    "lastSyncAt": "2026-10-02T15:28:12.093Z"
   },
   "sage_50": {
     "enabled": false,
@@ -112,5 +112,15 @@
     "syncLedgers": true,
     "status": "connected",
     "lastSyncAt": "2026-09-27T08:16:27.730Z"
+  },
+  "prestashop": {
+    "storeUrl": "http://localhost:8081",
+    "wsKey": "DAMACRMTESTKEY123456789012345678",
+    "syncProducts": true,
+    "syncOrders": true,
+    "syncCustomers": true,
+    "enabled": true,
+    "status": "connected",
+    "lastSyncAt": "2026-10-03T13:00:00.000Z"
   }
 }

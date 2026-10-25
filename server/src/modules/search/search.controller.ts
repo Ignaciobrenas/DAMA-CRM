@@ -16,121 +16,157 @@ export async function globalSearch(req: Request, res: Response): Promise<void> {
     const query = q.trim();
     const tenantFilter: any = (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) ? { tenantId } : {};
 
+    const userPermissions = req.user?.permissions || [];
+    const canAccess = (resource: string): boolean => {
+      if (
+        req.user?.role === 'ADMIN' ||
+        req.user?.role === 'SUPER_ADMIN' ||
+        req.user?.role === 'GOD' ||
+        req.user?.tenantId === 'god' ||
+        isSuper
+      ) {
+        return true;
+      }
+      return userPermissions.some(
+        (p) => (p.resource === resource || p.resource === '*') && (p.action === 'read' || p.action === 'manage')
+      );
+    };
+
     const [companies, contacts, deals, projects, tasks, invoices, quotes, products, tickets, expenses] = await Promise.all([
-      prisma.company.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { industry: { contains: query, mode: 'insensitive' } },
-            { city: { contains: query, mode: 'insensitive' } },
-            { taxId: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        take: 8,
-      }),
-      prisma.contact.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { firstName: { contains: query, mode: 'insensitive' } },
-            { lastName: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
-            { phone: { contains: query, mode: 'insensitive' } },
-            { position: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        include: { company: true },
-        take: 8,
-      }),
-      prisma.deal.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { title: { contains: query, mode: 'insensitive' } },
-            { notes: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        include: { stage: true, company: true, contact: true },
-        take: 8,
-      }),
-      prisma.project.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        take: 8,
-      }),
-      prisma.task.findMany({
-        where: {
-          project: tenantFilter,
-          OR: [
-            { title: { contains: query } },
-            { description: { contains: query } },
-          ],
-        },
-        include: { project: true, assignee: true },
-        take: 8,
-      }),
-      prisma.invoice.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { invoiceNumber: { contains: query, mode: 'insensitive' } },
-            { notes: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        include: { company: true, contact: true },
-        take: 8,
-      }),
-      prisma.quote.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { quoteNumber: { contains: query, mode: 'insensitive' } },
-            { notes: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        include: { company: true, contact: true },
-        take: 8,
-      }),
-      prisma.product.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { sku: { contains: query, mode: 'insensitive' } },
-            { category: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        take: 8,
-      }),
-      prisma.ticket.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { ticketNumber: { contains: query, mode: 'insensitive' } },
-            { title: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        include: { company: true, contact: true },
-        take: 8,
-      }),
-      prisma.expense.findMany({
-        where: {
-          ...tenantFilter,
-          OR: [
-            { expenseNumber: { contains: query, mode: 'insensitive' } },
-            { supplierName: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-        take: 8,
-      }),
+      canAccess('companies')
+        ? prisma.company.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { name: { contains: query, mode: 'insensitive' } },
+                { industry: { contains: query, mode: 'insensitive' } },
+                { city: { contains: query, mode: 'insensitive' } },
+                { taxId: { contains: query, mode: 'insensitive' } },
+                { email: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('contacts')
+        ? prisma.contact.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { firstName: { contains: query, mode: 'insensitive' } },
+                { lastName: { contains: query, mode: 'insensitive' } },
+                { email: { contains: query, mode: 'insensitive' } },
+                { phone: { contains: query, mode: 'insensitive' } },
+                { position: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            include: { company: true },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('deals')
+        ? prisma.deal.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { title: { contains: query, mode: 'insensitive' } },
+                { notes: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            include: { stage: true, company: true, contact: true },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('projects')
+        ? prisma.project.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { name: { contains: query, mode: 'insensitive' } },
+                { description: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('tasks')
+        ? prisma.task.findMany({
+            where: {
+              project: tenantFilter,
+              OR: [
+                { title: { contains: query } },
+                { description: { contains: query } },
+              ],
+            },
+            include: { project: true, assignee: true },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('invoices')
+        ? prisma.invoice.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { invoiceNumber: { contains: query, mode: 'insensitive' } },
+                { notes: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            include: { company: true, contact: true },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('quotes')
+        ? prisma.quote.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { quoteNumber: { contains: query, mode: 'insensitive' } },
+                { notes: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            include: { company: true, contact: true },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('inventory')
+        ? prisma.product.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { name: { contains: query, mode: 'insensitive' } },
+                { sku: { contains: query, mode: 'insensitive' } },
+                { category: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('tickets')
+        ? prisma.ticket.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { ticketNumber: { contains: query, mode: 'insensitive' } },
+                { title: { contains: query, mode: 'insensitive' } },
+                { description: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            include: { company: true, contact: true },
+            take: 8,
+          })
+        : Promise.resolve([]),
+      canAccess('expenses')
+        ? prisma.expense.findMany({
+            where: {
+              ...tenantFilter,
+              OR: [
+                { expenseNumber: { contains: query, mode: 'insensitive' } },
+                { supplierName: { contains: query, mode: 'insensitive' } },
+              ],
+            },
+            take: 8,
+          })
+        : Promise.resolve([]),
     ]);
 
     const results: Array<{

@@ -39,6 +39,10 @@ redis-data/
 .DS_Store
 Thumbs.db
 
+# Playwright
+playwright-report/
+test-results/
+
 # Docusaurus
 .docusaurus/
 

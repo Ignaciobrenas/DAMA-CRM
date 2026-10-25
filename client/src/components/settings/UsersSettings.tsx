@@ -25,6 +25,8 @@ import {
   Send,
   Share2,
   Sparkles,
+  Plus,
+  Layers,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -48,30 +50,41 @@ interface UserItem {
 interface RoleItem {
   id: string;
   name: string;
+  description?: string;
+  isSystem?: boolean;
+  permissions?: Array<{ resource: string; action: string }>;
+  _count?: { users: number };
 }
 
 const RESOURCES = [
-  { id: 'companies', label: 'Empresas' },
-  { id: 'contacts', label: 'Contactos' },
-  { id: 'deals', label: 'Ventas (Deals)' },
-  { id: 'projects', label: 'Proyectos Ágiles' },
-  { id: 'tasks', label: 'Tareas' },
-  { id: 'invoices', label: 'Facturas' },
-  { id: 'inventory', label: 'Inventario' },
-  { id: 'workflows', label: 'Automatizaciones' },
-  { id: 'omnichannel', label: 'Omnicanal' },
-  { id: 'tickets', label: 'Tickets' },
-  { id: 'expenses', label: 'Gastos' },
-  { id: 'portalEmpleado', label: 'Portal Empleado' },
-  { id: 'users', label: 'Usuarios' },
+  { id: 'companies', label: 'Empresas & Cuentas', category: 'CRM' },
+  { id: 'contacts', label: 'Contactos & Leads', category: 'CRM' },
+  { id: 'deals', label: 'Ventas & Pipeline', category: 'CRM' },
+  { id: 'quotes', label: 'Presupuestos & Ofertas', category: 'Facturación' },
+  { id: 'invoices', label: 'Facturas & Cobros', category: 'Facturación' },
+  { id: 'inventory', label: 'Inventario & Catálogo', category: 'Operaciones' },
+  { id: 'projects', label: 'Proyectos Ágiles & Tableros', category: 'Operaciones' },
+  { id: 'tasks', label: 'Tareas & Backlog', category: 'Operaciones' },
+  { id: 'tickets', label: 'Soporte & Helpdesk', category: 'Atención al Cliente' },
+  { id: 'expenses', label: 'Gastos & Finanzas', category: 'Finanzas' },
+  { id: 'employees', label: 'Empleados & RRHH', category: 'RRHH' },
+  { id: 'calendar', label: 'Calendario & Citas', category: 'Organización' },
+  { id: 'appointments', label: 'Reservas & Citas Online', category: 'Organización' },
+  { id: 'logistics', label: 'Logística & Envíos', category: 'Operaciones' },
+  { id: 'workflows', label: 'Automatizaciones & Flujos', category: 'Sistema' },
+  { id: 'omnichannel', label: 'Omnicanal WhatsApp & Chat', category: 'Atención al Cliente' },
+  { id: 'reports', label: 'Informes & Métricas BI', category: 'Dirección' },
+  { id: 'integrations', label: 'Integraciones & Webhooks', category: 'Sistema' },
+  { id: 'users', label: 'Usuarios & Permisos RBAC', category: 'Administración' },
+  { id: 'settings', label: 'Configuración del Sistema', category: 'Administración' },
 ];
 
 const ACTIONS = [
   { id: 'read', label: 'Lectura' },
   { id: 'create', label: 'Crear' },
-  { id: 'update', label: 'Modificar' },
+  { id: 'update', label: 'Editar' },
   { id: 'delete', label: 'Eliminar' },
-  { id: 'manage', label: 'Total' },
+  { id: 'manage', label: 'Control Total' },
 ];
 
 export const UsersSettings: React.FC = () => {
@@ -79,12 +92,37 @@ export const UsersSettings: React.FC = () => {
   const { t } = useLanguage();
   const toast = useToast();
 
+  const [mainTab, setMainTab] = useState<'users' | 'roles'>('users');
+
   const [users, setUsers] = useState<UserItem[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('');
   const [userSort, setUserSort] = useState<'name_asc' | 'name_desc' | 'email_asc' | 'role' | 'recent'>('name_asc');
+
+  // Role Management & Permissions Matrix State
+  const [selectedRoleForMatrix, setSelectedRoleForMatrix] = useState<RoleItem | null>(null);
+  const [matrixPermissions, setMatrixPermissions] = useState<Array<{ resource: string; action: string }>>([]);
+  const [isSavingMatrix, setIsSavingMatrix] = useState(false);
+  const [roleSearch, setRoleSearch] = useState('');
+
+  // Create Role Modal
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleDescription, setNewRoleDescription] = useState('');
+  const [isSubmittingRole, setIsSubmittingRole] = useState(false);
+
+  // Duplicate Role Modal
+  const [isDuplicateRoleModalOpen, setIsDuplicateRoleModalOpen] = useState(false);
+  const [roleToDuplicate, setRoleToDuplicate] = useState<RoleItem | null>(null);
+  const [duplicateRoleName, setDuplicateRoleName] = useState('');
+  const [duplicateRoleDescription, setDuplicateRoleDescription] = useState('');
+  const [isDuplicatingRole, setIsDuplicatingRole] = useState(false);
+
+  // Delete Role Modal
+  const [roleToDelete, setRoleToDelete] = useState<RoleItem | null>(null);
+  const [isDeletingRole, setIsDeletingRole] = useState(false);
 
   // Modals
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -189,12 +227,168 @@ export const UsersSettings: React.FC = () => {
     ]);
 
     if (resUsers.success && resUsers.data) setUsers(resUsers.data);
-    if (resRoles.success && resRoles.data) setRoles(resRoles.data);
+    if (resRoles.success && resRoles.data) {
+      setRoles(resRoles.data);
+      setSelectedRoleForMatrix((prev) => {
+        if (prev) {
+          const fresh = resRoles.data.find((r: RoleItem) => r.id === prev.id);
+          if (fresh) {
+            setMatrixPermissions(fresh.permissions || []);
+            return fresh;
+          }
+        }
+        if (resRoles.data.length > 0) {
+          setMatrixPermissions(resRoles.data[0].permissions || []);
+          return resRoles.data[0];
+        }
+        return null;
+      });
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleSelectRoleForMatrix = (r: RoleItem) => {
+    setSelectedRoleForMatrix(r);
+    setMatrixPermissions(r.permissions ? [...r.permissions] : []);
+  };
+
+  const toggleMatrixPermission = (resource: string, action: string) => {
+    const exists = matrixPermissions.some((p) => p.resource === resource && p.action === action);
+    if (exists) {
+      setMatrixPermissions(matrixPermissions.filter((p) => !(p.resource === resource && p.action === action)));
+    } else {
+      setMatrixPermissions([...matrixPermissions, { resource, action }]);
+    }
+  };
+
+  const toggleRowPermissions = (resource: string) => {
+    const rowActions = ACTIONS.map((a) => a.id);
+    const allChecked = rowActions.every((act) =>
+      matrixPermissions.some((p) => p.resource === resource && p.action === act)
+    );
+    if (allChecked) {
+      setMatrixPermissions(matrixPermissions.filter((p) => p.resource !== resource));
+    } else {
+      const remaining = matrixPermissions.filter((p) => p.resource !== resource);
+      const newPerms = rowActions.map((act) => ({ resource, action: act }));
+      setMatrixPermissions([...remaining, ...newPerms]);
+    }
+  };
+
+  const handleSelectAllMatrix = () => {
+    const all: Array<{ resource: string; action: string }> = [];
+    RESOURCES.forEach((res) => {
+      ACTIONS.forEach((act) => {
+        all.push({ resource: res.id, action: act.id });
+      });
+    });
+    setMatrixPermissions(all);
+  };
+
+  const handleDeselectAllMatrix = () => {
+    setMatrixPermissions([]);
+  };
+
+  const handleSaveRoleMatrix = async () => {
+    if (!selectedRoleForMatrix) return;
+    setIsSavingMatrix(true);
+    const res = await apiRequest(`/users/roles/${selectedRoleForMatrix.id}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions: matrixPermissions }),
+    });
+    setIsSavingMatrix(false);
+    if (res.success) {
+      toast.success(
+        'Matriz de Permisos Guardada',
+        `Los permisos para el rol ${selectedRoleForMatrix.name} se han actualizado en tiempo real.`
+      );
+      await loadData();
+    } else {
+      toast.error('Error al guardar permisos', res.message || 'No se pudieron actualizar los permisos.');
+    }
+  };
+
+  const handleCreateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoleName.trim()) {
+      toast.error('Indica un nombre para el nuevo rol.');
+      return;
+    }
+    setIsSubmittingRole(true);
+    const res = await apiRequest('/users/roles', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: newRoleName.trim().toUpperCase(),
+        description: newRoleDescription.trim(),
+      }),
+    });
+    setIsSubmittingRole(false);
+    if (res.success) {
+      toast.success('Rol Creado', `El rol personalizado ${newRoleName.toUpperCase()} ha sido creado.`);
+      setIsRoleModalOpen(false);
+      setNewRoleName('');
+      setNewRoleDescription('');
+      await loadData();
+      if (res.data) {
+        setSelectedRoleForMatrix(res.data);
+        setMatrixPermissions([]);
+      }
+    } else {
+      toast.error('Error al crear rol', res.message || 'No se pudo crear el rol.');
+    }
+  };
+
+  const openDuplicateRoleModal = (role: RoleItem) => {
+    setRoleToDuplicate(role);
+    setDuplicateRoleName(`${role.name}_COPIA`);
+    setDuplicateRoleDescription(`Copia de ${role.name} - ${role.description || ''}`.trim());
+    setIsDuplicateRoleModalOpen(true);
+  };
+
+  const handleDuplicateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roleToDuplicate) return;
+    setIsDuplicatingRole(true);
+    const res = await apiRequest(`/users/roles/${roleToDuplicate.id}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: duplicateRoleName.trim().toUpperCase(),
+        description: duplicateRoleDescription.trim(),
+      }),
+    });
+    setIsDuplicatingRole(false);
+    if (res.success) {
+      toast.success('Rol Duplicado', `El rol ${res.data?.name} ha sido duplicado con éxito.`);
+      setIsDuplicateRoleModalOpen(false);
+      setRoleToDuplicate(null);
+      await loadData();
+      if (res.data) {
+        setSelectedRoleForMatrix(res.data);
+        setMatrixPermissions(res.data.permissions || []);
+      }
+    } else {
+      toast.error('Error al duplicar rol', res.message || 'No se pudo duplicar el rol.');
+    }
+  };
+
+  const handleDeleteRole = async () => {
+    if (!roleToDelete) return;
+    setIsDeletingRole(true);
+    const res = await apiRequest(`/users/roles/${roleToDelete.id}`, {
+      method: 'DELETE',
+    });
+    setIsDeletingRole(false);
+    if (res.success) {
+      toast.success('Rol Eliminado', `El rol ${roleToDelete.name} ha sido eliminado.`);
+      setRoleToDelete(null);
+      await loadData();
+    } else {
+      toast.error('Error al eliminar rol', res.message || 'No se pudo eliminar el rol.');
+    }
+  };
 
   const newPwdCheck = checkPasswordStrength(newUserForm.password);
 
@@ -346,208 +540,503 @@ export const UsersSettings: React.FC = () => {
     });
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs space-y-4 p-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
-        <div className="flex items-center space-x-2">
-          <Users className="w-5 h-5 text-blue-600" />
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">
-              {t('settings.corporateAccounts', 'Cuentas de Usuarios & Miembros de Empresa')}
-            </h2>
-            <p className="text-[11px] text-gray-500">
-              {t('settings.corporateAccountsDesc', 'Gestiona las credenciales, roles asignados y accesos individuales.')}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={handleOpenInviteModal}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
-            title="Generar y copiar un enlace de invitación para nuevos compañeros de equipo"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span>{t('settings.inviteLinkBtn', 'Invitar por Enlace')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
-              setUserModalError('');
-              setIsUserModalOpen(true);
-            }}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>{t('settings.newUserBtn', 'Nuevo Usuario')}</span>
-          </button>
-        </div>
+    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shadow-xs space-y-4 p-5">
+      {/* Top View Selector: Usuarios vs Roles & Matriz */}
+      <div className="flex items-center space-x-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <button
+          type="button"
+          onClick={() => setMainTab('users')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            mainTab === 'users'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Cuentas de Usuarios ({users.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainTab('roles')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            mainTab === 'roles'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+          }`}
+        >
+          <Shield className="w-4 h-4" />
+          <span>Roles & Matriz de Permisos ({roles.length})</span>
+        </button>
       </div>
 
-      {/* Filter and Sorting Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-          {/* Search */}
-          <div className="relative flex-1 min-w-[160px] max-w-xs">
-            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
-            <input
-              type="text"
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-              placeholder={t('settings.searchUserPlaceholder', 'Buscar por nombre o email...')}
-              className="w-full pl-8 pr-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-            />
+      {mainTab === 'users' && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
+            <div className="flex items-center space-x-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+                  {t('settings.corporateAccounts', 'Cuentas de Usuarios & Miembros de Empresa')}
+                </h2>
+                <p className="text-[11px] text-gray-500">
+                  {t('settings.corporateAccountsDesc', 'Gestiona las credenciales, roles asignados y accesos individuales.')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleOpenInviteModal}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+                title="Generar y copiar un enlace de invitación para nuevos compañeros de equipo"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>{t('settings.inviteLinkBtn', 'Invitar por Enlace')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewUserForm({ name: '', email: '', password: '', roleId: roles[0]?.id || '' });
+                  setUserModalError('');
+                  setIsUserModalOpen(true);
+                }}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>{t('settings.newUserBtn', 'Nuevo Usuario')}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Filter by Role */}
-          <select
-            value={userRoleFilter}
-            onChange={(e) => setUserRoleFilter(e.target.value)}
-            className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="">{t('settings.allRoles', 'Todos los Roles')}</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.name}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+          {/* Filter and Sorting Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[160px] max-w-xs">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder={t('settings.searchUserPlaceholder', 'Buscar por nombre o email...')}
+                  className="w-full pl-8 pr-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
 
-          {/* Filter by Status */}
-          <select
-            value={userStatusFilter}
-            onChange={(e) => setUserStatusFilter(e.target.value)}
-            className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="">{t('settings.allStatuses', 'Todos los Estados')}</option>
-            <option value="active">{t('settings.onlyActiveUsers', 'Solo Activos')}</option>
-            <option value="inactive">{t('settings.onlyDisabledUsers', 'Solo Desactivados')}</option>
-          </select>
-        </div>
+              {/* Filter by Role */}
+              <select
+                value={userRoleFilter}
+                onChange={(e) => setUserRoleFilter(e.target.value)}
+                className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none"
+              >
+                <option value="">{t('settings.allRoles', 'Todos los Roles')}</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
 
-        {/* Sort Dropdown */}
-        <div className="flex items-center space-x-1.5 shrink-0">
-          <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-          <select
-            value={userSort}
-            onChange={(e) => setUserSort(e.target.value as any)}
-            className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none"
-          >
-            <option value="name_asc">{t('settings.sortNameAsc', 'Nombre (A-Z)')}</option>
-            <option value="name_desc">{t('settings.sortNameDesc', 'Nombre (Z-A)')}</option>
-            <option value="email_asc">{t('settings.sortEmailAsc', 'Email (A-Z)')}</option>
-            <option value="role">{t('settings.sortRole', 'Rol')}</option>
-            <option value="recent">{t('settings.sortRecent', 'Más Recientes')}</option>
-          </select>
-        </div>
-      </div>
+              {/* Filter by Status */}
+              <select
+                value={userStatusFilter}
+                onChange={(e) => setUserStatusFilter(e.target.value)}
+                className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none"
+              >
+                <option value="">{t('settings.allStatuses', 'Todos los Estados')}</option>
+                <option value="active">{t('settings.onlyActiveUsers', 'Solo Activos')}</option>
+                <option value="inactive">{t('settings.onlyDisabledUsers', 'Solo Desactivados')}</option>
+              </select>
+            </div>
 
-      {/* Users Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-800">
-        <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
-          <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
-            <tr>
-              <th className="px-4 py-2.5">{t('settings.userNameCol', 'Usuario')}</th>
-              <th className="px-4 py-2.5">{t('settings.userEmailCol', 'Correo Electrónico')}</th>
-              <th className="px-4 py-2.5">{t('settings.userRoleCol', 'Rol Asignado')}</th>
-              <th className="px-4 py-2.5">2FA</th>
-              <th className="px-4 py-2.5">{t('settings.userStatusCol', 'Estado')}</th>
-              <th className="px-4 py-2.5 text-right">{t('settings.userActionsCol', 'Acciones')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-            {filteredUsers.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400 dark:text-slate-500">
-                  No se encontraron usuarios con los filtros seleccionados.
-                </td>
-              </tr>
-            ) : (
-              filteredUsers.map((u) => {
-                const hasCustom = u.customPermissions && u.customPermissions.length > 0;
-                const isCurrent = user?.id === u.id;
+            {/* Sort Dropdown */}
+            <div className="flex items-center space-x-1.5 shrink-0">
+              <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+              <select
+                value={userSort}
+                onChange={(e) => setUserSort(e.target.value as any)}
+                className="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 focus:outline-none"
+              >
+                <option value="name_asc">{t('settings.sortNameAsc', 'Nombre (A-Z)')}</option>
+                <option value="name_desc">{t('settings.sortNameDesc', 'Nombre (Z-A)')}</option>
+                <option value="email_asc">{t('settings.sortEmailAsc', 'Email (A-Z)')}</option>
+                <option value="role">{t('settings.sortRole', 'Rol')}</option>
+                <option value="recent">{t('settings.sortRecent', 'Más Recientes')}</option>
+              </select>
+            </div>
+          </div>
 
-                return (
-                  <tr key={u.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
-                    <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
-                      <div className="flex items-center space-x-1.5">
-                        <span>{u.name}</span>
-                        {isCurrent && (
-                          <span className="text-[9px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded font-normal">
-                            Tú
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-600 dark:text-slate-300">{u.email}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center space-x-1.5">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                          {u.role}
-                        </span>
-                        {hasCustom && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                            +{u.customPermissions?.length || 0} custom
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {u.twoFactorEnabled ? (
-                        <span className="text-emerald-600 font-semibold text-[11px]">Protegido</span>
-                      ) : (
-                        <span className="text-gray-400 text-[11px]">Inactivo</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {u.isActive ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-                          Activo
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400">
-                          Desactivado
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
-                        <button
-                          type="button"
-                          onClick={() => openAuditModal(u)}
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-300 rounded text-[11px] font-semibold transition-colors"
-                          title="Ver historial de inicios de sesión y registro de cambios"
-                        >
-                          <History className="w-3 h-3" />
-                          <span>Auditoría</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditUserModal(u)}
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded text-[11px] font-semibold transition-colors"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          <span>Editar</span>
-                        </button>
-                        {!isCurrent && (
-                          <button
-                            type="button"
-                            onClick={() => setUserToDelete(u)}
-                            className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+          {/* Users Table */}
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-800">
+            <table className="w-full text-left text-xs text-gray-600 dark:text-slate-300">
+              <thead className="bg-gray-50 dark:bg-slate-800/60 text-[11px] font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
+                <tr>
+                  <th className="px-4 py-2.5">{t('settings.userNameCol', 'Usuario')}</th>
+                  <th className="px-4 py-2.5">{t('settings.userEmailCol', 'Correo Electrónico')}</th>
+                  <th className="px-4 py-2.5">{t('settings.userRoleCol', 'Rol Asignado')}</th>
+                  <th className="px-4 py-2.5">2FA</th>
+                  <th className="px-4 py-2.5">{t('settings.userStatusCol', 'Estado')}</th>
+                  <th className="px-4 py-2.5 text-right">{t('settings.userActionsCol', 'Acciones')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-gray-400 dark:text-slate-500">
+                      No se encontraron usuarios con los filtros seleccionados.
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                ) : (
+                  filteredUsers.map((u) => {
+                    const hasCustom = u.customPermissions && u.customPermissions.length > 0;
+                    const isCurrent = user?.id === u.id;
+
+                    return (
+                      <tr key={u.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
+                        <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
+                          <div className="flex items-center space-x-1.5">
+                            <span>{u.name}</span>
+                            {isCurrent && (
+                              <span className="text-[9px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded font-normal">
+                                Tú
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-600 dark:text-slate-300">{u.email}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center space-x-1.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                              {u.role}
+                            </span>
+                            {hasCustom && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                +{u.customPermissions?.length || 0} custom
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {u.twoFactorEnabled ? (
+                            <span className="text-emerald-600 font-semibold text-[11px]">Protegido</span>
+                          ) : (
+                            <span className="text-gray-400 text-[11px]">Inactivo</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {u.isActive ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                              Activo
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400">
+                              Desactivado
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openAuditModal(u)}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 dark:text-blue-300 rounded text-[11px] font-semibold transition-colors"
+                              title="Ver historial de inicios de sesión y registro de cambios"
+                            >
+                              <History className="w-3 h-3" />
+                              <span>Auditoría</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openEditUserModal(u)}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded text-[11px] font-semibold transition-colors"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Editar</span>
+                            </button>
+                            {!isCurrent && (
+                              <button
+                                type="button"
+                                onClick={() => setUserToDelete(u)}
+                                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {mainTab === 'roles' && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-800">
+            <div className="flex items-center space-x-2">
+              <Shield className="w-5 h-5 text-blue-600" />
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+                  Gestión de Roles & Matriz de Permisos RBAC
+                </h2>
+                <p className="text-[11px] text-gray-500">
+                  Crea roles, duplica perfiles de acceso y configura la matriz de permisos módulo a módulo en tiempo real.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewRoleName('');
+                  setNewRoleDescription('');
+                  setIsRoleModalOpen(true);
+                }}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nuevo Rol Personalizado</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Roles List (Left Col) */}
+            <div className="lg:col-span-4 space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Roles del Sistema ({roles.length})
+                </span>
+              </div>
+
+              <div className="space-y-2 max-h-[750px] overflow-y-auto pr-1">
+                {roles.map((r) => {
+                  const isSelected = selectedRoleForMatrix?.id === r.id;
+                  const isSystem = r.isSystem;
+                  const userCount = r._count?.users || 0;
+
+                  return (
+                    <div
+                      key={r.id}
+                      onClick={() => handleSelectRoleForMatrix(r)}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-500/80 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                            {r.name}
+                          </span>
+                          {isSystem ? (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              Sistema
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                              Personalizado
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold">
+                          {userCount} {userCount === 1 ? 'usuario' : 'usuarios'}
+                        </span>
+                      </div>
+
+                      {r.description && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                          {r.description}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px]">
+                        <span className="text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
+                          {isSelected ? '✓ Matriz Activa' : 'Clic para editar matriz'}
+                        </span>
+                        <div className="flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => openDuplicateRoleModal(r)}
+                            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition"
+                            title="Duplicar rol"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                          {!isSystem && userCount === 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRoleToDelete(r);
+                              }}
+                              className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition"
+                              title="Eliminar rol personalizado"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Matrix Editor (Right Col) */}
+            <div className="lg:col-span-8 space-y-3">
+              {selectedRoleForMatrix ? (
+                <div className="bg-slate-50/50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-4">
+                  {/* Matrix Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                          Matriz de Permisos: {selectedRoleForMatrix.name}
+                        </h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold">
+                          {matrixPermissions.length} permisos asignados
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {selectedRoleForMatrix.description || 'Configura qué acciones tiene autorizadas este rol sobre cada módulo.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllMatrix}
+                        className="px-2.5 py-1 text-[11px] font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition"
+                      >
+                        Marcar Todo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeselectAllMatrix}
+                        className="px-2.5 py-1 text-[11px] font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition"
+                      >
+                        Desmarcar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveRoleMatrix}
+                        disabled={isSavingMatrix}
+                        className="inline-flex items-center space-x-1 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition disabled:opacity-50"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{isSavingMatrix ? 'Guardando...' : 'Guardar Matriz'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {selectedRoleForMatrix.name === 'ADMIN' && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-900/50 flex items-start space-x-2 text-amber-800 dark:text-amber-300 text-xs">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Nota de Seguridad:</strong> El rol <code>ADMIN</code> es el rol raíz del sistema. Aunque puedes ajustar flags en la matriz, por diseño del servidor los administradores retienen autorización total de control sobre la organización.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Matrix Table */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                      <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 sticky top-0">
+                        <tr>
+                          <th className="px-4 py-2.5">Módulo / Recurso</th>
+                          <th className="px-2 py-2.5 text-center">Categoría</th>
+                          {ACTIONS.map((act) => (
+                            <th key={act.id} className="px-2 py-2.5 text-center">
+                              {act.label}
+                            </th>
+                          ))}
+                          <th className="px-3 py-2.5 text-right">Fila Completa</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                        {RESOURCES.map((res) => {
+                          const rowActions = ACTIONS.map((a) => a.id);
+                          const allChecked = rowActions.every((act) =>
+                            matrixPermissions.some((p) => p.resource === res.id && p.action === act)
+                          );
+                          const someChecked = rowActions.some((act) =>
+                            matrixPermissions.some((p) => p.resource === res.id && p.action === act)
+                          );
+
+                          return (
+                            <tr key={res.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="px-4 py-2 font-bold text-slate-900 dark:text-white">
+                                {res.label}
+                              </td>
+                              <td className="px-2 py-2 text-center">
+                                <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded">
+                                  {res.category}
+                                </span>
+                              </td>
+                              {ACTIONS.map((act) => {
+                                const isChecked = matrixPermissions.some(
+                                  (p) => p.resource === res.id && p.action === act.id
+                                );
+                                return (
+                                  <td key={act.id} className="px-2 py-2 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => toggleMatrixPermission(res.id, act.id)}
+                                      className="w-4 h-4 text-blue-600 rounded border-slate-300 dark:border-slate-700 focus:ring-blue-500 cursor-pointer"
+                                    />
+                                  </td>
+                                );
+                              })}
+                              <td className="px-3 py-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleRowPermissions(res.id)}
+                                  className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  {allChecked ? 'Desmarcar' : someChecked ? 'Completar' : 'Marcar todo'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-[11px] text-slate-400">
+                      Los cambios se aplicarán inmediatamente a todos los usuarios con el rol <strong>{selectedRoleForMatrix.name}</strong>.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSaveRoleMatrix}
+                      disabled={isSavingMatrix}
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{isSavingMatrix ? 'Guardando...' : 'Guardar Matriz de Permisos'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-16 text-center text-slate-400">
+                  <Shield className="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-700" />
+                  <p>Selecciona un rol a la izquierda para inspeccionar y configurar su matriz de permisos.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: New User */}
       <AnimatePresence>
@@ -1201,7 +1690,7 @@ export const UsersSettings: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isGeneratingUserInvite}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5"
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5"
                   >
                     <LinkIcon className="w-3.5 h-3.5" />
                     <span>{isGeneratingUserInvite ? 'Generando...' : 'Generar Enlace'}</span>
@@ -1230,7 +1719,7 @@ export const UsersSettings: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleCopyUserInvite}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shrink-0 shadow-xs transition"
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shrink-0 shadow-xs transition"
                       title="Copiar enlace al portapapeles"
                     >
                       {isUserInviteCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -1257,7 +1746,230 @@ export const UsersSettings: React.FC = () => {
             </motion.div>
           </motion.div>
         )}
+
+        {/* Modal: New Role */}
+        {isRoleModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsRoleModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-black/60 backdrop-blur-xs cursor-pointer"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 cursor-default m-auto"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                      Nuevo Rol Personalizado
+                    </h3>
+                    <p className="text-[11px] text-gray-500">
+                      Define un nuevo perfil de permisos para tu organización
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsRoleModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateRole} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Nombre del Rol *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newRoleName}
+                    onChange={(e) => setNewRoleName(e.target.value)}
+                    placeholder="Ej. CONTABLE, LOGISTICA_SENIOR"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white uppercase font-mono focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Descripción del Rol
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={newRoleDescription}
+                    onChange={(e) => setNewRoleDescription(e.target.value)}
+                    placeholder="Ej. Gestión de facturas, cobros y proveedores sin acceso a configuración de sistema"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsRoleModalOpen(false)}
+                    className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingRole}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isSubmittingRole ? 'Creando...' : 'Crear Rol'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Duplicate Role */}
+        {isDuplicateRoleModalOpen && roleToDuplicate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsDuplicateRoleModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-black/60 backdrop-blur-xs cursor-pointer"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 cursor-default m-auto"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                    <Copy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                      Duplicar Rol: {roleToDuplicate.name}
+                    </h3>
+                    <p className="text-[11px] text-gray-500">
+                      Copia todos los permisos de este rol en uno nuevo
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDuplicateRoleModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleDuplicateRole} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Nombre del Nuevo Rol *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={duplicateRoleName}
+                    onChange={(e) => setDuplicateRoleName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white uppercase font-mono focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Descripción
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={duplicateRoleDescription}
+                    onChange={(e) => setDuplicateRoleDescription(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsDuplicateRoleModalOpen(false)}
+                    className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isDuplicatingRole}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-xs transition disabled:opacity-50"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{isDuplicatingRole ? 'Duplicando...' : 'Duplicar Rol'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Delete Role Confirmation */}
+        {roleToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setRoleToDelete(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-black/60 backdrop-blur-xs cursor-pointer"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 cursor-default m-auto"
+            >
+              <div className="flex items-center space-x-3 text-red-600">
+                <AlertTriangle className="w-6 h-6 shrink-0" />
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                  ¿Eliminar Rol {roleToDelete.name}?
+                </h3>
+              </div>
+              <p className="text-xs text-gray-500">
+                Esta acción eliminará de forma permanente el rol personalizado y toda su matriz de permisos asociada.
+              </p>
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-gray-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setRoleToDelete(null)}
+                  className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteRole}
+                  disabled={isDeletingRole}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition disabled:opacity-50"
+                >
+                  {isDeletingRole ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
 };
+

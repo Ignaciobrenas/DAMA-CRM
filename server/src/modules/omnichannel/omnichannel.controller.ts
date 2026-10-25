@@ -68,6 +68,20 @@ export async function receiveWhatsAppWebhook(req: Request, res: Response): Promi
               });
             }
 
+            // Idempotency: skip if WhatsApp message ID was already processed
+            if (msg.id) {
+              const existingMsg = await prisma.omniMessage.findFirst({
+                where: {
+                  tenantId: targetTenant,
+                  rawPayload: { contains: msg.id },
+                },
+              });
+              if (existingMsg) {
+                console.log(`💬 [WhatsApp Inbound] Mensaje duplicado omitido por idempotencia (ID: ${msg.id})`);
+                continue;
+              }
+            }
+
             // Save message into OmniMessage timeline
             const savedMsg = await prisma.omniMessage.create({
               data: {

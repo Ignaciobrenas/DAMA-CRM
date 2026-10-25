@@ -5,7 +5,7 @@ import { ConnectorType } from './integrations.types';
 export function getIntegrations(req: Request, res: Response): void {
   try {
     const config = IntegrationsService.getPublicConfig();
-    const host = req.get('host') || 'localhost:3000';
+    const host = req.get('host') || 'localhost:4000';
     const protocol = req.protocol || 'http';
     const baseUrl = `${protocol}://${host}`;
 
@@ -32,7 +32,7 @@ export function getIntegrations(req: Request, res: Response): void {
 export function getIntegracionesDeTerceros(req: Request, res: Response): void {
   try {
     const config = IntegrationsService.getPublicConfig();
-    const host = req.get('host') || 'localhost:3000';
+    const host = req.get('host') || 'localhost:4000';
     const protocol = req.protocol || 'http';
     const baseUrl = `${protocol}://${host}`;
 
@@ -94,6 +94,27 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
           tieneAccessToken: config.shopify.hasAccessToken,
           tieneApiSecretKey: config.shopify.hasApiSecretKey,
           ultimaSincronizacion: config.shopify.lastSyncAt || null,
+        },
+      },
+      {
+        id: 'prestashop',
+        nombre: 'PrestaShop',
+        categoria: 'Comercio Electrónico',
+        tipo: 'Webservice XML',
+        estado: config.prestashop?.status || 'disconnected',
+        activo: config.prestashop?.enabled || false,
+        descripcion: 'Sincronización de catálogo, clientes y pedidos bidireccional mediante el webservice nativo de PrestaShop.',
+        capacidades: ['Pedidos', 'Clientes', 'Catálogo', 'Direcciones'],
+        documentacion: 'https://devdocs.prestashop-project.org/8/webservice/',
+        webhookUrl: '',
+        eventosSoportados: [],
+        configuracion: {
+          storeUrl: config.prestashop?.storeUrl,
+          tieneWsKey: config.prestashop?.hasWsKey,
+          sincronizarProductos: config.prestashop?.syncProducts,
+          sincronizarPedidos: config.prestashop?.syncOrders,
+          sincronizarClientes: config.prestashop?.syncCustomers,
+          ultimaSincronizacion: config.prestashop?.lastSyncAt || null,
         },
       },
       {
@@ -292,6 +313,7 @@ export function updateIntegration(req: Request, res: Response): void {
       'woocommerce',
       'shopify',
       'opencart',
+      'prestashop',
       'n8n',
       'stripe',
       'zapier',
@@ -327,6 +349,9 @@ export async function testIntegration(req: Request, res: Response): Promise<void
         break;
       case 'woocommerce':
         result = await IntegrationsService.testWooCommerce(req.body);
+        break;
+      case 'prestashop':
+        result = await IntegrationsService.testPrestashop(req.body);
         break;
       case 'shopify':
         result = await IntegrationsService.testShopify(req.body);
@@ -364,8 +389,35 @@ export async function testIntegration(req: Request, res: Response): Promise<void
         return;
     }
 
+    // Asynchronously log to DB
+    const { prisma } = require('../../prisma');
+    await prisma.auditLog.create({
+      data: {
+        userId: (req as any).user?.userId || null,
+        action: 'INTEGRATION_TEST',
+        entity: 'Integration',
+        entityId: connector,
+        details: JSON.stringify({ success: result.success, message: result.message }),
+        ipAddress: req.ip || req.socket?.remoteAddress || null,
+        tenantId: (req as any).user?.tenantId || 'master'
+      }
+    }).catch((e: any) => console.error(e));
+
     res.status(result.success ? 200 : 400).json(result);
   } catch (err: any) {
+    const { prisma } = require('../../prisma');
+    await prisma.systemErrorLog.create({
+      data: {
+        statusCode: 500,
+        message: `[Integration Test Error] ${err.message}`,
+        stack: err.stack,
+        method: req.method,
+        path: req.path,
+        userId: (req as any).user?.userId || null,
+        ipAddress: req.ip || req.socket?.remoteAddress || null,
+      }
+    }).catch((e: any) => console.error(e));
+
     res.status(500).json({ success: false, message: err.message });
   }
 }

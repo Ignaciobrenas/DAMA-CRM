@@ -14,6 +14,15 @@ import {
   triggerNightlySync,
   autoMapProductAttributesHandler,
   updateProductAttributesHandler,
+  listWarehouses,
+  createWarehouse,
+  listBatches,
+  createBatch,
+  listGlobalMovements,
+  listStockTransfers,
+  createStockTransfer,
+  receiveStockTransfer,
+  downloadStockTransferPdf,
 } from './inventory.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
 import { requirePermission } from '../../middlewares/rbac.middleware';
@@ -25,6 +34,20 @@ router.post('/webhooks/unopim', handleUnoPimWebhook);
 
 // Protected inventory routes
 router.use(authMiddleware);
+
+// Multi-Warehouse, Batches (FEFO/FIFO), Kardex & Sage 2-Phase Stock Transfers
+router.get('/warehouses', requirePermission('inventory', 'read'), listWarehouses);
+router.post('/warehouses', requirePermission('inventory', 'create'), createWarehouse);
+
+router.get('/batches', requirePermission('inventory', 'read'), listBatches);
+router.post('/batches', requirePermission('inventory', 'create'), createBatch);
+
+router.get('/movements/all', requirePermission('inventory', 'read'), listGlobalMovements);
+
+router.get('/transfers', requirePermission('inventory', 'read'), listStockTransfers);
+router.post('/transfers', requirePermission('inventory', 'create'), createStockTransfer);
+router.post('/transfers/:id/receive', requirePermission('inventory', 'update'), receiveStockTransfer);
+router.get('/transfers/:id/pdf', requirePermission('inventory', 'read'), downloadStockTransferPdf);
 
 router.get('/analytics/stats', requirePermission('inventory', 'read'), getInventoryStats);
 router.get('/export/csv', requirePermission('inventory', 'read'), exportInventoryCsv);
@@ -45,4 +68,3 @@ router.patch('/:id/attributes', requirePermission('inventory', 'update'), update
 router.post('/sync/nightly', requirePermission('inventory', 'manage'), triggerNightlySync);
 
 export default router;
-

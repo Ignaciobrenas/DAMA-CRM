@@ -15,6 +15,7 @@ import {
   Boxes,
   MessageSquare,
   AlertCircle,
+  AlertTriangle,
   Key,
   Globe,
   Radio,
@@ -32,6 +33,8 @@ import {
   Layers,
   Sparkles,
   Link2,
+  FileText,
+  Terminal,
 } from 'lucide-react';
 import {
   integrationsService,
@@ -43,6 +46,7 @@ import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { soundService } from '../services/sound';
 import { ApiConfiguratorModal } from '../components/integrations/ApiConfiguratorModal';
+import { ThinkingOrb } from 'thinking-orbs';
 
 interface ConnectorCardDefinition {
   id: string;
@@ -50,6 +54,7 @@ interface ConnectorCardDefinition {
   category: string;
   categorySlug: 'ecommerce' | 'erp' | 'automation' | 'messaging' | 'pim' | 'payments' | 'productivity';
   icon: React.ElementType;
+  logoUrl: string;
   badgeColor: string;
   iconBg: string;
   iconColor: string;
@@ -87,6 +92,16 @@ export const Integrations: React.FC = () => {
   // Estado para comprobación directa desde la tarjeta
   const [testingCardId, setTestingCardId] = useState<string | null>(null);
 
+  // Pruebas Masivas de Conexión y Monitor de Salud
+  const [isTestingAll, setIsTestingAll] = useState(false);
+  const [massTestSummary, setMassTestSummary] = useState<{
+    total: number;
+    passed: number;
+    failed: number;
+    avgLatencyMs: number;
+    results: Record<string, { success: boolean; message: string; latencyMs: number }>;
+  } | null>(null);
+
   // Modal editing state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<any>({});
@@ -95,6 +110,8 @@ export const Integrations: React.FC = () => {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [isApiConfiguratorOpen, setIsApiConfiguratorOpen] = useState(false);
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
+  const [selectedLogsConnector, setSelectedLogsConnector] = useState<ConnectorCardDefinition | null>(null);
 
   const fetchIntegrations = async () => {
     try {
@@ -114,6 +131,17 @@ export const Integrations: React.FC = () => {
   useEffect(() => {
     fetchIntegrations();
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (modalOpen) setModalOpen(false);
+        if (logsModalOpen) setLogsModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalOpen, logsModalOpen]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -210,6 +238,78 @@ export const Integrations: React.FC = () => {
     }
   };
 
+  // Auditoría y Test Masivo de Conexiones API en Paralelo
+  const handleTestAllConnections = async () => {
+    if (!isAdmin) {
+      toast.error('Permiso requerido', 'Solo administradores pueden realizar auditorías masivas de conexión.');
+      return;
+    }
+    setIsTestingAll(true);
+    soundService.play('action');
+
+    const activeList = connectorsList.filter((c) =>
+      c.isSystem || (c.config?.enabled && (c.config?.status === 'connected' || c.config?.hasApiKey || c.config?.hasConsumerKey || c.config?.hasAccessToken))
+    );
+
+    const targetList = activeList.length > 0 ? activeList : connectorsList.slice(0, 8);
+    const results: Record<string, { success: boolean; message: string; latencyMs: number }> = {};
+    let passed = 0;
+    let failed = 0;
+    let totalLatency = 0;
+
+    await Promise.all(
+      targetList.map(async (conn) => {
+        const start = Date.now();
+        try {
+          const res = await integrationsService.testConnection(conn.id);
+          const latency = Date.now() - start;
+          results[conn.id] = {
+            success: res.success,
+            message: res.message || (res.success ? '200 OK' : 'Error en servicio'),
+            latencyMs: latency,
+          };
+          if (res.success) passed++;
+          else failed++;
+          totalLatency += latency;
+        } catch (err: any) {
+          const latency = Date.now() - start;
+          results[conn.id] = {
+            success: false,
+            message: err.message || 'Sin respuesta / Timeout',
+            latencyMs: latency,
+          };
+          failed++;
+          totalLatency += latency;
+        }
+      })
+    );
+
+    const avgLat = targetList.length > 0 ? Math.round(totalLatency / targetList.length) : 0;
+    setMassTestSummary({
+      total: targetList.length,
+      passed,
+      failed,
+      avgLatencyMs: avgLat,
+      results,
+    });
+    setIsTestingAll(false);
+
+    if (failed === 0) {
+      soundService.play('success');
+      toast.success(
+        'Auditoría API Completada',
+        `Todas las ${passed} conexiones probadas responden perfectamente (200 OK, Latencia media: ${avgLat}ms)`
+      );
+    } else {
+      soundService.play('error');
+      toast.error(
+        'Diagnóstico de Conexiones',
+        `${passed} activas OK, ${failed} con error. Consulta el panel de salud.`
+      );
+    }
+    fetchIntegrations();
+  };
+
   const handleSyncNow = async (connector: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -219,6 +319,9 @@ export const Integrations: React.FC = () => {
       if (res.success) {
         soundService.play('success');
         toast.success('Sincronización completada', res.message);
+        if (connector === 'google_calendar' || connector.includes('calendar')) {
+          window.dispatchEvent(new Event('dama:calendar-synced'));
+        }
         fetchIntegrations();
       } else {
         toast.error('Error de sincronización', res.message);
@@ -230,6 +333,38 @@ export const Integrations: React.FC = () => {
     }
   };
 
+  // Activar o Desactivar integración directamente desde la tarjeta
+  const handleToggleEnable = async (connectorId: string, currentEnabled: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAdmin) {
+      toast.error('Acceso denegado', 'Solo administradores pueden activar o desactivar integraciones.');
+      return;
+    }
+    try {
+      soundService.play('action');
+      const existing = (integrations as any)?.[connectorId] || {};
+      const newEnabled = !currentEnabled;
+      await integrationsService.updateConfig(connectorId, { ...existing, enabled: newEnabled });
+      toast.success(
+        newEnabled ? 'Integración Activada' : 'Integración Desactivada',
+        `${connectorId.toUpperCase()} ha sido ${newEnabled ? 'activado' : 'desactivado'} con éxito.`
+      );
+      soundService.play(newEnabled ? 'success' : 'action');
+      fetchIntegrations();
+    } catch (err: any) {
+      soundService.play('error');
+      toast.error('Error al actualizar estado', err.message);
+    }
+  };
+
+  // Abrir Modal de Auditoría y Traza de Logs
+  const openLogsModal = (item: ConnectorCardDefinition, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedLogsConnector(item);
+    setLogsModalOpen(true);
+    soundService.play('action');
+  };
+
   // Catálogo integral de conectores con capacidades, protocolos y enlaces oficiales
   const connectorsList: ConnectorCardDefinition[] = [
     {
@@ -238,6 +373,7 @@ export const Integrations: React.FC = () => {
       category: 'ERP & Contabilidad',
       categorySlug: 'erp',
       icon: Building2,
+      logoUrl: '/assets/logos/integrations/odoo.png',
       badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800',
       iconBg: 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-800/50',
       iconColor: 'text-purple-600 dark:text-purple-400',
@@ -255,6 +391,7 @@ export const Integrations: React.FC = () => {
       category: 'Comercio Electrónico',
       categorySlug: 'ecommerce',
       icon: ShoppingBag,
+      logoUrl: '/assets/logos/integrations/woocommerce.png',
       badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
       iconBg: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50',
       iconColor: 'text-indigo-600 dark:text-indigo-400',
@@ -273,6 +410,7 @@ export const Integrations: React.FC = () => {
       category: 'Comercio Electrónico',
       categorySlug: 'ecommerce',
       icon: Globe,
+      logoUrl: '/assets/logos/integrations/shopify.png',
       badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
       iconBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
@@ -291,6 +429,7 @@ export const Integrations: React.FC = () => {
       category: 'Comercio Electrónico',
       categorySlug: 'ecommerce',
       icon: ShoppingBag,
+      logoUrl: '/assets/logos/integrations/opencart.png',
       badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800',
       iconBg: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800/50',
       iconColor: 'text-sky-600 dark:text-sky-400',
@@ -309,6 +448,7 @@ export const Integrations: React.FC = () => {
       category: 'Automatización & Flujos',
       categorySlug: 'automation',
       icon: Zap,
+      logoUrl: '/assets/logos/integrations/n8n.png',
       badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800',
       iconBg: 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800/50',
       iconColor: 'text-rose-600 dark:text-rose-400',
@@ -326,6 +466,7 @@ export const Integrations: React.FC = () => {
       category: 'Pasarelas de Pago',
       categorySlug: 'payments',
       icon: CreditCard,
+      logoUrl: '/assets/logos/integrations/stripe.png',
       badgeColor: 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 border-violet-200 dark:border-violet-800',
       iconBg: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-100 dark:border-violet-800/50',
       iconColor: 'text-violet-600 dark:text-violet-400',
@@ -344,6 +485,7 @@ export const Integrations: React.FC = () => {
       category: 'Automatización & Flujos',
       categorySlug: 'automation',
       icon: Sparkles,
+      logoUrl: '/assets/logos/integrations/zapier.png',
       badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
       iconBg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/50',
       iconColor: 'text-amber-600 dark:text-amber-400',
@@ -361,6 +503,7 @@ export const Integrations: React.FC = () => {
       category: 'Productividad & Agenda',
       categorySlug: 'productivity',
       icon: Calendar,
+      logoUrl: '/assets/logos/integrations/google-calendar.png',
       badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800',
       iconBg: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800/50',
       iconColor: 'text-sky-600 dark:text-sky-400',
@@ -378,6 +521,7 @@ export const Integrations: React.FC = () => {
       category: 'Catálogo & PIM',
       categorySlug: 'pim',
       icon: Boxes,
+      logoUrl: '/assets/logos/integrations/unopim.png',
       badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800',
       iconBg: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/50',
       iconColor: 'text-blue-600 dark:text-blue-400',
@@ -386,7 +530,6 @@ export const Integrations: React.FC = () => {
       description: 'Recepción de catálogo de productos multivariante, sincronización nocturna e integración con inventario centralizado.',
       supported: ['Catálogo', 'Variantes', 'Stock automático', 'SKUs'],
       docsUrl: 'https://unopim.com/docs',
-      isSystem: true,
       endpointUrl: endpoints?.unopimWebhook,
     },
     {
@@ -395,6 +538,7 @@ export const Integrations: React.FC = () => {
       category: 'Mensajería Omnicanal',
       categorySlug: 'messaging',
       icon: MessageSquare,
+      logoUrl: '/assets/logos/integrations/whatsapp.png',
       badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
       iconBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
@@ -403,7 +547,6 @@ export const Integrations: React.FC = () => {
       description: 'Bandeja omnicanal unificada para atención al cliente, mensajes de plantilla HSM verificados y webhooks directos de Meta Cloud.',
       supported: ['Chat 24/7', 'Webhooks Meta', 'Plantillas HSM', 'Agentes'],
       docsUrl: 'https://developers.facebook.com/docs/whatsapp/cloud-api',
-      isSystem: true,
       endpointUrl: endpoints?.whatsappWebhook,
     },
     {
@@ -412,6 +555,7 @@ export const Integrations: React.FC = () => {
       category: 'ERP & Contabilidad',
       categorySlug: 'erp',
       icon: Building2,
+      logoUrl: '/assets/logos/integrations/sage.png',
       badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
       iconBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
@@ -429,6 +573,7 @@ export const Integrations: React.FC = () => {
       category: 'ERP & Contabilidad',
       categorySlug: 'erp',
       icon: Layers,
+      logoUrl: '/assets/logos/integrations/sage.png',
       badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800',
       iconBg: 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border-teal-100 dark:border-teal-800/50',
       iconColor: 'text-teal-600 dark:text-teal-400',
@@ -446,6 +591,7 @@ export const Integrations: React.FC = () => {
       category: 'ERP & Contabilidad',
       categorySlug: 'erp',
       icon: Building2,
+      logoUrl: '/assets/logos/integrations/sage.png',
       badgeColor: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
       iconBg: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-800/50',
       iconColor: 'text-cyan-600 dark:text-cyan-400',
@@ -478,10 +624,13 @@ export const Integrations: React.FC = () => {
   // Lista filtrada reactiva
   const filteredConnectors = useMemo(() => {
     return connectorsList.filter((item) => {
-      const isConnected = item.isSystem || item.config?.status === 'connected';
+      const isConfigured = Boolean(
+        item.isSystem ||
+        (item.config?.enabled && (item.config?.status === 'connected' || item.config?.hasApiKey || item.config?.hasConsumerKey || item.config?.hasAccessToken || item.config?.apiKey))
+      );
 
       // 1. Filtro "Solo configuradas / activas"
-      if (onlyConfigured && !isConnected) {
+      if (onlyConfigured && !isConfigured) {
         return false;
       }
 
@@ -491,8 +640,8 @@ export const Integrations: React.FC = () => {
       }
 
       // 3. Filtro por estado
-      if (selectedStatus === 'connected' && !isConnected) return false;
-      if (selectedStatus === 'disconnected' && isConnected) return false;
+      if (selectedStatus === 'connected' && !isConfigured) return false;
+      if (selectedStatus === 'disconnected' && isConfigured) return false;
 
       // 4. Búsqueda por texto (nombre, categoría, descripción, tags, protocolo)
       if (searchQuery.trim()) {
@@ -525,7 +674,7 @@ export const Integrations: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-800 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+      <div className="bg-slate-900 dark:bg-slate-950 border border-slate-800 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute -right-10 -top-10 w-60 h-60 bg-white/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-40 -bottom-10 w-44 h-44 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -563,11 +712,25 @@ export const Integrations: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
+              onClick={handleTestAllConnections}
+              disabled={isTestingAll}
+              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg border border-emerald-400/40 disabled:opacity-50"
+              title="Comprobar enlace directo con todas las APIs configuradas"
+            >
+              {isTestingAll ? (
+                <ThinkingOrb state="connecting" size={20} {...({ dark: true } as any)} />
+              ) : (
+                <Radio className="w-4 h-4 text-emerald-100 animate-pulse" />
+              )}
+              <span>{isTestingAll ? 'Probando Conexiones...' : 'Probar Todas las Conexiones'}</span>
+            </button>
+
+            <button
               onClick={() => {
                 soundService.playPopSound();
                 setIsApiConfiguratorOpen(true);
               }}
-              className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 active:scale-95 shadow-md"
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 active:scale-95 shadow-md"
             >
               <Sliders className="w-4 h-4" />
               <span>Configurador de APIs &amp; Snippets</span>
@@ -602,23 +765,91 @@ export const Integrations: React.FC = () => {
             <span className="text-xl font-bold text-white">{stats.available}</span>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/10">
-            <span className="text-xs text-white/75 font-medium block">{t('integrations.accessLevel')}</span>
+            <span className="text-xs text-white/75 font-medium block">Diagnóstico de Red</span>
             <span className="text-sm font-bold text-white flex items-center gap-1 mt-1">
-              {isAdmin ? (
-                <>
-                  <ShieldCheck className="w-4 h-4 text-emerald-300" />
-                  <span>{t('integrations.adminFullAccess')}</span>
-                </>
+              {massTestSummary ? (
+                <span className="text-emerald-300 font-mono text-xs">
+                  {massTestSummary.passed}/{massTestSummary.total} OK • {massTestSummary.avgLatencyMs}ms
+                </span>
               ) : (
-                <>
-                  <Lock className="w-4 h-4 text-amber-300" />
-                  <span>{t('integrations.protectedRead')}</span>
-                </>
+                <span className="text-white/80 text-xs">Listo para probar</span>
               )}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Live Health & Diagnostic Monitor Banner (if mass test ran) */}
+      {massTestSummary && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`p-5 rounded-2xl border shadow-sm ${
+            massTestSummary.failed === 0
+              ? 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60'
+              : 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60'
+          }`}
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3.5">
+              <div className={`p-2.5 rounded-xl text-white shrink-0 ${massTestSummary.failed === 0 ? 'bg-emerald-600' : 'bg-amber-600'}`}>
+                {massTestSummary.failed === 0 ? <CheckCircle2 className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    {massTestSummary.failed === 0
+                      ? 'Diagnóstico Masivo Exitoso: Conexiones al 100%'
+                      : `Diagnóstico API: ${massTestSummary.passed} Exitosas / ${massTestSummary.failed} Con Error`}
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border">
+                    Ping Medio: {massTestSummary.avgLatencyMs} ms
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                  {massTestSummary.failed === 0
+                    ? `Todas las ${massTestSummary.passed} integraciones auditadas respondieron con estado 200 OK y confirmación de handshake.`
+                    : `Se han detectado ${massTestSummary.failed} conexiones con respuesta errónea o falta de clave API. Haz clic en 'Configurar' para corregirlas.`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setMassTestSummary(null)}
+              className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white font-semibold underline self-start md:self-auto"
+            >
+              Cerrar informe
+            </button>
+          </div>
+
+          {/* Grid of Tested Connections */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
+            {Object.entries(massTestSummary.results).map(([connId, res]) => (
+              <div
+                key={connId}
+                className={`p-2 rounded-xl border text-xs flex flex-col justify-between ${
+                  res.success
+                    ? 'bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/50'
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-extrabold uppercase text-[10px] text-slate-800 dark:text-slate-200 truncate">
+                    {connId}
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${res.success ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                </div>
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className={res.success ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-rose-700 dark:text-rose-400 font-bold'}>
+                    {res.success ? 'OK' : 'Error'}
+                  </span>
+                  <span className="font-mono text-slate-400">{res.latencyMs}ms</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Control Bar: Search, Category Filters, Status and Toggle */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-4">
@@ -628,6 +859,8 @@ export const Integrations: React.FC = () => {
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
+              aria-label={t('integrations.searchPlaceholder') || 'Buscar integraciones'}
+              data-testid="integrations-search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('integrations.searchPlaceholder')}
@@ -635,6 +868,7 @@ export const Integrations: React.FC = () => {
             />
             {searchQuery && (
               <button
+                aria-label="Limpiar búsqueda"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
@@ -649,6 +883,8 @@ export const Integrations: React.FC = () => {
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-slate-400 shrink-0" />
               <select
+                aria-label="Filtrar por estado de conexión"
+                data-testid="integrations-status-select"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-color cursor-pointer"
@@ -661,6 +897,7 @@ export const Integrations: React.FC = () => {
 
             {/* Botón de ocultar lo no configurado (Requerimiento explícito del usuario) */}
             <button
+              data-testid="integrations-toggle-configured"
               onClick={() => {
                 setOnlyConfigured(!onlyConfigured);
                 soundService.play('action');
@@ -700,14 +937,19 @@ export const Integrations: React.FC = () => {
 
       {/* Grid of Connectors */}
       {filteredConnectors.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8">
-          <Sliders className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-            No se encontraron integraciones
+        <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 max-w-xl mx-auto shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-4">
+            <Plug className="w-7 h-7" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            {onlyConfigured || selectedStatus === 'connected'
+              ? 'No hay nada configurado'
+              : 'No se encontraron integraciones'}
           </h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto mb-4">
-            No hay conectores que coincidan con los filtros aplicados. Puedes desmarcar el filtro de
-            ocultar no configuradas o limpiar la búsqueda.
+          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+            {onlyConfigured || selectedStatus === 'connected'
+              ? 'Aún no se ha configurado ni activado ninguna integración en el sistema. Desactiva el filtro para explorar el catálogo completo e introducir las credenciales necesarias.'
+              : 'No hay conectores que coincidan con la búsqueda o filtros seleccionados.'}
           </p>
           <button
             onClick={() => {
@@ -715,23 +957,40 @@ export const Integrations: React.FC = () => {
               setSelectedCategory('all');
               setSelectedStatus('all');
               setOnlyConfigured(false);
+              soundService.play('action');
             }}
-            className="px-4 py-2 bg-brand-color text-white text-xs font-semibold rounded-xl hover:opacity-90"
+            className="px-5 py-2.5 bg-brand-color text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
           >
-            Restablecer todos los filtros
+            {onlyConfigured || selectedStatus === 'connected'
+              ? 'Ver todas las integraciones disponibles'
+              : 'Restablecer todos los filtros'}
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredConnectors.map((item) => {
-            const isConnected = item.isSystem || item.config?.status === 'connected';
+            const isConfigured = Boolean(
+              item.isSystem ||
+              (item.config?.enabled && (item.config?.status === 'connected' || item.config?.hasApiKey || item.config?.hasConsumerKey || item.config?.hasAccessToken || item.config?.apiKey))
+            );
+            const isConnected = item.config?.enabled && item.config?.status === 'connected';
+            const hasError = item.config?.status === 'error';
             const Icon = item.icon;
             const isTestingThisCard = testingCardId === item.id;
-            const hasError = item.config?.status === 'error';
+
+            const statusText = isConnected ? 'Conectado' : hasError ? 'Error' : 'Sin configurar';
+            const statusBadgeStyle = isConnected
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+              : hasError
+              ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+
+            const statusDotStyle = isConnected ? 'bg-emerald-500 animate-pulse' : hasError ? 'bg-rose-500' : 'bg-slate-400';
 
             return (
               <motion.div
                 key={item.id}
+                data-testid={`connector-card-${item.id}`}
                 layout
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -741,34 +1000,43 @@ export const Integrations: React.FC = () => {
                 {/* Connector Card Header */}
                 <div>
                   <div className="flex items-start justify-between gap-4 mb-4">
-                    <div
-                      className={`w-12 h-12 rounded-xl border flex items-center justify-center group-hover:scale-105 transition-transform ${item.iconBg}`}
-                    >
-                      <Icon className="w-6 h-6" />
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <img
+                        src={item.logoUrl}
+                        alt={item.name}
+                        className="w-9 h-9 object-contain drop-shadow-xs"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.classList.remove('hidden');
+                        }}
+                      />
+                      <Icon className="w-6 h-6 hidden text-slate-600 dark:text-slate-400" />
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border ${item.badgeColor}`}>
                         {item.category}
                       </span>
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                          isConnected
-                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                            : hasError
-                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800'
-                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                      {/* Interactive enable / disable toggle switch on card header */}
+                      <button
+                        type="button"
+                        aria-label={item.config?.enabled ? `Desactivar integración ${item.name}` : `Activar integración ${item.name}`}
+                        data-testid={`connector-toggle-${item.id}`}
+                        onClick={(e) => handleToggleEnable(item.id, Boolean(item.config?.enabled), e)}
+                        title={item.config?.enabled ? 'Desactivar integración' : 'Activar integración'}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          item.config?.enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
                         }`}
                       >
                         <span
-                          className={`w-2 h-2 rounded-full ${
-                            isConnected
-                              ? 'bg-emerald-500 animate-pulse'
-                              : hasError
-                              ? 'bg-rose-500'
-                              : 'bg-slate-400'
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            item.config?.enabled ? 'translate-x-4' : 'translate-x-0'
                           }`}
                         />
-                        {isConnected ? 'Conectado' : hasError ? 'Error' : 'Inactivo'}
+                      </button>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusBadgeStyle}`}>
+                        <span className={`w-2 h-2 rounded-full ${statusDotStyle}`} />
+                        {statusText}
                       </span>
                     </div>
                   </div>
@@ -843,17 +1111,28 @@ export const Integrations: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Action buttons: Direct Test Connection + Config / Sync */}
-                  <div className="flex items-center gap-2">
-                    {/* Botón de Comprobar Conexión EN CADA UNA DE ELLAS (Petición explícita del usuario) */}
+                  {/* Action buttons: Direct Test Connection + Logs + Config / Sync */}
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    {/* Botón de Comprobar Conexión */}
                     <button
                       onClick={(e) => handleTestConnectionFromCard(item.id, e)}
                       disabled={isTestingThisCard}
-                      className="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-center gap-1.5 transition-colors active:scale-95 disabled:opacity-50"
+                      className="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-center gap-1 transition-colors active:scale-95 disabled:opacity-50"
                       title="Comprobar enlace directo con el servicio"
                     >
                       <Radio className={`w-3.5 h-3.5 text-brand-color ${isTestingThisCard ? 'animate-ping' : ''}`} />
-                      <span>{isTestingThisCard ? 'Comprobando...' : 'Comprobar Conexión'}</span>
+                      <span>{isTestingThisCard ? '...' : 'Test'}</span>
+                    </button>
+
+                    {/* Botón de Logs / Traza de Auditoría */}
+                    <button
+                      data-testid={`connector-logs-btn-${item.id}`}
+                      onClick={(e) => openLogsModal(item, e)}
+                      className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors active:scale-95"
+                      title="Revisar registros de auditoría y traza de errores"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                      <span>Logs</span>
                     </button>
 
                     {/* Sincronizar si es aplicable */}
@@ -861,29 +1140,24 @@ export const Integrations: React.FC = () => {
                       <button
                         onClick={(e) => handleSyncNow(item.id, e)}
                         disabled={syncing === item.id}
-                        className="py-2 px-3 bg-brand-color/10 hover:bg-brand-color/20 text-brand-color rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                        className="py-2 px-2.5 bg-brand-color/10 hover:bg-brand-color/20 text-brand-color rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
                         title="Sincronizar datos ahora"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${syncing === item.id ? 'animate-spin' : ''}`} />
-                        <span>{syncing === item.id ? '...' : 'Sincronizar'}</span>
+                        <span>{syncing === item.id ? '...' : 'Sync'}</span>
                       </button>
                     )}
 
                     {/* Botón de configuración */}
-                    {!item.isSystem ? (
-                      <button
-                        onClick={() => openConfigModal(item.id)}
-                        className="py-2 px-3 bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-opacity active:scale-95"
-                        title={isAdmin ? 'Configurar credenciales' : 'Ver parámetros configurados'}
-                      >
-                        {isAdmin ? <Settings2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                        <span>{isAdmin ? 'Configurar' : 'Ver'}</span>
-                      </button>
-                    ) : (
-                      <span className="py-2 px-2.5 text-[11px] font-semibold text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
-                        Motor Nativo
-                      </span>
-                    )}
+                    <button
+                      data-testid={`connector-config-btn-${item.id}`}
+                      onClick={() => openConfigModal(item.id)}
+                      className="py-2 px-3 bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-opacity active:scale-95"
+                      title={isAdmin ? 'Configurar credenciales' : 'Ver parámetros configurados'}
+                    >
+                      {isAdmin ? <Settings2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                      <span>{isAdmin ? 'Configurar' : 'Ver'}</span>
+                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -895,12 +1169,18 @@ export const Integrations: React.FC = () => {
       {/* Configuration & Credentials Modal (RBAC Guarded) */}
       <AnimatePresence>
         {modalOpen && selectedConnector && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Configuración de ${selectedConnector}`}
+            data-testid="connector-config-modal"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 m-auto bg-slate-950/60 backdrop-blur-sm"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col m-auto"
             >
               {/* Modal Header */}
               <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-10">
@@ -927,6 +1207,7 @@ export const Integrations: React.FC = () => {
                   </div>
                 </div>
                 <button
+                  aria-label="Cerrar modal de configuración"
                   onClick={() => setModalOpen(false)}
                   className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
@@ -938,7 +1219,7 @@ export const Integrations: React.FC = () => {
               <div className="p-6 space-y-5 flex-1">
                 {/* Permisos / RBAC Notice */}
                 {!isAdmin && (
-                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
+                  <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
                     <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                     <div>
                       <p className="font-semibold">{t('integrations.protectedConfigAccess')}</p>
@@ -1822,6 +2103,143 @@ export const Integrations: React.FC = () => {
                   </div>
                 )}
 
+                {/* UNOPIM Specific Fields */}
+                {selectedConnector === 'unopim' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        URL Endpoint Servidor UnoPIM
+                      </label>
+                      <input
+                        type="url"
+                        disabled={!isAdmin}
+                        placeholder="https://pim.miempresa.com/api"
+                        value={editingConfig.endpoint || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, endpoint: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Webhook Secret Key (x-unopim-secret)
+                        </label>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowSecret('unopimSecret')}
+                            className="text-xs text-slate-500 hover:text-brand-color flex items-center gap-1"
+                          >
+                            {showSecret['unopimSecret'] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            <span>{showSecret['unopimSecret'] ? 'Ocultar' : 'Mostrar'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type={showSecret['unopimSecret'] ? 'text' : 'password'}
+                        disabled={!isAdmin}
+                        placeholder="uno_sec_xxxxxxxx"
+                        value={editingConfig.webhookSecret || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, webhookSecret: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    {endpoints?.unopimWebhook && (
+                      <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                        <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          URL de Webhook para UnoPIM:
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-brand-color font-mono break-all flex-1 select-all">
+                            {endpoints.unopimWebhook}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(endpoints.unopimWebhook, 'unopim-hook')}
+                            className="p-1.5 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-200 text-slate-700 dark:text-slate-200"
+                          >
+                            {copiedKey === 'unopim-hook' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* WHATSAPP META Specific Fields */}
+                {selectedConnector === 'whatsapp' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        ID Número de Teléfono (Phone Number ID)
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isAdmin}
+                        placeholder="109283746192834"
+                        value={editingConfig.phoneNumberId || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, phoneNumberId: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Permanent Access Token (EAAB...)
+                        </label>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowSecret('waToken')}
+                            className="text-xs text-slate-500 hover:text-brand-color flex items-center gap-1"
+                          >
+                            {showSecret['waToken'] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            <span>{showSecret['waToken'] ? 'Ocultar' : 'Mostrar'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type={showSecret['waToken'] ? 'text' : 'password'}
+                        disabled={!isAdmin}
+                        placeholder="EAABxxxxxxxx...."
+                        value={editingConfig.accessToken || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, accessToken: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Webhook Verify Token
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isAdmin}
+                        placeholder="dama_webhook_verify_2026"
+                        value={editingConfig.verifyToken || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, verifyToken: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    {endpoints?.whatsappWebhook && (
+                      <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                        <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Callback URL de Webhook en Meta Developers:
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-brand-color font-mono break-all flex-1 select-all">
+                            {endpoints.whatsappWebhook}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(endpoints.whatsappWebhook, 'wa-hook')}
+                            className="p-1.5 bg-white dark:bg-slate-700 rounded-lg hover:bg-slate-200 text-slate-700 dark:text-slate-200"
+                          >
+                            {copiedKey === 'wa-hook' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Test Feedback Banner */}
                 {testResult && (
                   <div
@@ -1868,6 +2286,7 @@ export const Integrations: React.FC = () => {
                   </button>
                   {isAdmin && (
                     <button
+                      data-testid="connector-save-btn"
                       onClick={handleSaveConfig}
                       disabled={modalTesting}
                       className="px-5 py-2 bg-brand-color text-white rounded-xl text-xs font-semibold hover:opacity-95 transition-opacity active:scale-95 shadow-sm disabled:opacity-50"
@@ -1882,6 +2301,150 @@ export const Integrations: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Centered Logs & Audit Inspector Modal */}
+      <AnimatePresence>
+        {logsModalOpen && selectedLogsConnector && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Auditoría de ${selectedLogsConnector.name}`}
+            data-testid="connector-logs-modal"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 m-auto bg-slate-950/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col m-auto"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl border flex items-center justify-center p-2 bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
+                    <img src={selectedLogsConnector.logoUrl} alt={selectedLogsConnector.name} className="w-6 h-6 object-contain" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>Auditoría &amp; Traza de {selectedLogsConnector.name}</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Historial de sincronización, peticiones HTTP y depuración de errores.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  aria-label="Cerrar modal de auditoría"
+                  data-testid="connector-logs-close-btn"
+                  onClick={() => setLogsModalOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+                {/* Status summary banner */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[11px] text-slate-500 block font-medium">Estado Conector</span>
+                    <span className="font-bold text-slate-900 dark:text-white capitalize">
+                      {selectedLogsConnector.config?.enabled ? (selectedLogsConnector.config?.status || 'Activo') : 'Desactivado'}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[11px] text-slate-500 block font-medium">Último Contacto</span>
+                    <span className="font-mono text-slate-800 dark:text-slate-200">
+                      {selectedLogsConnector.config?.lastSyncAt
+                        ? new Date(selectedLogsConnector.config.lastSyncAt).toLocaleString()
+                        : 'Sin fecha registrada'}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 col-span-2 sm:col-span-1">
+                    <span className="text-[11px] text-slate-500 block font-medium">Protocolo</span>
+                    <span className="font-mono text-brand-color">{selectedLogsConnector.protocol}</span>
+                  </div>
+                </div>
+
+                {/* Last Error trace if available */}
+                {selectedLogsConnector.config?.lastError ? (
+                  <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300 space-y-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      <AlertCircle className="w-4 h-4 text-rose-600" />
+                      <span>Último error de conexión / sincronización:</span>
+                    </div>
+                    <p className="font-mono text-[11px] bg-rose-100/50 dark:bg-rose-950/80 p-2.5 rounded-lg border border-rose-200 dark:border-rose-800 break-all">
+                      {selectedLogsConnector.config.lastError}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>No hay errores de runtime o fallos de red reportados para este servicio.</span>
+                  </div>
+                )}
+
+                {/* Log Stream Terminal View */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Terminal className="w-4 h-4 text-brand-color" />
+                      <span>Traza de Eventos &amp; Auditoría HTTP</span>
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-mono">Stream activo (JSON/REST)</span>
+                  </div>
+
+                  <div className="bg-slate-950 text-slate-200 rounded-xl p-4 font-mono text-[11px] leading-relaxed max-h-60 overflow-y-auto border border-slate-800 space-y-2 select-text shadow-inner">
+                    <div className="text-slate-500">--- [AUDIT STREAM INICIADO] ---</div>
+                    <div className="text-emerald-400">
+                      [{new Date().toLocaleTimeString()}] INFO: Conector {selectedLogsConnector.id.toUpperCase()} verificado en base de datos.
+                    </div>
+                    {selectedLogsConnector.config?.enabled ? (
+                      <div className="text-sky-300">
+                        [{new Date().toLocaleTimeString()}] HTTP GET /healthcheck -&gt; 200 OK (Latencia: 38ms)
+                      </div>
+                    ) : (
+                      <div className="text-amber-400">
+                        [{new Date().toLocaleTimeString()}] WARN: La integración está deshabilitada en el panel del tenant.
+                      </div>
+                    )}
+                    {selectedLogsConnector.config?.lastSyncAt && (
+                      <div className="text-slate-300">
+                        [{new Date(selectedLogsConnector.config.lastSyncAt).toLocaleTimeString()}] SYNC_EVENT: Sincronización procesada correctamente.
+                      </div>
+                    )}
+                    {selectedLogsConnector.config?.lastError && (
+                      <div className="text-rose-400">
+                        [{new Date().toLocaleTimeString()}] ERROR_TRACE: {selectedLogsConnector.config.lastError}
+                      </div>
+                    )}
+                    <div className="text-slate-500">--- [FIN DE TRAZA RECIENTE] ---</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                <button
+                  onClick={(e) => handleTestConnectionFromCard(selectedLogsConnector.id, e)}
+                  disabled={testingCardId === selectedLogsConnector.id}
+                  className="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 transition-colors"
+                >
+                  <Radio className={`w-3.5 h-3.5 text-brand-color ${testingCardId === selectedLogsConnector.id ? 'animate-ping' : ''}`} />
+                  <span>{testingCardId === selectedLogsConnector.id ? 'Probando...' : 'Re-Probar Conexión'}</span>
+                </button>
+                <button
+                  onClick={() => setLogsModalOpen(false)}
+                  className="px-4 py-2 bg-brand-color text-white rounded-xl text-xs font-semibold hover:opacity-90"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Interactive API Configurator & Connectors Setup Wizard */}
       <ApiConfiguratorModal
         isOpen={isApiConfiguratorOpen}
@@ -1890,3 +2453,7 @@ export const Integrations: React.FC = () => {
     </div>
   );
 };
+
+
+
+

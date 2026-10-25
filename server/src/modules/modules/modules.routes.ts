@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../middlewares/auth.middleware';
+import { requirePermission } from '../../middlewares/rbac.middleware';
 import {
   getCompanyModules,
   updateCompanyModules,
@@ -11,9 +12,9 @@ const router = Router();
 
 router.use(authMiddleware);
 
-router.get('/', getCompanyModules);
-router.patch('/', updateCompanyModules);
-router.get('/export-backup', exportCompanyBackup);
-router.get('/system-status', getSystemHealth);
+router.get('/', requirePermission('settings', 'read'), getCompanyModules);
+router.patch('/', requirePermission('settings', 'update'), updateCompanyModules);
+router.get('/export-backup', requirePermission('settings', 'manage'), exportCompanyBackup);
+router.get('/system-status', requirePermission('settings', 'read'), getSystemHealth);
 
 export default router;

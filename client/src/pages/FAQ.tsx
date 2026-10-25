@@ -147,6 +147,8 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
             <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
             <input
               type="text"
+              aria-label="Buscar preguntas frecuentes"
+              data-testid="faq-search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('faq.searchPlaceholder')}
@@ -164,6 +166,7 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
           return (
             <button
               key={cat.id}
+              data-testid={`faq-category-${cat.id}`}
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
                 isSelected
@@ -244,6 +247,8 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
                             <span>{t('faq.wasHelpful')}</span>
                             <button
                               type="button"
+                              aria-label="Respuesta útil"
+                              data-testid={`faq-helpful-yes-${faq.id}`}
                               onClick={() => handleFeedback(faq.id, true)}
                               className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
                                 feedback === true ? 'text-emerald-500 font-bold' : ''
@@ -253,6 +258,8 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
                             </button>
                             <button
                               type="button"
+                              aria-label="Respuesta no útil"
+                              data-testid={`faq-helpful-no-${faq.id}`}
                               onClick={() => handleFeedback(faq.id, false)}
                               className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
                                 feedback === false ? 'text-rose-500 font-bold' : ''
@@ -273,7 +280,7 @@ export const FAQ: React.FC<{ onNavigate?: (route: string) => void }> = ({ onNavi
       </div>
 
       {/* Contact Support Footer Card */}
-      <div className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800/80 rounded-2xl p-6 sm:p-8 border border-slate-300 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-slate-100 dark:bg-slate-900 rounded-2xl p-6 sm:p-8 border border-slate-300 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-brand-color/10 text-brand-color flex items-center justify-center shrink-0">
             <MessageCircle className="w-6 h-6" />

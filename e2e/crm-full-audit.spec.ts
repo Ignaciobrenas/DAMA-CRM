@@ -2,6 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.describe('DAMA-CRM End-to-End User Flow Audit', () => {
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('dama_cookie_consent', JSON.stringify({ technical: true, analytics: true, timestamp: new Date().toISOString() }));
+    });
+  });
+
   test('Complete user journey across all modules, modals, and integrations', async ({ page }) => {
     // 1. Visit Login Page
     await page.goto('/#/login');
@@ -27,7 +33,7 @@ test.describe('DAMA-CRM End-to-End User Flow Audit', () => {
 
     // 3. Verify Centered Topbar Popups
     // A) Language Modal
-    const langBtn = page.locator('button[title*="Idioma"], button[title*="Language"], button:has-text("ES"), button:has-text("🇪🇸")').first();
+    const langBtn = page.locator('button[aria-label*="dioma"], button[aria-label*="anguage"], button[title*="dioma"], button[title*="anguage"]').first();
     if (await langBtn.isVisible()) {
       await langBtn.click();
       const langModal = page.locator('div[role="dialog"]').first();

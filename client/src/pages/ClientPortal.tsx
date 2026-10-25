@@ -52,9 +52,8 @@ export const ClientPortal: React.FC = () => {
         if (res.success) {
           setPortalData(res.data);
           // Load tickets for company email if available
-          if (res.data.company?.email) {
-            loadTickets(res.data.company.email);
-          }
+          const contactEmail = res.data.company?.email || 'clientes@dama-crm.com';
+          loadTickets(contactEmail);
         }
       });
     }
@@ -85,13 +84,14 @@ export const ClientPortal: React.FC = () => {
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!portalData?.company?.email) return;
+    const contactEmail = portalData?.company?.email || 'clientes@dama-crm.com';
+    const contactName = portalData?.company?.name || 'Cliente DAMA';
 
     const res = await apiRequest('/lead-capture/tickets', {
       method: 'POST',
       body: JSON.stringify({
-        email: portalData.company.email,
-        name: portalData.company.name,
+        email: contactEmail,
+        name: contactName,
         subject: ticketSubject,
         priority: ticketPriority,
         message: ticketMessage,
@@ -102,7 +102,7 @@ export const ClientPortal: React.FC = () => {
       setTicketSuccess(`Ticket creado con éxito: ${res.ticketNumber}. Asignado al equipo de soporte.`);
       setTicketSubject('');
       setTicketMessage('');
-      loadTickets(portalData.company.email);
+      loadTickets(contactEmail);
       setTimeout(() => setTicketSuccess(''), 5000);
     }
   };
@@ -110,7 +110,7 @@ export const ClientPortal: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Banner */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden space-y-4">
+      <div className="bg-slate-900 dark:bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center space-x-2 text-blue-200 text-xs font-semibold uppercase tracking-wider">
@@ -123,17 +123,25 @@ export const ClientPortal: React.FC = () => {
             </p>
           </div>
 
-          {branding.logoUrl && (
-            <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shrink-0 self-start sm:self-center">
-              <img src={branding.logoUrl} alt="Logo" className="w-12 h-12 object-contain" />
-            </div>
-          )}
+          <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shrink-0 self-start sm:self-center">
+            <img
+              src={branding.logoUrl || '/assets/logos/dama-logo-white.png'}
+              alt="Logo Corporativo"
+              className="h-10 w-auto max-w-[140px] object-contain"
+              data-testid="portal-company-logo"
+            />
+          </div>
         </div>
 
         {/* Company Switcher for Demo Simulation */}
         <div className="pt-2 flex items-center space-x-2 text-xs border-t border-white/10">
-          <span className="text-blue-200 font-medium">Simular vista como cliente:</span>
+          <label htmlFor="portal-company-select" className="text-blue-200 font-medium">
+            Simular vista como cliente:
+          </label>
           <select
+            id="portal-company-select"
+            aria-label="Simular vista como cliente"
+            data-testid="portal-company-select"
             value={selectedCompanyId}
             onChange={(e) => setSelectedCompanyId(e.target.value)}
             className="bg-white/20 text-white border border-white/30 rounded-xl px-3 py-1.5 text-xs focus:outline-none cursor-pointer"
@@ -148,13 +156,16 @@ export const ClientPortal: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-2 border-b border-gray-200 dark:border-slate-800 pb-1">
+      <div role="tablist" aria-label="Secciones del Portal de Clientes" className="flex space-x-2 border-b border-slate-200 dark:border-slate-800 pb-1">
         <button
+          role="tab"
+          aria-selected={activeTab === 'invoices'}
+          data-testid="portal-tab-invoices"
           onClick={() => setActiveTab('invoices')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
             activeTab === 'invoices'
               ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <FileText className="w-4 h-4" />
@@ -162,11 +173,14 @@ export const ClientPortal: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={activeTab === 'tickets'}
+          data-testid="portal-tab-tickets"
           onClick={() => setActiveTab('tickets')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
             activeTab === 'tickets'
               ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <LifeBuoy className="w-4 h-4" />
@@ -174,11 +188,14 @@ export const ClientPortal: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={activeTab === 'privacy'}
+          data-testid="portal-tab-privacy"
           onClick={() => setActiveTab('privacy')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
             activeTab === 'privacy'
               ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Lock className="w-4 h-4" />
@@ -287,29 +304,35 @@ export const ClientPortal: React.FC = () => {
               </p>
             </div>
 
-            <form onSubmit={handleCreateTicket} className="space-y-3">
+            <form onSubmit={handleCreateTicket} className="space-y-3" data-testid="portal-ticket-form">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="portal-ticket-subject" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Asunto de la Incidencia
                   </label>
                   <input
+                    id="portal-ticket-subject"
+                    aria-label="Asunto de la Incidencia"
+                    data-testid="portal-ticket-subject"
                     type="text"
                     required
                     placeholder="Problema con sincronización de inventario..."
                     value={ticketSubject}
                     onChange={(e) => setTicketSubject(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="portal-ticket-priority" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Prioridad
                   </label>
                   <select
+                    id="portal-ticket-priority"
+                    aria-label="Prioridad"
+                    data-testid="portal-ticket-priority"
                     value={ticketPriority}
                     onChange={(e) => setTicketPriority(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                   >
                     <option value="LOW">{t('portal.priorityLow')}</option>
                     <option value="MEDIUM">{t('portal.priorityMedium')}</option>
@@ -320,21 +343,25 @@ export const ClientPortal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                <label htmlFor="portal-ticket-message" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Descripción Detallada
                 </label>
                 <textarea
+                  id="portal-ticket-message"
+                  aria-label="Descripción Detallada"
+                  data-testid="portal-ticket-message"
                   rows={3}
                   required
                   placeholder="Por favor describe los pasos para reproducir la incidencia o el motivo de tu consulta..."
                   value={ticketMessage}
                   onChange={(e) => setTicketMessage(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                 />
               </div>
 
               <button
                 type="submit"
+                data-testid="portal-ticket-submit"
                 className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
               >
                 <Send className="w-4 h-4" />
@@ -343,7 +370,7 @@ export const ClientPortal: React.FC = () => {
             </form>
 
             {ticketSuccess && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300">
+              <div data-testid="portal-ticket-success" className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300">
                 {ticketSuccess}
               </div>
             )}
@@ -413,7 +440,8 @@ export const ClientPortal: React.FC = () => {
               </p>
             </div>
             <a
-              href={`/api/lead-capture/privacy-export?email=${encodeURIComponent(portalData?.company?.email || '')}`}
+              data-testid="portal-gdpr-export-btn"
+              href={`/api/lead-capture/privacy-export?email=${encodeURIComponent(portalData?.company?.email || 'clientes@dama-crm.com')}`}
               download
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs"
             >

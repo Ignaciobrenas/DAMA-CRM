@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import { getNextDocumentNumber } from '../../utils/document-number';
 
 // 1. GET /api/expenses - List expenses with filters and search
 export async function getExpenses(req: Request, res: Response): Promise<void> {
@@ -78,11 +79,8 @@ export async function createExpense(req: Request, res: Response): Promise<void> 
     const taxAmount = Number(((sub * rate) / 100).toFixed(2));
     const total = Number((sub + taxAmount).toFixed(2));
 
-    // Generate unique sequential expense number scoped per tenant
-    const count = await prisma.expense.count({ where: { tenantId } });
-    const year = new Date().getFullYear();
-    const seq = String(count + 1).padStart(4, '0');
-    const expenseNumber = `EXP-${year}-${seq}`;
+    // Generate unique, sequential expense number scoped per tenant
+    const expenseNumber = await getNextDocumentNumber(prisma, 'expense', 'EXP', tenantId);
 
     const expense = await prisma.expense.create({
       data: {

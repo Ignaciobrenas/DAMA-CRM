@@ -7,21 +7,26 @@ import {
   getLogisticsStats,
   exportShipmentsCsv,
   exportShipmentsPdf,
+  compareCarrierRates,
+  downloadShipmentLabelPdf,
 } from './logistics.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
+import { requirePermission } from '../../middlewares/rbac.middleware';
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.get('/export/csv', exportShipmentsCsv);
-router.get('/export/pdf', exportShipmentsPdf);
+router.get('/export/csv', requirePermission('logistics', 'read'), exportShipmentsCsv);
+router.get('/export/pdf', requirePermission('logistics', 'read'), exportShipmentsPdf);
 
-router.get('/stats', getLogisticsStats);
+router.post('/rates/compare', requirePermission('logistics', 'read'), compareCarrierRates);
+router.get('/stats', requirePermission('logistics', 'read'), getLogisticsStats);
 
-router.get('/shipments', listShipments);
-router.post('/shipments', createShipment);
-router.get('/shipments/:id', getShipmentDetails);
-router.put('/shipments/:id/status', updateShipmentStatus);
+router.get('/shipments', requirePermission('logistics', 'read'), listShipments);
+router.post('/shipments', requirePermission('logistics', 'create'), createShipment);
+router.get('/shipments/:id/label', requirePermission('logistics', 'read'), downloadShipmentLabelPdf);
+router.get('/shipments/:id', requirePermission('logistics', 'read'), getShipmentDetails);
+router.put('/shipments/:id/status', requirePermission('logistics', 'update'), updateShipmentStatus);
 
 export default router;

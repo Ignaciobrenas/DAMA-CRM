@@ -1,49 +1,49 @@
 -- AlterTable
-ALTER TABLE "activities" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "activities" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "audit_logs" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "companies" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "contacts" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "custom_fields" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "custom_fields" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "deals" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "deals" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "invoices" ADD COLUMN     "paidAmount" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
-ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "paidAmount" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "omni_messages" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "omni_messages" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "products" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "projects" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "quotes" ADD COLUMN     "publicToken" TEXT,
-ADD COLUMN     "signatureData" TEXT,
-ADD COLUMN     "signedAt" TIMESTAMP(3),
-ADD COLUMN     "signedBy" TEXT,
-ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "quotes" ADD COLUMN IF NOT EXISTS "publicToken" TEXT,
+ADD COLUMN IF NOT EXISTS "signatureData" TEXT,
+ADD COLUMN IF NOT EXISTS "signedAt" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "signedBy" TEXT,
+ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "users" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- AlterTable
-ALTER TABLE "workflows" ADD COLUMN     "tenantId" TEXT DEFAULT 'master';
+ALTER TABLE "workflows" ADD COLUMN IF NOT EXISTS "tenantId" TEXT DEFAULT 'master';
 
 -- CreateTable
-CREATE TABLE "tenants" (
+CREATE TABLE IF NOT EXISTS "tenants" (
     "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE "tenants" (
 );
 
 -- CreateTable
-CREATE TABLE "recurring_invoices" (
+CREATE TABLE IF NOT EXISTS "recurring_invoices" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "frequency" TEXT NOT NULL DEFAULT 'MONTHLY',
@@ -87,7 +87,7 @@ CREATE TABLE "recurring_invoices" (
 );
 
 -- CreateTable
-CREATE TABLE "recurring_invoice_items" (
+CREATE TABLE IF NOT EXISTS "recurring_invoice_items" (
     "id" TEXT NOT NULL,
     "recurringInvoiceId" TEXT NOT NULL,
     "description" TEXT NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE "recurring_invoice_items" (
 );
 
 -- CreateTable
-CREATE TABLE "contracts" (
+CREATE TABLE IF NOT EXISTS "contracts" (
     "id" TEXT NOT NULL,
     "contractNumber" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -125,7 +125,7 @@ CREATE TABLE "contracts" (
 );
 
 -- CreateTable
-CREATE TABLE "expenses" (
+CREATE TABLE IF NOT EXISTS "expenses" (
     "id" TEXT NOT NULL,
     "expenseNumber" TEXT NOT NULL,
     "supplierName" TEXT NOT NULL,
@@ -149,7 +149,7 @@ CREATE TABLE "expenses" (
 );
 
 -- CreateTable
-CREATE TABLE "tickets" (
+CREATE TABLE IF NOT EXISTS "tickets" (
     "id" TEXT NOT NULL,
     "ticketNumber" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -172,7 +172,7 @@ CREATE TABLE "tickets" (
 );
 
 -- CreateTable
-CREATE TABLE "ticket_messages" (
+CREATE TABLE IF NOT EXISTS "ticket_messages" (
     "id" TEXT NOT NULL,
     "ticketId" TEXT NOT NULL,
     "senderType" TEXT NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE "ticket_messages" (
 );
 
 -- CreateTable
-CREATE TABLE "notifications" (
+CREATE TABLE IF NOT EXISTS "notifications" (
     "id" TEXT NOT NULL,
     "userId" TEXT,
     "tenantId" TEXT DEFAULT 'master',
@@ -206,7 +206,7 @@ CREATE TABLE "notifications" (
 );
 
 -- CreateTable
-CREATE TABLE "employees" (
+CREATE TABLE IF NOT EXISTS "employees" (
     "id" TEXT NOT NULL,
     "userId" TEXT,
     "tenantId" TEXT DEFAULT 'master',
@@ -229,7 +229,7 @@ CREATE TABLE "employees" (
 );
 
 -- CreateTable
-CREATE TABLE "payrolls" (
+CREATE TABLE IF NOT EXISTS "payrolls" (
     "id" TEXT NOT NULL,
     "employeeId" TEXT NOT NULL,
     "tenantId" TEXT DEFAULT 'master',
@@ -250,7 +250,7 @@ CREATE TABLE "payrolls" (
 );
 
 -- CreateTable
-CREATE TABLE "time_records" (
+CREATE TABLE IF NOT EXISTS "time_records" (
     "id" TEXT NOT NULL,
     "employeeId" TEXT NOT NULL,
     "userId" TEXT,
@@ -272,95 +272,160 @@ CREATE TABLE "time_records" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "tenants_slug_key" ON "tenants"("slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "tenants_slug_key" ON "tenants"("slug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "tenants_domain_key" ON "tenants"("domain");
+CREATE UNIQUE INDEX IF NOT EXISTS "tenants_domain_key" ON "tenants"("domain");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "contracts_contractNumber_key" ON "contracts"("contractNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "contracts_contractNumber_key" ON "contracts"("contractNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "expenses_expenseNumber_key" ON "expenses"("expenseNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "expenses_expenseNumber_key" ON "expenses"("expenseNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "tickets_ticketNumber_key" ON "tickets"("ticketNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "tickets_ticketNumber_key" ON "tickets"("ticketNumber");
 
 -- CreateIndex
-CREATE INDEX "notifications_tenantId_read_createdAt_idx" ON "notifications"("tenantId", "read", "createdAt");
+CREATE INDEX IF NOT EXISTS "notifications_tenantId_read_createdAt_idx" ON "notifications"("tenantId", "read", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "notifications_userId_read_createdAt_idx" ON "notifications"("userId", "read", "createdAt");
+CREATE INDEX IF NOT EXISTS "notifications_userId_read_createdAt_idx" ON "notifications"("userId", "read", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "notifications_type_idx" ON "notifications"("type");
+CREATE INDEX IF NOT EXISTS "notifications_type_idx" ON "notifications"("type");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "employees_userId_key" ON "employees"("userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "employees_userId_key" ON "employees"("userId");
 
 -- CreateIndex
-CREATE INDEX "employees_tenantId_status_idx" ON "employees"("tenantId", "status");
+CREATE INDEX IF NOT EXISTS "employees_tenantId_status_idx" ON "employees"("tenantId", "status");
 
 -- CreateIndex
-CREATE INDEX "employees_email_idx" ON "employees"("email");
+CREATE INDEX IF NOT EXISTS "employees_email_idx" ON "employees"("email");
 
 -- CreateIndex
-CREATE INDEX "payrolls_tenantId_year_month_idx" ON "payrolls"("tenantId", "year", "month");
+CREATE INDEX IF NOT EXISTS "payrolls_tenantId_year_month_idx" ON "payrolls"("tenantId", "year", "month");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "payrolls_employeeId_month_year_key" ON "payrolls"("employeeId", "month", "year");
+CREATE UNIQUE INDEX IF NOT EXISTS "payrolls_employeeId_month_year_key" ON "payrolls"("employeeId", "month", "year");
 
 -- CreateIndex
-CREATE INDEX "time_records_tenantId_clockIn_idx" ON "time_records"("tenantId", "clockIn");
+CREATE INDEX IF NOT EXISTS "time_records_tenantId_clockIn_idx" ON "time_records"("tenantId", "clockIn");
 
 -- CreateIndex
-CREATE INDEX "time_records_employeeId_clockIn_idx" ON "time_records"("employeeId", "clockIn");
+CREATE INDEX IF NOT EXISTS "time_records_employeeId_clockIn_idx" ON "time_records"("employeeId", "clockIn");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "quotes_publicToken_key" ON "quotes"("publicToken");
+CREATE UNIQUE INDEX IF NOT EXISTS "quotes_publicToken_key" ON "quotes"("publicToken");
 
 -- CreateIndex
-CREATE INDEX "users_tenantId_isActive_idx" ON "users"("tenantId", "isActive");
+CREATE INDEX IF NOT EXISTS "users_tenantId_isActive_idx" ON "users"("tenantId", "isActive");
 
 -- CreateIndex
-CREATE INDEX "users_email_idx" ON "users"("email");
+CREATE INDEX IF NOT EXISTS "users_email_idx" ON "users"("email");
 
 -- AddForeignKey
-ALTER TABLE "recurring_invoices" ADD CONSTRAINT "recurring_invoices_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'recurring_invoices_companyId_fkey') THEN
+        ALTER TABLE "recurring_invoices" ADD CONSTRAINT "recurring_invoices_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "recurring_invoices" ADD CONSTRAINT "recurring_invoices_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'recurring_invoices_contactId_fkey') THEN
+        ALTER TABLE "recurring_invoices" ADD CONSTRAINT "recurring_invoices_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "recurring_invoice_items" ADD CONSTRAINT "recurring_invoice_items_recurringInvoiceId_fkey" FOREIGN KEY ("recurringInvoiceId") REFERENCES "recurring_invoices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'recurring_invoice_items_recurringInvoiceId_fkey') THEN
+        ALTER TABLE "recurring_invoice_items" ADD CONSTRAINT "recurring_invoice_items_recurringInvoiceId_fkey" FOREIGN KEY ("recurringInvoiceId") REFERENCES "recurring_invoices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "contracts" ADD CONSTRAINT "contracts_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contracts_companyId_fkey') THEN
+        ALTER TABLE "contracts" ADD CONSTRAINT "contracts_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "contracts" ADD CONSTRAINT "contracts_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contracts_contactId_fkey') THEN
+        ALTER TABLE "contracts" ADD CONSTRAINT "contracts_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "tickets" ADD CONSTRAINT "tickets_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tickets_contactId_fkey') THEN
+        ALTER TABLE "tickets" ADD CONSTRAINT "tickets_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "tickets" ADD CONSTRAINT "tickets_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tickets_companyId_fkey') THEN
+        ALTER TABLE "tickets" ADD CONSTRAINT "tickets_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "tickets" ADD CONSTRAINT "tickets_assignedToId_fkey" FOREIGN KEY ("assignedToId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tickets_assignedToId_fkey') THEN
+        ALTER TABLE "tickets" ADD CONSTRAINT "tickets_assignedToId_fkey" FOREIGN KEY ("assignedToId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "ticket_messages" ADD CONSTRAINT "ticket_messages_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ticket_messages_ticketId_fkey') THEN
+        ALTER TABLE "ticket_messages" ADD CONSTRAINT "ticket_messages_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'notifications_userId_fkey') THEN
+        ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "employees" ADD CONSTRAINT "employees_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'employees_userId_fkey') THEN
+        ALTER TABLE "employees" ADD CONSTRAINT "employees_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "payrolls" ADD CONSTRAINT "payrolls_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "employees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payrolls_employeeId_fkey') THEN
+        ALTER TABLE "payrolls" ADD CONSTRAINT "payrolls_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "employees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "time_records" ADD CONSTRAINT "time_records_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "employees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'time_records_employeeId_fkey') THEN
+        ALTER TABLE "time_records" ADD CONSTRAINT "time_records_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "employees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 

@@ -3,6 +3,7 @@ import { prisma } from '../../prisma';
 import { wsService } from '../../services/websocket.service';
 import { NotificationService } from '../notifications/notifications.service';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import { getNextDocumentNumber } from '../../utils/document-number';
 
 function calculateSlaDeadline(priority: string): Date {
   const now = Date.now();
@@ -24,7 +25,7 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = getRequestTenant(req);
     const isSuper = isGodSuperAdmin(req);
-    const { status, priority, category, search, contactId, companyId } = req.query;
+    const { status, priority, category, search, contactId, companyId, assignedToId } = req.query;
 
     const where: any = {};
     if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
@@ -46,6 +47,9 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
     if (companyId) {
       where.companyId = companyId as string;
     }
+    if (assignedToId) {
+      where.assignedToId = assignedToId === 'unassigned' ? null : (assignedToId as string);
+    }
 
     if (search && typeof search === 'string' && search.trim()) {
       const q = search.trim();
@@ -54,6 +58,11 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
         { title: { contains: q, mode: 'insensitive' } },
         { description: { contains: q, mode: 'insensitive' } },
       ];
+    }
+
+    const isClient = req.user?.role === 'CLIENT';
+    if (isClient) {
+      where.contact = { email: req.user?.email };
     }
 
     const tickets = await prisma.ticket.findMany({
@@ -65,6 +74,7 @@ export async function getTickets(req: Request, res: Response): Promise<void> {
           select: { id: true, name: true, email: true, avatar: true },
         },
         messages: {
+          where: isClient ? { isInternal: false } : {},
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -109,6 +119,14 @@ export async function getTicketById(req: Request, res: Response): Promise<void> 
     if (!isSuper && ticket.tenantId !== tenantId) {
       res.status(403).json({ success: false, message: 'No tienes acceso a este ticket' });
       return;
+    }
+
+    if (req.user?.role === 'CLIENT') {
+      if (ticket.contact?.email !== req.user.email) {
+        res.status(403).json({ success: false, message: 'No tienes acceso a este ticket' });
+        return;
+      }
+      ticket.messages = ticket.messages.filter((m) => !m.isInternal);
     }
 
     res.json({
@@ -158,10 +176,7 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
     }
 
     // Generate sequential ticket number scoped per tenant
-    const count = await prisma.ticket.count({ where: { tenantId } });
-    const year = new Date().getFullYear();
-    const seq = String(count + 1).padStart(4, '0');
-    const ticketNumber = `TCK-${year}-${seq}`;
+    const ticketNumber = await getNextDocumentNumber(prisma, 'ticket', 'TCK', tenantId);
 
     const slaDueAt = calculateSlaDeadline(priority);
 
@@ -267,7 +282,41 @@ export async function updateTicket(req: Request, res: Response): Promise<void> {
       data.slaDueAt = calculateSlaDeadline(priority);
     }
     if (category !== undefined) data.category = category;
-    if (assignedToId !== undefined) data.assignedToId = assignedToId || null;
+    if (assignedToId !== undefined && assignedToId !== existing.assignedToId) {
+      data.assignedToId = assignedToId || null;
+      if (assignedToId) {
+        const assignee = await prisma.user.findUnique({ where: { id: assignedToId }, select: { name: true } });
+        if (assignee) {
+          await prisma.ticketMessage.create({
+            data: {
+              ticketId: id,
+              senderType: 'SYSTEM',
+              senderName: 'Sistema DAMA',
+              message: `Ticket reasignado a ${assignee.name}`,
+              isInternal: true,
+            },
+          });
+          await NotificationService.notifyTicketAssigned({
+            id: existing.id,
+            ticketNumber: existing.ticketNumber,
+            title: title || existing.title,
+            assignedToId,
+            assigneeName: assignee.name,
+            tenantId,
+          });
+        }
+      } else {
+        await prisma.ticketMessage.create({
+          data: {
+            ticketId: id,
+            senderType: 'SYSTEM',
+            senderName: 'Sistema DAMA',
+            message: 'Ticket desasignado',
+            isInternal: true,
+          },
+        });
+      }
+    }
     if (title !== undefined) data.title = title.trim();
     if (description !== undefined) data.description = description.trim();
 
@@ -317,6 +366,25 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
       return;
     }
 
+    if (req.user?.role === 'CLIENT') {
+      const contact = await prisma.contact.findUnique({ where: { email: req.user.email } });
+      if (!contact || ticket.contactId !== contact.id) {
+        res.status(403).json({ success: false, message: 'No tienes acceso para responder en este ticket' });
+        return;
+      }
+    } else if (req.user) {
+      const hasTicketsUpdate =
+        req.user.role === 'ADMIN' ||
+        isSuper ||
+        req.user.permissions?.some(
+          (p: any) => (p.resource === 'tickets' || p.resource === '*') && (p.action === 'update' || p.action === 'manage')
+        );
+      if (!hasTicketsUpdate) {
+        res.status(403).json({ success: false, message: 'Permiso insuficiente para responder en tickets' });
+        return;
+      }
+    }
+
     const { message, isInternal = false, attachments } = req.body;
 
     if (!message || !message.trim()) {
@@ -324,8 +392,10 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const senderType = req.user ? 'AGENT' : 'CUSTOMER';
-    const senderName = req.user?.name || 'Agente DAMA';
+    const isClient = req.user?.role === 'CLIENT';
+    const finalIsInternal = isClient ? false : Boolean(isInternal);
+    const senderType = isClient ? 'CUSTOMER' : req.user ? 'AGENT' : 'CUSTOMER';
+    const senderName = req.user?.name || (isClient ? 'Cliente' : 'Agente DAMA');
 
     const newMessage = await prisma.ticketMessage.create({
       data: {
@@ -334,13 +404,13 @@ export async function addTicketMessage(req: Request, res: Response): Promise<voi
         senderId: req.user?.id || null,
         senderName,
         message: message.trim(),
-        isInternal: Boolean(isInternal),
+        isInternal: finalIsInternal,
         attachments: typeof attachments === 'string' ? attachments : attachments ? JSON.stringify(attachments) : null,
       },
     });
 
     // Update ticket's firstResponseAt if this is first agent reply
-    if (senderType === 'AGENT' && !ticket.firstResponseAt && !isInternal) {
+    if (senderType === 'AGENT' && !ticket.firstResponseAt && !finalIsInternal) {
       await prisma.ticket.update({
         where: { id },
         data: { firstResponseAt: new Date() },
@@ -551,5 +621,52 @@ export async function exportTicketsPdf(req: Request, res: Response): Promise<voi
     res.send(pdfBuf);
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Error al exportar informe de tickets en PDF', error: error.message });
+  }
+}
+
+/**
+ * DELETE /api/tickets/:id
+ * Delete a support ticket and cascade associated messages
+ */
+export async function deleteTicket(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+
+    const ticket = await prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) {
+      res.status(404).json({ success: false, message: 'Ticket no encontrado' });
+      return;
+    }
+
+    if (!isSuper && ticket.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permiso para eliminar este ticket' });
+      return;
+    }
+
+    await prisma.ticket.delete({ where: { id } });
+
+    // Broadcast live WebSocket event to tenant
+    wsService.broadcastToTenant(tenantId, 'ticket:deleted', { id, ticketNumber: ticket.ticketNumber });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user?.id,
+        action: 'DELETE_TICKET',
+        entity: 'Ticket',
+        entityId: id,
+        tenantId,
+        details: JSON.stringify({ ticketNumber: ticket.ticketNumber, title: ticket.title }),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Ticket eliminado correctamente',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al eliminar ticket', error: error.message });
   }
 }

@@ -70,6 +70,18 @@ export const Workflows: React.FC = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCreateOpen) setIsCreateOpen(false);
+        if (editingWorkflow) setEditingWorkflow(null);
+        if (deletingWorkflow) setDeletingWorkflow(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCreateOpen, editingWorkflow, deletingWorkflow]);
+
   const handleTestRun = async (wf: any) => {
     toast.info('Ejecutando prueba...', `Lanzando ejecución para "${wf.name}"`);
     const res = await apiRequest(`/workflows/${wf.id}/test`, { method: 'POST' });
@@ -221,6 +233,7 @@ export const Workflows: React.FC = () => {
         </div>
 
         <button
+          data-testid="new-workflow-btn"
           onClick={() => {
             setCreateFormError('');
             setIsCreateOpen(true);
@@ -239,6 +252,8 @@ export const Workflows: React.FC = () => {
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
             <input
+              data-testid="workflow-search-input"
+              aria-label="Buscar reglas de automatización"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -251,6 +266,8 @@ export const Workflows: React.FC = () => {
           <div className="flex items-center space-x-1 text-xs text-gray-500">
             <Filter className="w-3.5 h-3.5" />
             <select
+              data-testid="workflow-trigger-filter"
+              aria-label="Filtrar por disparador"
               value={triggerFilter}
               onChange={(e) => setTriggerFilter(e.target.value)}
               className="px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
@@ -265,6 +282,8 @@ export const Workflows: React.FC = () => {
 
           {/* Status filter */}
           <select
+            data-testid="workflow-status-filter"
+            aria-label="Filtrar por estado de regla"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
@@ -311,6 +330,7 @@ export const Workflows: React.FC = () => {
                   <div className="flex items-center space-x-1.5">
                     {/* Active Switch */}
                     <button
+                      aria-label={wf.isActive ? `Pausar regla ${wf.name}` : `Activar regla ${wf.name}`}
                       onClick={() => handleToggle(wf.id, wf.isActive)}
                       title={wf.isActive ? 'Pausar regla' : 'Activar regla'}
                       className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${
@@ -320,6 +340,7 @@ export const Workflows: React.FC = () => {
                       <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
                     </button>
                     <button
+                      aria-label={`Editar regla ${wf.name}`}
                       onClick={() => handleOpenEdit(wf)}
                       title="Editar regla"
                       className="p-1 rounded text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-slate-700 transition-colors"
@@ -327,6 +348,7 @@ export const Workflows: React.FC = () => {
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
+                      aria-label={`Eliminar regla ${wf.name}`}
                       onClick={() => setDeletingWorkflow(wf)}
                       title="Eliminar regla"
                       className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
@@ -435,11 +457,21 @@ export const Workflows: React.FC = () => {
 
       {/* Create Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Nueva regla de automatización"
+          data-testid="create-workflow-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 m-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
               <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('workflows.newRuleModalTitle')}</h2>
-              <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                aria-label="Cerrar modal de nueva regla"
+                onClick={() => setIsCreateOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -457,6 +489,8 @@ export const Workflows: React.FC = () => {
                   Nombre de la regla <span className="text-red-500">*</span>
                 </label>
                 <input
+                  data-testid="workflow-name-input"
+                  aria-label="Nombre de la regla"
                   type="text"
                   required
                   value={name}
@@ -471,6 +505,8 @@ export const Workflows: React.FC = () => {
                   Descripción
                 </label>
                 <textarea
+                  data-testid="workflow-desc-input"
+                  aria-label="Descripción de la regla"
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -485,6 +521,8 @@ export const Workflows: React.FC = () => {
                     Disparador (Trigger)
                   </label>
                   <select
+                    data-testid="workflow-trigger-select"
+                    aria-label="Disparador de la regla"
                     value={trigger}
                     onChange={(e) => setTrigger(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
@@ -500,6 +538,8 @@ export const Workflows: React.FC = () => {
                     Acción Resultante
                   </label>
                   <select
+                    data-testid="workflow-action-select"
+                    aria-label="Acción resultante de la regla"
                     value={action}
                     onChange={(e) => setAction(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
@@ -522,6 +562,7 @@ export const Workflows: React.FC = () => {
                   {t('cancel')}
                 </button>
                 <button
+                  data-testid="submit-workflow-btn"
                   type="submit"
                   disabled={isSubmitting}
                   className="px-4 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg shadow-xs"
@@ -536,11 +577,21 @@ export const Workflows: React.FC = () => {
 
       {/* Edit Modal */}
       {editingWorkflow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Editar regla de automatización"
+          data-testid="edit-workflow-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 m-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-slate-800">
               <h2 className="text-sm font-bold text-gray-900 dark:text-white">{t('workflows.editRuleModalTitle')}</h2>
-              <button onClick={() => setEditingWorkflow(null)} className="text-gray-400 hover:text-gray-600">
+              <button
+                aria-label="Cerrar modal de edición"
+                onClick={() => setEditingWorkflow(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -558,6 +609,7 @@ export const Workflows: React.FC = () => {
                   Nombre de la regla <span className="text-red-500">*</span>
                 </label>
                 <input
+                  aria-label="Nombre de la regla"
                   type="text"
                   required
                   value={editName}
@@ -571,6 +623,7 @@ export const Workflows: React.FC = () => {
                   Descripción
                 </label>
                 <textarea
+                  aria-label="Descripción de la regla"
                   rows={2}
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
@@ -584,6 +637,7 @@ export const Workflows: React.FC = () => {
                     Disparador
                   </label>
                   <select
+                    aria-label="Disparador de la regla"
                     value={editTrigger}
                     onChange={(e) => setEditTrigger(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
@@ -599,6 +653,7 @@ export const Workflows: React.FC = () => {
                     Acción Resultante
                   </label>
                   <select
+                    aria-label="Acción resultante de la regla"
                     value={editAction}
                     onChange={(e) => setEditAction(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-purple-600"
@@ -648,8 +703,14 @@ export const Workflows: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deletingWorkflow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Eliminar regla de automatización"
+          data-testid="delete-workflow-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 m-auto">
             <h2 className="text-base font-bold text-gray-900 dark:text-white mb-2">{t('workflows.deleteRuleModalTitle')}</h2>
             <p className="text-xs text-gray-600 dark:text-slate-400 mb-5">
               ¿Estás seguro de que deseas eliminar el workflow{' '}

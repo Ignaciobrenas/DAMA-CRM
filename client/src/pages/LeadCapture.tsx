@@ -184,7 +184,7 @@ export const LeadCapture: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-1.5 overflow-x-auto pb-1 border-b border-gray-200 dark:border-slate-800">
+      <div role="tablist" aria-label="Estrategias de captura de prospectos" className="flex space-x-1.5 overflow-x-auto pb-1 border-b border-gray-200 dark:border-slate-800">
         {[
           { id: 'smart_forms', label: '1. Formulario Inteligente', icon: Sparkles },
           { id: 'lead_magnets', label: '2. Lead Magnets (E-books/Cupones)', icon: Gift },
@@ -199,6 +199,8 @@ export const LeadCapture: React.FC = () => {
           return (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={isActive}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 isActive
@@ -332,7 +334,7 @@ export const LeadCapture: React.FC = () => {
             </form>
 
             {contactResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 flex items-start space-x-2">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300 flex items-start space-x-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
                   <div className="font-bold">{t('leadCapture.leadSyncSuccess')}</div>
@@ -358,7 +360,7 @@ export const LeadCapture: React.FC = () => {
               <button
                 onClick={() =>
                   handleCopy(
-                    `<form action="${window.location.origin.includes('5173') ? 'http://localhost:4000' : window.location.origin}/api/lead-capture/contact" method="POST">\n  <input type="text" name="firstName" placeholder="Nombre" required />\n  <input type="email" name="email" placeholder="Email" required />\n  <input type="hidden" name="utmSource" value="landing_page" />\n  <label><input type="checkbox" name="marketingConsent" value="true" /> Acepto comunicaciones</label>\n  <button type="submit">Contactar</button>\n</form>`,
+                    `<form action="${window.location.origin}/api/lead-capture/contact" method="POST">\n  <input type="text" name="firstName" placeholder="Nombre" required />\n  <input type="email" name="email" placeholder="Email" required />\n  <input type="hidden" name="utmSource" value="landing_page" />\n  <label><input type="checkbox" name="marketingConsent" value="true" /> Acepto comunicaciones</label>\n  <button type="submit">Contactar</button>\n</form>`,
                     'formSnippet'
                   )
                 }
@@ -387,7 +389,7 @@ export const LeadCapture: React.FC = () => {
 </form>`}
             </pre>
 
-            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-300 space-y-1">
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-blue-900 dark:text-blue-300 space-y-1">
               <div className="font-bold flex items-center space-x-1.5">
                 <ShieldCheck className="w-4 h-4" />
                 <span>{t('leadCapture.crmBehaviorTitle')}</span>
@@ -476,7 +478,7 @@ export const LeadCapture: React.FC = () => {
             </form>
 
             {magnetResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
                 <div className="font-bold flex items-center space-x-1.5">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{t('leadCapture.resourceGenerated')}</span>
@@ -702,7 +704,7 @@ export const LeadCapture: React.FC = () => {
             </form>
 
             {chatResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
                 <div className="font-bold">{t('leadCapture.leadRegisteredOmnichannel')}</div>
                 <div className="text-[11px]">Mensaje inicial guardado en el timeline de {chatName}.</div>
                 {chatResult.whatsAppUrl && (
@@ -816,7 +818,7 @@ export const LeadCapture: React.FC = () => {
             </form>
 
             {apptResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
                 <div className="font-bold flex items-center space-x-1.5">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{apptResult.message}</span>
@@ -867,7 +869,7 @@ export const LeadCapture: React.FC = () => {
               <button
                 onClick={() =>
                   handleCopy(
-                    `<script src="${window.location.origin.includes('5173') ? 'http://localhost:4000' : window.location.origin}/api/lead-capture/pixel.js" async></script>`,
+                    `<script src="${window.location.origin}/api/lead-capture/pixel.js" async></script>`,
                     'pixelScript'
                   )
                 }
@@ -947,7 +949,7 @@ export const LeadCapture: React.FC = () => {
             </div>
 
             {cartResult && (
-              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-300 space-y-1">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-amber-900 dark:text-amber-300 space-y-1">
                 <div className="font-bold">{t('leadCapture.cartEventSuccess')}</div>
                 <div className="text-[11px]">{cartResult.message}</div>
               </div>

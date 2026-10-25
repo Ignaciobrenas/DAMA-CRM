@@ -45,6 +45,15 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     const fetchCompanies = async () => {
       try {
         const res = await apiRequest('/companies');
@@ -113,8 +122,14 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Registrar nuevo empleado"
+      data-testid="new-employee-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 m-auto"
+    >
+      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto m-auto">
         <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="p-2.5 bg-blue-50 dark:bg-blue-950/50 rounded-xl text-blue-600 dark:text-blue-400">
@@ -130,6 +145,7 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
             </div>
           </div>
           <button
+            aria-label="Cerrar modal de nuevo empleado"
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
           >
@@ -143,9 +159,10 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
             <div className="p-3 bg-amber-500/10 border border-amber-300 dark:border-amber-800/60 rounded-xl">
               <label className="block text-xs font-bold text-amber-800 dark:text-amber-300 mb-1 flex items-center space-x-1">
                 <Building className="w-3.5 h-3.5 mr-1" />
-                <span>{t('employees.companyTenantSelect')} (God Mode)</span>
+                <span>{t('employees.companyTenantSelect')}</span>
               </label>
               <select
+                aria-label="Seleccionar organización para empleado"
                 value={selectedTenantId}
                 onChange={(e) => setSelectedTenantId(e.target.value)}
                 className="w-full text-xs rounded-lg border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 p-2 text-gray-900 dark:text-white focus:outline-none"
@@ -166,6 +183,8 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
                 {t('name')} *
               </label>
               <input
+                data-testid="employee-name-input"
+                aria-label="Nombre completo del empleado"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -179,6 +198,8 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
                 {t('email')} *
               </label>
               <input
+                data-testid="employee-email-input"
+                aria-label="Correo electrónico del empleado"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -195,6 +216,7 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
                 {t('employees.departmentLabel')}
               </label>
               <select
+                aria-label="Departamento del empleado"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 className="w-full text-xs rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 p-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -212,6 +234,8 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
                 {t('employees.jobTitleLabel')} *
               </label>
               <input
+                data-testid="employee-jobtitle-input"
+                aria-label="Puesto o cargo del empleado"
                 type="text"
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
@@ -311,6 +335,7 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
               {t('cancel')}
             </button>
             <button
+              data-testid="submit-employee-btn"
               type="submit"
               disabled={submitting}
               className="px-5 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition flex items-center space-x-1.5"

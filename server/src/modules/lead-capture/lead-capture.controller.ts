@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { wsService } from '../../services/websocket.service';
 import { dispatchWorkflowEvent } from '../workflows/workflow.runner';
+import { isGodSuperAdmin } from '../../utils/tenant';
 
 /**
  * Lead Capture & Webhook Engine for DAMA-CRM
@@ -767,10 +768,29 @@ export const submitSupportTicket = async (req: Request, res: Response) => {
  */
 export const getClientTickets = async (req: Request, res: Response) => {
   try {
-    const email = String(req.query.email || '').toLowerCase().trim();
+    const currentUser = req.user;
+    if (!currentUser) {
+      return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+    }
 
+    const email = String(req.query.email || currentUser.email || '').toLowerCase().trim();
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email requerido' });
+    }
+
+    // Role verification: Client can only view their own tickets
+    if (currentUser.role === 'CLIENT' && currentUser.email.toLowerCase().trim() !== email) {
+      return res.status(403).json({ success: false, message: 'Acceso denegado: solo puedes consultar tus propios tickets' });
+    }
+
+    // Non-client internal user must have tickets:read permission
+    const isSuper = isGodSuperAdmin(req);
+    const hasTicketsRead = currentUser.role === 'ADMIN' || isSuper || currentUser.permissions?.some(
+      (p) => (p.resource === 'tickets' || p.resource === '*') && (p.action === 'read' || p.action === 'manage')
+    );
+
+    if (currentUser.role !== 'CLIENT' && !hasTicketsRead) {
+      return res.status(403).json({ success: false, message: 'Acceso denegado: permiso insuficiente para consultar tickets' });
     }
 
     const contact = await prisma.contact.findUnique({
@@ -779,6 +799,10 @@ export const getClientTickets = async (req: Request, res: Response) => {
 
     if (!contact) {
       return res.json({ success: true, data: [] });
+    }
+
+    if (!isSuper && currentUser.role !== 'CLIENT' && contact.tenantId && contact.tenantId !== currentUser.tenantId) {
+      return res.status(403).json({ success: false, message: 'Acceso denegado a registros de otra organización' });
     }
 
     const activities = await prisma.activity.findMany({
@@ -814,10 +838,29 @@ export const getClientTickets = async (req: Request, res: Response) => {
  */
 export const exportCustomerData = async (req: Request, res: Response) => {
   try {
-    const email = String(req.query.email || '').toLowerCase().trim();
+    const currentUser = req.user;
+    if (!currentUser) {
+      return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+    }
 
+    const email = String(req.query.email || currentUser.email || '').toLowerCase().trim();
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email requerido' });
+    }
+
+    // Client can only export their own data
+    if (currentUser.role === 'CLIENT' && currentUser.email.toLowerCase().trim() !== email) {
+      return res.status(403).json({ success: false, message: 'Acceso denegado: solo puedes exportar tus propios datos personales' });
+    }
+
+    // Internal user must have contacts:read permission
+    const isSuper = isGodSuperAdmin(req);
+    const hasContactsRead = currentUser.role === 'ADMIN' || isSuper || currentUser.permissions?.some(
+      (p) => (p.resource === 'contacts' || p.resource === '*') && (p.action === 'read' || p.action === 'manage')
+    );
+
+    if (currentUser.role !== 'CLIENT' && !hasContactsRead) {
+      return res.status(403).json({ success: false, message: 'Acceso denegado: requiere permiso para consultar y exportar contactos' });
     }
 
     const contact = await prisma.contact.findUnique({
@@ -832,6 +875,10 @@ export const exportCustomerData = async (req: Request, res: Response) => {
 
     if (!contact) {
       return res.status(404).json({ success: false, message: 'No existen registros para este email' });
+    }
+
+    if (!isSuper && currentUser.role !== 'CLIENT' && contact.tenantId && contact.tenantId !== currentUser.tenantId) {
+      return res.status(403).json({ success: false, message: 'Acceso denegado a registros de otra organización' });
     }
 
     const activities = await prisma.activity.findMany({
@@ -863,3 +910,62 @@ export const exportCustomerData = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * Exercise ARCO/POL Rights (Acceso, Rectificación, Supresión, Oposición, Portabilidad, Limitación)
+ */
+export const submitArcoRequest = async (req: Request, res: Response) => {
+  try {
+    const {
+      rightType, // 'access' | 'rectification' | 'erasure' | 'opposition' | 'portability' | 'limitation'
+      fullName,
+      email,
+      dniPassport,
+      details,
+    } = req.body;
+
+    if (!rightType || !email || !fullName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de derecho, nombre completo y correo electrónico son obligatorios.',
+      });
+    }
+
+    const ticketNumber = `ARCO-${Date.now().toString().slice(-6)}`;
+
+    // Create Audit Log
+    await prisma.auditLog.create({
+      data: {
+        action: `ARCO_REQUEST_${rightType.toUpperCase()}`,
+        entity: 'PrivacyRights',
+        details: JSON.stringify({
+          ticketNumber,
+          rightType,
+          fullName,
+          email,
+          dniPassport: dniPassport ? '***PROCESADO***' : 'No adjuntado',
+          details,
+          ip: req.ip || req.headers['x-forwarded-for'],
+          timestamp: new Date().toISOString(),
+        }),
+      },
+    });
+
+    // Notify CRM Admins via WS
+    wsService.broadcast('privacy:arco_requested', {
+      ticketNumber,
+      rightType,
+      email,
+      fullName,
+    });
+
+    return res.json({
+      success: true,
+      ticketNumber,
+      message: `Solicitud de derecho ARCO (${rightType.toUpperCase()}) registrada correctamente bajo el expediente ${ticketNumber}. El DPO responderá en un plazo máximo de 30 días conforme a la LOPD-GDD.`,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+

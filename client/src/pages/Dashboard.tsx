@@ -243,6 +243,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         <div className="flex items-center space-x-1">
           <button
             type="button"
+            aria-label={`Subir widget ${title}`}
+            data-testid={`dashboard-widget-up-${id}`}
             disabled={index === 0}
             onClick={() => moveWidget(index, 'up')}
             title="Subir widget"
@@ -252,6 +254,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           </button>
           <button
             type="button"
+            aria-label={`Bajar widget ${title}`}
+            data-testid={`dashboard-widget-down-${id}`}
             disabled={index === widgets.length - 1}
             onClick={() => moveWidget(index, 'down')}
             title="Bajar widget"
@@ -350,7 +354,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                   </div>
                 </div>
                 <div className="mt-2 text-xl font-bold text-teal-600 dark:text-teal-400">
-                  <AnimatedCounter to={conversionRate} formatter={(val) => `${val}%`} />
+                  <AnimatedCounter to={conversionRate} formatter={(val) => `${Math.round(val)}%`} />
                 </div>
                 <div className="mt-1 text-[11px] text-gray-500 dark:text-slate-400">{activeDeals} {t('deals')}</div>
               </motion.div>
@@ -402,12 +406,12 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         return (
           <div className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/40 dark:bg-blue-950/20">
+              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-blue-900 dark:text-blue-300">{t('dashboard.forecast30')}</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('dashboard.forecast30')}</span>
                   <Clock className="w-4 h-4 text-blue-500" />
                 </div>
-                <div className="text-xl font-extrabold text-blue-700 dark:text-blue-400">
+                <div className="text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
                   {forecastNext30.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
                 </div>
                 <div className="w-full bg-blue-200/50 dark:bg-blue-900/40 rounded-full h-1.5 mt-3 overflow-hidden">
@@ -415,12 +419,12 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/40 dark:bg-indigo-950/20">
+              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300">{t('dashboard.forecast60')}</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('dashboard.forecast60')}</span>
                   <TrendingUp className="w-4 h-4 text-indigo-500" />
                 </div>
-                <div className="text-xl font-extrabold text-indigo-700 dark:text-indigo-400">
+                <div className="text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
                   {forecast30to60.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
                 </div>
                 <div className="w-full bg-indigo-200/50 dark:bg-indigo-900/40 rounded-full h-1.5 mt-3 overflow-hidden">
@@ -428,12 +432,12 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 bg-purple-50/40 dark:bg-purple-950/20">
+              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-purple-900 dark:text-purple-300">{t('dashboard.forecast90')}</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('dashboard.forecast90')}</span>
                   <DollarSign className="w-4 h-4 text-purple-500" />
                 </div>
-                <div className="text-xl font-extrabold text-purple-700 dark:text-purple-400">
+                <div className="text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
                   {forecast60to90.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
                 </div>
                 <div className="w-full bg-purple-200/50 dark:bg-purple-900/40 rounded-full h-1.5 mt-3 overflow-hidden">
@@ -736,7 +740,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         message: 'Que tengas una jornada productiva y llena de éxitos.',
         icon: Sun,
         colorClass: 'text-amber-500 dark:text-amber-400',
-        bgClass: 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-900/40',
+        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800',
         date: formattedDate,
       };
     } else if (hours >= 13 && hours < 21) {
@@ -745,7 +749,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         message: 'Aquí tienes el resumen actualizado de la actividad de tu empresa hoy.',
         icon: Sunset,
         colorClass: 'text-orange-500 dark:text-orange-400',
-        bgClass: 'bg-orange-50/80 dark:bg-orange-950/30 border-orange-200/70 dark:border-orange-900/40',
+        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800',
         date: formattedDate,
       };
     } else {
@@ -754,7 +758,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         message: 'Revisa los últimos avances y métricas antes de cerrar el día.',
         icon: Moon,
         colorClass: 'text-indigo-500 dark:text-indigo-400',
-        bgClass: 'bg-indigo-50/80 dark:bg-indigo-950/30 border-indigo-200/70 dark:border-indigo-900/40',
+        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800',
         date: formattedDate,
       };
     }
@@ -821,6 +825,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               <button
                 key={period.id}
                 type="button"
+                data-testid={`dashboard-timeframe-${period.id}`}
                 onClick={() => setTimeframe(period.id as any)}
                 className={`px-2.5 py-1 rounded-lg transition-all ${
                   timeframe === period.id
@@ -836,6 +841,8 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
+            data-testid="dashboard-reset-widgets"
+            aria-label={t('dashboard.resetLayoutDefault')}
             onClick={resetWidgets}
             title={t('dashboard.resetLayoutDefault')}
             className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium transition-colors"
@@ -874,6 +881,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           return (
             <div
               key={widgetId}
+              data-testid={`dashboard-widget-${widgetId}`}
               draggable
               onDragStart={(e) => handleDragStart(e, widgetId)}
               onDragOver={(e) => handleDragOver(e, widgetId)}

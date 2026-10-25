@@ -2,9 +2,16 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { generatePdfBuffer, InvoicePdfData } from './pdf.service';
 import { logAudit } from '../../middlewares/audit.middleware';
-import { getBrandingConfig } from '../branding/branding.controller';
+import { getBrandingConfig, getTenantBranding } from '../branding/branding.controller';
 import { NotificationService } from '../notifications/notifications.service';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
+import {
+  calculateVerifactuHash,
+  generateVerifactuQrBuffer,
+  getPreviousInvoiceHash,
+  verifyAndSyncVerifactuChain,
+} from '../../services/verifactu.service';
+import { getNextDocumentNumber } from '../../utils/document-number';
 
 export async function listInvoices(req: Request, res: Response): Promise<void> {
   try {
@@ -141,11 +148,9 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
 
     const total = Number((taxableBase + taxAmount - computedIrpfAmount).toFixed(2));
 
-    // Generate unique invoice number scoped to current tenant: FAC-YYYY-SEQ / REC-YYYY-SEQ / PRO-YYYY-SEQ
-    const year = new Date().getFullYear();
-    const count = await prisma.invoice.count({ where: { tenantId } });
+    // Generate unique, sequential invoice number scoped per prefix, year, and tenant
     const prefix = isRectifying ? 'REC' : proforma ? 'PRO' : 'FAC';
-    const invoiceNumber = `${prefix}-${year}-${String(count + 1).padStart(4, '0')}`;
+    const invoiceNumber = await getNextDocumentNumber(prisma, 'invoice', prefix, tenantId);
 
     const parsedIssueDate = rawIssueDate ? new Date(rawIssueDate) : new Date();
 
@@ -165,9 +170,34 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
       }
     }
 
+    // Compute Veri*Factu hash & chain before persisting (Orden HAC/1177/2024)
+    const tenantBranding = await getTenantBranding(tenantId);
+    const issuerNif = tenantBranding.companyTaxId || 'B87654323';
+    const prevHash = !proforma ? await getPreviousInvoiceHash(tenantId) : '';
+    const invType = (req.body.invoiceType || (isRectifying ? 'R1' : 'F1')) as 'F1' | 'F2' | 'R1' | 'R2' | 'R3' | 'R4';
+    const vfData = !proforma
+      ? calculateVerifactuHash({
+          issuerNif,
+          invoiceNumber,
+          issueDate: parsedIssueDate,
+          invoiceType: invType,
+          taxAmount,
+          totalAmount: total,
+          previousRecordHash: prevHash,
+        })
+      : null;
+
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
+        invoiceSeries: isRectifying ? 'R2026' : proforma ? 'PRO2026' : 'F2026',
+        invoiceType: invType,
+        verifactuHash: vfData?.hash || null,
+        previousInvoiceHash: prevHash || null,
+        verifactuQrUrl: vfData?.qrUrl || null,
+        verifactuCsv: vfData?.csvCode || null,
+        verifactuStatus: proforma ? 'PROFORMA' : 'VERIFIED',
+        verifactuGeneratedAt: vfData ? new Date() : null,
         quoteId: quoteId || null,
         contactId: contactId || null,
         companyId: companyId || null,
@@ -286,6 +316,31 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       }
     } catch {}
 
+    // Generate Veri*Factu Chaining Hash & AEAT QR Code Buffer (RD 1007/2023 & Orden HAC/1177/2024)
+    let verifactuHash: string | undefined;
+    let verifactuQrBuffer: Buffer | undefined;
+
+    if (!invoice.proforma) {
+      try {
+        const issuerNif = branding.companyTaxId || 'B00000000';
+        const prevHash = await getPreviousInvoiceHash(invoice.tenantId);
+        const vfResult = calculateVerifactuHash({
+          issuerNif,
+          invoiceNumber: invoice.invoiceNumber,
+          issueDate: invoice.issueDate,
+          invoiceType: invoice.isRectifying ? 'R1' : 'F1',
+          taxAmount: invoice.taxAmount,
+          totalAmount: invoice.total,
+          previousRecordHash: prevHash,
+        });
+
+        verifactuHash = vfResult.hash;
+        verifactuQrBuffer = await generateVerifactuQrBuffer(vfResult.qrUrl);
+      } catch (vfErr) {
+        console.error('Veri*Factu hash/QR computation note:', vfErr);
+      }
+    }
+
     const pdfData: InvoicePdfData = {
       invoiceNumber: invoice.invoiceNumber,
       type: 'FACTURA',
@@ -299,8 +354,7 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       companyPhone: branding.companyPhone || '',
       companyWebsite: branding.companyWebsite || '',
       logoUrl: branding.logoUrl || undefined,
-      primaryColor: branding.primaryColor || '#072053',
-      paymentTerms: branding.paymentTerms || '',
+            paymentTerms: branding.paymentTerms || '',
       bankAccount: branding.bankAccount || undefined,
       clientName: invoice.company?.name || `${invoice.contact?.firstName || ''} ${invoice.contact?.lastName || ''}`.trim() || 'Cliente General',
       clientEmail: invoice.contact?.email,
@@ -319,6 +373,32 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       total: invoice.total,
       currency: invoice.currency,
       notes: invoice.notes || undefined,
+      verifactuHash: invoice.verifactuHash || verifactuHash,
+      previousInvoiceHash: invoice.previousInvoiceHash || undefined,
+      verifactuQrUrl: invoice.verifactuQrUrl || undefined,
+      verifactuQrBuffer,
+      issuerNif: branding.companyTaxId || undefined,
+      isVerifactu: !invoice.proforma,
+      invoiceType: invoice.invoiceType || (invoice.isRectifying ? 'R1' : 'F1'),
+      isRectifying: invoice.isRectifying,
+      discountPercent: invoice.discountPercent,
+      discountAmount: invoice.discountAmount,
+      irpfRate: invoice.irpfRate,
+      irpfAmount: invoice.irpfAmount,
+      primaryColor: branding.pdfAccentColor || branding.primaryColor || '#2563EB',
+      secondaryColor: branding.pdfSecondaryColor || branding.secondaryColor || '#0F172A',
+      pdfTemplate: branding.pdfTemplate || 'MODERN_STRIPE',
+      pdfShowLogo: branding.pdfShowLogo !== false,
+      pdfLogoPosition: branding.pdfLogoPosition || 'LEFT',
+      pdfShowVerifactuQr: branding.pdfShowVerifactuQr !== false,
+      pdfShowBankDetails: branding.pdfShowBankDetails !== false,
+      pdfShowSignatureBox: branding.pdfShowSignatureBox !== false,
+      pdfShowWatermark: Boolean(branding.pdfShowWatermark),
+      pdfWatermarkText: branding.pdfWatermarkText || 'ORIGINAL · VERI*FACTU',
+      pdfHeaderSubtitle: branding.pdfHeaderSubtitle,
+      pdfMercantileRegistry: branding.pdfMercantileRegistry,
+      pdfLopdText: branding.pdfLopdText,
+      pdfFooterLegalText: branding.pdfFooterLegalText,
     };
 
     const buffer = await generatePdfBuffer(pdfData);
@@ -388,9 +468,7 @@ export async function createQuote(req: Request, res: Response): Promise<void> {
     const taxAmount = Number(((subtotal * taxRateNum) / 100).toFixed(2));
     const total = Number((subtotal + taxAmount).toFixed(2));
 
-    const year = new Date().getFullYear();
-    const count = await prisma.quote.count({ where: { tenantId } });
-    const quoteNumber = `PRE-${year}-${String(count + 1).padStart(4, '0')}`;
+    const quoteNumber = await getNextDocumentNumber(prisma, 'quote', 'PRE', tenantId);
     const publicToken = `qsign_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     const quote = await prisma.quote.create({
@@ -473,8 +551,7 @@ export async function downloadQuotePdf(req: Request, res: Response): Promise<voi
       companyPhone: branding.companyPhone || '',
       companyWebsite: branding.companyWebsite || '',
       logoUrl: branding.logoUrl || undefined,
-      primaryColor: branding.primaryColor || '#072053',
-      paymentTerms: branding.paymentTerms || '',
+            paymentTerms: branding.paymentTerms || '',
       bankAccount: branding.bankAccount || undefined,
       clientName: quote.company?.name || `${quote.contact?.firstName || ''} ${quote.contact?.lastName || ''}`.trim() || 'Cliente General',
       clientEmail: quote.contact?.email,
@@ -493,6 +570,19 @@ export async function downloadQuotePdf(req: Request, res: Response): Promise<voi
       total: quote.total,
       currency: quote.currency,
       notes: quote.notes || undefined,
+      primaryColor: branding.pdfAccentColor || branding.primaryColor || '#2563EB',
+      secondaryColor: branding.pdfSecondaryColor || branding.secondaryColor || '#0F172A',
+      pdfTemplate: branding.pdfTemplate || 'MODERN_STRIPE',
+      pdfShowLogo: branding.pdfShowLogo !== false,
+      pdfLogoPosition: branding.pdfLogoPosition || 'LEFT',
+      pdfShowBankDetails: branding.pdfShowBankDetails !== false,
+      pdfShowSignatureBox: branding.pdfShowSignatureBox !== false,
+      pdfShowWatermark: Boolean(branding.pdfShowWatermark),
+      pdfWatermarkText: branding.pdfWatermarkText || 'PRESUPUESTO COMERCIAL',
+      pdfHeaderSubtitle: branding.pdfHeaderSubtitle,
+      pdfMercantileRegistry: branding.pdfMercantileRegistry,
+      pdfLopdText: branding.pdfLopdText,
+      pdfFooterLegalText: branding.pdfFooterLegalText,
     };
 
     const buffer = await generatePdfBuffer(pdfData);
@@ -546,8 +636,7 @@ export async function publicPortalDownload(req: Request, res: Response): Promise
       companyPhone: branding.companyPhone || '',
       companyWebsite: branding.companyWebsite || '',
       logoUrl: branding.logoUrl || undefined,
-      primaryColor: branding.primaryColor || '#072053',
-      paymentTerms: branding.paymentTerms || '',
+            paymentTerms: branding.paymentTerms || '',
       bankAccount: branding.bankAccount || undefined,
       clientName: invoice.company?.name || `${invoice.contact?.firstName || ''} ${invoice.contact?.lastName || ''}`.trim() || 'Cliente General',
       clientEmail: invoice.contact?.email,
@@ -607,60 +696,70 @@ export async function convertQuoteToInvoice(req: Request, res: Response): Promis
       return;
     }
 
-    const existingInvoice = await prisma.invoice.findFirst({
-      where: { quoteId: quote.id },
-    });
+    let invoice: any;
+    try {
+      invoice = await prisma.$transaction(async (tx) => {
+        const existingInvoice = await tx.invoice.findFirst({
+          where: { quoteId: quote.id },
+        });
 
-    if (existingInvoice) {
-      res.status(400).json({
-        success: false,
-        message: `Este presupuesto ya ha sido convertido previamente a la factura ${existingInvoice.invoiceNumber}`,
-        data: existingInvoice,
+        if (existingInvoice) {
+          throw new Error(`ALREADY_CONVERTED:${existingInvoice.invoiceNumber}`);
+        }
+
+        const invoiceNumber = await getNextDocumentNumber(tx, 'invoice', 'FAC', quote.tenantId || 'master');
+
+        const createdInvoice = await tx.invoice.create({
+          data: {
+            invoiceNumber,
+            quoteId: quote.id,
+            contactId: quote.contactId,
+            companyId: quote.companyId,
+            issueDate: new Date(),
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            status: 'DRAFT',
+            subtotal: quote.subtotal,
+            taxRate: quote.taxRate,
+            taxAmount: quote.taxAmount,
+            total: quote.total,
+            currency: quote.currency,
+            notes: quote.notes ? `${quote.notes} (Convertido de ${quote.quoteNumber})` : `Convertido de presupuesto ${quote.quoteNumber}`,
+            tenantId: quote.tenantId || 'master',
+            items: {
+              create: quote.items.map((it) => ({
+                description: it.description,
+                quantity: it.quantity,
+                unitPrice: it.unitPrice,
+                amount: it.amount,
+              })),
+            },
+          },
+          include: {
+            items: true,
+            company: true,
+            contact: true,
+            quote: true,
+          },
+        });
+
+        await tx.quote.update({
+          where: { id: quote.id },
+          data: { status: 'ACCEPTED' },
+        });
+
+        return createdInvoice;
       });
-      return;
+    } catch (txError: any) {
+      if (txError.message && txError.message.startsWith('ALREADY_CONVERTED:')) {
+        const num = txError.message.split(':')[1];
+        res.status(400).json({
+          success: false,
+          message: `Este presupuesto ya ha sido convertido previamente a la factura ${num}`,
+        });
+        return;
+      }
+      throw txError;
     }
-
-    const year = new Date().getFullYear();
-    const count = await prisma.invoice.count({ where: { tenantId: quote.tenantId || 'master' } });
-    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
-
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        quoteId: quote.id,
-        contactId: quote.contactId,
-        companyId: quote.companyId,
-        issueDate: new Date(),
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        status: 'DRAFT',
-        subtotal: quote.subtotal,
-        taxRate: quote.taxRate,
-        taxAmount: quote.taxAmount,
-        total: quote.total,
-        currency: quote.currency,
-        notes: quote.notes ? `${quote.notes} (Convertido de ${quote.quoteNumber})` : `Convertido de presupuesto ${quote.quoteNumber}`,
-        tenantId: quote.tenantId || 'master',
-        items: {
-          create: quote.items.map((it) => ({
-            description: it.description,
-            quantity: it.quantity,
-            unitPrice: it.unitPrice,
-            amount: it.amount,
-          })),
-        },
-      },
-      include: {
-        items: true,
-        company: true,
-        contact: true,
-        quote: true,
-      },
-    });
-
-    await prisma.quote.update({
-      where: { id: quote.id },
-      data: { status: 'ACCEPTED' },
-    });
 
     await logAudit(
       req.user?.id || null,
@@ -695,6 +794,16 @@ export async function deleteInvoice(req: Request, res: Response): Promise<void> 
 
     if (!isSuper && invoice.tenantId !== tenantId) {
       res.status(403).json({ success: false, message: 'No tienes permisos para eliminar esta factura' });
+      return;
+    }
+
+    // VERIFACTU 2027 COMPLIANCE: Invoices cannot be deleted once issued.
+    // Only DRAFT or PROFORMA invoices can be hard-deleted.
+    if (!invoice.proforma && invoice.status !== 'DRAFT') {
+      res.status(403).json({ 
+        success: false, 
+        message: 'Por cumplimiento normativo (Verifactu 2027), no se pueden eliminar facturas emitidas. Debes generar una Factura Rectificativa.' 
+      });
       return;
     }
 
@@ -777,8 +886,7 @@ export async function getPublicQuoteByToken(req: Request, res: Response): Promis
         branding: {
           companyName: branding.companyName || 'DAMA CRM',
           companyTaxId: branding.companyTaxId,
-          primaryColor: branding.primaryColor || '#072053',
-          logoUrl: branding.logoUrl,
+                    logoUrl: branding.logoUrl,
         },
       },
     });
@@ -1218,45 +1326,8 @@ export async function generateInvoiceFromRecurring(req: Request, res: Response):
       return;
     }
 
-    // Generate isolated invoice sequence for tenant
-    const currentYear = new Date().getFullYear();
-    const invoiceCount = await prisma.invoice.count({
-      where: {
-        tenantId: recurring.tenantId || tenantId,
-        invoiceNumber: { startsWith: `FAC-${currentYear}` },
-      },
-    });
-    const invoiceNumber = `FAC-${currentYear}-${String(invoiceCount + 1).padStart(4, '0')}`;
-
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30);
-
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        companyId: recurring.companyId,
-        contactId: recurring.contactId,
-        status: 'SENT',
-        issueDate: new Date(),
-        dueDate,
-        subtotal: recurring.subtotal,
-        taxRate: recurring.taxRate,
-        taxAmount: recurring.taxAmount,
-        total: recurring.total,
-        currency: recurring.currency,
-        notes: `Generada automáticamente desde suscripción recurrente: ${recurring.title}. ${recurring.notes || ''}`.trim(),
-        tenantId: recurring.tenantId || tenantId,
-        items: {
-          create: recurring.items.map((it) => ({
-            description: it.description,
-            quantity: it.quantity,
-            unitPrice: it.unitPrice,
-            amount: it.amount,
-          })),
-        },
-      },
-      include: { company: true, contact: true, items: true },
-    });
 
     // Compute next issue date according to frequency
     const nextDate = new Date(recurring.nextIssueDate || new Date());
@@ -1279,12 +1350,45 @@ export async function generateInvoiceFromRecurring(req: Request, res: Response):
         break;
     }
 
-    await prisma.recurringInvoice.update({
-      where: { id },
-      data: {
-        lastIssuedAt: new Date(),
-        nextIssueDate: nextDate,
-      },
+    const invoice = await prisma.$transaction(async (tx) => {
+      const invoiceNumber = await getNextDocumentNumber(tx, 'invoice', 'FAC', recurring.tenantId || tenantId);
+
+      const created = await tx.invoice.create({
+        data: {
+          invoiceNumber,
+          companyId: recurring.companyId,
+          contactId: recurring.contactId,
+          status: 'SENT',
+          issueDate: new Date(),
+          dueDate,
+          subtotal: recurring.subtotal,
+          taxRate: recurring.taxRate,
+          taxAmount: recurring.taxAmount,
+          total: recurring.total,
+          currency: recurring.currency,
+          notes: `Generada automáticamente desde suscripción recurrente: ${recurring.title}. ${recurring.notes || ''}`.trim(),
+          tenantId: recurring.tenantId || tenantId,
+          items: {
+            create: recurring.items.map((it) => ({
+              description: it.description,
+              quantity: it.quantity,
+              unitPrice: it.unitPrice,
+              amount: it.amount,
+            })),
+          },
+        },
+        include: { company: true, contact: true, items: true },
+      });
+
+      await tx.recurringInvoice.update({
+        where: { id },
+        data: {
+          lastIssuedAt: new Date(),
+          nextIssueDate: nextDate,
+        },
+      });
+
+      return created;
     });
 
     res.json({
@@ -1625,3 +1729,15 @@ export async function sendInvoiceEmail(req: Request, res: Response): Promise<voi
 
 
 
+
+export async function getVerifactuChainStatus(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const branding = await getTenantBranding(tenantId);
+    const issuerNif = branding.companyTaxId || 'B87654323';
+    const chainAudit = await verifyAndSyncVerifactuChain(tenantId, issuerNif);
+    res.json({ success: true, data: chainAudit });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}

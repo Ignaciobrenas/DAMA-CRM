@@ -1,22 +1,27 @@
-# ==============================================================================
-# Stage 1: Build React Frontend
-# ==============================================================================
+# Multi-stage Dockerfile for DAMA-CRM Frontend Client
+# Stage 1: Build
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Copy dependency definitions
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
+# Copy source code and build
 COPY . .
 RUN npm run build
 
-# ==============================================================================
-# Stage 2: Serve with Nginx Alpine
-# ==============================================================================
-FROM nginx:alpine AS runner
+# Stage 2: Production Nginx Server
+FROM nginx:alpine
 
+# Remove default nginx website
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy build artifacts from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy custom Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

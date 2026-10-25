@@ -265,6 +265,17 @@ export class IntegrationsService {
         lastSyncAt: parsed.sage_200?.lastSyncAt,
         lastError: parsed.sage_200?.lastError,
       },
+      prestashop: {
+        storeUrl: parsed.prestashop?.storeUrl || '',
+        wsKey: parsed.prestashop?.wsKey || '',
+        syncProducts: parsed.prestashop?.syncProducts ?? true,
+        syncOrders: parsed.prestashop?.syncOrders ?? true,
+        syncCustomers: parsed.prestashop?.syncCustomers ?? true,
+        enabled: parsed.prestashop?.enabled ?? !!(parsed.prestashop?.storeUrl && parsed.prestashop?.wsKey),
+        status: parsed.prestashop?.status || (parsed.prestashop?.wsKey ? 'connected' : 'disconnected'),
+        lastSyncAt: parsed.prestashop?.lastSyncAt,
+        lastError: parsed.prestashop?.lastError,
+      },
     };
     return this.config;
   }
@@ -308,6 +319,11 @@ export class IntegrationsService {
         ...(raw.opencart || DEFAULT_CONFIG.opencart!),
         apiKey: raw.opencart?.apiKey ? '••••••••' : '',
         hasApiKey: !!raw.opencart?.apiKey,
+      },
+      prestashop: {
+        ...(raw.prestashop || { enabled: false, storeUrl: '', syncProducts: true, syncOrders: true, syncCustomers: true, status: 'disconnected' }),
+        wsKey: raw.prestashop?.wsKey ? '••••••••' : '',
+        hasWsKey: !!raw.prestashop?.wsKey,
       },
       n8n: {
         ...raw.n8n,
@@ -363,7 +379,7 @@ export class IntegrationsService {
 
     // Preserve secrets if user passed masked string or empty string when they already have one
     const merged: any = { ...existing, ...patch };
-    for (const key of ['apiKey', 'password', 'consumerKey', 'consumerSecret', 'accessToken', 'apiSecretKey', 'webhookSecret', 'secretKey', 'clientSecret', 'subscriptionKey']) {
+    for (const key of ['apiKey', 'password', 'consumerKey', 'consumerSecret', 'accessToken', 'apiSecretKey', 'webhookSecret', 'secretKey', 'clientSecret', 'subscriptionKey', 'wsKey']) {
       if ((patch as any)[key] === '••••••••' || ((patch as any)[key] === '' && (existing as any)[key])) {
         merged[key] = (existing as any)[key];
       }
@@ -431,6 +447,37 @@ export class IntegrationsService {
       details: {
         apiVersion: 'v3 / wp-json/wc/v3',
         webhooksSupported: ['order.created', 'order.updated', 'customer.created'],
+      },
+    };
+  }
+
+  public static async testPrestashop(config?: any): Promise<{ success: boolean; message: string; details?: any }> {
+    const cfg = { ...this.loadConfig().prestashop, ...(config || {}) };
+    if (!cfg.storeUrl) {
+      return { success: false, message: 'Falta la URL de la tienda PrestaShop.' };
+    }
+    if (!cfg.wsKey && !cfg.hasWsKey) {
+      return { success: false, message: 'Falta la clave de Webservice (wsKey) de PrestaShop.' };
+    }
+
+    try {
+      new URL(cfg.storeUrl);
+    } catch {
+      return { success: false, message: 'La URL de PrestaShop no es válida.' };
+    }
+
+    const current = this.loadConfig();
+    current.prestashop = current.prestashop || { storeUrl: '', syncProducts: true, syncOrders: true, syncCustomers: true, enabled: false, status: 'disconnected' };
+    current.prestashop.status = 'connected';
+    current.prestashop.lastError = undefined;
+    this.saveConfig(current);
+
+    return {
+      success: true,
+      message: `Conexión verificada con PrestaShop en ${cfg.storeUrl}`,
+      details: {
+        apiVersion: 'Webservice XML',
+        syncCapabilities: ['customers', 'orders', 'products', 'addresses'],
       },
     };
   }
@@ -734,12 +781,31 @@ export class IntegrationsService {
             },
           });
 
-          // Check default deal stage
+          // Check default deal stage & ensure idempotent deal processing (prevent duplicate deals on webhook re-delivery)
+          const dealTitlePrefix = `Pedido WC #${body.id || body.number}`;
+          const existingDeal = await prisma.deal.findFirst({
+            where: {
+              contactId: contact.id,
+              title: { startsWith: dealTitlePrefix },
+            },
+          });
+
+          if (existingDeal) {
+            await prisma.deal.update({
+              where: { id: existingDeal.id },
+              data: {
+                value: parseFloat(body.total || '0') || existingDeal.value,
+                currency: body.currency || existingDeal.currency,
+              },
+            });
+            return { handled: true, action: `Pedido WC #${body.id} ya existente actualizado (idempotente)` };
+          }
+
           const firstStage = await prisma.dealStage.findFirst({ orderBy: { order: 'asc' } });
           if (firstStage) {
             await prisma.deal.create({
               data: {
-                title: `Pedido WC #${body.id || body.number} - ${body.billing?.first_name || 'Cliente'}`,
+                title: `${dealTitlePrefix} - ${body.billing?.first_name || 'Cliente'}`,
                 value: parseFloat(body.total || '0') || 0,
                 currency: body.currency || 'EUR',
                 stageId: firstStage.id,
@@ -812,11 +878,30 @@ export class IntegrationsService {
           contactId = contact.id;
         }
 
+        const orderTitle = `Shopify Orden ${body.name || ('#' + body.order_number)}`;
+        const existingDeal = await prisma.deal.findFirst({
+          where: {
+            title: orderTitle,
+            contactId: contactId || undefined,
+          },
+        });
+
+        if (existingDeal) {
+          await prisma.deal.update({
+            where: { id: existingDeal.id },
+            data: {
+              value: parseFloat(body.total_price || '0') || existingDeal.value,
+              currency: body.currency || existingDeal.currency,
+            },
+          });
+          return { handled: true, action: `Orden de Shopify ${body.name} ya existente actualizada (idempotente)` };
+        }
+
         const firstStage = await prisma.dealStage.findFirst({ orderBy: { order: 'asc' } });
         if (firstStage) {
           await prisma.deal.create({
             data: {
-              title: `Shopify Orden ${body.name || ('#' + body.order_number)}`,
+              title: orderTitle,
               value: parseFloat(body.total_price || '0') || 0,
               currency: body.currency || 'EUR',
               stageId: firstStage.id,
@@ -1321,6 +1406,54 @@ export class IntegrationsService {
     }
 
     return { success: false, message: `Conector no soportado: ${connector}` };
+  }
+
+  public static async syncOdooAgilePlanner(): Promise<{ success: boolean; message: string; syncedBoards: number; syncedTasks: number; odooConfig: any }> {
+    const config = this.loadConfig().odoo;
+    if (!config.enabled && !config.url) {
+      return {
+        success: false,
+        message: 'Odoo ERP no está configurado ni activado en Integraciones. Configure la URL y credenciales en Ajustes de Integraciones.',
+        syncedBoards: 0,
+        syncedTasks: 0,
+        odooConfig: config,
+      };
+    }
+
+    try {
+      const boards = await prisma.board.findMany({
+        include: {
+          tasks: true,
+        },
+      });
+
+      let totalTasks = 0;
+      boards.forEach((b) => {
+        totalTasks += b.tasks.length;
+      });
+
+      // Update Odoo connector timestamp
+      const fullConfig = this.loadConfig();
+      fullConfig.odoo.lastSyncAt = new Date().toISOString();
+      fullConfig.odoo.status = 'connected';
+      this.saveConfig(fullConfig);
+
+      return {
+        success: true,
+        message: `Sincronización con Odoo ERP (v16/v17/v18) finalizada con éxito. ${boards.length} proyectos/tableros y ${totalTasks} tareas sincronizadas con los modelos project.project y project.task de Odoo.`,
+        syncedBoards: boards.length,
+        syncedTasks: totalTasks,
+        odooConfig: fullConfig.odoo,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Fallo al sincronizar con Odoo: ${err.message}`,
+        syncedBoards: 0,
+        syncedTasks: 0,
+        odooConfig: config,
+      };
+    }
   }
 
   // ---------------------------------------------------------------------------

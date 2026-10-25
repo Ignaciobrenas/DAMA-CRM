@@ -22,6 +22,7 @@ import {
   Percent,
   Receipt,
   FileCheck2,
+  ShieldCheck,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
@@ -31,6 +32,7 @@ import { ConfirmModal } from '../components/common/ConfirmModal';
 import { PermissionGate } from '../components/common/PermissionGate';
 import { AgingReportModal } from '../components/invoicing/AgingReportModal';
 import { QuoteSignModal } from '../components/invoicing/QuoteSignModal';
+import { VerifactuChainModal } from '../components/invoicing/VerifactuChainModal';
 import { exportToCSV } from '../utils/exportUtils';
 import { ExcelCsvImportModal } from '../components/common/ExcelCsvImportModal';
 
@@ -58,6 +60,7 @@ export const Invoicing: React.FC = () => {
   // SME Suite Modals
   const [isAgingModalOpen, setIsAgingModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isVerifactuModalOpen, setIsVerifactuModalOpen] = useState(false);
   const [signingQuote, setSigningQuote] = useState<any>(null);
 
   // Custom Confirm Modal state
@@ -97,6 +100,8 @@ export const Invoicing: React.FC = () => {
   const [irpfRate, setIrpfRate] = useState('0');
   const [paymentTerms, setPaymentTerms] = useState('DAYS_30');
   const [isProforma, setIsProforma] = useState(false);
+  const [invoiceType, setInvoiceType] = useState('F1');
+  const [invoiceSeries, setInvoiceSeries] = useState('A');
   const [frequency, setFrequency] = useState('MONTHLY');
   const [contractType, setContractType] = useState('SERVICE');
   const [contractValue, setContractValue] = useState('');
@@ -372,6 +377,8 @@ export const Invoicing: React.FC = () => {
 
       if (modalType === 'invoice') {
         body.invoiceNumber = number;
+        body.invoiceType = invoiceType;
+        body.invoiceSeries = invoiceSeries;
       } else {
         body.quoteNumber = number;
       }
@@ -522,65 +529,41 @@ export const Invoicing: React.FC = () => {
     toast.success(t('success'), `${quotes.length} presupuestos exportados a CSV`);
   };
 
+  const kpiTotals = useMemo(() => {
+    const totalInvoiced = invoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
+    const totalCollected = invoices.filter((i) => i.status === 'PAID').reduce((acc, inv) => acc + (inv.total || 0), 0);
+    const totalPending = invoices.filter((i) => i.status !== 'PAID').reduce((acc, inv) => acc + (inv.total || 0), 0);
+    const quotesTotal = quotes.reduce((acc, q) => acc + (q.total || 0), 0);
+    return { totalInvoiced, totalCollected, totalPending, quotesTotal };
+  }, [invoices, quotes]);
+
   return (
     <div className="space-y-4">
-      {/* Header & Tabs */}
+      {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
             {t('invoicing')}
           </h1>
-          <p className="text-xs text-gray-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('invoicingSubtitle')}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg border border-gray-200 dark:border-slate-700">
-            <button
-              onClick={() => setActiveTab('invoices')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'invoices'
-                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
-              }`}
-            >
-              Facturas ({invoices.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('quotes')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'quotes'
-                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
-              }`}
-            >
-              {t('quotes')} ({quotes.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('recurring')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'recurring'
-                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
-              }`}
-            >
-              Suscripciones ({recurringInvoices.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('contracts')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                activeTab === 'contracts'
-                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-slate-200'
-              }`}
-            >
-              Contratos ({contracts.length})
-            </button>
-          </div>
+          <button
+            onClick={() => setIsVerifactuModalOpen(true)}
+            data-testid="btn-verifactu-audit"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-lg text-xs font-bold shadow-xs transition-all active:scale-[0.98] shrink-0"
+            title="Auditoría Criptográfica Veri*Factu (AEAT RD 1007/2023)"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Veri*Factu AEAT</span>
+          </button>
 
           <button
             onClick={() => setIsAgingModalOpen(true)}
+            data-testid="btn-aging-report"
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             title="Informe de Antigüedad de Deuda y Control de Morosidad"
           >
@@ -590,7 +573,8 @@ export const Invoicing: React.FC = () => {
 
           <button
             onClick={activeTab === 'invoices' ? handleExportInvoicesCsv : handleExportQuotesCsv}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+            data-testid="btn-export-csv"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             title="Exportar listado a archivo CSV compatible con Excel"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
@@ -600,6 +584,7 @@ export const Invoicing: React.FC = () => {
           <PermissionGate resource="invoices" action="create">
             <button
               onClick={() => setIsImportModalOpen(true)}
+              data-testid="btn-import-invoices"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
               title="Importar Facturas por Excel o CSV"
             >
@@ -614,6 +599,7 @@ export const Invoicing: React.FC = () => {
                 setModalType('invoice');
                 setIsModalOpen(true);
               }}
+              data-testid="btn-new-invoice"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -626,6 +612,7 @@ export const Invoicing: React.FC = () => {
                 setModalType('quote');
                 setIsModalOpen(true);
               }}
+              data-testid="btn-new-quote"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -638,6 +625,7 @@ export const Invoicing: React.FC = () => {
                 setModalType('recurring');
                 setIsModalOpen(true);
               }}
+              data-testid="btn-new-recurring"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -650,6 +638,7 @@ export const Invoicing: React.FC = () => {
                 setModalType('contract');
                 setIsModalOpen(true);
               }}
+              data-testid="btn-new-contract"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -657,6 +646,113 @@ export const Invoicing: React.FC = () => {
             </button>
           </PermissionGate>
         </div>
+      </div>
+
+      {/* KPI Metrics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+            <Receipt className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Total Facturado</p>
+            <p className="text-base font-bold text-slate-900 dark:text-white" data-testid="kpi-total-invoiced">
+              {kpiTotals.totalInvoiced.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Cobrado (Pagado)</p>
+            <p className="text-base font-bold text-slate-900 dark:text-white" data-testid="kpi-total-paid">
+              {kpiTotals.totalCollected.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Pendiente de Cobro</p>
+            <p className="text-base font-bold text-slate-900 dark:text-white" data-testid="kpi-total-pending">
+              {kpiTotals.totalPending.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Presupuestos ({quotes.length})</p>
+            <p className="text-base font-bold text-slate-900 dark:text-white" data-testid="kpi-total-quotes">
+              {kpiTotals.quotesTotal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div role="tablist" aria-label="Secciones de Facturación" className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-fit">
+        <button
+          role="tab"
+          aria-selected={activeTab === 'invoices'}
+          data-testid="tab-invoices"
+          onClick={() => setActiveTab('invoices')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'invoices'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          Facturas ({invoices.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'quotes'}
+          data-testid="tab-quotes"
+          onClick={() => setActiveTab('quotes')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'quotes'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          {t('quotes')} ({quotes.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'recurring'}
+          data-testid="tab-recurring"
+          onClick={() => setActiveTab('recurring')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'recurring'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          Suscripciones ({recurringInvoices.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'contracts'}
+          data-testid="tab-contracts"
+          onClick={() => setActiveTab('contracts')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'contracts'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          Contratos ({contracts.length})
+        </button>
       </div>
 
       {/* Tab: Invoices List */}
@@ -724,6 +820,15 @@ export const Invoicing: React.FC = () => {
                             {inv.proforma && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
                                 Proforma
+                              </span>
+                            )}
+                            {!inv.proforma && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                                title={`Veri*Factu SHA-256: ${inv.verifactuHash || 'VERIFIED'}`}
+                              >
+                                <ShieldCheck className="w-2.5 h-2.5" />
+                                <span>{inv.invoiceType || 'F1'}</span>
                               </span>
                             )}
                           </div>
@@ -1149,25 +1254,63 @@ export const Invoicing: React.FC = () => {
         size="lg"
       >
         <form onSubmit={handleCreateDocument} className="space-y-4">
-          {/* Proforma toggle for Invoices */}
+          {/* Proforma & AEAT Veri*Factu Type for Invoices */}
           {modalType === 'invoice' && (
-            <div className="flex items-center justify-between p-2.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900/40">
-              <div className="flex items-center space-x-2">
-                <FileText className="w-4 h-4 text-blue-600" />
-                <div>
-                  <div className="text-xs font-bold text-gray-900 dark:text-white">Factura Proforma</div>
-                  <div className="text-[10px] text-gray-500 dark:text-slate-400">Genera un documento informativo previo sin validez contable fiscal</div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-2.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900/40">
+                <div className="flex items-center space-x-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <div className="text-xs font-bold text-gray-900 dark:text-white">Factura Proforma</div>
+                    <div className="text-[10px] text-gray-500 dark:text-slate-400">Genera un documento informativo previo sin validez contable fiscal</div>
+                  </div>
                 </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isProforma}
+                    onChange={(e) => setIsProforma(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isProforma}
-                  onChange={(e) => setIsProforma(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
+
+              {!isProforma && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-2.5 bg-emerald-50/60 dark:bg-emerald-950/20 rounded-lg border border-emerald-200/80 dark:border-emerald-900/40">
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-900 dark:text-emerald-300 mb-1">
+                      Tipo de Factura AEAT (Veri*Factu)
+                    </label>
+                    <select
+                      data-testid="select-invoice-type-aeat"
+                      value={invoiceType}
+                      onChange={(e) => setInvoiceType(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg text-slate-900 dark:text-white"
+                    >
+                      <option value="F1">F1 - Factura Ordinaria (Art. 6 RD 1619/2012)</option>
+                      <option value="F2">F2 - Factura Simplificada / Ticket (Art. 7)</option>
+                      <option value="R1">R1 - Rectificativa Error Fundado Derecho (Art. 80.1)</option>
+                      <option value="R2">R2 - Rectificativa Concurso Acreedores (Art. 80.3)</option>
+                      <option value="R4">R4 - Factura Rectificativa Resto Causas</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-900 dark:text-emerald-300 mb-1">
+                      Serie Fiscal Oficial
+                    </label>
+                    <select
+                      value={invoiceSeries}
+                      onChange={(e) => setInvoiceSeries(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg text-slate-900 dark:text-white font-mono"
+                    >
+                      <option value="A">Serie A - Operaciones Nacionales Ordinarias</option>
+                      <option value="E">Serie E - Operaciones Intracomunitarias (ROI/VIES)</option>
+                      <option value="R">Serie R - Serie Especial Rectificativas</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1367,6 +1510,7 @@ export const Invoicing: React.FC = () => {
                 <div key={idx} className="flex items-center space-x-2">
                   <input
                     type="text"
+                    data-testid={`item-desc-${idx}`}
                     placeholder={t('conceptDescription')}
                     required
                     value={it.description}
@@ -1375,6 +1519,7 @@ export const Invoicing: React.FC = () => {
                   />
                   <input
                     type="number"
+                    data-testid={`item-qty-${idx}`}
                     placeholder={t('quantity')}
                     required
                     min="1"
@@ -1384,6 +1529,7 @@ export const Invoicing: React.FC = () => {
                   />
                   <input
                     type="number"
+                    data-testid={`item-price-${idx}`}
                     placeholder={t('invoicing.pricePlaceholder')}
                     required
                     step="0.01"
@@ -1479,6 +1625,7 @@ export const Invoicing: React.FC = () => {
             </button>
             <button
               type="submit"
+              data-testid="invoice-submit-btn"
               className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs"
             >
               {modalType === 'invoice'
@@ -1536,6 +1683,11 @@ export const Invoicing: React.FC = () => {
       </Modal>
 
       {/* SME Modals */}
+      <VerifactuChainModal
+        isOpen={isVerifactuModalOpen}
+        onClose={() => setIsVerifactuModalOpen(false)}
+      />
+
       <AgingReportModal
         isOpen={isAgingModalOpen}
         onClose={() => setIsAgingModalOpen(false)}

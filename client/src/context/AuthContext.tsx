@@ -4,14 +4,18 @@ import { soundService } from '../services/sound';
 
 export interface UserPreferences {
   soundEnabled?: boolean;
+  soundPreferences?: Record<string, boolean>;
   sidebarCollapsed?: boolean;
   sidebarPinnedItems?: string[];
+  sidebarOrder?: string[];
+  sidebarHiddenItems?: string[];
   dashboardWidgets?: string[];
   theme?: 'light' | 'dark' | 'system';
   language?: string;
   emailNotifications?: boolean;
   compactMode?: boolean;
   onboardingCompleted?: boolean;
+  completedModuleTours?: string[];
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   uiScale?: number;
   iconStyle?: 'animated' | 'solid' | 'minimal';
@@ -214,6 +218,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('dama_user', JSON.stringify(updatedUser));
     if (newPreferences.soundEnabled !== undefined) {
       soundService.setMuted(!newPreferences.soundEnabled);
+    }
+    if (newPreferences.soundPreferences) {
+      soundService.loadPreferences(newPreferences.soundPreferences as any);
     }
 
     try {

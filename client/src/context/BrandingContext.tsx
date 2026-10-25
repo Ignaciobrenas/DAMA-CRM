@@ -2,12 +2,15 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { apiRequest } from '../services/api';
 import { wsClient } from '../services/websocket';
 
+export type PdfTemplateStyle = 'MODERN_STRIPE' | 'CORPORATE_SAGE' | 'CLASSIC_EXECUTIVE' | 'MINIMAL_SWISS';
+
 export interface BrandingConfig {
   companyName: string;
   logoUrl: string;
   logoDarkUrl?: string;
   logoLightUrl?: string;
   primaryColor: string;
+  secondaryColor?: string;
   borderRadius: 'sm' | 'md' | 'lg' | 'full';
   companyTaxId?: string;
   companyAddress?: string;
@@ -20,16 +23,32 @@ export interface BrandingConfig {
   quotePrefix?: string;
   paymentTerms?: string;
   bankAccount?: string;
+  // PDF Design Studio & Customization
+  pdfTemplate?: PdfTemplateStyle;
+  pdfAccentColor?: string;
+  pdfSecondaryColor?: string;
+  pdfShowLogo?: boolean;
+  pdfLogoPosition?: 'LEFT' | 'RIGHT';
+  pdfShowVerifactuQr?: boolean;
+  pdfShowBankDetails?: boolean;
+  pdfShowSignatureBox?: boolean;
+  pdfShowWatermark?: boolean;
+  pdfWatermarkText?: string;
+  pdfHeaderSubtitle?: string;
+  pdfMercantileRegistry?: string;
+  pdfLopdText?: string;
+  pdfFooterLegalText?: string;
 }
 
-const DEFAULT_BRANDING: BrandingConfig = {
+export const DEFAULT_BRANDING: BrandingConfig = {
   companyName: 'DAMA CRM',
   logoUrl: '',
   logoDarkUrl: '',
   logoLightUrl: '',
   primaryColor: '#2563EB',
+  secondaryColor: '#0F172A',
   borderRadius: 'md',
-  companyTaxId: 'B-12345678',
+  companyTaxId: 'B87654323',
   companyAddress: 'Avenida Tecnológica 42, 28046 Madrid, España',
   companyEmail: 'contacto@dama-crm.com',
   companyPhone: '+34 910 000 000',
@@ -40,6 +59,23 @@ const DEFAULT_BRANDING: BrandingConfig = {
   quotePrefix: 'PRE-2026-',
   paymentTerms: 'Transferencia bancaria a 30 días',
   bankAccount: 'ES91 2100 0418 4502 0005 1332',
+  // PDF Design Studio Defaults
+  pdfTemplate: 'MODERN_STRIPE',
+  pdfAccentColor: '#2563EB',
+  pdfSecondaryColor: '#0F172A',
+  pdfShowLogo: true,
+  pdfLogoPosition: 'LEFT',
+  pdfShowVerifactuQr: true,
+  pdfShowBankDetails: true,
+  pdfShowSignatureBox: true,
+  pdfShowWatermark: false,
+  pdfWatermarkText: 'ORIGINAL · VERI*FACTU',
+  pdfHeaderSubtitle: 'Sistemas de Gestión Empresarial & ERP Cloud',
+  pdfMercantileRegistry: 'Inscrita en el Registro Mercantil de Madrid · Tomo 41.205 · Folio 112 · Hoja M-730412',
+  pdfLopdText:
+    'Protección de Datos (RGPD / LOPDGDD): Los datos personales reflejados en este documento son tratados por el emisor con la finalidad exclusiva de la gestión administrativa, contable y fiscal derivada de la relación mercantil.',
+  pdfFooterLegalText:
+    'Documento mercantil normalizado conforme a ISO 216, ISO 8601, ISO 4217 y Reglamento Veri*Factu (RD 1007/2023 & Orden HAC/1177/2024).',
 };
 
 const RADIUS_MAP: Record<string, string> = {
@@ -54,6 +90,7 @@ interface BrandingContextType {
   updateBranding: (newConfig: Partial<BrandingConfig>) => Promise<void>;
   resetBranding: () => Promise<void>;
   getLogo: (variant?: 'symbol' | 'full' | 'vertical', forceDark?: boolean) => string;
+  isCustomLogo: boolean;
   isDarkMode: boolean;
 }
 
@@ -77,7 +114,6 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   useEffect(() => {
-    // Observe dark class changes on <html>
     const observer = new MutationObserver(() => {
       const isDark = document.documentElement.classList.contains('dark');
       setIsDarkMode(isDark);
@@ -92,11 +128,10 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   useEffect(() => {
-    // Apply dynamic CSS variables to root HTML
     const root = document.documentElement;
-    root.style.setProperty('--brand-color', branding.primaryColor || '#072053');
+    root.style.setProperty('--brand-color', branding.primaryColor || '#2563EB');
     root.style.setProperty('--custom-radius', RADIUS_MAP[branding.borderRadius] || '0.85rem');
-    root.style.setProperty('--brand-tint', `${branding.primaryColor || '#072053'}1A`);
+    root.style.setProperty('--brand-tint', `${branding.primaryColor || '#2563EB'}1A`);
 
     try {
       localStorage.setItem('dama_crm_branding', JSON.stringify(branding));
@@ -104,25 +139,29 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [branding]);
 
   useEffect(() => {
-    // Fetch persisted branding from server
     apiRequest('/branding')
       .then((res) => {
         if (res.success && res.data) {
-          setBranding((prev) => ({ ...prev, ...res.data }));
-          try {
-            localStorage.setItem('dama_crm_branding', JSON.stringify({ ...branding, ...res.data }));
-          } catch {}
+          setBranding((prev) => {
+            const merged = { ...prev, ...res.data };
+            try {
+              localStorage.setItem('dama_crm_branding', JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
         }
       })
       .catch(() => {});
 
-    // Listen to real-time branding updates via WebSocket
     const unsub = wsClient.on('branding:update', (updated: BrandingConfig) => {
       if (updated) {
-        setBranding((prev) => ({ ...prev, ...updated }));
-        try {
-          localStorage.setItem('dama_crm_branding', JSON.stringify(updated));
-        } catch {}
+        setBranding((prev) => {
+          const merged = { ...prev, ...updated };
+          try {
+            localStorage.setItem('dama_crm_branding', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
       }
     });
 
@@ -160,36 +199,35 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {}
   };
 
+  const isCustomLogo =
+    Boolean(branding.logoUrl) &&
+    !branding.logoUrl.includes('dama-symbol') &&
+    !branding.logoUrl.includes('dama-logo');
+
   const getLogo = useCallback(
     (variant: 'symbol' | 'full' | 'vertical' = 'symbol', forceDark?: boolean): string => {
       const dark = forceDark !== undefined ? forceDark : isDarkMode;
 
-      // If user has a custom logo specified, use it
-      const hasCustomLogo =
-        Boolean(branding.logoUrl) &&
-        !branding.logoUrl.includes('dama-symbol') &&
-        !branding.logoUrl.includes('dama-logo');
-
-      if (hasCustomLogo) {
+      if (isCustomLogo) {
         if (dark && branding.logoDarkUrl) return branding.logoDarkUrl;
         if (!dark && branding.logoLightUrl) return branding.logoLightUrl;
         return branding.logoUrl;
       }
 
-      // Default DAMA logo placeholders (Permanent official assets from client/public/assets/logos)
+      // Official immutable DAMA logo placeholders from client/public/assets/logos/
       if (variant === 'full') {
-        return dark ? '/assets/logos/dama-logo-white.png' : '/assets/logos/dama-logo-dark.png';
+        return dark ? './assets/logos/dama-logo-white.png' : './assets/logos/dama-logo-dark.png';
       }
       if (variant === 'vertical') {
-        return dark ? '/assets/logos/dama-logo-vertical-white.png' : '/assets/logos/dama-logo-vertical-dark.png';
+        return dark ? './assets/logos/dama-logo-vertical-white.png' : './assets/logos/dama-logo-vertical-dark.png';
       }
-      return dark ? '/assets/logos/dama-symbol-white.png' : '/assets/logos/dama-symbol-dark.png';
+      return dark ? './assets/logos/dama-symbol-white.png' : './assets/logos/dama-symbol-dark.png';
     },
-    [branding, isDarkMode]
+    [branding, isDarkMode, isCustomLogo]
   );
 
   return (
-    <BrandingContext.Provider value={{ branding, updateBranding, resetBranding, getLogo, isDarkMode }}>
+    <BrandingContext.Provider value={{ branding, updateBranding, resetBranding, getLogo, isCustomLogo, isDarkMode }}>
       {children}
     </BrandingContext.Provider>
   );

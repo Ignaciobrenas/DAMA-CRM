@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { authMiddleware } from '../../middlewares/auth.middleware';
 import {
   submitContactForm,
   submitLeadMagnet,
@@ -13,6 +14,7 @@ import {
   submitSupportTicket,
   getClientTickets,
   exportCustomerData,
+  submitArcoRequest,
 } from './lead-capture.controller';
 
 const router = Router();
@@ -34,10 +36,11 @@ router.post('/ecommerce/order', handleEcommerceOrder);
 
 // 4. Privacidad RGPD & Consentimientos
 router.post('/consent', updateMarketingConsent);
-router.get('/privacy-export', exportCustomerData);
+router.get('/privacy-export', authMiddleware, exportCustomerData);
+router.post('/arco-request', submitArcoRequest);
 
 // 5. Helpdesk Ticketing
 router.post('/tickets', submitSupportTicket);
-router.get('/tickets', getClientTickets);
+router.get('/tickets', authMiddleware, getClientTickets);
 
 export default router;

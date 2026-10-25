@@ -305,7 +305,7 @@ echo "Respuesta DAMA-CRM: " . $response;
           exit={{ opacity: 0, scale: 0.96, y: 15 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[92vh] flex flex-col z-10"
+          className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[92vh] flex flex-col z-10 m-auto"
         >
           {/* Header */}
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/70">
@@ -431,7 +431,7 @@ echo "Respuesta DAMA-CRM: " . $response;
                     </div>
                   </div>
                   <a
-                    href="http://localhost:4000/api/docs"
+                    href={`${window.location.origin}/api/docs`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition"

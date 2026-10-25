@@ -12,18 +12,51 @@ export const isSuperAdminUser = (user: any): boolean => {
   );
 };
 
+export const hasEmployeePermission = (user: any, action: string = 'read'): boolean => {
+  if (
+    user?.role === 'ADMIN' ||
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'GOD' ||
+    user?.tenantId === 'god' ||
+    isSuperAdminUser(user)
+  ) {
+    return true;
+  }
+  return Boolean(
+    user?.permissions?.some(
+      (p: any) =>
+        (p.resource === 'employees' || p.resource === '*') &&
+        (p.action === action || p.action === 'manage')
+    )
+  );
+};
+
 export const listEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
     const isSuper = isSuperAdminUser(user);
     const tenantId = isSuper ? (req.query.tenantId as string) || user?.tenantId || 'master' : user?.tenantId || 'master';
     const department = req.query.department as string | undefined;
+    const contractType = req.query.contractType as string | undefined;
+    const search = req.query.search as string | undefined;
     const status = req.query.status as string | undefined;
 
     const where: any = {
       ...(isSuper && !req.query.tenantId ? {} : { tenantId }),
       ...(department ? { department } : {}),
+      ...(contractType ? { contractType } : {}),
       ...(status ? { status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { firstName: { contains: search } },
+              { lastName: { contains: search } },
+              { email: { contains: search } },
+              { jobTitle: { contains: search } },
+              { department: { contains: search } },
+            ],
+          }
+        : {}),
     };
 
     const employees = await prisma.employee.findMany({
@@ -36,7 +69,7 @@ export const listEmployees = async (req: Request, res: Response): Promise<void> 
     });
 
     // Privacy Masking: If requester is standard employee and not HR/Admin, mask confidential salary & IBAN of others
-    const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(user, 'read');
     const sanitized = employees.map((emp) => {
       const isSelf = emp.userId === user?.id;
       if (!isHrOrAdmin && !isSelf) {
@@ -82,7 +115,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
     }
 
     // Privacy check for standard employees
-    const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(user, 'read');
     const isSelf = employee.userId === user?.id;
 
     if (!isHrOrAdmin && !isSelf) {
@@ -109,27 +142,53 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     const currentUser = (req as any).user;
     const isSuper = isSuperAdminUser(currentUser);
     const {
+      name,
       firstName,
       lastName,
       email,
       phone,
       jobTitle,
-      department = 'ENGINEERING',
+      department = 'Engineering',
       contractType = 'INDEFINIDO',
-      baseSalary = 0,
+      baseSalary,
+      salary,
       iban,
       targetTenantId,
+      tenantId,
       createLogin = false,
       initialPassword,
     } = req.body;
 
-    if (!firstName || !lastName || !email) {
-      res.status(400).json({ success: false, message: 'Nombre, apellidos y email son obligatorios' });
+    const fullName = (name || '').trim();
+    const resolvedFirstName = (firstName || fullName.split(' ')[0] || '').trim();
+    const resolvedLastName = (lastName || fullName.split(' ').slice(1).join(' ') || 'Corporativo').trim();
+    const resolvedSalary = parseFloat(baseSalary ?? salary) || 0;
+    const resolvedTargetTenantId = targetTenantId || tenantId;
+
+    if (!resolvedFirstName || !email) {
+      res.status(400).json({ success: false, message: 'Nombre y email son obligatorios' });
       return;
     }
 
     // Multi-tenant permission rule: Company Admin can ONLY create in own tenant, God can assign to any tenant
-    const assignedTenantId = isSuper ? (targetTenantId || currentUser?.tenantId || 'master') : (currentUser?.tenantId || 'master');
+    const assignedTenantId = isSuper ? (resolvedTargetTenantId || currentUser?.tenantId || 'master') : (currentUser?.tenantId || 'master');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check duplicate employee by email in tenant
+    const existingEmployee = await prisma.employee.findFirst({
+      where: {
+        tenantId: assignedTenantId,
+        email: normalizedEmail,
+      },
+    });
+    if (existingEmployee) {
+      res.status(409).json({
+        success: false,
+        message: `Ya existe un empleado con el correo electrónico "${normalizedEmail}" (${existingEmployee.firstName} ${existingEmployee.lastName}) en esta organización`,
+        data: existingEmployee,
+      });
+      return;
+    }
 
     let linkedUserId: string | null = null;
 
@@ -146,7 +205,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         const passwordHash = await bcrypt.hash(initialPassword || 'Dama2026!', 10);
         const newUser = await prisma.user.create({
           data: {
-            name: `${firstName} ${lastName}`,
+            name: `${resolvedFirstName} ${resolvedLastName}`.trim(),
             email,
             passwordHash,
             roleId: defaultRole!.id,
@@ -162,14 +221,14 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       data: {
         userId: linkedUserId,
         tenantId: assignedTenantId,
-        firstName,
-        lastName,
-        email,
+        firstName: resolvedFirstName,
+        lastName: resolvedLastName,
+        email: normalizedEmail,
         phone,
         jobTitle,
         department,
         contractType,
-        baseSalary: parseFloat(baseSalary) || 0,
+        baseSalary: resolvedSalary,
         iban,
         status: 'ACTIVE',
       },
@@ -193,7 +252,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
     const currentUser = (req as any).user;
     const isSuper = isSuperAdminUser(currentUser);
-    const isHrOrAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(currentUser, 'update');
 
     if (!isHrOrAdmin) {
       res.status(403).json({ success: false, message: 'Permisos insuficientes para editar empleados' });
@@ -243,6 +302,11 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
     const currentUser = (req as any).user;
     const isSuper = isSuperAdminUser(currentUser);
+
+    if (!hasEmployeePermission(currentUser, 'delete')) {
+      res.status(403).json({ success: false, message: 'Permisos insuficientes para eliminar empleados' });
+      return;
+    }
 
     const existing = await prisma.employee.findUnique({ where: { id } });
     if (!existing) {

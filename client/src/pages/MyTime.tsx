@@ -45,6 +45,7 @@ export const MyTime: React.FC = () => {
 
   // Report time on task modal state
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isClockOutConfirmOpen, setIsClockOutConfirmOpen] = useState(false);
   const [logTaskId, setLogTaskId] = useState('');
   const [logHours, setLogHours] = useState('1');
   const [logDescription, setLogDescription] = useState('');
@@ -77,7 +78,21 @@ export const MyTime: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const onTimerSync = () => loadData();
+    window.addEventListener('dama:timer-updated', onTimerSync);
+    return () => window.removeEventListener('dama:timer-updated', onTimerSync);
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isLogModalOpen) setIsLogModalOpen(false);
+        if (isClockOutConfirmOpen) setIsClockOutConfirmOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLogModalOpen, isClockOutConfirmOpen]);
 
   // Update live timer when clocked in
   useEffect(() => {
@@ -86,10 +101,15 @@ export const MyTime: React.FC = () => {
       return;
     }
 
-    const clockInTime = new Date(clockStatus.activeRecord.clockIn).getTime();
     const updateTimer = () => {
-      const now = Date.now();
-      setLiveElapsedSeconds(Math.max(0, Math.floor((now - clockInTime) / 1000)));
+      const rec = clockStatus.activeRecord;
+      const acc = rec.accumulatedSeconds || 0;
+      if (rec.isPaused) {
+        setLiveElapsedSeconds(acc);
+        return;
+      }
+      const startMs = new Date(rec.lastResumedAt || rec.clockIn).getTime();
+      setLiveElapsedSeconds(acc + Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
     };
 
     updateTimer();
@@ -120,6 +140,7 @@ export const MyTime: React.FC = () => {
       if (res.success) {
         soundService.play('success');
         toast.success('Jornada Iniciada', 'Fichaje de entrada registrado correctamente');
+        window.dispatchEvent(new CustomEvent('dama:timer-updated'));
         loadData();
       } else {
         toast.error('Error', res.message || 'No se pudo registrar el fichaje');
@@ -130,8 +151,6 @@ export const MyTime: React.FC = () => {
       setIsClocking(false);
     }
   };
-
-  const [isClockOutConfirmOpen, setIsClockOutConfirmOpen] = useState(false);
 
   const handleClockOut = async () => {
     setIsClocking(true);
@@ -147,6 +166,7 @@ export const MyTime: React.FC = () => {
         toast.success('Jornada Finalizada', res.message || 'Fichaje de salida registrado');
         setClockNotes('');
         setIsClockOutConfirmOpen(false);
+        window.dispatchEvent(new CustomEvent('dama:timer-updated'));
         loadData();
       } else {
         toast.error('Error', res.message || 'No se pudo cerrar el fichaje');
@@ -264,6 +284,7 @@ export const MyTime: React.FC = () => {
           </div>
 
           <button
+            data-testid="mytime-log-hours-btn"
             onClick={() => setIsLogModalOpen(true)}
             className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm shadow-blue-600/20"
           >
@@ -307,6 +328,7 @@ export const MyTime: React.FC = () => {
                   Lugar / Modalidad de Trabajo
                 </label>
                 <select
+                  aria-label="Lugar o modalidad de trabajo"
                   value={clockReason}
                   onChange={(e) => setClockReason(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -530,11 +552,15 @@ export const MyTime: React.FC = () => {
       {/* Modal Report Hours on Task */}
       {isLogModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Reportar horas de trabajo en tarea"
+          data-testid="mytime-log-hours-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-xs"
           onClick={() => setIsLogModalOpen(false)}
         >
           <div
-            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4"
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 m-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center">
@@ -543,6 +569,7 @@ export const MyTime: React.FC = () => {
                 <span>Reportar Horas de Trabajo</span>
               </h3>
               <button
+                aria-label="Cerrar modal de reporte de horas"
                 onClick={() => setIsLogModalOpen(false)}
                 className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
@@ -554,6 +581,7 @@ export const MyTime: React.FC = () => {
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Seleccionar Tarea *</label>
                 <select
+                  aria-label="Seleccionar tarea"
                   value={logTaskId}
                   onChange={(e) => setLogTaskId(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none"
@@ -572,6 +600,7 @@ export const MyTime: React.FC = () => {
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Horas dedicadas *</label>
                   <input
+                    aria-label="Horas dedicadas"
                     type="number"
                     step="0.25"
                     min="0.25"
@@ -585,6 +614,7 @@ export const MyTime: React.FC = () => {
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Fecha *</label>
                   <input
+                    aria-label="Fecha del reporte"
                     type="date"
                     value={logDate}
                     onChange={(e) => setLogDate(e.target.value)}
@@ -597,6 +627,7 @@ export const MyTime: React.FC = () => {
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Resumen / Trabajo Realizado</label>
                 <textarea
+                  aria-label="Resumen o trabajo realizado"
                   rows={3}
                   value={logDescription}
                   onChange={(e) => setLogDescription(e.target.value)}
@@ -628,12 +659,15 @@ export const MyTime: React.FC = () => {
       {/* Modal de Confirmación Fichaje Salida */}
       {isClockOutConfirmOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirmar fichaje de salida"
           onClick={() => setIsClockOutConfirmOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 m-auto"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-[95vw] sm:max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-[95vw] sm:max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 m-auto"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center space-x-2.5">

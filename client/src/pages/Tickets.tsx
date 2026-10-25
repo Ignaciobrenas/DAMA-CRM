@@ -20,6 +20,9 @@ export const Tickets: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [assignedToFilter, setAssignedToFilter] = useState('');
+  const [agents, setAgents] = useState<Array<{ id: string; name: string }>>([]);
 
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -31,6 +34,18 @@ export const Tickets: React.FC = () => {
     complianceRate: 100,
   });
 
+  useEffect(() => {
+    api.get('/users').then((res: any) => {
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setAgents(res.data.data);
+      } else if (res.success && Array.isArray(res.data)) {
+        setAgents(res.data);
+      } else if (Array.isArray(res)) {
+        setAgents(res);
+      }
+    }).catch(() => {});
+  }, []);
+
   const fetchTickets = async () => {
     try {
       const [ticketsRes, statsRes] = await Promise.all([
@@ -39,6 +54,8 @@ export const Tickets: React.FC = () => {
             search: searchQuery || undefined,
             priority: priorityFilter || undefined,
             category: categoryFilter || undefined,
+            status: statusFilter || undefined,
+            assignedToId: assignedToFilter || undefined,
           },
         }),
         api.get('/tickets/stats/summary'),
@@ -81,7 +98,7 @@ export const Tickets: React.FC = () => {
 
   useEffect(() => {
     fetchTickets();
-  }, [searchQuery, priorityFilter, categoryFilter]);
+  }, [searchQuery, priorityFilter, categoryFilter, statusFilter, assignedToFilter]);
 
   // Subscribe to live WebSocket events
   useEffect(() => {
@@ -97,6 +114,13 @@ export const Tickets: React.FC = () => {
       }
     });
 
+    const unsubDeleted = wsService.on('ticket:deleted', (payload: { id: string }) => {
+      setTickets((prev) => prev.filter((t) => t.id !== payload.id));
+      if (selectedTicket && selectedTicket.id === payload.id) {
+        setSelectedTicket(null);
+      }
+    });
+
     const unsubMessage = wsService.on('ticket:message', (payload: { ticketId: string; message: any }) => {
       if (selectedTicket && selectedTicket.id === payload.ticketId) {
         setSelectedTicket((prev) => prev ? {
@@ -109,15 +133,17 @@ export const Tickets: React.FC = () => {
     return () => {
       unsubCreated();
       unsubUpdated();
+      unsubDeleted();
       unsubMessage();
     };
   }, [selectedTicket]);
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
     try {
-      const res = await api.patch(`/tickets/${ticketId}`, { status: newStatus });
-      if (res.data?.success) {
-        setTickets((prev) => prev.map((t) => (t.id === ticketId ? res.data.data : t)));
+      const res: any = await api.patch(`/tickets/${ticketId}`, { status: newStatus });
+      if (res.success || res.data?.success) {
+        const updated = res.data?.data || res.data;
+        setTickets((prev) => prev.map((t) => (t.id === ticketId ? updated : t)));
         toast.success(t('tickets.statusUpdated'));
       }
     } catch (err) {
@@ -147,6 +173,7 @@ export const Tickets: React.FC = () => {
           {/* View Mode Toggle */}
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
+              data-testid="tickets-view-kanban"
               onClick={() => setViewMode('kanban')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'kanban'
@@ -158,6 +185,7 @@ export const Tickets: React.FC = () => {
               <span>{t('tickets.viewKanban')}</span>
             </button>
             <button
+              data-testid="tickets-view-table"
               onClick={() => setViewMode('table')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                 viewMode === 'table'
@@ -191,6 +219,7 @@ export const Tickets: React.FC = () => {
           </div>
 
           <button
+            data-testid="tickets-new-btn"
             onClick={() => setShowNewModal(true)}
             className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs transition flex items-center gap-1.5"
           >
@@ -201,7 +230,7 @@ export const Tickets: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div data-testid="tickets-kpi-strip" className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">{t('tickets.kpiTotal')}</span>
           <span className="text-2xl font-bold text-slate-900 dark:text-white mt-1 block">{stats.total}</span>
@@ -228,6 +257,8 @@ export const Tickets: React.FC = () => {
         <div className="flex-1 min-w-[240px]">
           <input
             type="text"
+            aria-label="Buscar tickets"
+            data-testid="tickets-search-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('tickets.searchPlaceholder')}
@@ -237,6 +268,23 @@ export const Tickets: React.FC = () => {
 
         <div className="flex items-center gap-2 flex-wrap">
           <select
+            aria-label="Filtrar por estado"
+            data-testid="tickets-status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium outline-none"
+          >
+            <option value="">{t('tickets.allStatuses')}</option>
+            <option value="OPEN">{t('tickets.statusOpen')}</option>
+            <option value="IN_PROGRESS">{t('tickets.statusInProgress')}</option>
+            <option value="WAITING_CUSTOMER">{t('tickets.statusWaitingCustomer')}</option>
+            <option value="RESOLVED">{t('tickets.statusResolved')}</option>
+            <option value="CLOSED">{t('tickets.statusClosed')}</option>
+          </select>
+
+          <select
+            aria-label="Filtrar por prioridad"
+            data-testid="tickets-priority-filter"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium outline-none"
@@ -249,6 +297,8 @@ export const Tickets: React.FC = () => {
           </select>
 
           <select
+            aria-label="Filtrar por categoría"
+            data-testid="tickets-category-filter"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium outline-none"
@@ -258,6 +308,22 @@ export const Tickets: React.FC = () => {
             <option value="BILLING">{t('tickets.categoryBilling')}</option>
             <option value="SALES">{t('tickets.categorySales')}</option>
             <option value="GENERAL">{t('tickets.categoryGeneral')}</option>
+          </select>
+
+          <select
+            aria-label="Filtrar por agente asignado"
+            data-testid="tickets-agent-filter"
+            value={assignedToFilter}
+            onChange={(e) => setAssignedToFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium outline-none"
+          >
+            <option value="">{t('tickets.allAgents')}</option>
+            <option value="unassigned">{t('tickets.unassigned')}</option>
+            {agents.map((ag) => (
+              <option key={ag.id} value={ag.id}>
+                {ag.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -283,6 +349,10 @@ export const Tickets: React.FC = () => {
         onTicketUpdated={(updated) => {
           setSelectedTicket(updated);
           setTickets((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+        }}
+        onTicketDeleted={(id) => {
+          setSelectedTicket(null);
+          setTickets((prev) => prev.filter((t) => t.id !== id));
         }}
       />
 

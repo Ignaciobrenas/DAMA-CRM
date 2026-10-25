@@ -43,6 +43,8 @@ jobs:
 
       - name: Validate & Generate Prisma Schema
         working-directory: server
+        env:
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/dama_crm?schema=public
         run: |
           npx prisma generate
           npx prisma validate
@@ -53,6 +55,8 @@ jobs:
 
       - name: Run Backend Unit & Integration Test Suite
         working-directory: server
+        env:
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/dama_crm?schema=public
         run: npm test
 
   frontend-build:
@@ -103,10 +107,14 @@ jobs:
 
       - name: Generate Prisma Client for Backend
         working-directory: server
+        env:
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/dama_crm?schema=public
         run: npx prisma generate
 
       - name: Execute Full Monorepo Build
         run: npm run build
 
       - name: Run Full Test Suite & i18n Verification
+        env:
+          DATABASE_URL: postgresql://postgres:password123@localhost:5432/dama_crm?schema=public
         run: npm run test:all

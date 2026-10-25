@@ -67,13 +67,20 @@ export const EmployeePortal: React.FC = () => {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex space-x-2 border-b border-gray-200 dark:border-slate-800 pb-1">
+      <div
+        role="tablist"
+        aria-label="Secciones del Portal del Empleado"
+        className="flex space-x-2 border-b border-gray-200 dark:border-slate-800 pb-1"
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              data-testid={`employee-portal-tab-${tab.id}`}
               onClick={() => setActiveTab(tab.id as any)}
               className={`relative px-4 py-2.5 text-xs font-bold rounded-xl transition flex items-center space-x-2 ${
                 isActive

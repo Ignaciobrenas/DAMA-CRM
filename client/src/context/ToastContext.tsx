@@ -151,6 +151,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 <button
                   type="button"
                   onClick={() => dismiss(toast.id)}
+                  aria-label="Cerrar notificación"
+                  title="Cerrar"
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-1 rounded-lg"
                 >
                   <X className="w-4 h-4" />

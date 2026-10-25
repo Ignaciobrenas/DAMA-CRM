@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config';
 import { errorHandler } from './middlewares/error.middleware';
+import { globalLimiter, authLimiter } from './middlewares/rate-limit.middleware';
 import { wsService } from './services/websocket.service';
 
 // Module Routes
@@ -28,6 +29,7 @@ import integrationsRoutes from './modules/integrations/integrations.routes';
 import godRoutes from './modules/god/god.routes';
 import ticketsRoutes from './modules/tickets/tickets.routes';
 import expensesRoutes from './modules/expenses/expenses.routes';
+import plannerRoutes from './modules/planner/planner.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
 import employeesRoutes from './modules/employees/employees.routes';
 import modulesRoutes from './modules/modules/modules.routes';
@@ -39,10 +41,32 @@ import logisticsRoutes from './modules/logistics/logistics.routes';
 
 const app = express();
 
-// Global Middlewares
+app.set('trust proxy', 1);
+
+// Global Middlewares & TLS/HSTS Security Headers (OWASP ASVS / CCN-STIC)
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+    frameguard: { action: 'deny' },
+    noSniff: true,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+        connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:'],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
+      },
+    },
   })
 );
 
@@ -50,6 +74,8 @@ app.use(
 const allowedOriginPatterns = [
   /^http:\/\/localhost(:\d+)?$/,
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+  /^chrome-extension:\/\//,
+  /^moz-extension:\/\//,
   /\.damacrm\.com$/,
   /\.damacrm\.local$/,
   /\.dama\.com$/,
@@ -154,8 +180,9 @@ app.get('/api/docs', (req, res) => {
   `);
 });
 
-// Register API Modules
-app.use('/api/auth', authRoutes);
+// Register API Modules with Rate Limiting
+app.use('/api', globalLimiter);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/companies', companiesRoutes);
 app.use('/api/contacts', contactsRoutes);
@@ -174,6 +201,7 @@ app.use('/api/branding', brandingRoutes);
 app.use('/api/integrations', integrationsRoutes);
 app.use('/api/god', godRoutes);
 app.use('/api/tickets', ticketsRoutes);
+app.use('/api/planner', plannerRoutes);
 app.use('/api/expenses', expensesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/employees', employeesRoutes);
@@ -188,7 +216,9 @@ app.use('/api/logistics', logisticsRoutes);
 import { getIntegracionesDeTerceros } from './modules/integrations/integrations.controller';
 app.get('/api/integraciones-de-terceros', getIntegracionesDeTerceros);
 
-// Centralized error handler
+  app.post('/api/logs/client-error', async (req, res, next) => { try { const { message, stack, route, userAgent } = req.body; const safeHeaders = { ...req.headers }; delete safeHeaders['authorization']; const { prisma } = require('./prisma'); await prisma.systemErrorLog.create({ data: { statusCode: 500, message: '[Frontend Crash] ' + (message || 'Unknown client error'), stack: stack, method: 'CLIENT', path: route || '/', userId: (req as any).user?.id || null, ipAddress: req.ip || req.socket?.remoteAddress || null, headers: JSON.stringify(safeHeaders), body: JSON.stringify({ userAgent }) } }); res.status(200).json({ success: true }); } catch (error) { next(error); } });
+
+  // Centralized error handler
 app.use(errorHandler);
 
 const server = http.createServer(app);
@@ -216,3 +246,4 @@ if (process.env.NODE_ENV !== 'test') {
 
 export { server };
 export default app;
+

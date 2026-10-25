@@ -168,7 +168,7 @@ export function validateSpanishTaxId(value: string): ValidationResult {
   }
 
   // Fallback for international VAT / tax IDs (e.g. DE123456789, FR12345678901)
-  if (/^[A-Z]{2}[0-9A-Z]{5,15}$/.test(clean)) {
+  if (/^(AT|BE|BG|CY|CZ|DE|DK|EE|EL|ES|FI|FR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK|GB|US|CH|NO)[0-9A-Z]{5,15}$/.test(clean)) {
     return { isValid: true, type: 'VAT_INTL' };
   }
 

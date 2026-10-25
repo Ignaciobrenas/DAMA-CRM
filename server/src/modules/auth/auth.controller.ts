@@ -102,6 +102,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       token,
       user: {
         id: user.id,
+        tenantId: user.tenantId,
         name: user.name,
         email: user.email,
         avatar: user.avatar,
@@ -212,6 +213,7 @@ export async function loginWithGoogle(req: Request, res: Response): Promise<void
       token,
       user: {
         id: user.id,
+        tenantId: user.tenantId,
         name: user.name,
         email: user.email,
         avatar: user.avatar || userAvatar,
@@ -361,6 +363,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
       success: true,
       user: {
         id: user.id,
+        tenantId: user.tenantId,
         name: user.name,
         email: user.email,
         avatar: user.avatar,

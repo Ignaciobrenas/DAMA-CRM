@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
-import { isSuperAdminUser } from './employees.controller';
+import { isSuperAdminUser, hasEmployeePermission } from './employees.controller';
 
 export const listPayrolls = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
     const isSuper = isSuperAdminUser(user);
-    const isHrOrAdmin = user?.role === 'ADMIN' || user?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(user, 'read');
     const { employeeId, year, month, status } = req.query;
 
     let where: any = {};
@@ -53,10 +53,10 @@ export const issuePayroll = async (req: Request, res: Response): Promise<void> =
   try {
     const currentUser = (req as any).user;
     const isSuper = isSuperAdminUser(currentUser);
-    const isHrOrAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(currentUser, 'create');
 
     if (!isHrOrAdmin) {
-      res.status(403).json({ success: false, message: 'Solo RRHH y Administradores pueden emitir nóminas' });
+      res.status(403).json({ success: false, message: 'Solo personal con permiso sobre nóminas puede emitirlas' });
       return;
     }
 
@@ -131,7 +131,7 @@ export const updatePayrollStatus = async (req: Request, res: Response): Promise<
     const { status, paidAt } = req.body;
     const currentUser = (req as any).user;
     const isSuper = isSuperAdminUser(currentUser);
-    const isHrOrAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'HR' || isSuper;
+    const isHrOrAdmin = hasEmployeePermission(currentUser, 'update');
 
     if (!isHrOrAdmin) {
       res.status(403).json({ success: false, message: 'Permisos insuficientes para actualizar el estado de nóminas' });

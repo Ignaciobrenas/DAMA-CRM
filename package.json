@@ -1,6 +1,6 @@
 {
   "name": "dama-crm",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "CRM Modular Open-Source y Self-Hosted para PYMES",
   "workspaces": [
@@ -11,9 +11,10 @@
     "dev:server": "npm --prefix server run dev",
     "dev:core": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
-    "dev": "concurrently -n \"API,CLIENT\" -c \"blue,cyan\" \"npm run dev:server\" \"npm run dev:client\"",
+    "dev": "node scripts/start-dev.js",
     "test": "npm --prefix server test",
     "test:i18n": "node scripts/verify_i18n_parity.js",
+    "test:e2e": "playwright test",
     "test:all": "npm run test && npm run test:i18n",
     "build:server": "npm --prefix server run build",
     "build:core": "npm --prefix server run build",
@@ -24,8 +25,6 @@
     "db:migrate:status": "npm --prefix server run db:migrate:status",
     "db:migrate:dev": "npm --prefix server run db:migrate:dev",
     "db:seed": "npm --prefix server run db:seed",
-    "docker:up": "docker compose up -d --build",
-    "docker:down": "docker compose down",
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "keywords": [
@@ -43,8 +42,14 @@
   "author": "Ignacio",
   "license": "MIT",
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.63.0",
     "concurrently": "^10.0.5",
-    "playwright": "^1.63.0"
+    "playwright": "^1.63.0",
+    "simple-icons": "^16.35.0",
+    "svgo": "^4.1.0"
+  },
+  "dependencies": {
+    "thinking-orbs": "^0.3.2"
   }
 }

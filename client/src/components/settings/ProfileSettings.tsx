@@ -231,9 +231,9 @@ export const ProfileSettings: React.FC = () => {
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card 1: User Profile Info */}
-          <div className="bg-gray-50/60 dark:bg-slate-800/40 p-5 rounded-xl border border-gray-100 dark:border-slate-800 flex flex-col justify-between space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm dark:border-slate-800 flex flex-col justify-between space-y-4">
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="flex items-center space-x-2 pb-2 border-b border-gray-200 dark:border-slate-700">
+              <div className="flex items-center space-x-2 pb-2 border-b border-slate-200 dark:border-slate-800">
                 <UserIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <h3 className="text-xs font-bold text-gray-900 dark:text-white">
                   {t('settings.profileCustomization', 'Datos del Usuario')}
@@ -271,7 +271,7 @@ export const ProfileSettings: React.FC = () => {
                   type="text"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-2.5 text-xs font-medium rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -284,7 +284,7 @@ export const ProfileSettings: React.FC = () => {
                   value={profileAvatar}
                   onChange={(e) => setProfileAvatar(e.target.value)}
                   placeholder="https://ejemplo.com/avatar.png"
-                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 mb-1.5"
+                  className="w-full px-4 py-2.5 text-xs font-medium rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 mb-1.5"
                 />
                 <label className="inline-flex items-center space-x-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
                   <Image className="w-3.5 h-3.5" />
@@ -310,7 +310,7 @@ export const ProfileSettings: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSavingProfile}
-                className="w-full inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-[0.98] transition-colors disabled:opacity-50"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>{isSavingProfile ? 'Guardando...' : 'Guardar Datos de Perfil'}</span>
@@ -319,9 +319,9 @@ export const ProfileSettings: React.FC = () => {
           </div>
 
           {/* Card 2: Password Change */}
-          <div className="bg-gray-50/60 dark:bg-slate-800/40 p-5 rounded-xl border border-gray-100 dark:border-slate-800 flex flex-col justify-between space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm dark:border-slate-800 flex flex-col justify-between space-y-4">
             <form onSubmit={handleChangePassword} className="space-y-3">
-              <div className="flex items-center space-x-2 pb-2 border-b border-gray-200 dark:border-slate-700">
+              <div className="flex items-center space-x-2 pb-2 border-b border-slate-200 dark:border-slate-800">
                 <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <h3 className="text-xs font-bold text-gray-900 dark:text-white">Cambio de Contraseña</h3>
               </div>
@@ -336,7 +336,7 @@ export const ProfileSettings: React.FC = () => {
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-3 pr-8 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    className="w-full pl-4 pr-10 py-2.5 text-xs font-medium rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                   />
                   <button
                     type="button"
@@ -358,7 +358,7 @@ export const ProfileSettings: React.FC = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Mínimo 8 caracteres, mayúscula, número"
-                    className="w-full pl-3 pr-8 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    className="w-full pl-4 pr-10 py-2.5 text-xs font-medium rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                   />
                   <button
                     type="button"
@@ -379,7 +379,7 @@ export const ProfileSettings: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repite la nueva contraseña"
-                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-2.5 text-xs font-medium rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -403,7 +403,7 @@ export const ProfileSettings: React.FC = () => {
               <button
                 type="submit"
                 disabled={isChangingPassword || !currentPassword || !newPassword}
-                className="w-full inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-[0.98] transition-colors disabled:opacity-50"
               >
                 <Shield className="w-3.5 h-3.5" />
                 <span>{isChangingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}</span>
@@ -412,9 +412,9 @@ export const ProfileSettings: React.FC = () => {
           </div>
 
           {/* Card 3: Sounds & Notification Alerts */}
-          <div className="bg-gray-50/60 dark:bg-slate-800/40 p-5 rounded-xl border border-gray-100 dark:border-slate-800 flex flex-col justify-between space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm dark:border-slate-800 flex flex-col justify-between space-y-4">
             <div className="space-y-4">
-              <div className="flex items-center space-x-2 pb-2 border-b border-gray-200 dark:border-slate-700">
+              <div className="flex items-center space-x-2 pb-2 border-b border-slate-200 dark:border-slate-800">
                 <Bell className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 <h3 className="text-xs font-bold text-gray-900 dark:text-white">
                   {t('settings.soundAndFriendlyNotifs', 'Sonidos & Notificaciones')}
@@ -529,7 +529,7 @@ export const ProfileSettings: React.FC = () => {
                     className={`flex items-center space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition ${
                       isPinned
                         ? 'border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-300 font-semibold'
-                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-400 opacity-60'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-400 opacity-60'
                     }`}
                   >
                     <input
@@ -567,7 +567,7 @@ export const ProfileSettings: React.FC = () => {
                     className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition ${
                       isChecked
                         ? 'border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20 text-amber-950 dark:text-amber-300 font-semibold'
-                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-500 dark:text-slate-400'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-500 dark:text-slate-400'
                     }`}
                   >
                     <span>{widget.label}</span>
@@ -596,7 +596,7 @@ export const ProfileSettings: React.FC = () => {
                 updatePreferences({ timezone: e.target.value });
                 toast.info('Zona Horaria Guardada', `Ajustada a ${e.target.value}`);
               }}
-              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white font-medium focus:outline-none"
+              className="w-full px-4 py-2.5 text-xs font-medium rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white font-medium focus:outline-none"
             >
               <option value="Europe/Madrid">Europe/Madrid (CET / CEST UTC+1/+2)</option>
               <option value="Europe/London">Europe/London (GMT / BST UTC+0/+1)</option>
@@ -621,7 +621,7 @@ export const ProfileSettings: React.FC = () => {
                 updatePreferences({ dateFormat: e.target.value });
                 toast.info('Formato Guardado', `Fechas formateadas como ${e.target.value}`);
               }}
-              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white font-medium focus:outline-none"
+              className="w-full px-4 py-2.5 text-xs font-medium rounded-xl shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white font-medium focus:outline-none"
             >
               <option value="DD/MM/YYYY">DD/MM/YYYY (Estándar Europeo: 27/09/2026)</option>
               <option value="YYYY-MM-DD">YYYY-MM-DD (ISO 8601: 2026-09-27)</option>
@@ -636,3 +636,4 @@ export const ProfileSettings: React.FC = () => {
     </div>
   );
 };
+

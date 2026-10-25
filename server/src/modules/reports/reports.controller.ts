@@ -357,9 +357,21 @@ export async function exportExecutivePdf(req: Request, res: Response): Promise<v
     const slateColor = '#475569';
     const lightBg = '#F8FAFC';
 
-    // Header Background Accent
+    // Header Background Accent + Official Logo / Company Logo
     doc.rect(40, 40, 515, 60).fill(primaryColor);
-    doc.fillColor('#FFFFFF').fontSize(18).font('Helvetica-Bold').text('INFORME EJECUTIVO & BUSINESS INTELLIGENCE', 55, 55);
+    try {
+      const path = await import('path');
+      const fs = await import('fs');
+      const whiteLogoPath = path.resolve(process.cwd(), '../client/public/assets/logos/dama-logo-white.png');
+      const fallbackPath = path.resolve(process.cwd(), 'client/public/assets/logos/dama-logo-white.png');
+      const logoFile = fs.existsSync(whiteLogoPath) ? whiteLogoPath : fs.existsSync(fallbackPath) ? fallbackPath : null;
+      if (logoFile) {
+        doc.image(logoFile, 470, 52, { fit: [70, 36] });
+      }
+    } catch {
+      // ignore logo error
+    }
+    doc.fillColor('#FFFFFF').fontSize(16).font('Helvetica-Bold').text('INFORME EJECUTIVO & BUSINESS INTELLIGENCE', 55, 55);
     doc.fontSize(9).font('Helvetica').text(`DAMA CRM ENTERPRISE • TENANT: ${tenantId.toUpperCase()} • FECHA: ${new Date().toLocaleDateString('es-ES')}`, 55, 78);
 
     doc.moveDown(3);
@@ -451,3 +463,153 @@ export async function exportExecutivePdf(req: Request, res: Response): Promise<v
   }
 }
 
+export async function getAdminSystemAnalytics(req: Request, res: Response): Promise<void> {
+  try {
+    const os = await import('os');
+    const isSuper = isGodSuperAdmin(req);
+    const tenantId = getRequestTenant(req);
+
+    const [
+      userCount,
+      companyCount,
+      contactCount,
+      dealCount,
+      invoiceCount,
+      productCount,
+      taskCount,
+      auditLogCount,
+      auditLogs,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.company.count(),
+      prisma.contact.count(),
+      prisma.deal.count(),
+      prisma.invoice.count(),
+      prisma.product.count(),
+      prisma.task.count(),
+      prisma.auditLog.count().catch(() => 0),
+      prisma.auditLog
+        .findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+        })
+        .catch(() => []),
+    ]);
+
+    const allDeals = await prisma.deal.findMany({
+      select: { value: true, status: true },
+    });
+    const wonDeals = allDeals.filter((d) => d.status === 'WON');
+    const lostDeals = allDeals.filter((d) => d.status === 'LOST');
+    const openDeals = allDeals.filter((d) => d.status === 'OPEN');
+    const totalWonRevenue = wonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+
+    const paidInvoices = await prisma.invoice.findMany({
+      where: { status: 'PAID' },
+      select: { total: true, issueDate: true },
+    });
+    const totalPaidRevenue = paidInvoices.reduce((sum, i) => sum + i.total, 0);
+
+    const memoryUsage = process.memoryUsage();
+    const uptimeSeconds = Math.round(process.uptime());
+
+    const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const now = new Date();
+    const revenueByMonth = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const monthLabel = `${MONTH_NAMES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+      const monthTotal = paidInvoices
+        .filter((inv) => inv.issueDate.getFullYear() === d.getFullYear() && inv.issueDate.getMonth() === d.getMonth())
+        .reduce((sum, inv) => sum + inv.total, 0);
+      return { month: monthLabel, total: Math.round(monthTotal) };
+    });
+
+    const dealsByStatus = [
+      { name: 'Ganados (WON)', value: wonDeals.length },
+      { name: 'Abiertos (OPEN)', value: openDeals.length },
+      { name: 'Perdidos (LOST)', value: lostDeals.length },
+    ];
+
+    const mappedAuditLogs = auditLogs.map((log: any) => ({
+      id: log.id,
+      action: log.action,
+      entity: log.entity,
+      userId: log.userId,
+      tenantId: log.tenantId || tenantId,
+      details: log.details || `${log.entity || 'System'} (${log.action})`,
+      createdAt: log.createdAt,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        system: {
+          uptimeSeconds,
+          nodeVersion: process.version,
+          platform: process.platform,
+          memoryUsageMb: {
+            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+            rss: Math.round(memoryUsage.rss / 1024 / 1024),
+          },
+          activeTenants: isSuper ? 5 : 1,
+        },
+        systemMetrics: {
+          uptime: uptimeSeconds,
+          nodeVersion: process.version,
+          platform: process.platform,
+          cpus: os.cpus().length,
+          memory: {
+            heapUsed: memoryUsage.heapUsed,
+            heapTotal: memoryUsage.heapTotal,
+            rss: memoryUsage.rss,
+          },
+        },
+        database: {
+          userCount,
+          companyCount,
+          dealCount,
+          invoiceCount,
+          totalWonRevenue,
+          totalPaidRevenue,
+        },
+        dbCounts: {
+          users: userCount,
+          companies: companyCount,
+          contacts: contactCount,
+          deals: dealCount,
+          invoices: invoiceCount,
+          products: productCount,
+          tasks: taskCount,
+          auditLogs: auditLogCount || mappedAuditLogs.length,
+        },
+        tenants: isSuper ? ['dama-main', 'dama-logistics', 'dama-retail'] : [tenantId],
+        charts: {
+          revenueByMonth,
+          dealsByStatus,
+        },
+        auditLogs: mappedAuditLogs,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function getDataHealth(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const targetTenant = isSuper && !req.query.tenantId ? undefined : tenantId;
+
+    const { runDataHealthCheck } = await import('../../utils/data-healthcheck');
+    const health = await runDataHealthCheck(targetTenant);
+
+    res.json({
+      success: true,
+      data: health,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}

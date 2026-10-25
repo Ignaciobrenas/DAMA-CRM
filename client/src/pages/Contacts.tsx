@@ -205,6 +205,20 @@ export const Contacts: React.FC = () => {
     });
   }, [search]);
 
+  // Handle ESC key to close active modal / drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isDetailModalOpen) setIsDetailModalOpen(false);
+        else if (isModalOpen) setIsModalOpen(false);
+        else if (isImportModalOpen) setIsImportModalOpen(false);
+        else if (selectedContact) setSelectedContact(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDetailModalOpen, isModalOpen, isImportModalOpen, selectedContact]);
+
   const handleCreateContact = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -398,7 +412,7 @@ export const Contacts: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={t('searchContacts')}
+              aria-label="Buscar contactos" placeholder={t('searchContacts')}
               className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-600"
             />
           </div>
@@ -437,7 +451,7 @@ export const Contacts: React.FC = () => {
 
       {/* Floating Enterprise Bulk Operations Toolbar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center space-x-3 text-xs animate-in fade-in slide-in-from-bottom-4">
+        <div data-testid="bulk-toolbar" role="region" aria-label="Operaciones masivas de contactos" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center space-x-3 text-xs animate-in fade-in slide-in-from-bottom-4">
           <div className="font-bold flex items-center space-x-1.5 border-r border-slate-700 pr-3 text-blue-400">
             <CheckSquare className="w-4 h-4" />
             <span>{t('bulk.selectedCount').replace('{count}', String(selectedIds.size))}</span>
@@ -728,8 +742,8 @@ export const Contacts: React.FC = () => {
 
       {/* Comprehensive Contact Sheet Modal */}
       {isDetailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
+        <div role="dialog" aria-modal="true" aria-labelledby="contact-detail-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200" onClick={() => setIsDetailModalOpen(false)}>
+          <div className="w-full max-w-3xl m-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50">
               <div className="flex items-center space-x-3">
@@ -737,7 +751,7 @@ export const Contacts: React.FC = () => {
                   {detailModalContact ? detailModalContact.firstName?.charAt(0).toUpperCase() : 'C'}
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <h2 id="contact-detail-modal-title" className="text-base font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                     <span>{detailModalContact ? `${detailModalContact.firstName} ${detailModalContact.lastName}` : t('contactSheet')}</span>
                     {detailModalContact?.isLead ? (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">

@@ -6,6 +6,11 @@ import {
   deleteUser,
   listRoles,
   updateRolePermissions,
+  createRole,
+  updateRole,
+  duplicateRole,
+  deleteRole,
+  getRbacResources,
   listAuditLogs,
   getUserAuditTrail,
   getUserPreferences,
@@ -30,6 +35,11 @@ router.patch('/profile', updateProfile);
 router.get('/', requirePermission('users', 'read'), listUsers);
 router.post('/', requirePermission('users', 'create'), validate(createUserSchema), createUser);
 router.get('/roles', requirePermission('users', 'read'), listRoles);
+router.post('/roles', requirePermission('users', 'manage'), createRole);
+router.put('/roles/:roleId', requirePermission('users', 'manage'), updateRole);
+router.post('/roles/:roleId/duplicate', requirePermission('users', 'manage'), duplicateRole);
+router.delete('/roles/:roleId', requirePermission('users', 'manage'), deleteRole);
+router.get('/rbac-resources', requirePermission('users', 'read'), getRbacResources);
 router.put('/roles/:roleId/permissions', requirePermission('users', 'manage'), updateRolePermissions);
 router.get('/audit-logs', requirePermission('users', 'read'), listAuditLogs);
 router.get('/:id/audit-trail', requirePermission('users', 'read'), getUserAuditTrail);
@@ -37,3 +47,4 @@ router.put('/:id', requirePermission('users', 'update'), updateUser);
 router.delete('/:id', requirePermission('users', 'delete'), deleteUser);
 
 export default router;
+

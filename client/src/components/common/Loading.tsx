@@ -61,7 +61,7 @@ export const PulseLogo: React.FC<{ size?: number; className?: string }> = ({
       />
       {/* Concentric pulsing aura */}
       <div
-        className="absolute rounded-2xl bg-gradient-to-tr from-blue-600/30 to-indigo-500/20 blur-md animate-pulse"
+        className="absolute rounded-2xl bg-blue-500/20 blur-md animate-pulse"
         style={{ width: size * 1.2, height: size * 1.2 }}
       />
       {/* Logo container */}
@@ -70,12 +70,12 @@ export const PulseLogo: React.FC<{ size?: number; className?: string }> = ({
         style={{ width: size, height: size }}
       >
         <img
-          src="/assets/logos/dama-symbol-dark.png"
+          src="./assets/logos/dama-symbol-dark.png"
           alt="DAMA"
           className="w-4/5 h-4/5 object-contain filter drop-shadow-xs dark:hidden"
         />
         <img
-          src="/assets/logos/dama-symbol-white.png"
+          src="./assets/logos/dama-symbol-white.png"
           alt="DAMA"
           className="w-4/5 h-4/5 object-contain filter drop-shadow-xs hidden dark:block"
         />
@@ -84,14 +84,18 @@ export const PulseLogo: React.FC<{ size?: number; className?: string }> = ({
   );
 };
 
+import { ThinkingOrb } from 'thinking-orbs';
+
 export const LoadingScreen: React.FC<{
   title?: string;
   message?: string;
   progress?: number;
+  orbState?: 'working' | 'searching' | 'solving' | 'listening' | 'connecting' | 'weaving' | 'composing' | 'breathing' | 'shaping';
 }> = ({
   title = 'DAMA-CRM',
   message,
   progress,
+  orbState = 'weaving',
 }) => {
   let displayMessage = message;
   let syncLabel = 'Sincronizando Sistema Modular';
@@ -105,33 +109,40 @@ export const LoadingScreen: React.FC<{
     if (!displayMessage) displayMessage = 'Cargando espacio de trabajo empresarial...';
   }
 
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-50/95 dark:bg-slate-950/95 backdrop-blur-md transition-all">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-100/90 dark:bg-slate-950/95 backdrop-blur-md transition-all">
       <div className="flex flex-col items-center max-w-sm px-6 text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
-        <PulseLogo size={80} />
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
+          <div className="relative z-10 p-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl">
+            <ThinkingOrb state={orbState} size={64} {...(isDark ? { dark: true } : {})} />
+          </div>
+        </div>
 
         <div className="space-y-1.5">
-          <h2 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
+          <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             {title}
           </h2>
-          <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
             {displayMessage}
           </p>
         </div>
 
         {/* Shimmering Progress Bar */}
-        <div className="w-48 h-1.5 bg-gray-200 dark:bg-slate-800 rounded-full overflow-hidden relative shadow-inner">
+        <div className="w-52 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative shadow-inner">
           {progress !== undefined ? (
             <div
-              className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full transition-all duration-300 ease-out"
+              className="h-full bg-blue-600 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           ) : (
-            <div className="h-full bg-gradient-to-r from-blue-600 via-indigo-400 to-blue-600 rounded-full w-2/5 animate-[shimmer_1.5s_infinite_linear] absolute left-0" />
+            <div className="h-full bg-blue-600 rounded-full w-2/5 animate-pulse absolute left-0" />
           )}
         </div>
 
-        <div className="text-[10px] tracking-wider uppercase text-blue-600 dark:text-blue-400 font-semibold flex items-center space-x-1.5">
+        <div className="text-[10px] tracking-wider uppercase text-blue-600 dark:text-blue-400 font-bold flex items-center space-x-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
           <span>{syncLabel}</span>
         </div>
@@ -219,3 +230,7 @@ export const LoadingButton: React.FC<
     </button>
   );
 };
+
+
+
+
