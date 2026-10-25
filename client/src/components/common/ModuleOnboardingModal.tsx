@@ -787,7 +787,7 @@ export const ModuleOnboardingModal: React.FC<ModuleOnboardingModalProps> = ({ cu
             aria-modal="true"
             aria-labelledby="module-onboarding-title"
             data-testid="module-onboarding-modal"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-950/50 backdrop-blur-xs"
+            className="fixed top-14 inset-x-0 bottom-0 z-40 flex items-center justify-center p-4 m-auto bg-slate-950/40 backdrop-blur-xs overflow-y-auto"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 8 }}

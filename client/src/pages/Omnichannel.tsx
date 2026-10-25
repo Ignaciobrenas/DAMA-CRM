@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   MessageSquare,
   Send,
+  ThumbsUp,
+  Rocket,
+  Lightbulb,
+  Flame,
+  Heart,
+  Eye,
   Phone,
   Mail,
   User,
@@ -67,7 +73,17 @@ const CANNED_RESPONSES = [
   },
 ];
 
-const EMOJI_SHORTCUTS = ['👍', '🎉', '🚀', '💡', '✅', '🔥', '👀', '🙌', '❤️', '👏'];
+const REACTION_ACTIONS = [
+  { icon: ThumbsUp, label: '+1', text: '+1' },
+  { icon: Sparkles, label: 'Excelente', text: '¡Excelente!' },
+  { icon: Rocket, label: 'Lanzar', text: 'Listo para lanzar' },
+  { icon: Lightbulb, label: 'Idea', text: 'Buena idea' },
+  { icon: Check, label: 'Aprobado', text: 'Aprobado' },
+  { icon: Flame, label: 'Prioritario', text: 'Prioritario' },
+  { icon: Eye, label: 'Revisando', text: 'Revisando' },
+  { icon: Heart,
+  Eye, label: 'Favorito', text: 'Gracias' },
+];
 
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   general: <Hash className="w-4 h-4 text-blue-500" />,
@@ -443,7 +459,7 @@ export const Omnichannel: React.FC = () => {
       body: JSON.stringify({
         contactId: selectedContact.id,
         channel: 'WHATSAPP',
-        content: `🎤 [Nota de voz - ${recordingSeconds}s]`,
+        content: `[Nota de voz - ${recordingSeconds}s]`,
         isAudio: true,
         audioDuration: recordingSeconds,
       }),
@@ -465,7 +481,7 @@ export const Omnichannel: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !selectedContact) return;
 
-    setReplyContent((prev) => `${prev} 📎 Archivo adjunto: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`.trim());
+    setReplyContent((prev) => `${prev} [Archivo adjunto: ${file.name}] (${(file.size / 1024).toFixed(1)} KB)`.trim());
   };
 
   const togglePinMessage = (msgId: string) => {
@@ -1485,20 +1501,24 @@ export const Omnichannel: React.FC = () => {
               </div>
             )}
 
-            {/* Quick Emoji Reaction Bar */}
+            {/* Quick Reaction Bar */}
             <div className="px-3 pt-2 pb-1 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex items-center space-x-1.5">
               <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mr-1">Reacciones:</span>
-              {EMOJI_SHORTCUTS.map((emoji, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  aria-label={`Insertar emoji ${emoji}`}
-                  onClick={() => setInternalInputText((prev) => `${prev} ${emoji} `.trim())}
-                  className="px-2 py-0.5 text-xs hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition-colors"
-                >
-                  {emoji}
-                </button>
-              ))}
+              {REACTION_ACTIONS.map((item, idx) => {
+                const IconComponent = item.icon;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    aria-label={item.label}
+                    onClick={() => setInternalInputText((prev) => `${prev} ${item.text} `.trim())}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200/60 dark:border-slate-700/60"
+                  >
+                    <IconComponent className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Internal Message Composer */}

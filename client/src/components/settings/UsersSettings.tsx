@@ -21,6 +21,7 @@ import {
   Key,
   Copy,
   Check,
+  Lightbulb,
   Link as LinkIcon,
   Send,
   Share2,
@@ -859,7 +860,7 @@ export const UsersSettings: React.FC = () => {
 
                       <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px]">
                         <span className="text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
-                          {isSelected ? '✓ Matriz Activa' : 'Clic para editar matriz'}
+                          {isSelected ? <><Check className="w-3 h-3 inline mr-1" />Matriz Activa</> : 'Clic para editar matriz'}
                         </span>
                         <div className="flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -1477,8 +1478,8 @@ export const UsersSettings: React.FC = () => {
                                     {parsedDetails.browser || authMethod}
                                   </td>
                                   <td className="px-3.5 py-2 text-right">
-                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
-                                      ✓ Autorizado
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] inline-flex items-center gap-1">
+                                      <Check className="w-3 h-3" /> Autorizado
                                     </span>
                                   </td>
                                 </tr>
@@ -1728,7 +1729,7 @@ export const UsersSettings: React.FC = () => {
                   </div>
 
                   <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                    💡 <strong>Copia y pega este enlace</strong> en WhatsApp, Slack, Teams o correo para que tu compañero se dé de alta directamente con el rol seleccionado.
+                    <Lightbulb className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-amber-500" /><strong>Copia y pega este enlace</strong> en WhatsApp, Slack, Teams o correo para que tu compañero se dé de alta directamente con el rol seleccionado.
                   </p>
                 </div>
               )}

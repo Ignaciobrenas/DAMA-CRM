@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Truck,
+  Check,
   Search,
   Plus,
   Clock,
@@ -565,10 +566,10 @@ export const Logistics: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleProgressStatus(s.id, 'DELIVERED')}
-                          className="px-2 py-1 text-[10px] font-bold bg-emerald-600 text-white rounded-md"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold bg-emerald-600 text-white rounded-md"
                           title="Marcar Entregado"
                         >
-                          ✓ Entregar
+                          <Check className="w-3 h-3" /> Entregar
                         </button>
                       )}
                     </div>
@@ -707,7 +708,7 @@ export const Logistics: React.FC = () => {
                 <div className="text-slate-700 dark:text-slate-300 mt-1">Peso: {selectedShipment.weightKg} kg · Porte: {selectedShipment.shippingCost.toFixed(2)}€</div>
                 {selectedShipment.signatureProof && (
                   <div className="mt-1 text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded">
-                    ✓ {selectedShipment.signatureProof}
+                    <span className="inline-flex items-center gap-1"><Check className="w-3 h-3" />{selectedShipment.signatureProof}</span>
                   </div>
                 )}
               </div>

@@ -14,6 +14,9 @@ import {
   Search,
   Filter,
   CreditCard,
+  Zap,
+  Banknote,
+  Building2,
   Percent,
   ChevronRight,
   Phone,
@@ -609,7 +612,7 @@ export const Appointments: React.FC = () => {
                         )}
                         {apt.paymentStatus === 'PAID' && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                            ✓ Pagado ({apt.paymentMethod || 'Bizum'})
+                            <Check className="w-3 h-3 inline mr-1" />Pagado ({apt.paymentMethod || 'Bizum'})
                           </span>
                         )}
                         <button
@@ -1092,27 +1095,31 @@ export const Appointments: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleProcessPayment('BIZUM')}
-                  className="p-2.5 bg-gray-50 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
+                  className="flex items-center justify-center gap-1.5 p-2.5 bg-gray-50 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
                 >
-                  ⚡ Bizum
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Bizum</span>
                 </button>
                 <button
                   onClick={() => handleProcessPayment('CARD')}
-                  className="p-2.5 bg-gray-50 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
+                  className="flex items-center justify-center gap-1.5 p-2.5 bg-gray-50 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
                 >
-                  💳 Tarjeta / TPV
+                  <CreditCard className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Tarjeta / TPV</span>
                 </button>
                 <button
                   onClick={() => handleProcessPayment('CASH')}
-                  className="p-2.5 bg-gray-50 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
+                  className="flex items-center justify-center gap-1.5 p-2.5 bg-gray-50 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
                 >
-                  💵 Efectivo
+                  <Banknote className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Efectivo</span>
                 </button>
                 <button
                   onClick={() => handleProcessPayment('TRANSFER')}
-                  className="p-2.5 bg-gray-50 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
+                  className="flex items-center justify-center gap-1.5 p-2.5 bg-gray-50 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 font-bold text-xs rounded-xl border border-gray-200 dark:border-slate-700 transition-colors"
                 >
-                  🏦 Transferencia
+                  <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Transferencia</span>
                 </button>
               </div>
             </div>
