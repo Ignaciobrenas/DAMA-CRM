@@ -141,6 +141,18 @@ export const Appointments: React.FC = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isNewAppointmentModalOpen) setIsNewAppointmentModalOpen(false);
+        if (isServiceModalOpen) setIsServiceModalOpen(false);
+        if (selectedAppointmentForPayment) setSelectedAppointmentForPayment(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isNewAppointmentModalOpen, isServiceModalOpen, selectedAppointmentForPayment]);
+
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName.trim() || selectedServiceIds.length === 0) return;
@@ -310,6 +322,7 @@ export const Appointments: React.FC = () => {
             <span>{t('exportPdf', 'Informe PDF')}</span>
           </button>
           <button
+            data-testid="appointments-add-service-btn"
             onClick={() => setIsServiceModalOpen(true)}
             className="px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors flex items-center space-x-1.5"
           >
@@ -317,6 +330,7 @@ export const Appointments: React.FC = () => {
             <span>{t('appointments.addService', '+ Servicio / Tarifa')}</span>
           </button>
           <button
+            data-testid="appointments-new-btn"
             onClick={() => setIsNewAppointmentModalOpen(true)}
             className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors flex items-center space-x-1.5"
           >
@@ -396,8 +410,11 @@ export const Appointments: React.FC = () => {
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex items-center space-x-2 border-b border-gray-200 dark:border-slate-800 pb-2">
+      <div role="tablist" aria-label="Vistas de citas y servicios" className="flex items-center space-x-2 border-b border-gray-200 dark:border-slate-800 pb-2">
         <button
+          role="tab"
+          aria-selected={activeTab === 'appointments'}
+          data-testid="appointments-tab-agenda"
           onClick={() => setActiveTab('appointments')}
           className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 ${
             activeTab === 'appointments'
@@ -410,6 +427,9 @@ export const Appointments: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={activeTab === 'services'}
+          data-testid="appointments-tab-services"
           onClick={() => setActiveTab('services')}
           className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 ${
             activeTab === 'services'
@@ -422,6 +442,9 @@ export const Appointments: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={activeTab === 'analytics'}
+          data-testid="appointments-tab-analytics"
           onClick={() => setActiveTab('analytics')}
           className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 ${
             activeTab === 'analytics'
@@ -443,6 +466,8 @@ export const Appointments: React.FC = () => {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
+                aria-label="Buscar citas"
+                data-testid="appointments-search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar por cliente, teléfono, especialista o servicio..."
@@ -452,6 +477,8 @@ export const Appointments: React.FC = () => {
 
             <div className="flex items-center space-x-2 w-full sm:w-auto">
               <select
+                aria-label="Filtrar citas por estado"
+                data-testid="appointments-status-filter"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-700 dark:text-slate-300 font-medium"
@@ -586,6 +613,7 @@ export const Appointments: React.FC = () => {
                           </span>
                         )}
                         <button
+                          aria-label={`Eliminar cita de ${apt.clientName}`}
                           onClick={() => handleDeleteAppointment(apt.id)}
                           className="p-1 text-gray-400 hover:text-rose-500 rounded"
                           title="Eliminar cita"
@@ -717,13 +745,23 @@ export const Appointments: React.FC = () => {
       {/* MODAL: Nueva Cita (Strictly Centered) */}
       {isNewAppointmentModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 m-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Agendar Nueva Cita & Reserva"
+            data-testid="appointments-new-modal"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full m-auto p-6 shadow-2xl border border-gray-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                 <CalendarCheck className="w-4 h-4 text-blue-500" />
                 <span>Agendar Nueva Cita & Reserva</span>
               </h3>
-              <button onClick={() => setIsNewAppointmentModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                aria-label="Cerrar modal de nueva cita"
+                onClick={() => setIsNewAppointmentModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
@@ -734,6 +772,8 @@ export const Appointments: React.FC = () => {
                 <input
                   type="text"
                   required
+                  aria-label="Nombre del Cliente"
+                  data-testid="appointments-client-name-input"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
                   placeholder="Ej: Carmen Navarro"
@@ -746,6 +786,8 @@ export const Appointments: React.FC = () => {
                   <label className="text-xs font-bold text-gray-700 dark:text-slate-300">Teléfono (WhatsApp)</label>
                   <input
                     type="tel"
+                    aria-label="Teléfono (WhatsApp)"
+                    data-testid="appointments-client-phone-input"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     placeholder="+34 600 000 000"
@@ -755,6 +797,8 @@ export const Appointments: React.FC = () => {
                 <div>
                   <label className="text-xs font-bold text-gray-700 dark:text-slate-300">Profesional / Asignado *</label>
                   <select
+                    aria-label="Profesional asignado"
+                    data-testid="appointments-staff-select"
                     value={staffName}
                     onChange={(e) => setStaffName(e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
@@ -784,6 +828,7 @@ export const Appointments: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <input
                             type="checkbox"
+                            aria-label={`Servicio ${srv.name}`}
                             checked={isChecked}
                             onChange={(e) => {
                               if (e.target.checked) {
@@ -836,6 +881,7 @@ export const Appointments: React.FC = () => {
                   <input
                     type="date"
                     required
+                    aria-label="Fecha de la cita"
                     value={appointmentDate}
                     onChange={(e) => setAppointmentDate(e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
@@ -846,6 +892,7 @@ export const Appointments: React.FC = () => {
                   <input
                     type="time"
                     required
+                    aria-label="Hora de la cita"
                     value={appointmentTime}
                     onChange={(e) => setAppointmentTime(e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
@@ -857,6 +904,7 @@ export const Appointments: React.FC = () => {
                 <label className="text-xs font-bold text-gray-700 dark:text-slate-300">Notas / Objetivos de la sesión</label>
                 <textarea
                   rows={2}
+                  aria-label="Notas de la cita"
                   value={appointmentNotes}
                   onChange={(e) => setAppointmentNotes(e.target.value)}
                   placeholder="Detalles sobre los requerimientos, documentación previa..."
@@ -874,6 +922,7 @@ export const Appointments: React.FC = () => {
                 </button>
                 <button
                   type="submit"
+                  data-testid="appointments-submit-btn"
                   className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
                 >
                   Confirmar y Agendar
@@ -887,13 +936,23 @@ export const Appointments: React.FC = () => {
       {/* MODAL: Nuevo Servicio (Strictly Centered) */}
       {isServiceModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 m-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 dark:border-slate-800 space-y-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Añadir Servicio al Catálogo"
+            data-testid="appointments-service-modal"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full m-auto p-6 shadow-2xl border border-gray-200 dark:border-slate-800 space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center space-x-2">
                 <Briefcase className="w-4 h-4 text-blue-500" />
                 <span>Añadir Servicio al Catálogo</span>
               </h3>
-              <button onClick={() => setIsServiceModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                aria-label="Cerrar modal de servicio"
+                onClick={() => setIsServiceModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
@@ -904,6 +963,8 @@ export const Appointments: React.FC = () => {
                 <input
                   type="text"
                   required
+                  aria-label="Nombre del Servicio"
+                  data-testid="appointments-service-name-input"
                   value={serviceName}
                   onChange={(e) => setServiceName(e.target.value)}
                   placeholder="Ej: Auditoría Técnica & Optimización"
@@ -915,6 +976,7 @@ export const Appointments: React.FC = () => {
                 <div>
                   <label className="text-xs font-bold text-gray-700 dark:text-slate-300">Categoría</label>
                   <select
+                    aria-label="Categoría del servicio"
                     value={serviceCategory}
                     onChange={(e: any) => setServiceCategory(e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
@@ -931,6 +993,7 @@ export const Appointments: React.FC = () => {
                   <label className="text-xs font-bold text-gray-700 dark:text-slate-300">Duración (min)</label>
                   <input
                     type="number"
+                    aria-label="Duración en minutos"
                     value={serviceDuration}
                     onChange={(e) => setServiceDuration(e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
@@ -945,6 +1008,8 @@ export const Appointments: React.FC = () => {
                     type="number"
                     step="0.5"
                     required
+                    aria-label="Precio Venta (€)"
+                    data-testid="appointments-service-price-input"
                     value={servicePrice}
                     onChange={(e) => setServicePrice(e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
@@ -955,6 +1020,7 @@ export const Appointments: React.FC = () => {
                   <input
                     type="number"
                     step="0.5"
+                    aria-label="Coste Insumos / Directo (€)"
                     value={serviceSupplyCost}
                     onChange={(e) => setServiceSupplyCost(e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white"
@@ -966,6 +1032,7 @@ export const Appointments: React.FC = () => {
                 <label className="text-xs font-bold text-gray-700 dark:text-slate-300">Descripción / Entregables</label>
                 <textarea
                   rows={2}
+                  aria-label="Descripción del servicio"
                   value={serviceDescription}
                   onChange={(e) => setServiceDescription(e.target.value)}
                   placeholder="Incluye diagnóstico, informe de resultados y soporte directo..."
@@ -983,6 +1050,7 @@ export const Appointments: React.FC = () => {
                 </button>
                 <button
                   type="submit"
+                  data-testid="appointments-save-service-btn"
                   className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
                 >
                   Guardar Servicio
@@ -996,7 +1064,13 @@ export const Appointments: React.FC = () => {
       {/* MODAL: Cobro Rápido / Checkout (Strictly Centered) */}
       {selectedAppointmentForPayment && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 m-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-200 dark:border-slate-800 space-y-4 text-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cobro Rápido de Cita"
+            data-testid="appointments-payment-modal"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full m-auto p-6 shadow-2xl border border-gray-200 dark:border-slate-800 space-y-4 text-center"
+          >
             <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center justify-center mx-auto">
               <CreditCard className="w-6 h-6" />
             </div>

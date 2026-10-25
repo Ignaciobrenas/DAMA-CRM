@@ -214,6 +214,17 @@ export const CalendarPage: React.FC = () => {
     setCurrentDate(new Date());
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isEventModalOpen) setIsEventModalOpen(false);
+        if (isSyncModalOpen) setIsSyncModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEventModalOpen, isSyncModalOpen]);
+
   // Open Create Event Modal
   const handleOpenCreateModal = (defaultDate?: Date) => {
     soundService.playPopSound();
@@ -431,6 +442,7 @@ export const CalendarPage: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
           <button
+            data-testid="calendar-sync-btn"
             onClick={() => setIsSyncModalOpen(true)}
             className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-300/60 dark:border-slate-700 shadow-xs"
           >
@@ -439,6 +451,7 @@ export const CalendarPage: React.FC = () => {
           </button>
 
           <button
+            data-testid="calendar-new-event-btn"
             onClick={() => handleOpenCreateModal()}
             className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md transition transform active:scale-95"
             style={{ backgroundColor: branding.primaryColor || '#2563EB' }}
@@ -495,8 +508,11 @@ export const CalendarPage: React.FC = () => {
       {/* Scope, View Controls & Search Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Scope Tabs (All, Personal, Company, Assigned Projects) */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+        <div role="tablist" aria-label="Filtro de alcance de calendario" className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
           <button
+            role="tab"
+            aria-selected={scopeFilter === 'all'}
+            data-testid="calendar-scope-all"
             onClick={() => {
               soundService.playPopSound();
               setScopeFilter('all');
@@ -510,6 +526,9 @@ export const CalendarPage: React.FC = () => {
             Todos los Eventos
           </button>
           <button
+            role="tab"
+            aria-selected={scopeFilter === 'personal'}
+            data-testid="calendar-scope-personal"
             onClick={() => {
               soundService.playPopSound();
               setScopeFilter('personal');
@@ -523,6 +542,9 @@ export const CalendarPage: React.FC = () => {
             Mi Calendario Personal
           </button>
           <button
+            role="tab"
+            aria-selected={scopeFilter === 'company'}
+            data-testid="calendar-scope-company"
             onClick={() => {
               soundService.playPopSound();
               setScopeFilter('company');
@@ -536,6 +558,9 @@ export const CalendarPage: React.FC = () => {
             Global Empresa
           </button>
           <button
+            role="tab"
+            aria-selected={scopeFilter === 'assigned_projects'}
+            data-testid="calendar-scope-projects"
             onClick={() => {
               soundService.playPopSound();
               setScopeFilter('assigned_projects');
@@ -557,6 +582,8 @@ export const CalendarPage: React.FC = () => {
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
+              aria-label="Buscar evento en el calendario"
+              data-testid="calendar-search-input"
               placeholder="Buscar evento..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -566,6 +593,8 @@ export const CalendarPage: React.FC = () => {
 
           {/* Type Filter */}
           <select
+            aria-label="Filtrar por tipo de evento"
+            data-testid="calendar-type-filter"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-700 dark:text-slate-200 focus:outline-none"
@@ -583,6 +612,7 @@ export const CalendarPage: React.FC = () => {
             {(['month', 'agenda'] as const).map((mode) => (
               <button
                 key={mode}
+                data-testid={`calendar-view-${mode}`}
                 onClick={() => {
                   soundService.playPopSound();
                   setViewMode(mode);
@@ -601,6 +631,7 @@ export const CalendarPage: React.FC = () => {
           {/* Month Stepper */}
           <div className="flex items-center space-x-1 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5">
             <button
+              aria-label="Mes anterior"
               onClick={handlePrevMonth}
               className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
               title="Mes anterior"
@@ -614,6 +645,7 @@ export const CalendarPage: React.FC = () => {
               Hoy
             </button>
             <button
+              aria-label="Mes siguiente"
               onClick={handleNextMonth}
               className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
               title="Mes siguiente"
@@ -703,6 +735,7 @@ export const CalendarPage: React.FC = () => {
                         </span>
 
                         <button
+                          aria-label={`Añadir evento el día ${dayNum}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenCreateModal(dateObj);
@@ -828,6 +861,7 @@ export const CalendarPage: React.FC = () => {
                       {/* Action buttons */}
                       <div className="flex items-center space-x-1.5 self-end sm:self-center shrink-0">
                         <button
+                          aria-label={`Editar evento ${ev.title}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenEditModal(ev);
@@ -839,6 +873,7 @@ export const CalendarPage: React.FC = () => {
                         </button>
                         {!ev.isVirtualTaskEvent && (
                           <button
+                            aria-label={`Eliminar evento ${ev.title}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteConfirm({ isOpen: true, eventId: ev.id });
@@ -862,12 +897,16 @@ export const CalendarPage: React.FC = () => {
       {/* Create / Edit Event Modal */}
       <AnimatePresence>
         {isEventModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={selectedEvent ? 'Editar Evento' : 'Nuevo Evento en Calendario'}
+              data-testid="calendar-event-modal"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-8"
+              className="w-full max-w-lg m-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
             >
               {/* Modal Header */}
               <div
@@ -881,6 +920,7 @@ export const CalendarPage: React.FC = () => {
                   </h3>
                 </div>
                 <button
+                  aria-label="Cerrar modal de evento"
                   onClick={() => setIsEventModalOpen(false)}
                   className="p-1 rounded-full bg-black/20 hover:bg-black/40 text-white transition"
                 >
@@ -898,6 +938,8 @@ export const CalendarPage: React.FC = () => {
                   <input
                     type="text"
                     required
+                    aria-label="Título del Evento"
+                    data-testid="calendar-event-title-input"
                     placeholder="Ej. Reunión de Seguimiento de Sprint con Cliente"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -912,6 +954,8 @@ export const CalendarPage: React.FC = () => {
                       Tipo de Evento
                     </label>
                     <select
+                      aria-label="Tipo de Evento"
+                      data-testid="calendar-event-type-select"
                       value={formData.type}
                       onChange={(e) => {
                         const selectedType = eventTypes.find((t) => t.value === e.target.value);
@@ -940,6 +984,7 @@ export const CalendarPage: React.FC = () => {
                         <button
                           key={c}
                           type="button"
+                          aria-label={`Color ${c}`}
                           onClick={() => setFormData({ ...formData, color: c })}
                           className={`w-6 h-6 rounded-full transition transform ${
                             formData.color === c ? 'scale-125 ring-2 ring-offset-2 ring-blue-500' : 'hover:scale-110'
@@ -959,6 +1004,7 @@ export const CalendarPage: React.FC = () => {
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
+                      aria-label="Evento de todo el día"
                       checked={formData.allDay}
                       onChange={(e) => setFormData({ ...formData, allDay: e.target.checked })}
                       className="sr-only peer"
@@ -977,6 +1023,7 @@ export const CalendarPage: React.FC = () => {
                       <input
                         type="date"
                         required
+                        aria-label="Fecha de inicio"
                         value={formData.startDate}
                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                         className="flex-1 px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
@@ -984,6 +1031,7 @@ export const CalendarPage: React.FC = () => {
                       {!formData.allDay && (
                         <input
                           type="time"
+                          aria-label="Hora de inicio"
                           value={formData.startTime}
                           onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                           className="w-24 px-2 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
@@ -1000,6 +1048,7 @@ export const CalendarPage: React.FC = () => {
                       <input
                         type="date"
                         required
+                        aria-label="Fecha de fin"
                         value={formData.endDate}
                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                         className="flex-1 px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
@@ -1007,6 +1056,7 @@ export const CalendarPage: React.FC = () => {
                       {!formData.allDay && (
                         <input
                           type="time"
+                          aria-label="Hora de fin"
                           value={formData.endTime}
                           onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                           className="w-24 px-2 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
@@ -1025,6 +1075,8 @@ export const CalendarPage: React.FC = () => {
                     <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
+                      aria-label="Ubicación o enlace de reunión"
+                      data-testid="calendar-event-location-input"
                       placeholder="https://meet.google.com/xyz o Sala de Juntas Principal"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -1039,6 +1091,7 @@ export const CalendarPage: React.FC = () => {
                     Vincular a Proyecto CRM (Opcional)
                   </label>
                   <select
+                    aria-label="Vincular a Proyecto CRM"
                     value={formData.projectId}
                     onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
@@ -1059,6 +1112,7 @@ export const CalendarPage: React.FC = () => {
                       Alerta / Recordatorio
                     </label>
                     <select
+                      aria-label="Alerta o recordatorio"
                       value={formData.minutesBefore}
                       onChange={(e) => setFormData({ ...formData, minutesBefore: Number(e.target.value) })}
                       className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
@@ -1077,6 +1131,7 @@ export const CalendarPage: React.FC = () => {
                     <label className="flex items-center space-x-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer pt-2">
                       <input
                         type="checkbox"
+                        aria-label="Visible para toda la Empresa"
                         checked={formData.isCompanyWide}
                         onChange={(e) => setFormData({ ...formData, isCompanyWide: e.target.checked })}
                         className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
@@ -1093,6 +1148,8 @@ export const CalendarPage: React.FC = () => {
                   </label>
                   <textarea
                     rows={3}
+                    aria-label="Descripción o notas del evento"
+                    data-testid="calendar-event-description-input"
                     placeholder="Detalles, orden del día, enlaces..."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1125,6 +1182,7 @@ export const CalendarPage: React.FC = () => {
                     </button>
                     <button
                       type="submit"
+                      data-testid="calendar-save-event-btn"
                       className="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md transition"
                       style={{ backgroundColor: formData.color || branding.primaryColor || '#2563EB' }}
                     >
@@ -1141,12 +1199,16 @@ export const CalendarPage: React.FC = () => {
       {/* Google & Apple Calendar Sync Integration Modal */}
       <AnimatePresence>
         {isSyncModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Sincronización de Calendarios"
+              data-testid="calendar-sync-modal"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+              className="w-full max-w-lg m-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
             >
               {/* Header */}
               <div className="p-5 bg-blue-600 text-white flex items-center justify-between">
@@ -1158,6 +1220,7 @@ export const CalendarPage: React.FC = () => {
                   </div>
                 </div>
                 <button
+                  aria-label="Cerrar modal de sincronización"
                   onClick={() => setIsSyncModalOpen(false)}
                   className="p-1 rounded-full bg-black/20 hover:bg-black/40 text-white transition"
                 >
@@ -1186,6 +1249,7 @@ export const CalendarPage: React.FC = () => {
                     <input
                       type="text"
                       readOnly
+                      aria-label="URL de suscripción Apple iCal"
                       value={integrations.find((i) => i.provider === 'APPLE_ICAL')?.webcalUrl || `${window.location.origin}/api/calendar/feed/my-feed.ics`}
                       className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-[11px] font-mono select-all focus:outline-none text-slate-700 dark:text-slate-300"
                     />
