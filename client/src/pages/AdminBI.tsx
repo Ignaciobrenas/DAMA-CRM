@@ -54,10 +54,10 @@ export const AdminBI: React.FC = () => {
     );
   }
 
-  const { system, database, charts, auditLogs } = data;
+  const { system = {}, database = {}, charts = {}, auditLogs = [] } = data;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300 pb-12">
+    <div data-testid="admin-bi-page" className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300 pb-12">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('bi.title', 'Business Intelligence')}</h1>
