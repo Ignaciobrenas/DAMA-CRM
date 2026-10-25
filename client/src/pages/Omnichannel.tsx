@@ -141,6 +141,7 @@ const AudioNotePlayer: React.FC<AudioNotePlayerProps> = ({ durationSeconds = 18,
     >
       <button
         type="button"
+        aria-label={isPlaying ? 'Pausar nota de voz' : 'Reproducir nota de voz'}
         onClick={togglePlay}
         className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105 shrink-0 ${
           isOutbound
@@ -271,19 +272,28 @@ export const Omnichannel: React.FC = () => {
 
   // Internal Chat Loaders
   const loadInternalChannels = async () => {
-    const res = await apiRequest('/omnichannel/internal/channels');
-    if (res.success && res.data) {
-      setInternalChannels(res.data.channels || []);
-      setTeamMembers(res.data.users || []);
+    const res: any = await apiRequest('/omnichannel/internal/channels');
+    if (res.success) {
+      const rawChannels = res.data?.channels || res.channels || [];
+      const rawUsers = res.data?.users || res.data?.teamMembers || res.teamMembers || [];
+      const mappedChannels = rawChannels.map((ch: any) => ({ ...ch, type: ch.type || 'channel' }));
+      const mappedUsers = rawUsers.map((u: any) => ({ ...u, type: u.type || 'dm' }));
+      setInternalChannels(mappedChannels);
+      setTeamMembers(mappedUsers);
 
-      if (!selectedInternalTarget && (res.data.channels?.length > 0 || res.data.users?.length > 0)) {
-        setSelectedInternalTarget(res.data.channels[0]);
+      if (!selectedInternalTarget && (mappedChannels.length > 0 || mappedUsers.length > 0)) {
+        setSelectedInternalTarget(mappedChannels[0] || mappedUsers[0]);
       }
     }
   };
 
-  const loadInternalMessages = async (targetId: string) => {
-    const res = await apiRequest(`/omnichannel/internal/messages?channelId=${encodeURIComponent(targetId)}&limit=60`);
+  const loadInternalMessages = async (target: any) => {
+    const targetId = typeof target === 'string' ? target : target?.id;
+    const isDm = typeof target === 'object' && target?.type === 'dm';
+    const qs = isDm
+      ? `recipientId=${encodeURIComponent(targetId)}`
+      : `channel=${encodeURIComponent(targetId)}&channelId=${encodeURIComponent(targetId)}`;
+    const res = await apiRequest(`/omnichannel/internal/messages?${qs}&limit=60`);
     if (res.success && res.data) {
       setInternalMessages(res.data);
     }
@@ -382,7 +392,7 @@ export const Omnichannel: React.FC = () => {
 
   useEffect(() => {
     if (selectedInternalTarget) {
-      loadInternalMessages(selectedInternalTarget.id);
+      loadInternalMessages(selectedInternalTarget);
       setInternalUnreadCounts((prev) => ({ ...prev, [selectedInternalTarget.id]: 0 }));
       setInternalReplyingTo(null);
     }
@@ -529,9 +539,11 @@ export const Omnichannel: React.FC = () => {
 
   const handleSendInternalMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!internalInputText.trim() || !selectedInternalTarget) return;
+    if (!internalInputText.trim()) return;
 
-    const channelTargetId = selectedInternalTarget.id;
+    const target = selectedInternalTarget || internalChannels[0] || { id: 'general', type: 'channel' };
+    const channelTargetId = target.id || 'general';
+    const isDm = target.type === 'dm';
     let text = internalInputText.trim();
     if (internalReplyingTo) {
       text = `> [${internalReplyingTo.senderName}]: "${internalReplyingTo.content.slice(0, 40)}..."\n\n${text}`;
@@ -543,7 +555,9 @@ export const Omnichannel: React.FC = () => {
     const res = await apiRequest('/omnichannel/internal/messages', {
       method: 'POST',
       body: JSON.stringify({
-        channelId: channelTargetId,
+        channel: isDm ? undefined : channelTargetId,
+        channelId: isDm ? undefined : channelTargetId,
+        recipientId: isDm ? channelTargetId : undefined,
         content: text,
       }),
     });
@@ -598,8 +612,11 @@ export const Omnichannel: React.FC = () => {
 
         {/* Tab Buttons & Real-time status */}
         <div className="flex items-center space-x-3">
-          <div className="flex bg-gray-100 dark:bg-slate-800 p-1 rounded-xl">
+          <div role="tablist" aria-label="Canales de comunicación" className="flex bg-gray-100 dark:bg-slate-800 p-1 rounded-xl">
             <button
+              role="tab"
+              aria-selected={activeTab === 'whatsapp'}
+              data-testid="omnichannel-tab-whatsapp"
               onClick={() => setActiveTab('whatsapp')}
               className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all relative ${
                 activeTab === 'whatsapp'
@@ -617,6 +634,9 @@ export const Omnichannel: React.FC = () => {
             </button>
 
             <button
+              role="tab"
+              aria-selected={activeTab === 'internal'}
+              data-testid="omnichannel-tab-internal"
               onClick={() => setActiveTab('internal')}
               className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all relative ${
                 activeTab === 'internal'
@@ -672,6 +692,8 @@ export const Omnichannel: React.FC = () => {
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
+                  aria-label="Buscar cliente o contacto"
+                  data-testid="omnichannel-contact-search"
                   placeholder={t('omnichannel.searchContactPlaceholder', 'Buscar cliente, teléfono...')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -748,6 +770,7 @@ export const Omnichannel: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   {/* In-chat search toggle */}
                   <button
+                    aria-label="Buscar en la conversación"
                     onClick={() => setIsInChatSearchOpen(!isInChatSearchOpen)}
                     className={`p-1.5 rounded-lg border text-xs transition-colors ${
                       isInChatSearchOpen
@@ -761,6 +784,7 @@ export const Omnichannel: React.FC = () => {
 
                   {/* Pinned Messages toggle */}
                   <button
+                    aria-label="Ver solo mensajes fijados"
                     onClick={() => setShowPinnedOnly(!showPinnedOnly)}
                     className={`p-1.5 rounded-lg border text-xs transition-colors flex items-center space-x-1 ${
                       showPinnedOnly
@@ -778,6 +802,7 @@ export const Omnichannel: React.FC = () => {
                   {/* Channel Selector */}
                   <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-[11px] font-semibold">
                     <button
+                      data-testid="omnichannel-channel-whatsapp"
                       onClick={() => setSelectedChannel('WHATSAPP')}
                       className={`px-2 py-1 rounded-md transition-colors ${
                         selectedChannel === 'WHATSAPP'
@@ -788,6 +813,7 @@ export const Omnichannel: React.FC = () => {
                       WhatsApp
                     </button>
                     <button
+                      data-testid="omnichannel-channel-email"
                       onClick={() => setSelectedChannel('EMAIL')}
                       className={`px-2 py-1 rounded-md transition-colors ${
                         selectedChannel === 'EMAIL'
@@ -811,6 +837,7 @@ export const Omnichannel: React.FC = () => {
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" />
                   <input
                     type="text"
+                    aria-label="Buscar en los mensajes de este chat"
                     value={inChatSearchQuery}
                     onChange={(e) => setInChatSearchQuery(e.target.value)}
                     placeholder="Buscar en los mensajes de este chat..."
@@ -823,6 +850,7 @@ export const Omnichannel: React.FC = () => {
                   </span>
                 )}
                 <button
+                  aria-label="Cerrar búsqueda en el chat"
                   onClick={() => {
                     setIsInChatSearchOpen(false);
                     setInChatSearchQuery('');
@@ -896,6 +924,7 @@ export const Omnichannel: React.FC = () => {
                         >
                           <button
                             type="button"
+                            aria-label="Responder mensaje"
                             onClick={() => setReplyingToMessage(m)}
                             className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-blue-600 rounded"
                             title="Responder"
@@ -904,6 +933,7 @@ export const Omnichannel: React.FC = () => {
                           </button>
                           <button
                             type="button"
+                            aria-label={isPinned ? 'Desfijar mensaje' : 'Fijar mensaje'}
                             onClick={() => togglePinMessage(m.id)}
                             className={`p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded ${
                               isPinned ? 'text-amber-500' : 'text-gray-500 hover:text-amber-500'
@@ -914,6 +944,7 @@ export const Omnichannel: React.FC = () => {
                           </button>
                           <button
                             type="button"
+                            aria-label="Copiar texto del mensaje"
                             onClick={() => copyToClipboard(m.content)}
                             className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-emerald-600 rounded"
                             title="Copiar texto"
@@ -954,6 +985,7 @@ export const Omnichannel: React.FC = () => {
                 </div>
                 <button
                   type="button"
+                  aria-label="Cancelar respuesta"
                   onClick={() => setReplyingToMessage(null)}
                   className="p-1 hover:text-rose-500"
                 >
@@ -973,6 +1005,7 @@ export const Omnichannel: React.FC = () => {
                   <button
                     key={idx}
                     type="button"
+                    data-testid={`omnichannel-canned-${idx}`}
                     onClick={() => applyCannedResponse(item.template)}
                     className="shrink-0 px-2.5 py-1 text-[11px] font-medium bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-400 text-gray-600 dark:text-slate-300 rounded-lg transition-colors"
                   >
@@ -985,6 +1018,7 @@ export const Omnichannel: React.FC = () => {
             {/* Hidden File Input */}
             <input
               type="file"
+              aria-label="Subir archivo adjunto"
               ref={fileInputRef}
               onChange={handleFileUploadSimulated}
               className="hidden"
@@ -1022,6 +1056,7 @@ export const Omnichannel: React.FC = () => {
               >
                 <button
                   type="button"
+                  aria-label="Adjuntar archivo o imagen"
                   onClick={() => fileInputRef.current?.click()}
                   className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
                   title="Adjuntar archivo o imagen"
@@ -1032,6 +1067,8 @@ export const Omnichannel: React.FC = () => {
                 <input
                   type="text"
                   required
+                  aria-label="Escribir mensaje a cliente"
+                  data-testid="omnichannel-message-input"
                   value={replyContent}
                   onChange={handleTypingChange}
                   placeholder={`Escribe un mensaje por ${selectedChannel === 'WHATSAPP' ? 'WhatsApp' : 'Email'}...`}
@@ -1040,6 +1077,7 @@ export const Omnichannel: React.FC = () => {
 
                 <button
                   type="button"
+                  aria-label="Grabar nota de voz"
                   onClick={startRecordingVoice}
                   className="p-2 text-gray-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                   title="Grabar nota de voz"
@@ -1049,6 +1087,8 @@ export const Omnichannel: React.FC = () => {
 
                 <button
                   type="submit"
+                  aria-label="Enviar mensaje"
+                  data-testid="omnichannel-send-btn"
                   className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-colors shrink-0"
                   title="Enviar mensaje"
                 >
@@ -1079,6 +1119,8 @@ export const Omnichannel: React.FC = () => {
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
+                  aria-label="Buscar canal o compañero"
+                  data-testid="omnichannel-internal-search"
                   placeholder={t('omnichannel.searchTeamPlaceholder', 'Buscar canal o compañero...')}
                   value={internalSearchQuery}
                   onChange={(e) => setInternalSearchQuery(e.target.value)}
@@ -1245,6 +1287,7 @@ export const Omnichannel: React.FC = () => {
 
                 <div className="flex items-center space-x-2">
                   <button
+                    aria-label="Buscar mensajes en este canal"
                     onClick={() => setIsInternalInChatSearchOpen(!isInternalInChatSearchOpen)}
                     className={`p-1.5 rounded-lg border text-xs transition-colors ${
                       isInternalInChatSearchOpen
@@ -1257,6 +1300,7 @@ export const Omnichannel: React.FC = () => {
                   </button>
 
                   <button
+                    aria-label="Ver mensajes fijados del canal"
                     onClick={() => setShowInternalPinnedOnly(!showInternalPinnedOnly)}
                     className={`p-1.5 rounded-lg border text-xs transition-colors flex items-center space-x-1 ${
                       showInternalPinnedOnly
@@ -1288,6 +1332,7 @@ export const Omnichannel: React.FC = () => {
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-500" />
                   <input
                     type="text"
+                    aria-label="Buscar en los mensajes de este canal"
                     value={internalInChatSearchQuery}
                     onChange={(e) => setInternalInChatSearchQuery(e.target.value)}
                     placeholder="Buscar en los mensajes de este canal..."
@@ -1295,6 +1340,7 @@ export const Omnichannel: React.FC = () => {
                   />
                 </div>
                 <button
+                  aria-label="Cerrar búsqueda en el canal"
                   onClick={() => {
                     setIsInternalInChatSearchOpen(false);
                     setInternalInChatSearchQuery('');
@@ -1355,7 +1401,7 @@ export const Omnichannel: React.FC = () => {
                             </span>
                           )}
                           <span>•</span>
-                          <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{new Date(msg.createdAt || (msg as any).timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           {isPinned && (
                             <span className="text-[9px] font-bold text-amber-500 flex items-center space-x-0.5">
                               <Pin className="w-2.5 h-2.5 fill-current" />
@@ -1383,6 +1429,7 @@ export const Omnichannel: React.FC = () => {
                           >
                             <button
                               type="button"
+                              aria-label="Responder mensaje interno"
                               onClick={() => setInternalReplyingTo(msg)}
                               className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-indigo-600 rounded"
                               title="Responder"
@@ -1391,6 +1438,7 @@ export const Omnichannel: React.FC = () => {
                             </button>
                             <button
                               type="button"
+                              aria-label={isPinned ? 'Desfijar mensaje interno' : 'Fijar mensaje interno'}
                               onClick={() => toggleInternalPinMessage(msg.id)}
                               className={`p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded ${
                                 isPinned ? 'text-amber-500' : 'text-gray-500 hover:text-amber-500'
@@ -1401,6 +1449,7 @@ export const Omnichannel: React.FC = () => {
                             </button>
                             <button
                               type="button"
+                              aria-label="Copiar texto del mensaje interno"
                               onClick={() => copyToClipboard(msg.content)}
                               className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-emerald-600 rounded"
                               title="Copiar texto"
@@ -1427,6 +1476,7 @@ export const Omnichannel: React.FC = () => {
                 </div>
                 <button
                   type="button"
+                  aria-label="Cancelar respuesta interna"
                   onClick={() => setInternalReplyingTo(null)}
                   className="p-1 hover:text-rose-500"
                 >
@@ -1442,6 +1492,7 @@ export const Omnichannel: React.FC = () => {
                 <button
                   key={idx}
                   type="button"
+                  aria-label={`Insertar emoji ${emoji}`}
                   onClick={() => setInternalInputText((prev) => `${prev} ${emoji} `.trim())}
                   className="px-2 py-0.5 text-xs hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition-colors"
                 >
@@ -1458,6 +1509,8 @@ export const Omnichannel: React.FC = () => {
               <input
                 type="text"
                 required
+                aria-label="Escribir mensaje interno de equipo"
+                data-testid="omnichannel-internal-input"
                 value={internalInputText}
                 onChange={(e) => setInternalInputText(e.target.value)}
                 placeholder={
@@ -1469,6 +1522,8 @@ export const Omnichannel: React.FC = () => {
               />
               <button
                 type="submit"
+                aria-label="Enviar mensaje al equipo"
+                data-testid="omnichannel-internal-send-btn"
                 className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs transition-colors shrink-0"
                 title="Enviar al equipo"
               >
