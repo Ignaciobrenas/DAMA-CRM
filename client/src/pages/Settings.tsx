@@ -11,6 +11,7 @@ import {
   Server,
   Tag,
   Kanban,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -20,6 +21,7 @@ import { AccessibilitySettings } from '../components/settings/AccessibilitySetti
 import { ModulesSettings } from '../components/settings/ModulesSettings';
 import { ProfileSettings } from '../components/settings/ProfileSettings';
 import { CompanySettings } from '../components/settings/CompanySettings';
+import { PdfDesignSettings } from '../components/settings/PdfDesignSettings';
 import { SecuritySettings } from '../components/settings/SecuritySettings';
 import { UsersSettings } from '../components/settings/UsersSettings';
 import { IntegrationsSettings } from '../components/settings/IntegrationsSettings';
@@ -40,7 +42,7 @@ export const Settings: React.FC = () => {
   const canManageCompany = isCompanyAdmin || isSuperAdmin;
 
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'security' | 'accessibility' | 'modules' | 'company' | 'agile_planner' | 'custom_fields' | 'users' | 'integrations' | 'system'
+    'profile' | 'security' | 'accessibility' | 'modules' | 'company' | 'pdf_studio' | 'agile_planner' | 'custom_fields' | 'users' | 'integrations' | 'system'
   >('profile');
 
   const personalTabs = [
@@ -52,6 +54,7 @@ export const Settings: React.FC = () => {
   const workspaceTabs = [
     { id: 'modules', label: t('settings.tabModules', 'Módulos Activos'), icon: Blocks },
     { id: 'company', label: t('settings.tabCompany', 'Empresa & Facturación'), icon: Building2 },
+    { id: 'pdf_studio', label: t('settings.tabPdfStudio', 'Diseño de Documentos & PDF'), icon: FileText },
     { id: 'users', label: t('settings.tabUsers', 'Usuarios & Roles'), icon: Users },
   ];
 
@@ -68,6 +71,7 @@ export const Settings: React.FC = () => {
     return (
       <button
         key={tab.id}
+        data-testid={`tab-settings-${tab.id}`}
         onClick={() => setActiveTab(tab.id)}
         className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-[0.98] ${
           isActive
@@ -127,12 +131,15 @@ export const Settings: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="max-w-4xl mx-auto w-full relative z-10"
+              className="max-w-5xl mx-auto w-full relative z-10"
             >
               {activeTab === 'accessibility' && <AccessibilitySettings />}
               {activeTab === 'modules' && canManageCompany && <ModulesSettings />}
               {activeTab === 'profile' && <ProfileSettings />}
-              {activeTab === 'company' && canManageCompany && <CompanySettings />}
+              {activeTab === 'company' && canManageCompany && (
+                <CompanySettings onOpenPdfStudio={() => setActiveTab('pdf_studio')} />
+              )}
+              {activeTab === 'pdf_studio' && canManageCompany && <PdfDesignSettings />}
               {activeTab === 'agile_planner' && canManageCompany && <AgilePlannerSettings />}
               {activeTab === 'custom_fields' && canManageCompany && <CustomFieldsSettings />}
               {activeTab === 'security' && <SecuritySettings />}

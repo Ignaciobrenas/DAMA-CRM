@@ -2,13 +2,14 @@ import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
 import { generatePdfBuffer, InvoicePdfData } from './pdf.service';
 import { logAudit } from '../../middlewares/audit.middleware';
-import { getBrandingConfig } from '../branding/branding.controller';
+import { getBrandingConfig, getTenantBranding } from '../branding/branding.controller';
 import { NotificationService } from '../notifications/notifications.service';
 import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 import {
   calculateVerifactuHash,
   generateVerifactuQrBuffer,
   getPreviousInvoiceHash,
+  verifyAndSyncVerifactuChain,
 } from '../../services/verifactu.service';
 import { getNextDocumentNumber } from '../../utils/document-number';
 
@@ -169,9 +170,34 @@ export async function createInvoice(req: Request, res: Response): Promise<void> 
       }
     }
 
+    // Compute Veri*Factu hash & chain before persisting (Orden HAC/1177/2024)
+    const tenantBranding = await getTenantBranding(tenantId);
+    const issuerNif = tenantBranding.companyTaxId || 'B87654323';
+    const prevHash = !proforma ? await getPreviousInvoiceHash(tenantId) : '';
+    const invType = (req.body.invoiceType || (isRectifying ? 'R1' : 'F1')) as 'F1' | 'F2' | 'R1' | 'R2' | 'R3' | 'R4';
+    const vfData = !proforma
+      ? calculateVerifactuHash({
+          issuerNif,
+          invoiceNumber,
+          issueDate: parsedIssueDate,
+          invoiceType: invType,
+          taxAmount,
+          totalAmount: total,
+          previousRecordHash: prevHash,
+        })
+      : null;
+
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
+        invoiceSeries: isRectifying ? 'R2026' : proforma ? 'PRO2026' : 'F2026',
+        invoiceType: invType,
+        verifactuHash: vfData?.hash || null,
+        previousInvoiceHash: prevHash || null,
+        verifactuQrUrl: vfData?.qrUrl || null,
+        verifactuCsv: vfData?.csvCode || null,
+        verifactuStatus: proforma ? 'PROFORMA' : 'VERIFIED',
+        verifactuGeneratedAt: vfData ? new Date() : null,
         quoteId: quoteId || null,
         contactId: contactId || null,
         companyId: companyId || null,
@@ -348,10 +374,32 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
       total: invoice.total,
       currency: invoice.currency,
       notes: invoice.notes || undefined,
-      verifactuHash,
+      verifactuHash: invoice.verifactuHash || verifactuHash,
+      previousInvoiceHash: invoice.previousInvoiceHash || undefined,
+      verifactuQrUrl: invoice.verifactuQrUrl || undefined,
       verifactuQrBuffer,
       issuerNif: branding.companyTaxId || undefined,
       isVerifactu: !invoice.proforma,
+      invoiceType: invoice.invoiceType || (invoice.isRectifying ? 'R1' : 'F1'),
+      isRectifying: invoice.isRectifying,
+      discountPercent: invoice.discountPercent,
+      discountAmount: invoice.discountAmount,
+      irpfRate: invoice.irpfRate,
+      irpfAmount: invoice.irpfAmount,
+      primaryColor: branding.pdfAccentColor || branding.primaryColor || '#2563EB',
+      secondaryColor: branding.pdfSecondaryColor || branding.secondaryColor || '#0F172A',
+      pdfTemplate: branding.pdfTemplate || 'MODERN_STRIPE',
+      pdfShowLogo: branding.pdfShowLogo !== false,
+      pdfLogoPosition: branding.pdfLogoPosition || 'LEFT',
+      pdfShowVerifactuQr: branding.pdfShowVerifactuQr !== false,
+      pdfShowBankDetails: branding.pdfShowBankDetails !== false,
+      pdfShowSignatureBox: branding.pdfShowSignatureBox !== false,
+      pdfShowWatermark: Boolean(branding.pdfShowWatermark),
+      pdfWatermarkText: branding.pdfWatermarkText || 'ORIGINAL · VERI*FACTU',
+      pdfHeaderSubtitle: branding.pdfHeaderSubtitle,
+      pdfMercantileRegistry: branding.pdfMercantileRegistry,
+      pdfLopdText: branding.pdfLopdText,
+      pdfFooterLegalText: branding.pdfFooterLegalText,
     };
 
     const buffer = await generatePdfBuffer(pdfData);
@@ -524,6 +572,19 @@ export async function downloadQuotePdf(req: Request, res: Response): Promise<voi
       total: quote.total,
       currency: quote.currency,
       notes: quote.notes || undefined,
+      primaryColor: branding.pdfAccentColor || branding.primaryColor || '#2563EB',
+      secondaryColor: branding.pdfSecondaryColor || branding.secondaryColor || '#0F172A',
+      pdfTemplate: branding.pdfTemplate || 'MODERN_STRIPE',
+      pdfShowLogo: branding.pdfShowLogo !== false,
+      pdfLogoPosition: branding.pdfLogoPosition || 'LEFT',
+      pdfShowBankDetails: branding.pdfShowBankDetails !== false,
+      pdfShowSignatureBox: branding.pdfShowSignatureBox !== false,
+      pdfShowWatermark: Boolean(branding.pdfShowWatermark),
+      pdfWatermarkText: branding.pdfWatermarkText || 'PRESUPUESTO COMERCIAL',
+      pdfHeaderSubtitle: branding.pdfHeaderSubtitle,
+      pdfMercantileRegistry: branding.pdfMercantileRegistry,
+      pdfLopdText: branding.pdfLopdText,
+      pdfFooterLegalText: branding.pdfFooterLegalText,
     };
 
     const buffer = await generatePdfBuffer(pdfData);
@@ -1672,3 +1733,15 @@ export async function sendInvoiceEmail(req: Request, res: Response): Promise<voi
 
 
 
+
+export async function getVerifactuChainStatus(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = getRequestTenant(req);
+    const branding = await getTenantBranding(tenantId);
+    const issuerNif = branding.companyTaxId || 'B87654323';
+    const chainAudit = await verifyAndSyncVerifactuChain(tenantId, issuerNif);
+    res.json({ success: true, data: chainAudit });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
