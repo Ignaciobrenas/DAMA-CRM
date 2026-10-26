@@ -205,6 +205,27 @@ export const Contacts: React.FC = () => {
     });
   }, [search]);
 
+  useEffect(() => {
+    const handleUrlParams = () => {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('id') || params.get('contactId');
+      const q = params.get('q');
+      const newContact = params.get('new');
+      const cId = params.get('companyId');
+      if (q) setSearch(q);
+      if (newContact === 'true') {
+        if (cId) setCompanyId(cId);
+        setIsModalOpen(true);
+      }
+      if (targetId) {
+        handleOpenDetailModal(targetId);
+      }
+    };
+    handleUrlParams();
+    window.addEventListener('popstate', handleUrlParams);
+    return () => window.removeEventListener('popstate', handleUrlParams);
+  }, []);
+
   // Handle ESC key to close active modal / drawer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

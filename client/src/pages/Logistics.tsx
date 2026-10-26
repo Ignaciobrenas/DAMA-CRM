@@ -127,6 +127,26 @@ export const Logistics: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shipmentId = params.get('shipmentId') || params.get('id');
+    const q = params.get('q');
+    const isNew = params.get('new') === 'true';
+    const invId = params.get('invoiceId');
+    const cust = params.get('customer') || params.get('recipient');
+
+    if (q) setSearchQuery(q);
+    if (isNew) {
+      setIsNewShipmentModalOpen(true);
+      if (invId) setOrderNumber(invId);
+      if (cust) setRecipientName(cust);
+    }
+    if (shipmentId && shipments.length > 0) {
+      const found = shipments.find((s) => s.id === shipmentId || s.trackingNumber === shipmentId);
+      if (found) setSelectedShipment(found);
+    }
+  }, [shipments]);
+
+  useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (selectedShipment) setSelectedShipment(null);

@@ -60,6 +60,23 @@ export const Expenses: React.FC = () => {
     fetchExpenses();
   }, [searchQuery, categoryFilter, statusFilter]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const expId = params.get('expenseId') || params.get('id');
+    const q = params.get('q');
+    const isNew = params.get('new') === 'true';
+
+    if (q) setSearchQuery(q);
+    if (isNew) setShowNewModal(true);
+    if (expId && expenses.length > 0) {
+      const found = expenses.find((e) => e.id === expId || e.expenseNumber === expId);
+      if (found) {
+        setEditingExpense(found);
+        setShowEditModal(true);
+      }
+    }
+  }, [expenses]);
+
   const handleDeleteExpense = async (id: string) => {
     const isConfirmed = await confirm({
       title: t('expenses.confirmDelete', '¿Eliminar gasto?'),

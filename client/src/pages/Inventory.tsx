@@ -255,6 +255,33 @@ export const Inventory: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prodId = params.get('productId') || params.get('id');
+    const whId = params.get('warehouseId');
+    const batchId = params.get('batchId');
+    const tab = params.get('tab');
+    const q = params.get('q');
+    const isNew = params.get('new') === 'true';
+
+    if (q) setSearch(q);
+    if (tab === 'transfers' || tab === 'warehouses') {
+      setInventorySection('transfers');
+      if (whId) setSelectedWarehouseId(whId);
+    } else if (tab === 'batches') {
+      setInventorySection('batches');
+    } else if (tab === 'kardex') {
+      setInventorySection('kardex');
+    }
+
+    if (isNew) setIsFormModalOpen(true);
+
+    if (prodId && products.length > 0) {
+      const found = products.find((p) => p.id === prodId || p.sku === prodId);
+      if (found) setSelectedProduct(found);
+    }
+  }, [products]);
+
+  useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (deletingProduct) setDeletingProduct(null);

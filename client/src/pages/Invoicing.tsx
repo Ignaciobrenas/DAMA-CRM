@@ -23,6 +23,8 @@ import {
   Receipt,
   FileCheck2,
   ShieldCheck,
+  Truck,
+  Search,
 } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
@@ -56,6 +58,9 @@ export const Invoicing: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConverting, setIsConverting] = useState(false);
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<'ALL' | 'PAID' | 'SENT' | 'DRAFT'>('ALL');
+  const [inventoryProducts, setInventoryProducts] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   // SME Suite Modals
   const [isAgingModalOpen, setIsAgingModalOpen] = useState(false);
@@ -115,13 +120,14 @@ export const Invoicing: React.FC = () => {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [resInvoices, resQuotes, resRecurring, resContracts, resCompanies, resContacts] = await Promise.all([
+    const [resInvoices, resQuotes, resRecurring, resContracts, resCompanies, resContacts, resInventory] = await Promise.all([
       apiRequest('/invoices'),
       apiRequest('/invoices/quotes/all'),
       apiRequest('/invoices/recurring/all'),
       apiRequest('/contracts'),
       apiRequest('/companies?limit=100'),
       apiRequest('/contacts?limit=100'),
+      apiRequest('/inventory?limit=100'),
     ]);
 
     if (resInvoices.success) setInvoices(resInvoices.data || []);
@@ -130,11 +136,43 @@ export const Invoicing: React.FC = () => {
     if (resContracts.success) setContracts(resContracts.data || []);
     if (resCompanies.success) setCompanies(resCompanies.data || []);
     if (resContacts.success) setContacts(resContacts.data || []);
+    if (resInventory?.success && Array.isArray(resInventory.data)) setInventoryProducts(resInventory.data || []);
     setIsLoading(false);
   };
 
   useEffect(() => {
     loadData();
+    const params = new URLSearchParams(window.location.search);
+    const invId = params.get('invoiceId') || params.get('id');
+    const qId = params.get('quoteId');
+    const tabParam = params.get('tab');
+    const isNew = params.get('new') === 'true';
+    const cId = params.get('companyId');
+    const ctId = params.get('contactId');
+    const qTerm = params.get('q');
+
+    if (qTerm) setSearchQuery(qTerm);
+
+    if (tabParam && ['invoices', 'quotes', 'recurring', 'contracts'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    } else if (qId) {
+      setActiveTab('quotes');
+      setHighlightId(qId);
+    } else if (invId) {
+      setActiveTab('invoices');
+      setHighlightId(invId);
+    }
+
+    if (isNew) {
+      setIsModalOpen(true);
+      if (tabParam === 'quotes' || qId) {
+        setModalType('quote');
+      } else {
+        setModalType('invoice');
+      }
+      if (cId) setCompanyId(cId);
+      if (ctId) setContactId(ctId);
+    }
   }, []);
 
   const handleDownloadPdf = async (id: string, number: string) => {
@@ -476,9 +514,29 @@ export const Invoicing: React.FC = () => {
   };
 
   const filteredInvoices = useMemo(() => {
-    if (invoiceStatusFilter === 'ALL') return invoices;
-    return invoices.filter((inv) => inv.status === invoiceStatusFilter);
-  }, [invoices, invoiceStatusFilter]);
+    return invoices.filter((inv) => {
+      if (highlightId && inv.id === highlightId) return true;
+      if (invoiceStatusFilter !== 'ALL' && inv.status !== invoiceStatusFilter) return false;
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      const num = (inv.invoiceNumber || '').toLowerCase();
+      const comp = (inv.company?.name || '').toLowerCase();
+      const ct = `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.toLowerCase();
+      return num.includes(q) || comp.includes(q) || ct.includes(q);
+    });
+  }, [invoices, invoiceStatusFilter, searchQuery, highlightId]);
+
+  const filteredQuotes = useMemo(() => {
+    return quotes.filter((q) => {
+      if (highlightId && q.id === highlightId) return true;
+      if (!searchQuery) return true;
+      const term = searchQuery.toLowerCase();
+      const num = (q.quoteNumber || '').toLowerCase();
+      const comp = (q.company?.name || '').toLowerCase();
+      const ct = `${q.contact?.firstName || ''} ${q.contact?.lastName || ''}`.toLowerCase();
+      return num.includes(term) || comp.includes(term) || ct.includes(term);
+    });
+  }, [quotes, searchQuery, highlightId]);
 
   const handleExportInvoicesCsv = () => {
     const headers = [
@@ -759,26 +817,38 @@ export const Invoicing: React.FC = () => {
       {activeTab === 'invoices' && (
         <div className="space-y-3">
           {/* Status filter bar */}
-          <div className="flex items-center space-x-2">
-            {[
-              { id: 'ALL', label: t('invoicing.filterAll') },
-              { id: 'PAID', label: t('invoicing.filterPaid') },
-              { id: 'SENT', label: t('invoicing.filterPending') },
-              { id: 'DRAFT', label: t('invoicing.filterDraft') },
-            ].map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setInvoiceStatusFilter(f.id as any)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  invoiceStatusFilter === f.id
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative flex-1 min-w-[200px] max-w-xs">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por nº, cliente..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              {[
+                { id: 'ALL', label: t('invoicing.filterAll') },
+                { id: 'PAID', label: t('invoicing.filterPaid') },
+                { id: 'SENT', label: t('invoicing.filterPending') },
+                { id: 'DRAFT', label: t('invoicing.filterDraft') },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setInvoiceStatusFilter(f.id as any)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    invoiceStatusFilter === f.id
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-xs">
@@ -920,6 +990,21 @@ export const Invoicing: React.FC = () => {
                             >
                               <Copy className="w-3.5 h-3.5" />
                             </button>
+                            <button
+                              onClick={() => {
+                                const q = new URLSearchParams({
+                                  new: 'true',
+                                  invoiceId: inv.invoiceNumber || inv.id,
+                                  customer: inv.company?.name || `${inv.contact?.firstName || ''} ${inv.contact?.lastName || ''}`.trim(),
+                                }).toString();
+                                window.history.pushState({}, '', '/logistics?' + q);
+                                window.dispatchEvent(new Event('popstate'));
+                              }}
+                              className="p-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded transition-colors"
+                              title="Crear Envío Logístico para esta factura"
+                            >
+                              <Truck className="w-3.5 h-3.5" />
+                            </button>
                             {!inv.isRectifying && (
                               <button
                                 onClick={() => setRectifyModal({ isOpen: true, invoice: inv, reason: 'Devolución de mercancía o rectificación' })}
@@ -978,8 +1063,8 @@ export const Invoicing: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
-                {quotes.length > 0 ? (
-                  quotes.map((q) => (
+                {filteredQuotes.length > 0 ? (
+                  filteredQuotes.map((q) => (
                     <tr key={q.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">
                         {q.quoteNumber}
@@ -1508,6 +1593,29 @@ export const Invoicing: React.FC = () => {
 
               {items.map((it, idx) => (
                 <div key={idx} className="flex items-center space-x-2">
+                  {inventoryProducts.length > 0 && (
+                    <select
+                      aria-label="Cargar producto de inventario"
+                      title="Seleccionar del inventario"
+                      onChange={(e) => {
+                        const prod = inventoryProducts.find((p) => p.id === e.target.value);
+                        if (prod) {
+                          updateItem(idx, 'description', prod.name + (prod.sku ? ` (${prod.sku})` : ''));
+                          updateItem(idx, 'unitPrice', Number(prod.price) || 0);
+                        }
+                        e.target.value = '';
+                      }}
+                      className="w-24 text-[10px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-1 text-slate-700 dark:text-slate-300 shrink-0"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>📦 Catálogo</option>
+                      {inventoryProducts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({Number(p.price).toFixed(2)}€)
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <input
                     type="text"
                     data-testid={`item-desc-${idx}`}

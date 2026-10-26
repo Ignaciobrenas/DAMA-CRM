@@ -185,6 +185,18 @@ export const CalendarPage: React.FC = () => {
     return () => window.removeEventListener('dama:calendar-synced', handleSynced);
   }, [currentDate, scopeFilter, typeFilter]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const evId = params.get('appointmentId') || params.get('eventId') || params.get('id');
+    const q = params.get('q');
+
+    if (q) setSearchQuery(q);
+    if (evId && events.length > 0) {
+      const found = events.find((e) => e.id === evId);
+      if (found) setSelectedEvent(found);
+    }
+  }, [events]);
+
   // Calendar Date Math Helpers
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();

@@ -145,6 +145,28 @@ export const Appointments: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const aptId = params.get('appointmentId') || params.get('id');
+    const q = params.get('q');
+    const isNew = params.get('new') === 'true';
+    const cName = params.get('clientName');
+    const cEmail = params.get('clientEmail');
+    const cPhone = params.get('clientPhone');
+
+    if (q) setSearchQuery(q);
+    if (isNew) {
+      setIsNewAppointmentModalOpen(true);
+      if (cName) setClientName(cName);
+      if (cEmail) setClientEmail(cEmail);
+      if (cPhone) setClientPhone(cPhone);
+    }
+    if (aptId && appointments.length > 0) {
+      const found = appointments.find((a) => a.id === aptId);
+      if (found) setSearchQuery(found.clientName || aptId);
+    }
+  }, [appointments]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isNewAppointmentModalOpen) setIsNewAppointmentModalOpen(false);

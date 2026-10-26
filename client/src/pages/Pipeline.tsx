@@ -104,6 +104,33 @@ export const Pipeline: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleUrlParams = () => {
+      const params = new URLSearchParams(window.location.search);
+      const dealId = params.get('dealId') || params.get('id');
+      const q = params.get('q');
+      const newDeal = params.get('new');
+      const cId = params.get('companyId');
+      if (q) setSearchTerm(q);
+      if (newDeal === 'true') {
+        if (cId) setCompanyId(cId);
+        setIsModalOpen(true);
+      }
+      if (dealId && stages.length > 0) {
+        for (const st of stages) {
+          const d = st.deals?.find((item: any) => item.id === dealId);
+          if (d) {
+            setSelectedDeal(d);
+            break;
+          }
+        }
+      }
+    };
+    handleUrlParams();
+    window.addEventListener('popstate', handleUrlParams);
+    return () => window.removeEventListener('popstate', handleUrlParams);
+  }, [stages]);
+
   // Listen for Escape key on local delete confirmation modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -36,6 +36,7 @@ import {
 } from '../utils/validators';
 import { ValidatedInput } from '../components/common/ValidatedInput';
 import { exportToCSV } from '../utils/exportUtils';
+import { CompanyDetailModal } from '../components/companies/CompanyDetailModal';
 
 export const Companies: React.FC = () => {
   const { t } = useLanguage();
@@ -82,6 +83,39 @@ export const Companies: React.FC = () => {
   // Bulk Selection State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // 360 Detail Modal state
+  const [detailModalCompany, setDetailModalCompany] = useState<any | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+
+  const handleOpenDetailModal = useCallback(async (companyId: string) => {
+    setIsDetailModalOpen(true);
+    setIsDetailLoading(true);
+    const res = await apiRequest('/companies/' + companyId);
+    if (res.success && res.data) {
+      setDetailModalCompany(res.data);
+    } else {
+      toast.error(t('error'), 'No se pudo cargar la información de la empresa');
+      setIsDetailModalOpen(false);
+    }
+    setIsDetailLoading(false);
+  }, [t, toast]);
+
+  useEffect(() => {
+    const handleUrlParams = () => {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('id') || params.get('companyId');
+      const q = params.get('q');
+      if (q) setSearch(q);
+      if (targetId) {
+        handleOpenDetailModal(targetId);
+      }
+    };
+    handleUrlParams();
+    window.addEventListener('popstate', handleUrlParams);
+    return () => window.removeEventListener('popstate', handleUrlParams);
+  }, [handleOpenDetailModal]);
+
   const loadCompanies = useCallback(async () => {
     setIsLoading(true);
     const res = await apiRequest('/companies?limit=200');
@@ -99,14 +133,15 @@ export const Companies: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (deletingCompany) setDeletingCompany(null);
+        if (isDetailModalOpen) setIsDetailModalOpen(false);
+        else if (deletingCompany) setDeletingCompany(null);
         else if (editingCompany) setEditingCompany(null);
         else if (isModalOpen) setIsModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isModalOpen, editingCompany, deletingCompany]);
+  }, [isModalOpen, editingCompany, deletingCompany, isDetailModalOpen]);
 
   // Extract distinct industries for filter dropdown
   const uniqueIndustries = useMemo(() => {
@@ -593,7 +628,7 @@ export const Companies: React.FC = () => {
           {filteredAndSortedCompanies.map((company) => (
             <div
               key={company.id}
-              onClick={(e) => toggleSelectCompany(company.id, e)}
+              onClick={() => handleOpenDetailModal(company.id)}
               className={`bg-white dark:bg-slate-900 p-5 rounded-2xl border shadow-xs flex flex-col justify-between space-y-3.5 transition-all duration-200 cursor-pointer ${
                 selectedIds.has(company.id)
                   ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20 dark:bg-slate-800/90'
@@ -606,6 +641,7 @@ export const Companies: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={selectedIds.has(company.id)}
+                      onClick={(e) => { e.stopPropagation(); toggleSelectCompany(company.id, e); }}
                       onChange={() => {}}
                       aria-label={`Seleccionar ${company.name}`}
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 dark:border-slate-600 focus:ring-blue-500 cursor-pointer shrink-0"
@@ -1008,6 +1044,15 @@ export const Companies: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 360 Company Detail Modal (Interconnected Data across modules) */}
+      <CompanyDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        company={detailModalCompany}
+        isLoading={isDetailLoading}
+        onEdit={(cmp) => handleOpenEdit(cmp)}
+      />
     </div>
   );
 };

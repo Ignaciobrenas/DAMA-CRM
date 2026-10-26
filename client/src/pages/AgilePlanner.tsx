@@ -183,6 +183,28 @@ export const AgilePlanner: React.FC = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get('taskId') || params.get('id');
+    const projectId = params.get('projectId');
+    const q = params.get('q');
+    const isNew = params.get('new') === 'true';
+
+    if (q) setSearchQuery(q);
+    if (projectId) {
+      setProjectFilter(projectId);
+      setActiveTab('projects');
+    }
+    if (taskId && tasks.length > 0) {
+      const found = tasks.find((t: any) => t.id === taskId);
+      if (found) setSelectedTask(found);
+    }
+    if (isNew) {
+      if (params.get('type') === 'project') setIsProjectModalOpen(true);
+      else setIsTaskModalOpen(true);
+    }
+  }, [tasks, projects]);
+
   const kpis = useMemo(() => {
     const totalTasksCount = tasks.length;
     const doneCount = tasks.filter((x) => x.status === 'DONE').length;

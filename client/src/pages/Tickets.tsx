@@ -100,6 +100,20 @@ export const Tickets: React.FC = () => {
     fetchTickets();
   }, [searchQuery, priorityFilter, categoryFilter, statusFilter, assignedToFilter]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ticketId = params.get('ticketId') || params.get('id');
+    const q = params.get('q');
+    const isNew = params.get('new') === 'true';
+
+    if (q) setSearchQuery(q);
+    if (isNew) setShowNewModal(true);
+    if (ticketId && tickets.length > 0) {
+      const found = tickets.find((t) => t.id === ticketId || t.ticketNumber === ticketId);
+      if (found) setSelectedTicket(found);
+    }
+  }, [tickets]);
+
   // Subscribe to live WebSocket events
   useEffect(() => {
     const unsubCreated = wsService.on('ticket:created', (newTicket: Ticket) => {

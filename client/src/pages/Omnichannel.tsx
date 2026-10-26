@@ -317,6 +317,22 @@ export const Omnichannel: React.FC = () => {
 
   // External Chat Initial Effect
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const chatId = params.get('chatId') || params.get('id') || params.get('contactId');
+    const q = params.get('q');
+    const tab = params.get('tab');
+
+    if (tab === 'internal') setActiveTab('internal');
+    else if (tab === 'whatsapp') setActiveTab('whatsapp');
+    if (q) setSearchQuery(q);
+
+    if (chatId && contacts.length > 0) {
+      const found = contacts.find((c: any) => c.id === chatId || c.contactId === chatId);
+      if (found) setSelectedContact(found);
+    }
+  }, [contacts]);
+
+  useEffect(() => {
     loadContacts();
     loadInternalChannels();
 

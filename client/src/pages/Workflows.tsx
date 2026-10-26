@@ -71,6 +71,20 @@ export const Workflows: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wfId = params.get('workflowId') || params.get('id');
+    const q = params.get('q');
+    const isNew = params.get('new') === 'true';
+
+    if (q) setSearch(q);
+    if (isNew) setIsCreateOpen(true);
+    if (wfId && workflows.length > 0) {
+      const found = workflows.find((w: any) => w.id === wfId);
+      if (found) setEditingWorkflow(found);
+    }
+  }, [workflows]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isCreateOpen) setIsCreateOpen(false);
