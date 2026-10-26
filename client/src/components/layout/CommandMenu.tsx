@@ -13,6 +13,19 @@ import {
   Blocks,
   Rocket,
   X,
+  Truck,
+  Calendar,
+  CalendarClock,
+  LifeBuoy,
+  CreditCard,
+  MessageSquare,
+  Users,
+  Activity,
+  Briefcase,
+  Layers,
+  Boxes,
+  GitFork,
+  ShieldCheck,
 } from 'lucide-react';
 import { apiRequest } from '../../services/api';
 import { useLanguage } from '../../context/LanguageContext';
@@ -43,13 +56,21 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
   const { t } = useLanguage();
 
   const categories = [
-    { key: 'all', label: t('all') },
-    { key: 'contacts', label: t('contacts') },
-    { key: 'companies', label: t('companies') },
-    { key: 'deals', label: t('pipeline') },
-    { key: 'invoices', label: t('invoicing') },
-    { key: 'inventory', label: t('inventory') },
-    { key: 'tasks', label: t('myTasks') },
+    { key: 'all', label: t('all') || 'Todos' },
+    { key: 'contacts', label: t('contacts') || 'Contactos' },
+    { key: 'companies', label: t('companies') || 'Empresas' },
+    { key: 'deals', label: t('pipeline') || 'Oportunidades' },
+    { key: 'invoices', label: t('invoicing') || 'Facturación' },
+    { key: 'quotes', label: t('quotes') || 'Presupuestos' },
+    { key: 'inventory', label: t('inventory') || 'Inventario' },
+    { key: 'logistics', label: t('logistics') || 'Logística' },
+    { key: 'appointments', label: t('appointments') || 'Citas & Agenda' },
+    { key: 'tasks', label: t('myTasks') || 'Tareas & Proyectos' },
+    { key: 'tickets', label: t('tickets') || 'Tickets' },
+    { key: 'expenses', label: t('expenses') || 'Gastos' },
+    { key: 'employees', label: t('employees') || 'Empleados' },
+    { key: 'omnichannel', label: t('omnichannel') || 'Omnicanal' },
+    { key: 'workflows', label: t('workflows') || 'Automatizaciones' },
   ];
 
   useEffect(() => {
@@ -103,7 +124,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
       } else {
         setResults([]);
       }
-    }, 200);
+    }, 180);
 
     return () => clearTimeout(timer);
   }, [query, activeCategory]);
@@ -115,14 +136,48 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
 
   const getIcon = (iconName: string) => {
     switch (iconName) {
-      case 'Building2': return Building2;
-      case 'User': return User;
-      case 'DollarSign': return DollarSign;
-      case 'CheckSquare': return CheckSquare;
-      case 'FileText': return FileText;
-      case 'Package': return Package;
-      case 'Receipt': return Receipt;
-      default: return Search;
+      case 'Building2':
+        return Building2;
+      case 'User':
+        return User;
+      case 'DollarSign':
+        return DollarSign;
+      case 'CheckSquare':
+        return CheckSquare;
+      case 'FileText':
+        return FileText;
+      case 'Package':
+        return Package;
+      case 'Receipt':
+        return Receipt;
+      case 'Truck':
+        return Truck;
+      case 'Calendar':
+        return Calendar;
+      case 'CalendarClock':
+        return CalendarClock;
+      case 'LifeBuoy':
+        return LifeBuoy;
+      case 'CreditCard':
+        return CreditCard;
+      case 'MessageSquare':
+        return MessageSquare;
+      case 'Users':
+        return Users;
+      case 'Activity':
+        return Activity;
+      case 'Briefcase':
+        return Briefcase;
+      case 'Layers':
+        return Layers;
+      case 'Boxes':
+        return Boxes;
+      case 'GitFork':
+        return GitFork;
+      case 'ShieldCheck':
+        return ShieldCheck;
+      default:
+        return Search;
     }
   };
 
@@ -145,7 +200,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('searchAcrossAll')}
+            placeholder={t('searchAcrossAll') || 'Buscar en todos los módulos (Contactos, Facturas, Envíos, Citas, Tareas...)'}
             className="w-full text-sm bg-transparent placeholder-slate-400 dark:placeholder-slate-400 text-slate-900 dark:text-white font-medium focus:outline-none"
           />
           {query && (
@@ -193,7 +248,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                 const IconComponent = getIcon(item.icon);
                 return (
                   <button
-                    key={`${item.category}-${item.id}`}
+                    key={`${item.categoryKey || item.category}-${item.id}`}
                     type="button"
                     onClick={() => handleSelect(item.route)}
                     className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-blue-50/60 dark:hover:bg-slate-800/60 text-left transition-colors group"
@@ -241,7 +296,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
             <div className="p-4 space-y-3">
               <div className="flex items-center space-x-1.5 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                <span>{t('quickShortcuts')}</span>
+                <span>{t('quickShortcuts') || 'Accesos Rápidos a Módulos'}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
@@ -253,8 +308,8 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                     <User className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('contacts')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('contactsSubtitle')}</div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('contacts') || 'Contactos'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('contactsSubtitle') || 'Directorio y leads'}</div>
                   </div>
                 </button>
 
@@ -267,8 +322,8 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                     <Building2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('companies')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('companiesSubtitle')}</div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('companies') || 'Empresas'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('companiesSubtitle') || 'Cuentas corporativas y CIF'}</div>
                   </div>
                 </button>
 
@@ -281,8 +336,36 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                     <FileText className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('invoicing')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('invoicingSubtitle')}</div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('invoicing') || 'Facturación'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('invoicingSubtitle') || 'Facturas, presupuestos y Veri*Factu'}</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelect('/logistics')}
+                  className="flex items-center space-x-2.5 p-2 rounded-xl border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 text-left transition-colors"
+                >
+                  <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('logistics') || 'Logística & Envíos'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">GLS, NACEX, DHL, SEUR</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelect('/appointments')}
+                  className="flex items-center space-x-2.5 p-2 rounded-xl border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 text-left transition-colors"
+                >
+                  <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
+                    <CalendarClock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('appointments') || 'Citas & Agenda'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">Reservas, servicios y especialistas</div>
                   </div>
                 </button>
 
@@ -295,8 +378,8 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                     <DollarSign className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('pipeline')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('pipelineSubtitle')}</div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('pipeline') || 'Pipeline'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('pipelineSubtitle') || 'Embudo de ventas y tratos'}</div>
                   </div>
                 </button>
 
@@ -309,8 +392,8 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                     <Package className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('inventory')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('inventorySubtitle')}</div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('inventory') || 'Inventario'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('inventorySubtitle') || 'Stock, almacenes y lotes'}</div>
                   </div>
                 </button>
 
@@ -323,36 +406,36 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
                     <CheckSquare className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('agile')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('agileSubtitle')}</div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('agile') || 'Planificador Ágil'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('agileSubtitle') || 'Sprints y tareas'}</div>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleSelect('/integrations')}
+                  onClick={() => handleSelect('/tickets')}
                   className="flex items-center space-x-2.5 p-2 rounded-xl border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 text-left transition-colors"
                 >
-                  <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400">
-                    <Blocks className="w-4 h-4" />
+                  <div className="p-1.5 rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
+                    <LifeBuoy className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('integrations')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('commandMenu.integrationsDesc')}</div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('tickets') || 'Tickets'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">Soporte y Helpdesk con SLA</div>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleSelect('/onboarding')}
+                  onClick={() => handleSelect('/omnichannel')}
                   className="flex items-center space-x-2.5 p-2 rounded-xl border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 text-left transition-colors"
                 >
-                  <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
-                    <Rocket className="w-4 h-4" />
+                  <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
+                    <MessageSquare className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('onboarding.setupWizard', 'Asistente de Bienvenida')}</div>
-                    <div className="text-[10px] text-gray-400 dark:text-slate-500">{t('commandMenu.guidedSetup')}</div>
+                    <div className="text-xs font-semibold text-gray-800 dark:text-slate-200">{t('omnichannel') || 'Omnicanal'}</div>
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500">WhatsApp, Email y Chat en vivo</div>
                   </div>
                 </button>
               </div>
@@ -363,14 +446,14 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
         {/* Footer info bar */}
         <div className="px-4 py-2.5 bg-gray-50 dark:bg-slate-950/60 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400">
           <div className="flex items-center space-x-3">
-            <span>{t('pressEscToClose')}</span>
+            <span>{t('pressEscToClose') || 'Pulsa ESC para cerrar'}</span>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
           >
-            {t('close')}
+            {t('close') || 'Cerrar'}
           </button>
         </div>
       </div>

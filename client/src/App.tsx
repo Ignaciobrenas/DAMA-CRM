@@ -54,8 +54,10 @@ import { NotFound } from './pages/NotFound';
 import { CookieBanner } from './components/common/CookieBanner';
 
 const normalizeRoute = (pathname: string): string => {
-  const p = pathname.toLowerCase();
-  if (p.startsWith('/quote/sign/')) return pathname;
+  if (!pathname) return '/';
+  const cleanPart = pathname.split('?')[0];
+  const p = cleanPart.toLowerCase();
+  if (p.startsWith('/quote/sign/')) return cleanPart;
   if (p === '/calendar') return '/calendar';
   if (p === '/appointments') return '/appointments';
   if (p === '/logistics') return '/logistics';
@@ -90,7 +92,7 @@ const AppContent: React.FC = () => {
   const { branding } = useBranding();
   const { t } = useLanguage();
   const { isModuleEnabled } = useModules();
-  
+
   const resolveCurrentRoute = (): string => {
     if (window.location.hash && window.location.hash.startsWith('#/')) {
       return normalizeRoute(window.location.hash.slice(1));
@@ -133,11 +135,15 @@ const AppContent: React.FC = () => {
     const target = normalizeRoute(route);
     const isLocalProtocol = window.location.protocol === 'file:' || window.location.protocol.startsWith('capacitor');
     if (isLocalProtocol) {
-      window.location.hash = '#' + target;
-    } else if (window.location.pathname !== target) {
-      window.history.pushState(null, '', target);
+      window.location.hash = '#' + route;
+    } else {
+      const fullPath = route.startsWith('/') ? route : `/${route}`;
+      if (window.location.pathname + window.location.search !== fullPath) {
+        window.history.pushState(null, '', fullPath);
+      }
     }
     setCurrentRoute(target);
+    window.dispatchEvent(new Event('popstate'));
   };
 
   if (isLoading) {
@@ -417,7 +423,7 @@ export const App: React.FC = () => {
                   <AppearanceProvider>
                     <ModulesProvider>
                       <CookieBanner />
-                        <AppContent />
+                      <AppContent />
                     </ModulesProvider>
                   </AppearanceProvider>
                 </AuthProvider>
@@ -431,5 +437,3 @@ export const App: React.FC = () => {
 };
 
 export default App;
-
-
