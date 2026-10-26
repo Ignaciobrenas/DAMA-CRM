@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE "users" (
 );
 
 -- CreateTable
-CREATE TABLE "roles" (
+CREATE TABLE IF NOT EXISTS "roles" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -28,7 +28,7 @@ CREATE TABLE "roles" (
 );
 
 -- CreateTable
-CREATE TABLE "permissions" (
+CREATE TABLE IF NOT EXISTS "permissions" (
     "id" TEXT NOT NULL,
     "roleId" TEXT NOT NULL,
     "resource" TEXT NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE "permissions" (
 );
 
 -- CreateTable
-CREATE TABLE "two_factor_tokens" (
+CREATE TABLE IF NOT EXISTS "two_factor_tokens" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "code" TEXT NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE "two_factor_tokens" (
 );
 
 -- CreateTable
-CREATE TABLE "audit_logs" (
+CREATE TABLE IF NOT EXISTS "audit_logs" (
     "id" TEXT NOT NULL,
     "userId" TEXT,
     "action" TEXT NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE "audit_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "companies" (
+CREATE TABLE IF NOT EXISTS "companies" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "industry" TEXT,
@@ -86,7 +86,7 @@ CREATE TABLE "companies" (
 );
 
 -- CreateTable
-CREATE TABLE "contacts" (
+CREATE TABLE IF NOT EXISTS "contacts" (
     "id" TEXT NOT NULL,
     "companyId" TEXT,
     "firstName" TEXT NOT NULL,
@@ -105,7 +105,7 @@ CREATE TABLE "contacts" (
 );
 
 -- CreateTable
-CREATE TABLE "deal_stages" (
+CREATE TABLE IF NOT EXISTS "deal_stages" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "order" INTEGER NOT NULL DEFAULT 0,
@@ -118,7 +118,7 @@ CREATE TABLE "deal_stages" (
 );
 
 -- CreateTable
-CREATE TABLE "deals" (
+CREATE TABLE IF NOT EXISTS "deals" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "value" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
@@ -136,7 +136,7 @@ CREATE TABLE "deals" (
 );
 
 -- CreateTable
-CREATE TABLE "projects" (
+CREATE TABLE IF NOT EXISTS "projects" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -153,7 +153,7 @@ CREATE TABLE "projects" (
 );
 
 -- CreateTable
-CREATE TABLE "sprints" (
+CREATE TABLE IF NOT EXISTS "sprints" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -168,7 +168,7 @@ CREATE TABLE "sprints" (
 );
 
 -- CreateTable
-CREATE TABLE "tasks" (
+CREATE TABLE IF NOT EXISTS "tasks" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
     "sprintId" TEXT,
@@ -188,7 +188,7 @@ CREATE TABLE "tasks" (
 );
 
 -- CreateTable
-CREATE TABLE "quotes" (
+CREATE TABLE IF NOT EXISTS "quotes" (
     "id" TEXT NOT NULL,
     "quoteNumber" TEXT NOT NULL,
     "contactId" TEXT,
@@ -209,7 +209,7 @@ CREATE TABLE "quotes" (
 );
 
 -- CreateTable
-CREATE TABLE "invoices" (
+CREATE TABLE IF NOT EXISTS "invoices" (
     "id" TEXT NOT NULL,
     "invoiceNumber" TEXT NOT NULL,
     "quoteId" TEXT,
@@ -232,7 +232,7 @@ CREATE TABLE "invoices" (
 );
 
 -- CreateTable
-CREATE TABLE "invoice_items" (
+CREATE TABLE IF NOT EXISTS "invoice_items" (
     "id" TEXT NOT NULL,
     "invoiceId" TEXT,
     "quoteId" TEXT,
@@ -245,7 +245,7 @@ CREATE TABLE "invoice_items" (
 );
 
 -- CreateTable
-CREATE TABLE "products" (
+CREATE TABLE IF NOT EXISTS "products" (
     "id" TEXT NOT NULL,
     "externalId" TEXT,
     "sku" TEXT NOT NULL,
@@ -265,7 +265,7 @@ CREATE TABLE "products" (
 );
 
 -- CreateTable
-CREATE TABLE "workflows" (
+CREATE TABLE IF NOT EXISTS "workflows" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -283,7 +283,7 @@ CREATE TABLE "workflows" (
 );
 
 -- CreateTable
-CREATE TABLE "workflow_logs" (
+CREATE TABLE IF NOT EXISTS "workflow_logs" (
     "id" TEXT NOT NULL,
     "workflowId" TEXT NOT NULL,
     "status" TEXT NOT NULL,
@@ -296,7 +296,7 @@ CREATE TABLE "workflow_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "omni_messages" (
+CREATE TABLE IF NOT EXISTS "omni_messages" (
     "id" TEXT NOT NULL,
     "contactId" TEXT NOT NULL,
     "channel" TEXT NOT NULL,
@@ -313,7 +313,7 @@ CREATE TABLE "omni_messages" (
 );
 
 -- CreateTable
-CREATE TABLE "activities" (
+CREATE TABLE IF NOT EXISTS "activities" (
     "id" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "subject" TEXT NOT NULL,
@@ -332,7 +332,7 @@ CREATE TABLE "activities" (
 );
 
 -- CreateTable
-CREATE TABLE "custom_fields" (
+CREATE TABLE IF NOT EXISTS "custom_fields" (
     "id" TEXT NOT NULL,
     "entityType" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -348,7 +348,7 @@ CREATE TABLE "custom_fields" (
 );
 
 -- CreateTable
-CREATE TABLE "custom_field_values" (
+CREATE TABLE IF NOT EXISTS "custom_field_values" (
     "id" TEXT NOT NULL,
     "customFieldId" TEXT NOT NULL,
     "entityId" TEXT NOT NULL,
@@ -360,101 +360,216 @@ CREATE TABLE "custom_field_values" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "roles_name_key" ON "roles"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "roles_name_key" ON "roles"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "permissions_roleId_resource_action_key" ON "permissions"("roleId", "resource", "action");
+CREATE UNIQUE INDEX IF NOT EXISTS "permissions_roleId_resource_action_key" ON "permissions"("roleId", "resource", "action");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "contacts_email_key" ON "contacts"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "contacts_email_key" ON "contacts"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "quotes_quoteNumber_key" ON "quotes"("quoteNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "quotes_quoteNumber_key" ON "quotes"("quoteNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "invoices_invoiceNumber_key" ON "invoices"("invoiceNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "invoices_invoiceNumber_key" ON "invoices"("invoiceNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "products_externalId_key" ON "products"("externalId");
+CREATE UNIQUE INDEX IF NOT EXISTS "products_externalId_key" ON "products"("externalId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "products_sku_key" ON "products"("sku");
+CREATE UNIQUE INDEX IF NOT EXISTS "products_sku_key" ON "products"("sku");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "custom_fields_entityType_name_key" ON "custom_fields"("entityType", "name");
+CREATE UNIQUE INDEX IF NOT EXISTS "custom_fields_entityType_name_key" ON "custom_fields"("entityType", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "custom_field_values_customFieldId_entityId_key" ON "custom_field_values"("customFieldId", "entityId");
+CREATE UNIQUE INDEX IF NOT EXISTS "custom_field_values_customFieldId_entityId_key" ON "custom_field_values"("customFieldId", "entityId");
 
 -- AddForeignKey
-ALTER TABLE "users" ADD CONSTRAINT "users_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "roles"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_roleId_fkey') THEN
+        ALTER TABLE "users" ADD CONSTRAINT "users_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "roles"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "permissions" ADD CONSTRAINT "permissions_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'permissions_roleId_fkey') THEN
+        ALTER TABLE "permissions" ADD CONSTRAINT "permissions_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "two_factor_tokens" ADD CONSTRAINT "two_factor_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'two_factor_tokens_userId_fkey') THEN
+        ALTER TABLE "two_factor_tokens" ADD CONSTRAINT "two_factor_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_userId_fkey') THEN
+        ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "contacts" ADD CONSTRAINT "contacts_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contacts_companyId_fkey') THEN
+        ALTER TABLE "contacts" ADD CONSTRAINT "contacts_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "deals" ADD CONSTRAINT "deals_stageId_fkey" FOREIGN KEY ("stageId") REFERENCES "deal_stages"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'deals_stageId_fkey') THEN
+        ALTER TABLE "deals" ADD CONSTRAINT "deals_stageId_fkey" FOREIGN KEY ("stageId") REFERENCES "deal_stages"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "deals" ADD CONSTRAINT "deals_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'deals_contactId_fkey') THEN
+        ALTER TABLE "deals" ADD CONSTRAINT "deals_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "deals" ADD CONSTRAINT "deals_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'deals_companyId_fkey') THEN
+        ALTER TABLE "deals" ADD CONSTRAINT "deals_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "projects" ADD CONSTRAINT "projects_dealId_fkey" FOREIGN KEY ("dealId") REFERENCES "deals"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'projects_dealId_fkey') THEN
+        ALTER TABLE "projects" ADD CONSTRAINT "projects_dealId_fkey" FOREIGN KEY ("dealId") REFERENCES "deals"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "sprints" ADD CONSTRAINT "sprints_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'sprints_projectId_fkey') THEN
+        ALTER TABLE "sprints" ADD CONSTRAINT "sprints_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tasks_projectId_fkey') THEN
+        ALTER TABLE "tasks" ADD CONSTRAINT "tasks_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_sprintId_fkey" FOREIGN KEY ("sprintId") REFERENCES "sprints"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tasks_sprintId_fkey') THEN
+        ALTER TABLE "tasks" ADD CONSTRAINT "tasks_sprintId_fkey" FOREIGN KEY ("sprintId") REFERENCES "sprints"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'tasks_assigneeId_fkey') THEN
+        ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "quotes" ADD CONSTRAINT "quotes_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quotes_contactId_fkey') THEN
+        ALTER TABLE "quotes" ADD CONSTRAINT "quotes_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "quotes" ADD CONSTRAINT "quotes_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quotes_companyId_fkey') THEN
+        ALTER TABLE "quotes" ADD CONSTRAINT "quotes_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "invoices" ADD CONSTRAINT "invoices_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "quotes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'invoices_quoteId_fkey') THEN
+        ALTER TABLE "invoices" ADD CONSTRAINT "invoices_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "quotes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "invoices" ADD CONSTRAINT "invoices_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'invoices_contactId_fkey') THEN
+        ALTER TABLE "invoices" ADD CONSTRAINT "invoices_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "invoices" ADD CONSTRAINT "invoices_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'invoices_companyId_fkey') THEN
+        ALTER TABLE "invoices" ADD CONSTRAINT "invoices_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'invoice_items_invoiceId_fkey') THEN
+        ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "quotes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'invoice_items_quoteId_fkey') THEN
+        ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "quotes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "workflow_logs" ADD CONSTRAINT "workflow_logs_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "workflows"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'workflow_logs_workflowId_fkey') THEN
+        ALTER TABLE "workflow_logs" ADD CONSTRAINT "workflow_logs_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "workflows"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "omni_messages" ADD CONSTRAINT "omni_messages_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'omni_messages_contactId_fkey') THEN
+        ALTER TABLE "omni_messages" ADD CONSTRAINT "omni_messages_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "custom_field_values" ADD CONSTRAINT "custom_field_values_customFieldId_fkey" FOREIGN KEY ("customFieldId") REFERENCES "custom_fields"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'custom_field_values_customFieldId_fkey') THEN
+        ALTER TABLE "custom_field_values" ADD CONSTRAINT "custom_field_values_customFieldId_fkey" FOREIGN KEY ("customFieldId") REFERENCES "custom_fields"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 

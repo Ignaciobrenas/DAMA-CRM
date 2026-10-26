@@ -142,7 +142,12 @@ CREATE TABLE IF NOT EXISTS "board_task_comments" (
   "userId" TEXT REFERENCES "users"("id") ON DELETE SET NULL
 );
 
-ALTER TABLE "board_task_attachments" ADD CONSTRAINT "board_task_attachments_commentId_fkey" FOREIGN KEY ("commentId") REFERENCES "board_task_comments"("id") ON DELETE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'board_task_attachments_commentId_fkey') THEN
+        ALTER TABLE "board_task_attachments" ADD CONSTRAINT "board_task_attachments_commentId_fkey" FOREIGN KEY ("commentId") REFERENCES "board_task_comments"("id") ON DELETE CASCADE;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS "board_task_pull_requests" (
   "id" TEXT PRIMARY KEY,

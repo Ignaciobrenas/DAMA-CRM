@@ -1,5 +1,5 @@
 -- Migration to add Agile Planner models (Board, BoardColumn, BoardTask)
-CREATE TABLE "Board" (
+CREATE TABLE IF NOT EXISTS "Board" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "key" TEXT UNIQUE,
   "name" TEXT NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE "Board" (
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE "BoardColumn" (
+CREATE TABLE IF NOT EXISTS "BoardColumn" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "title" TEXT NOT NULL,
   "status" TEXT,
@@ -28,7 +28,7 @@ CREATE TABLE "BoardColumn" (
   "boardId" UUID NOT NULL REFERENCES "Board"("id") ON DELETE CASCADE
 );
 
-CREATE TABLE "BoardTask" (
+CREATE TABLE IF NOT EXISTS "BoardTask" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "key" TEXT UNIQUE NOT NULL,
   "title" TEXT NOT NULL,
@@ -49,6 +49,6 @@ CREATE TABLE "BoardTask" (
 );
 
 -- Indexes
-CREATE INDEX "Board_idx_boardId_columnId" ON "BoardTask" ("boardId", "columnId");
-CREATE INDEX "BoardTask_idx_assigneeId" ON "BoardTask" ("assigneeId");
-CREATE INDEX "BoardTask_idx_supervisorId" ON "BoardTask" ("supervisorId");
+CREATE INDEX IF NOT EXISTS "Board_idx_boardId_columnId" ON "BoardTask" ("boardId", "columnId");
+CREATE INDEX IF NOT EXISTS "BoardTask_idx_assigneeId" ON "BoardTask" ("assigneeId");
+CREATE INDEX IF NOT EXISTS "BoardTask_idx_supervisorId" ON "BoardTask" ("supervisorId");

@@ -331,16 +331,18 @@ model TaskComment {
 }
 
 model TaskWorkLog {
-  id          String   @id @default(uuid())
-  taskId      String
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userName    String?
-  hours       Float    @default(0.0)
-  description String?
-  date        DateTime @default(now())
-  createdAt   DateTime @default(now())
+  id           String   @id @default(uuid())
+  taskId       String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName     String?
+  hours        Float    @default(0.0)
+  description  String?
+  isBillable   Boolean  @default(true)
+  timeRecordId String?
+  date         DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([taskId, date])
   @@map("task_work_logs")
@@ -1010,26 +1012,36 @@ model Payroll {
 }
 
 model TimeRecord {
-  id               String    @id @default(uuid())
-  employeeId       String
-  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  userId           String?
-  tenantId         String?   @default("master")
-  clockIn          DateTime  @default(now())
-  clockOut         DateTime?
-  durationMinutes  Int?      @default(0)
-  type             String    @default("WORK") // WORK, BREAK, REMOTE, TRAVEL, MEDICAL
-  reason           String?   // Justificación e.g. "Oficina Central", "Teletrabajo", "Visita comercial", "Pausa médica"
-  notes            String?
-  ipAddress        String?
-  location         String?
-  odooAttendanceId Int?      // Linked Odoo attendance record ID
-  status           String    @default("VALID") // VALID, PENDING_APPROVAL, REJECTED
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  employeeId         String
+  employee           Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  userId             String?
+  tenantId           String?   @default("master")
+  clockIn            DateTime  @default(now())
+  clockOut           DateTime?
+  durationMinutes    Int?      @default(0)
+  type               String    @default("WORK") // WORK, BREAK, REMOTE, TRAVEL, MEDICAL, OVERTIME
+  reason             String?   // Justificación e.g. "Oficina Central", "Teletrabajo", "Visita comercial", "Pausa médica"
+  notes              String?
+  ipAddress          String?
+  location           String?
+  odooAttendanceId   Int?      // Linked Odoo attendance record ID
+  status             String    @default("VALID") // VALID, PENDING_APPROVAL, REJECTED
+  projectId          String?
+  projectName        String?
+  taskId             String?
+  taskTitle          String?
+  isBillable         Boolean   @default(true)
+  isPaused           Boolean   @default(false)
+  pausedAt           DateTime?
+  lastResumedAt      DateTime? @default(now())
+  accumulatedSeconds Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([tenantId, clockIn])
   @@index([employeeId, clockIn])
+  @@index([userId, clockOut])
   @@map("time_records")
 }
 

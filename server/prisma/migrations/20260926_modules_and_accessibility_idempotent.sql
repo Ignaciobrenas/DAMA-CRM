@@ -10,7 +10,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'tenants' AND column_name = 'settings'
     ) THEN
-        ALTER TABLE "tenants" ADD COLUMN "settings" TEXT DEFAULT '{}';
+        ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "settings" TEXT DEFAULT '{}';
     END IF;
 END $$;
 
@@ -21,7 +21,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name = 'preferences'
     ) THEN
-        ALTER TABLE "users" ADD COLUMN "preferences" TEXT DEFAULT '{}';
+        ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "preferences" TEXT DEFAULT '{}';
     END IF;
 END $$;
 
