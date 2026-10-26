@@ -234,7 +234,7 @@ export async function generateStockTransferPdf(
 
       // Footer
       doc.fontSize(6.5).font('Helvetica').fillColor('#64748B').text(
-        `${branding.mercantileRegistry || 'Documento oficial de control logístico interno'} · Impreso por ${branding.companyName || 'DAMA CRM'}`,
+        `${branding.pdfMercantileRegistry || 'Documento oficial de control logístico interno'} · Impreso por ${branding.companyName || 'DAMA CRM'}`,
         40,
         785,
         { width: 515, align: 'center' }

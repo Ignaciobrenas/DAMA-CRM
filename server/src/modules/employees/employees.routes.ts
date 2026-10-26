@@ -17,7 +17,11 @@ import {
 import {
   clockIn,
   clockOut,
+  pauseTimer,
+  resumeTimer,
+  updateActiveTimer,
   getClockStatus,
+  getTrackableTasks,
   getTimeHistory,
   syncWithOdooAttendance,
   exportTimeRecordsCsv,
@@ -28,12 +32,20 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// --- Time Tracking & Fichajes Endpoints ---
+// --- Harvest-Style Persistent Time Tracking & Fichajes Endpoints ---
 router.get('/time-tracking/export/csv', requirePermission('employees', 'read'), exportTimeRecordsCsv);
 router.get('/time-tracking/export/pdf', requirePermission('employees', 'read'), exportTimeRecordsPdf);
 router.post('/time-tracking/clock-in', clockIn);
 router.post('/time-tracking/clock-out', clockOut);
+router.post('/time-tracking/timer/start', clockIn);
+router.post('/time-tracking/timer/stop', clockOut);
+router.post('/time-tracking/timer/pause', pauseTimer);
+router.post('/time-tracking/timer/resume', resumeTimer);
+router.patch('/time-tracking/timer/active', updateActiveTimer);
+router.post('/time-tracking/timer/update', updateActiveTimer);
 router.get('/time-tracking/status', getClockStatus);
+router.get('/time-tracking/timer/active', getClockStatus);
+router.get('/time-tracking/tasks', getTrackableTasks);
 router.get('/time-tracking/history', getTimeHistory);
 router.post('/time-tracking/sync-odoo', requirePermission('employees', 'manage'), auditMiddleware('SYNC', 'ODOO_ATTENDANCE'), syncWithOdooAttendance);
 

@@ -74,6 +74,8 @@ app.use(
 const allowedOriginPatterns = [
   /^http:\/\/localhost(:\d+)?$/,
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+  /^chrome-extension:\/\//,
+  /^moz-extension:\/\//,
   /\.damacrm\.com$/,
   /\.damacrm\.local$/,
   /\.dama\.com$/,
