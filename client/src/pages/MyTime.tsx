@@ -78,6 +78,9 @@ export const MyTime: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const onTimerSync = () => loadData();
+    window.addEventListener('dama:timer-updated', onTimerSync);
+    return () => window.removeEventListener('dama:timer-updated', onTimerSync);
   }, []);
 
   useEffect(() => {
@@ -98,10 +101,15 @@ export const MyTime: React.FC = () => {
       return;
     }
 
-    const clockInTime = new Date(clockStatus.activeRecord.clockIn).getTime();
     const updateTimer = () => {
-      const now = Date.now();
-      setLiveElapsedSeconds(Math.max(0, Math.floor((now - clockInTime) / 1000)));
+      const rec = clockStatus.activeRecord;
+      const acc = rec.accumulatedSeconds || 0;
+      if (rec.isPaused) {
+        setLiveElapsedSeconds(acc);
+        return;
+      }
+      const startMs = new Date(rec.lastResumedAt || rec.clockIn).getTime();
+      setLiveElapsedSeconds(acc + Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
     };
 
     updateTimer();
@@ -132,6 +140,7 @@ export const MyTime: React.FC = () => {
       if (res.success) {
         soundService.play('success');
         toast.success('Jornada Iniciada', 'Fichaje de entrada registrado correctamente');
+        window.dispatchEvent(new CustomEvent('dama:timer-updated'));
         loadData();
       } else {
         toast.error('Error', res.message || 'No se pudo registrar el fichaje');
@@ -157,6 +166,7 @@ export const MyTime: React.FC = () => {
         toast.success('Jornada Finalizada', res.message || 'Fichaje de salida registrado');
         setClockNotes('');
         setIsClockOutConfirmOpen(false);
+        window.dispatchEvent(new CustomEvent('dama:timer-updated'));
         loadData();
       } else {
         toast.error('Error', res.message || 'No se pudo cerrar el fichaje');

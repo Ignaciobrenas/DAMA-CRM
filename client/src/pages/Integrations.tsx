@@ -1219,7 +1219,7 @@ export const Integrations: React.FC = () => {
               <div className="p-6 space-y-5 flex-1">
                 {/* Permisos / RBAC Notice */}
                 {!isAdmin && (
-                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
+                  <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
                     <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                     <div>
                       <p className="font-semibold">{t('integrations.protectedConfigAccess')}</p>
@@ -2378,7 +2378,7 @@ export const Integrations: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>No hay errores de runtime o fallos de red reportados para este servicio.</span>
                   </div>

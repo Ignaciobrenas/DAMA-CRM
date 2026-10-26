@@ -370,7 +370,7 @@ export const ClientPortal: React.FC = () => {
             </form>
 
             {ticketSuccess && (
-              <div data-testid="portal-ticket-success" className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300">
+              <div data-testid="portal-ticket-success" className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300">
                 {ticketSuccess}
               </div>
             )}

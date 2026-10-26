@@ -334,7 +334,7 @@ export const LeadCapture: React.FC = () => {
             </form>
 
             {contactResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 flex items-start space-x-2">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300 flex items-start space-x-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
                   <div className="font-bold">{t('leadCapture.leadSyncSuccess')}</div>
@@ -389,7 +389,7 @@ export const LeadCapture: React.FC = () => {
 </form>`}
             </pre>
 
-            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-300 space-y-1">
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-blue-900 dark:text-blue-300 space-y-1">
               <div className="font-bold flex items-center space-x-1.5">
                 <ShieldCheck className="w-4 h-4" />
                 <span>{t('leadCapture.crmBehaviorTitle')}</span>
@@ -478,7 +478,7 @@ export const LeadCapture: React.FC = () => {
             </form>
 
             {magnetResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
                 <div className="font-bold flex items-center space-x-1.5">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{t('leadCapture.resourceGenerated')}</span>
@@ -704,7 +704,7 @@ export const LeadCapture: React.FC = () => {
             </form>
 
             {chatResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
                 <div className="font-bold">{t('leadCapture.leadRegisteredOmnichannel')}</div>
                 <div className="text-[11px]">Mensaje inicial guardado en el timeline de {chatName}.</div>
                 {chatResult.whatsAppUrl && (
@@ -818,7 +818,7 @@ export const LeadCapture: React.FC = () => {
             </form>
 
             {apptResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
                 <div className="font-bold flex items-center space-x-1.5">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{apptResult.message}</span>
@@ -949,7 +949,7 @@ export const LeadCapture: React.FC = () => {
             </div>
 
             {cartResult && (
-              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-300 space-y-1">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-amber-900 dark:text-amber-300 space-y-1">
                 <div className="font-bold">{t('leadCapture.cartEventSuccess')}</div>
                 <div className="text-[11px]">{cartResult.message}</div>
               </div>

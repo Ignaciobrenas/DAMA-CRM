@@ -364,28 +364,28 @@ export const Reports: React.FC = () => {
                 <span>Volumen Global de Datos en Base de Datos</span>
               </h2>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50">
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">Oportunidades (Deals)</span>
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Oportunidades (Deals)</span>
                   <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.deals || 0}</div>
                 </div>
-                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Contactos</span>
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Contactos</span>
                   <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.contacts || 0}</div>
                 </div>
-                <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50">
-                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">Empresas / Cuentas</span>
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Empresas / Cuentas</span>
                   <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.companies || 0}</div>
                 </div>
-                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50">
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">Facturas Emitidas</span>
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Facturas Emitidas</span>
                   <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.invoices || 0}</div>
                 </div>
-                <div className="p-3 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-100 dark:border-cyan-900/50">
-                  <span className="text-cyan-600 dark:text-cyan-400 font-medium">Productos Catálogo</span>
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Productos Catálogo</span>
                   <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.products || 0}</div>
                 </div>
-                <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/50">
-                  <span className="text-purple-600 dark:text-purple-400 font-medium">Tareas Ágiles</span>
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Tareas Ágiles</span>
                   <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">{adminBiData.dbCounts?.tasks || 0}</div>
                 </div>
               </div>

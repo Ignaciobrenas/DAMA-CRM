@@ -790,7 +790,7 @@ export const Inventory: React.FC = () => {
         </div>
 
         {/* Card 3: Stock Bajo */}
-        <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 backdrop-blur-md shadow-xs">
+        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs backdrop-blur-md shadow-xs">
           <div className="flex items-center justify-between text-amber-700 dark:text-amber-300 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Stock Bajo</span>
             <AlertTriangle className="w-4 h-4 text-amber-500" />
@@ -1561,7 +1561,7 @@ export const Inventory: React.FC = () => {
                 {detailTab === 'financials' && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60">
+                      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
                         <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 block mb-1">
                           Precio Venta (PVP)
                         </span>
@@ -1581,7 +1581,7 @@ export const Inventory: React.FC = () => {
                         <span className="text-[10px] text-gray-500">Base imponible de compra</span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60">
+                      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
                         <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block mb-1">
                           Margen Bruto Unitario
                         </span>
@@ -1635,7 +1635,7 @@ export const Inventory: React.FC = () => {
                   return (
                     <div className="space-y-4">
                       {/* Top Action Banner */}
-                      <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className="p-2.5 rounded-xl bg-blue-600 text-white shrink-0">
                             <Sparkles className="w-5 h-5" />
@@ -1663,7 +1663,7 @@ export const Inventory: React.FC = () => {
                       {/* 6 Connector Cards Grid */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         {/* 1. UnoPim PIM */}
-                        <div className="p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -1715,7 +1715,7 @@ export const Inventory: React.FC = () => {
                         </div>
 
                         {/* 3. Sage Business ERP */}
-                        <div className="p-4 rounded-2xl border border-teal-100 dark:border-teal-900/40 bg-teal-50/30 dark:bg-teal-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-teal-500" />
@@ -1741,7 +1741,7 @@ export const Inventory: React.FC = () => {
                         </div>
 
                         {/* 4. Odoo ERP */}
-                        <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-purple-500" />
@@ -1767,7 +1767,7 @@ export const Inventory: React.FC = () => {
                         </div>
 
                         {/* 5. Shopify Store */}
-                        <div className="p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -1793,7 +1793,7 @@ export const Inventory: React.FC = () => {
                         </div>
 
                         {/* 6. WooCommerce */}
-                        <div className="p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-950/20 space-y-2.5">
+                        <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1954,7 +1954,7 @@ export const Inventory: React.FC = () => {
                     </div>
 
                     {selectedProduct.notes && (
-                      <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200">
+                      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-amber-900 dark:text-amber-200">
                         <span className="font-bold block mb-1">Notas Internas de Gestión:</span>
                         {selectedProduct.notes}
                       </div>

@@ -330,14 +330,14 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
         )}
 
         {invitedRole && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300">
+          <div className="mb-4 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300">
             <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
             <span>Invitación activa para unirte con rol <strong>{invitedRole}</strong>. Inicia sesión o introduce tu contraseña para activar tu acceso.</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300">
+          <div className="mb-4 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{successMessage}</span>
           </div>
@@ -466,7 +466,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: "spring", stiffness: 450, damping: 30 }} onSubmit={handleForgotPasswordSubmit} className="space-y-4" noValidate>
-            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300">
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-blue-700 dark:text-blue-300">
               <p className="font-semibold">{t('forgotPassword')}</p>
               <p className="text-[11px] mt-0.5">
                 Introduce el correo asociado a tu cuenta para enviarte un código de recuperación de 6 dígitos.
@@ -656,7 +656,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: "spring", stiffness: 450, damping: 30 }} onSubmit={handle2FASubmit} className="space-y-4" noValidate>
-            <div className="text-center p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300">
+            <div className="text-center p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs text-blue-700 dark:text-blue-300">
               <p className="font-semibold">{t('twoFactorAuth')}</p>
               <p className="text-[11px] mt-0.5">
                 {t('twoFactorPrompt')}
