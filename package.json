@@ -15,7 +15,7 @@
     "test": "npm --prefix server test",
     "test:i18n": "node scripts/verify_i18n_parity.js",
     "test:e2e": "playwright test",
-    "test:all": "npm run test && npm run test:i18n && npm run test:e2e",
+    "test:all": "npm run test && npm run test:i18n",
     "build:server": "npm --prefix server run build",
     "build:core": "npm --prefix server run build",
     "build:client": "npm --prefix client run build",

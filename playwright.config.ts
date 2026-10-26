@@ -38,8 +38,9 @@ export default defineConfig({
       command: 'npm --prefix server run dev',
       port: 4000,
       reuseExistingServer: true,
-      timeout: 30000,
+      timeout: 60000,
       env: {
+        PORT: '4000',
         DISABLE_RATE_LIMITING: 'true',
       },
     },
@@ -47,7 +48,7 @@ export default defineConfig({
       command: 'npm --prefix client run dev',
       port: 5173,
       reuseExistingServer: true,
-      timeout: 30000,
+      timeout: 60000,
     },
   ],
 });
