@@ -159,7 +159,7 @@ export const NewEmployeeModal: React.FC<NewEmployeeModalProps> = ({
             <div className="p-3 bg-amber-500/10 border border-amber-300 dark:border-amber-800/60 rounded-xl">
               <label className="block text-xs font-bold text-amber-800 dark:text-amber-300 mb-1 flex items-center space-x-1">
                 <Building className="w-3.5 h-3.5 mr-1" />
-                <span>{t('employees.companyTenantSelect')} (God Mode)</span>
+                <span>{t('employees.companyTenantSelect')}</span>
               </label>
               <select
                 aria-label="Seleccionar organización para empleado"

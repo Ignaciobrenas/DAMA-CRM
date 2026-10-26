@@ -28,6 +28,7 @@ import {
   Truck,
   ExternalLink,
   Activity,
+  Kanban,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -51,7 +52,8 @@ export interface NavItemDefinition {
   category: 'main' | 'commercial' | 'operations' | 'communication' | 'system';
   resource?: string;
   moduleKey?: keyof CompanyModulesConfig;
-  animation?: IconAnimationVariant; color?: string;
+  animation?: IconAnimationVariant;
+  color?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -71,50 +73,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const rawNavItems: NavItemDefinition[] = [
     // Category 1: Principal & Agenda
-    { id: 'dashboard', label: t('dashboard', 'Panel Principal'), icon: LayoutDashboard, route: '/', category: 'main', animation: 'elastic' },
-    { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', category: 'main', resource: 'calendar', animation: 'bounce' },
-    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Servicios'), icon: CalendarCheck, route: '/appointments', category: 'main', resource: 'appointments', moduleKey: 'appointments', animation: 'wiggle' },
-    { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', category: 'main', animation: 'pulse' },
-    { id: 'logistics', label: t('sidebar.logistics', 'Logística & Envíos'), icon: Truck, route: '/logistics', category: 'main', resource: 'logistics', moduleKey: 'logistics', animation: 'tilt' },
+    { id: 'dashboard', label: t('dashboard', 'Panel Principal'), icon: LayoutDashboard, route: '/', category: 'main' },
+    { id: 'calendar', label: t('sidebar.calendar', 'Calendario & Agenda'), icon: Calendar, route: '/calendar', category: 'main', resource: 'calendar' },
+    { id: 'appointments', label: t('sidebar.appointments', 'Citas & Servicios'), icon: CalendarCheck, route: '/appointments', category: 'main', resource: 'appointments', moduleKey: 'appointments' },
+    { id: 'my-time', label: t('sidebar.myTime', 'Mi Tiempo'), icon: Clock, route: '/my-time', category: 'main' },
+    { id: 'logistics', label: t('sidebar.logistics', 'Logística & Envíos'), icon: Truck, route: '/logistics', category: 'main', resource: 'logistics', moduleKey: 'logistics' },
 
     // Category 2: Gestión Comercial
-    { id: 'pipeline', label: t('pipeline', 'Oportunidades & Pipeline'), icon: TrendingUp, route: '/pipeline', category: 'commercial', resource: 'deals', moduleKey: 'pipeline', animation: 'bounce' },
-    { id: 'contacts', label: t('contacts', 'Contactos & Leads'), icon: Users, route: '/contacts', category: 'commercial', resource: 'contacts', moduleKey: 'contacts', animation: 'float' },
-    { id: 'companies', label: t('companies', 'Empresas & Cuentas'), icon: Building2, route: '/companies', category: 'commercial', resource: 'companies', moduleKey: 'companies', animation: 'glow' },
-    { id: 'lead-capture', label: t('leadCapture', 'Captura de Leads'), icon: Zap, route: '/lead-capture', category: 'commercial', resource: 'contacts', moduleKey: 'leadCapture', animation: 'shimmer' },
+    { id: 'pipeline', label: t('pipeline', 'Oportunidades & Pipeline'), icon: TrendingUp, route: '/pipeline', category: 'commercial', resource: 'deals', moduleKey: 'pipeline' },
+    { id: 'contacts', label: t('contacts', 'Contactos & Leads'), icon: Users, route: '/contacts', category: 'commercial', resource: 'contacts', moduleKey: 'contacts' },
+    { id: 'companies', label: t('companies', 'Empresas & Cuentas'), icon: Building2, route: '/companies', category: 'commercial', resource: 'companies', moduleKey: 'companies' },
+    { id: 'lead-capture', label: t('leadCapture', 'Captura de Leads'), icon: Zap, route: '/lead-capture', category: 'commercial', resource: 'contacts', moduleKey: 'leadCapture' },
 
     // Category 3: Operaciones & Finanzas
-    { id: 'invoicing', label: t('invoicing', 'Facturación & Cobros'), icon: Receipt, route: '/invoicing', category: 'operations', resource: 'invoices', moduleKey: 'invoicing', animation: 'glow' },
-    { id: 'expenses', label: t('sidebar.expenses', 'Gastos & Compras'), icon: WalletCards, route: '/expenses', category: 'operations', resource: 'expenses', moduleKey: 'expenses', animation: 'flip' },
-    { id: 'inventory', label: t('inventory', 'Inventario & Stock'), icon: Package, route: '/inventory', category: 'operations', resource: 'inventory', moduleKey: 'inventory', animation: 'tilt' },
-    { id: 'agile', label: t('agile', 'Proyectos & Tareas'), icon: CheckSquare, route: '/agile', category: 'operations', resource: 'projects', moduleKey: 'agile', animation: 'elastic' },
-    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', category: 'operations', resource: 'employees', moduleKey: 'portalEmpleado', animation: 'float' },
+    { id: 'invoicing', label: t('invoicing', 'Facturación & Cobros'), icon: Receipt, route: '/invoicing', category: 'operations', resource: 'invoices', moduleKey: 'invoicing' },
+    { id: 'expenses', label: t('sidebar.expenses', 'Gastos & Compras'), icon: WalletCards, route: '/expenses', category: 'operations', resource: 'expenses', moduleKey: 'expenses' },
+    { id: 'inventory', label: t('inventory', 'Inventario & Stock'), icon: Package, route: '/inventory', category: 'operations', resource: 'inventory', moduleKey: 'inventory' },
+    { id: 'agile', label: t('agile', 'Proyectos & Tareas'), icon: CheckSquare, route: '/agile', category: 'operations', resource: 'projects', moduleKey: 'agile' },
+    { id: 'planner', label: 'Planificador & Sprints', icon: Kanban, route: '/planner', category: 'operations', resource: 'projects', moduleKey: 'agile' },
+    { id: 'portal-empleado', label: t('sidebar.employeePortal', 'Portal del Empleado'), icon: UserCheck, route: '/portal-empleado', category: 'operations', resource: 'employees', moduleKey: 'portalEmpleado' },
 
     // Category 4: Comunicación & Servicios
-    { id: 'tickets', label: t('sidebar.tickets', 'Mesa de Ayuda / Tickets'), icon: Ticket, route: '/tickets', category: 'communication', resource: 'tickets', moduleKey: 'tickets', animation: 'wiggle' },
-    { id: 'omnichannel', label: t('omnichannel', 'Omnicanal / WhatsApp'), icon: MessageSquare, route: '/omnichannel', category: 'communication', resource: 'omnichannel', moduleKey: 'omnichannel', animation: 'pulse' },
-    { id: 'workflows', label: t('workflows', 'Flujos de Trabajo'), icon: Cpu, route: '/workflows', category: 'communication', resource: 'workflows', moduleKey: 'workflows', animation: 'spin' },
-    { id: 'integrations', label: t('integrations', 'Conectores & Integraciones'), icon: Blocks, route: '/integrations', category: 'communication', resource: 'integrations', moduleKey: 'integrations', animation: 'spin' },
+    { id: 'tickets', label: t('sidebar.tickets', 'Mesa de Ayuda / Tickets'), icon: Ticket, route: '/tickets', category: 'communication', resource: 'tickets', moduleKey: 'tickets' },
+    { id: 'omnichannel', label: t('omnichannel', 'Omnicanal / WhatsApp'), icon: MessageSquare, route: '/omnichannel', category: 'communication', resource: 'omnichannel', moduleKey: 'omnichannel' },
+    { id: 'workflows', label: t('workflows', 'Flujos de Trabajo'), icon: Cpu, route: '/workflows', category: 'communication', resource: 'workflows', moduleKey: 'workflows' },
+    { id: 'integrations', label: t('integrations', 'Conectores & Integraciones'), icon: Blocks, route: '/integrations', category: 'communication', resource: 'integrations', moduleKey: 'integrations' },
 
     // Category 5: Sistema & Recursos
-    ...(user?.role === 'ADMIN' || user?.role === 'god' ? [{ id: 'admin-bi', label: 'BI & Analítica (Admin)', icon: Activity, route: '/admin-bi', category: 'system' as const, resource: 'reports', animation: 'pulse' as const }] : []),
-    { id: 'reports', label: t('reportsBI', 'Informes BI & Analytics'), icon: BarChart3, route: '/reports', category: 'system', resource: 'reports', moduleKey: 'reports', animation: 'bounce' },
-    { id: 'settings', label: t('settings', 'Configuración'), icon: Settings, route: '/settings', category: 'system', animation: 'spin' },
-    { id: 'portal', label: t('clientPortal', 'Portal Cliente'), icon: ExternalLink, route: '/portal', category: 'system', resource: 'invoices', moduleKey: 'clientPortal', animation: 'float' },
-    { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq', category: 'system', animation: 'bounce' },
-    { id: 'privacy', label: t('privacyPolicy', 'Política de Privacidad'), icon: Lock, route: '/privacy', category: 'system', animation: 'tilt' },
+    ...(user?.role === 'ADMIN' || user?.role === 'god'
+      ? [{ id: 'admin-bi', label: 'BI & Analítica (Admin)', icon: Activity, route: '/admin-bi', category: 'system' as const, resource: 'reports' }]
+      : []),
+    { id: 'reports', label: t('reportsBI', 'Informes BI & Analytics'), icon: BarChart3, route: '/reports', category: 'system', resource: 'reports', moduleKey: 'reports' },
+    { id: 'settings', label: t('settings', 'Configuración'), icon: Settings, route: '/settings', category: 'system' },
+    { id: 'portal', label: t('clientPortal', 'Portal Cliente'), icon: ExternalLink, route: '/portal', category: 'system', resource: 'invoices', moduleKey: 'clientPortal' },
+    { id: 'faq', label: t('faq', 'Preguntas Frecuentes'), icon: HelpCircle, route: '/faq', category: 'system' },
+    { id: 'privacy', label: t('privacyPolicy', 'Política de Privacidad'), icon: Lock, route: '/privacy', category: 'system' },
   ];
 
-  // Category definitions
   const categories: Array<{ id: NavItemDefinition['category']; label: string }> = [
-    { id: 'main', label: 'PRINCIPAL & AGENDA' },
-    { id: 'commercial', label: 'GESTIÓN COMERCIAL' },
-    { id: 'operations', label: 'OPERACIONES & FINANZAS' },
-    { id: 'communication', label: 'COMUNICACIÓN & SERVICIOS' },
-    { id: 'system', label: 'SISTEMA & RECURSOS' },
+    { id: 'main', label: 'Principal & Agenda' },
+    { id: 'commercial', label: 'Gestión Comercial' },
+    { id: 'operations', label: 'Operaciones & Finanzas' },
+    { id: 'communication', label: 'Comunicación & Servicios' },
+    { id: 'system', label: 'Sistema & Recursos' },
   ];
 
-  // Apply custom ordering if present
   let orderedItems = [...rawNavItems];
   if (userOrder && Array.isArray(userOrder) && userOrder.length > 0) {
     orderedItems.sort((a, b) => {
@@ -140,126 +143,137 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs md:hidden"
+          data-testid="sidebar-mobile-backdrop"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs md:hidden"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 bg-slate-50/95 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-200 ease-in-out md:translate-x-0 ${
+        data-testid="app-sidebar"
+        className={`fixed top-0 bottom-0 left-0 z-40 bg-slate-50/95 dark:bg-slate-900 border-r border-slate-200/90 dark:border-slate-800 flex flex-col transition-all duration-200 ease-out md:translate-x-0 select-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${isCollapsed ? 'w-16' : 'w-60'}`}
       >
-        {/* Brand Header (NO boxes or frames around logo, NO Enterprise text) */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-3.5'} h-16 border-b border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50`}>
-          <div className="flex items-center space-x-3 truncate">
-            <div className="w-9 h-9 flex items-center justify-center shrink-0">
+        {/* Brand Header */}
+        <div
+          className={`flex items-center ${
+            isCollapsed ? 'justify-center px-2' : 'justify-between px-4'
+          } h-14 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0`}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate('/');
+              onClose();
+            }}
+            className="flex items-center gap-2.5 truncate text-left focus:outline-none group cursor-pointer"
+          >
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
               <img
                 src={getLogo('symbol')}
                 alt={branding.companyName}
-                className="w-full h-full object-contain filter drop-shadow-xs"
+                className="w-7 h-7 object-contain"
               />
             </div>
             {!isCollapsed && (
               <div className="truncate min-w-0">
-                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white truncate block">
+                <span className="font-bold text-[13px] tracking-tight text-slate-900 dark:text-white truncate block leading-tight">
                   {branding.companyName}
+                </span>
+                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 block leading-tight">
+                  Enterprise Workspace
                 </span>
               </div>
             )}
-          </div>
+          </button>
 
           {!isCollapsed && (
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="p-1.5 rounded-lg md:hidden text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
               aria-label={t('close')}
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
           )}
         </div>
 
         {/* Navigation Items Organized by Categories */}
-        <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
+        <nav className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto">
           {categories.map((cat) => {
             const categoryItems = orderedItems.filter((item) => item.category === cat.id);
 
-            // Filter items by RBAC, module enabled status, and user hidden preferences
             const visibleCategoryItems = categoryItems.filter((item) => {
-              // Always show essential core items (dashboard, settings) to admin/god
               if (item.id === 'dashboard' || item.id === 'settings') return true;
-
-              // Check if user explicitly hid this item in Settings
               if (userHiddenItems.includes(item.id)) return false;
-
-              // Check if company module is enabled by admin
-              if (item.moduleKey && !isModuleEnabled(item.moduleKey)) {
-                return false;
-              }
-
-              // Check resource RBAC permission (god bypasses RBAC)
-              if (!isGod && item.resource && !hasPermission(item.resource, 'read')) {
-                return false;
-              }
-
+              if (item.moduleKey && !isModuleEnabled(item.moduleKey)) return false;
+              if (!isGod && item.resource && !hasPermission(item.resource, 'read')) return false;
               return true;
             });
 
             if (visibleCategoryItems.length === 0) return null;
 
             return (
-              <div key={cat.id} className="space-y-1">
-                {/* Category Header Label (when expanded) */}
-                {!isCollapsed && (
-                  <div className="px-3 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-mono">
+              <div key={cat.id} className="space-y-0.5">
+                {!isCollapsed ? (
+                  <div className="px-2.5 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     {cat.label}
                   </div>
+                ) : (
+                  <div className="border-t border-slate-200/80 dark:border-slate-800/70 my-1.5 mx-2" />
                 )}
-                {isCollapsed && <div className="border-t border-slate-200 dark:border-slate-800/60 my-1.5 mx-2" />}
 
-                {/* Module Items */}
                 {visibleCategoryItems.map((item) => {
                   const isActive = currentRoute === item.route;
 
                   return (
-                    <motion.button
+                    <button
                       key={item.id}
-                      whileHover={{ x: isCollapsed ? 0 : 2 }}
-                      whileTap={{ scale: 0.98 }}
+                      type="button"
+                      data-testid={`sidebar-nav-${item.id}`}
                       onClick={() => {
                         soundService.play('navigation');
                         onNavigate(item.route);
                         onClose();
                       }}
                       title={item.label}
-                      className={`relative w-full flex items-center ${
-                        isCollapsed ? 'justify-center px-2 py-2.5' : 'space-x-3 px-3 py-2'
-                      } rounded-lg text-xs font-semibold transition-colors ${
+                      className={`group relative w-full flex items-center transition-all duration-150 cursor-pointer ${
+                        isCollapsed
+                          ? 'w-10 h-10 mx-auto justify-center rounded-xl'
+                          : 'gap-2.5 px-2.5 py-1.5 rounded-xl text-[12.5px]'
+                      } ${
                         isActive
-                          ? 'text-white font-bold'
-                          : 'text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-800/60'
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 font-medium'
                       }`}
                     >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeSidebarIndicator"
-                          className="absolute inset-0 rounded-lg shadow-sm"
-                          style={{ backgroundColor: branding.primaryColor }}
-                          transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                        />
-                      )}
-                      <span className={`relative z-10 flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
+                      <span className="w-5 h-5 flex items-center justify-center shrink-0">
                         <DynamicIcon
                           icon={item.icon}
-                          variant={item.animation || 'bounce'}
+                          variant="bounce"
                           size={16}
                           active={isActive}
-                          className={`transition-colors duration-300 ${isActive ? 'text-white' : item.color || 'text-slate-700 dark:text-slate-400'}`}
+                          className={
+                            isActive
+                              ? 'text-white dark:text-slate-900'
+                              : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100'
+                          }
                         />
-                        {!isCollapsed && <span className="truncate">{item.label}</span>}
                       </span>
-                    </motion.button>
+                      {!isCollapsed && (
+                        <>
+                          <span className="truncate flex-1 text-left">{item.label}</span>
+                          {isActive && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: branding.primaryColor || '#3B82F6' }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </button>
                   );
                 })}
               </div>
@@ -268,22 +282,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* System Footer & Collapse/Expand Toggle */}
-        <div className="p-2.5 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between text-[10px] text-gray-400 dark:text-slate-500">
+        <div className="px-3 py-2.5 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
           {!isCollapsed && (
-            <div className="flex items-center space-x-1.5 truncate">
-              <span className="font-mono font-semibold">v1.2.0-staging</span>
-              <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-mono text-[9px]">
-                {t('systemStatusActive')}
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="font-mono text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                v1.6.0 · {t('systemStatusActive')}
               </span>
             </div>
           )}
 
           <button
+            type="button"
             onClick={() => {
               soundService.play('toggle');
               updatePreferences({ sidebarCollapsed: !isCollapsed });
             }}
-            className={`p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors hidden md:flex items-center justify-center ${
+            className={`w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors hidden md:flex items-center justify-center cursor-pointer ${
               isCollapsed ? 'mx-auto' : ''
             }`}
             title={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}

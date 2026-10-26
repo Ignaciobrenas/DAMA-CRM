@@ -38,6 +38,9 @@ export async function loginAsRole(page: Page, role: UserRole = 'ADMIN'): Promise
       'dama_cookie_consent',
       JSON.stringify({ technical: true, analytics: true, timestamp: new Date().toISOString() })
     );
+    if (localStorage.getItem('dama_enable_auto_module_tour_test') !== 'true') {
+      localStorage.setItem('dama_skip_auto_module_tour', 'true');
+    }
   });
 
   await page.goto('/#/login');

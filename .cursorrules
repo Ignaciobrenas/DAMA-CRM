@@ -1,6 +1,6 @@
 # DAMA-CRM Project Rules
 
-## Permanent Logo Assets Rule
+## 1. Permanent Logo Assets Rule
 - The official and immutable logos of DAMA-CRM are in `client/public/assets/logos/`:
   - `dama-symbol-dark.png`
   - `dama-symbol-white.png`
@@ -14,8 +14,22 @@
   - `sample-company-logo.svg`
 - NEVER delete, modify, or replace these logos. Always use these PNG files for branding.
 
-## Light Mode Theme Scale
+## 2. Light Mode Theme Scale
 - Light mode MUST always use a comfortable grayscale / slate scale (`bg-slate-100/90` / `#F1F5F9`) instead of blinding pure white backgrounds.
 
-## Centered Popups and Modals
-- All popups, dialogs, and modals (Language modal, Tenant switcher, Onboarding wizard, Time tracking / Clock-in, User Profile) MUST be centered in the screen (`fixed inset-0 flex items-center justify-center p-4 m-auto`), NEVER positioned at the top of the screen.
+## 3. Centered Popups and Modals
+- All popups, dialogs, and modals (Language modal, Onboarding wizard, Time tracking / Clock-in / Harvest Widget, User Profile, Notifications) MUST be centered in the screen (`fixed inset-0 flex items-center justify-center p-4 m-auto`), NEVER positioned at the top of the screen.
+
+## 4. No "God Mode" or "Master Tenant" Jargon in UI
+- NEVER display "God Mode", "Master Tenant", "Salir a Master", or "God Admin" in visible user interfaces, badges, or buttons. Keep all terminology corporate and clean (e.g., "Primary Company", "Administrator", "Settings").
+
+## 5. Harvest-Style Persistent Time Tracking
+- Workday and task time tracking (`ClockWidget.tsx`, `time-tracking.controller.ts`) MUST operate on server-side UTC timestamps (`clockIn`, `lastResumedAt`, `accumulatedSeconds`).
+- Time tracking MUST persist across browser close, tab close, and computer reboot without losing a second.
+- Support Harvest features: Project & Task selection, Billable toggle, Notes, Pause/Resume, Task switching with automatic WorkLog creation.
+
+## 6. 100% Idempotent Migrations
+- All SQL migrations (`server/prisma/migrations/`) must be strictly idempotent using `IF NOT EXISTS` and safe `DO $$ BEGIN ... END $$;` constraint blocks.
+
+## 7. Chrome and Firefox Browser Extensions
+- The `extension/` directory houses companion extensions for Google Chrome (MV3) and Mozilla Firefox (MV2/Gecko) providing live time tracking, badge countdown, and task management.

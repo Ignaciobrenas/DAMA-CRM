@@ -153,80 +153,35 @@ html:not(.dark) [role="button"]:not(:disabled):active {
   transform: scale(0.98);
 }
 
-/* Light Mode Typography: Zero Washed-Out Text */
+/* Light Mode Typography: Clean, Natural Hierarchy (Emil Kowalski / Linear Standards) */
 html:not(.dark) .text-gray-900,
 html:not(.dark) .text-slate-900 {
-  color: #020617 !important;
-  font-weight: 700;
+  color: #0F172A;
 }
 
 html:not(.dark) .text-gray-800,
 html:not(.dark) .text-slate-800 {
-  color: #0F172A !important;
-  font-weight: 600;
+  color: #1E293B;
 }
 
 html:not(.dark) .text-gray-700,
 html:not(.dark) .text-slate-700 {
-  color: #1E293B !important;
-  font-weight: 500;
+  color: #334155;
 }
 
 html:not(.dark) .text-gray-600,
 html:not(.dark) .text-slate-600 {
-  color: #334155 !important;
+  color: #475569;
 }
 
 html:not(.dark) .text-gray-500,
 html:not(.dark) .text-slate-500 {
-  color: #475569 !important;
+  color: #64748B;
 }
 
 html:not(.dark) .text-gray-400,
 html:not(.dark) .text-slate-400 {
-  color: #64748B !important;
-}
-
-html:not(.dark) .hover\:bg-gray-100:hover,
-html:not(.dark) .hover\:bg-slate-100:hover {
-  background-color: #E2E8F0 !important;
-  color: #020617 !important;
-}
-
-html:not(.dark) .hover\:bg-gray-50:hover,
-html:not(.dark) .hover\:bg-slate-50:hover {
-  background-color: #F1F5F9 !important;
-  color: #020617 !important;
-}
-
-/* Light Mode High-Contrast Pastel Wells & Badges */
-html:not(.dark) .bg-blue-50 {
-  background-color: #DBEAFE !important;
-  color: #1E3A8A !important;
-}
-html:not(.dark) .bg-emerald-50 {
-  background-color: #D1FAE5 !important;
-  color: #064E3B !important;
-}
-html:not(.dark) .bg-amber-50 {
-  background-color: #FEF3C7 !important;
-  color: #78350F !important;
-}
-html:not(.dark) .bg-purple-50 {
-  background-color: #EDE9FE !important;
-  color: #4C1D95 !important;
-}
-html:not(.dark) .bg-indigo-50 {
-  background-color: #E0E7FF !important;
-  color: #312E81 !important;
-}
-html:not(.dark) .bg-rose-50 {
-  background-color: #FFE4E6 !important;
-  color: #881337 !important;
-}
-html:not(.dark) .bg-pink-50 {
-  background-color: #FCE7F3 !important;
-  color: #831843 !important;
+  color: #94A3B8;
 }
 
 /* ==========================================================================
@@ -405,132 +360,65 @@ button, a, input, select, textarea {
 }
 
 /* ==========================================================================
-   Module-Wide High Legibility & Precision Contrast Rules
+   Module-Wide High Legibility & Precision Contrast Rules (Linear / Stripe)
    ========================================================================== */
 th {
-  font-weight: 700 !important;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
 html:not(.dark) th {
-  color: #0F172A !important;
-  background-color: #E2E8F0;
-  border-bottom: 2px solid #94A3B8 !important;
+  color: #475569;
+  background-color: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
 }
 
 .dark th {
-  color: #F8FAFC !important;
+  color: #94A3B8;
   background-color: #0F172A;
-  border-bottom: 2px solid #334155 !important;
+  border-bottom: 1px solid #1E293B;
 }
 
 /* Form Labels High Readability */
 label {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 html:not(.dark) label {
-  color: #0F172A !important;
+  color: #334155;
 }
 
 .dark label {
-  color: #F1F5F9 !important;
+  color: #CBD5E1;
 }
 
-/* High Contrast Badges in Light & Dark Modes */
-html:not(.dark) .badge-emerald,
-html:not(.dark) [class*="bg-emerald-100"],
-html:not(.dark) [class*="bg-emerald-50"] {
-  background-color: #D1FAE5 !important;
-  color: #064E3B !important;
-  border: 1px solid #6EE7B7 !important;
-  font-weight: 700;
+/* Explicit Semantic Badges Only (Never override generic containers) */
+html:not(.dark) .badge-emerald {
+  background-color: #ECFDF5;
+  color: #047857;
+  border: 1px solid #A7F3D0;
 }
 
-html:not(.dark) .badge-blue,
-html:not(.dark) [class*="bg-blue-100"],
-html:not(.dark) [class*="bg-blue-50"] {
-  background-color: #DBEAFE !important;
-  color: #1E3A8A !important;
-  border: 1px solid #93C5FD !important;
-  font-weight: 700;
+html:not(.dark) .badge-blue {
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
 }
 
-html:not(.dark) .badge-amber,
-html:not(.dark) [class*="bg-amber-100"],
-html:not(.dark) [class*="bg-amber-50"],
-html:not(.dark) [class*="bg-yellow-100"],
-html:not(.dark) [class*="bg-yellow-50"] {
-  background-color: #FEF3C7 !important;
-  color: #78350F !important;
-  border: 1px solid #FCD34D !important;
-  font-weight: 700;
+html:not(.dark) .badge-amber {
+  background-color: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #FDE68A;
 }
 
-html:not(.dark) .badge-rose,
-html:not(.dark) [class*="bg-rose-100"],
-html:not(.dark) [class*="bg-rose-50"],
-html:not(.dark) [class*="bg-red-100"],
-html:not(.dark) [class*="bg-red-50"] {
-  background-color: #FFE4E6 !important;
-  color: #881337 !important;
-  border: 1px solid #FDA4AF !important;
-  font-weight: 700;
+html:not(.dark) .badge-rose {
+  background-color: #FFF1F2;
+  color: #BE123C;
+  border: 1px solid #FECDD3;
 }
 
-html:not(.dark) .badge-purple,
-html:not(.dark) [class*="bg-purple-100"],
-html:not(.dark) [class*="bg-purple-50"],
-html:not(.dark) [class*="bg-violet-100"],
-html:not(.dark) [class*="bg-violet-50"] {
-  background-color: #EDE9FE !important;
-  color: #4C1D95 !important;
-  border: 1px solid #C4B5FD !important;
-  font-weight: 700;
-}
-
-.dark .badge-emerald,
-.dark [class*="bg-emerald-950"],
-.dark [class*="bg-emerald-900"] {
-  background-color: #064E3B !important;
-  color: #6EE7B7 !important;
-  border: 1px solid #059669 !important;
-  font-weight: 700;
-}
-
-.dark .badge-blue,
-.dark [class*="bg-blue-950"],
-.dark [class*="bg-blue-900"] {
-  background-color: #1E3A8A !important;
-  color: #93C5FD !important;
-  border: 1px solid #2563EB !important;
-  font-weight: 700;
-}
-
-.dark .badge-amber,
-.dark [class*="bg-amber-950"],
-.dark [class*="bg-amber-900"] {
-  background-color: #78350F !important;
-  color: #FCD34D !important;
-  border: 1px solid #D97706 !important;
-  font-weight: 700;
-}
-
-.dark .badge-rose,
-.dark [class*="bg-rose-950"],
-.dark [class*="bg-rose-900"],
-.dark [class*="bg-red-950"] {
-  background-color: #881337 !important;
-  color: #FDA4AF !important;
-  border: 1px solid #E11D48 !important;
-  font-weight: 700;
-}
-
-.dark .badge-purple,
-.dark [class*="bg-purple-950"],
-.dark [class*="bg-purple-900"] {
-  background-color: #4C1D95 !important;
-  color: #C4B5FD !important;
-  border: 1px solid #7C3AED !important;
-  font-weight: 700;
+html:not(.dark) .badge-purple {
+  background-color: #F5F3FF;
+  color: #6D28D9;
+  border: 1px solid #DDD6FE;
 }

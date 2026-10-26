@@ -15,6 +15,7 @@ export interface UserPreferences {
   emailNotifications?: boolean;
   compactMode?: boolean;
   onboardingCompleted?: boolean;
+  completedModuleTours?: string[];
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   uiScale?: number;
   iconStyle?: 'animated' | 'solid' | 'minimal';

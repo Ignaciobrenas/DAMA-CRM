@@ -15,6 +15,7 @@ import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { CommandMenu } from './components/layout/CommandMenu';
 import { LoadingScreen } from './components/common/Loading';
 import { FloatingCaptureWidget } from './components/common/FloatingCaptureWidget';
+import { ModuleOnboardingModal } from './components/common/ModuleOnboardingModal';
 
 import { PermissionGate, AccessDenied, ModuleDisabled } from './components/common/PermissionGate';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -154,7 +155,10 @@ const AppContent: React.FC = () => {
 
   if (currentRoute === '/portal') {
     return isModuleEnabled('clientPortal') ? (
-      <ClientPortal />
+      <div className="p-3 sm:p-6 max-w-4xl mx-auto">
+        <ModuleOnboardingModal currentRoute={currentRoute} />
+        <ClientPortal />
+      </div>
     ) : (
       <ModuleDisabled moduleKey="clientPortal" onGoBack={() => navigateTo('/')} />
     );
@@ -326,12 +330,14 @@ const AppContent: React.FC = () => {
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col min-w-0 max-w-full transition-all duration-200 pb-16 md:pb-0 overflow-x-hidden ${isCollapsed ? 'md:pl-16' : 'md:pl-60'}`}>
         <Navbar
+          currentRoute={currentRoute}
           onOpenSearch={() => setIsSearchOpen(true)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onNavigate={navigateTo}
         />
 
         <main className="flex-1 p-3 sm:p-6 max-w-7xl w-full mx-auto">
+          <ModuleOnboardingModal currentRoute={currentRoute} />
           <AnimatePresence mode="wait">
             <motion.div
               key={currentRoute}

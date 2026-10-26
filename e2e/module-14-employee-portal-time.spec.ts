@@ -105,4 +105,80 @@ test.describe('Module 14: Portal del Empleado, RRHH, Nóminas PDF & Mi Tiempo (/
     health.stop();
     expect(health.getErrors()).toEqual([]);
   });
+
+  test('14.3 - Timer Harvest persistente en Topbar: Fichaje, Pausa, Reanudación, Parada y Persistencia ante Recarga', async ({
+    adminPage: page,
+  }) => {
+    const health = monitorPageHealth(page);
+    await page.goto('/#/my-time');
+
+    // If currently clocked in from a previous test run, stop it first to start clean
+    const existingPill = page.getByTestId('topbar-timer-pill');
+    if (await existingPill.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await page.getByTestId('topbar-timer-stop-btn').click();
+      const outModal = page.getByTestId('clock-out-modal');
+      await expect(outModal).toBeVisible();
+      await page.getByTestId('confirm-clock-out-btn').click();
+      await expect(outModal).toBeHidden({ timeout: 5000 });
+    }
+
+    // 1. Verify Topbar clock-in button is visible
+    const clockInBtn = page.getByTestId('topbar-clock-in-btn');
+    await expect(clockInBtn).toBeVisible({ timeout: 10000 });
+    await clockInBtn.click();
+
+    // 2. Verify centered Harvest modal
+    const modal = page.getByTestId('clock-in-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal).toHaveClass(/items-center/);
+    await expect(modal).toHaveClass(/justify-center/);
+    await expect(modal).toHaveClass(/m-auto/);
+
+    // 3. Fill in Harvest details (notes, billable toggle)
+    await page.getByTestId('harvest-notes-input').fill('Prueba E2E Harvest Timer Persistente');
+    const startBtn = page.getByTestId('confirm-clock-in-btn');
+    await expect(startBtn).toBeVisible();
+    await startBtn.click();
+
+    // 4. Modal closes and Topbar shows live pill
+    await expect(modal).toBeHidden({ timeout: 5000 });
+    const timerPill = page.getByTestId('topbar-timer-pill');
+    await expect(timerPill).toBeVisible({ timeout: 5000 });
+
+    const elapsedDisplay = page.getByTestId('topbar-timer-elapsed');
+    await expect(elapsedDisplay).toBeVisible();
+    const initialText = await elapsedDisplay.textContent();
+    expect(initialText).toMatch(/\d{2}:\d{2}:\d{2}/);
+
+    // 5. Verify timer persistence across page reload (browser close simulation)
+    await page.reload();
+    await expect(page.getByTestId('topbar-timer-pill')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('topbar-timer-elapsed')).toBeVisible();
+
+    // 6. Test Pause & Resume from topbar
+    const pauseResumeBtn = page.getByTestId('topbar-timer-pause-resume-btn');
+    await pauseResumeBtn.click();
+    await page.waitForTimeout(600);
+    await pauseResumeBtn.click();
+    await page.waitForTimeout(600);
+
+    // 7. Test Stop / Clock Out
+    const stopBtn = page.getByTestId('topbar-timer-stop-btn');
+    await stopBtn.click();
+
+    const clockOutModal = page.getByTestId('clock-out-modal');
+    await expect(clockOutModal).toBeVisible();
+    await expect(clockOutModal).toHaveClass(/items-center/);
+    await expect(clockOutModal).toHaveClass(/justify-center/);
+    await expect(clockOutModal).toHaveClass(/m-auto/);
+
+    await page.getByTestId('confirm-clock-out-btn').click();
+    await expect(clockOutModal).toBeHidden({ timeout: 5000 });
+
+    // Verify returning to not-clocked-in state
+    await expect(page.getByTestId('topbar-clock-in-btn')).toBeVisible({ timeout: 5000 });
+
+    health.stop();
+    expect(health.getErrors()).toEqual([]);
+  });
 });

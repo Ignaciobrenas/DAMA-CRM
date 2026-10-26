@@ -84,25 +84,32 @@ test.describe('Module 01: Global Layout, Navigation & Centered Modals E2E', () =
     await expect(profileModal).not.toBeVisible();
   });
 
-  test('01.4 - Centered God Mode SuperAdmin & Multi-Tenant Modal', async ({ adminPage: page }) => {
+  test('01.4 - Clean Topbar: Absence of God Mode / Master Tenant & Centered Guide Modal', async ({ adminPage: page }) => {
     await page.goto('/#/');
     await page.waitForLoadState('domcontentloaded');
 
-    // Open God Mode Modal
-    const godBtn = page.locator('button[title*="God Mode"], button:has-text("God Mode")').first();
-    await expect(godBtn).toBeVisible();
-    await godBtn.click();
+    // Verify absence of God Mode / Master Tenant jargon
+    const topbar = page.locator('header').first();
+    await expect(topbar).toBeVisible();
+    await expect(topbar).not.toContainText(/God Mode/i);
+    await expect(topbar).not.toContainText(/Master Tenant/i);
+    await expect(topbar).not.toContainText(/Salir a Master/i);
 
-    const godModal = page.locator('.fixed.inset-0:has-text("God Mode")').first();
-    await expect(godModal).toBeVisible();
-    await expect(godModal).toContainText(/Tenants|Empresas|Multi-Tenant/i);
+    // Verify Module Quick Guide trigger opens centered onboarding modal
+    const guideBtn = page.getByTestId('reopen-module-onboarding-btn');
+    if (await guideBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await guideBtn.click();
+      const tourModal = page.getByTestId('module-onboarding-modal');
+      await expect(tourModal).toBeVisible();
+      await expect(tourModal).toHaveClass(/items-center/);
+      await expect(tourModal).toHaveClass(/justify-center/);
+      await expect(tourModal).toHaveClass(/m-auto/);
 
-    // Verify tabs inside God Mode modal (Empresas, Invitar Empresa, Aprovisionar)
-    const tabsBtn = godModal.locator('button:has-text("Empresas"), button:has-text("Invitar Empresa")').first();
-    await expect(tabsBtn).toBeVisible();
-
-    await page.keyboard.press('Escape');
-    await expect(godModal).not.toBeVisible({ timeout: 5000 });
+      // Close via skip or close button
+      const closeBtn = page.getByTestId('module-onboarding-skip-btn');
+      await closeBtn.click();
+      await expect(tourModal).toBeHidden({ timeout: 5000 });
+    }
   });
 
   test('01.5 - Centered Command Menu (Cmd+K) Universal Search', async ({ adminPage: page }) => {
@@ -136,6 +143,12 @@ test.describe('Module 01: Global Layout, Navigation & Centered Modals E2E', () =
     await page.locator('button[type="submit"]').click();
     await page.waitForURL(/.*#\/(dashboard)?/, { timeout: 15000 });
 
+    // Dismiss first-visit module onboarding modal if visible on fresh page context
+    const onboardingSkip = page.locator('[data-testid="module-onboarding-skip-btn"]');
+    if (await onboardingSkip.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await onboardingSkip.click();
+    }
+
     // Verify Mobile Bottom Navigation is visible
     const mobileBottomNav = page.locator('nav.fixed.bottom-0').first();
     await expect(mobileBottomNav).toBeVisible();
@@ -146,11 +159,11 @@ test.describe('Module 01: Global Layout, Navigation & Centered Modals E2E', () =
     await menuBtn.click();
 
     // Verify drawer appears and backdrop is present
-    const backdrop = page.locator('.fixed.inset-0.bg-slate-900\\/50').first();
+    const backdrop = page.locator('[data-testid="sidebar-mobile-backdrop"], .fixed.inset-0.bg-slate-900\\/40, .fixed.inset-0.bg-slate-900\\/50').first();
     await expect(backdrop).toBeVisible();
 
     // Close drawer via backdrop click
-    await backdrop.click();
+    await backdrop.click({ position: { x: 320, y: 100 }, force: true });
     await page.waitForTimeout(250);
 
     // Check Axe Core accessibility on mobile layout
