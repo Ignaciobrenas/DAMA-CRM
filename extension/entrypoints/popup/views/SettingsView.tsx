@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { browser } from "wxt/browser";
-import { ArrowLeft, ChevronRight, Palette } from "lucide-react";
-import { clearAuth, type StoredSession } from "@/lib/storage";
+import { ArrowLeft, ChevronRight, Palette, Globe } from "lucide-react";
+import {
+  clearAuth,
+  getActiveServerUrl,
+  setActiveServerUrl,
+  type StoredSession,
+} from "@/lib/storage";
 import { sendToBackground } from "@/lib/messaging";
 import {
   getAppearance,
@@ -18,17 +23,29 @@ export function SettingsView({
   onChange: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [appearance, setAppearanceState] = useState<AppearanceSettings | null>(null);
+  const [appearance, setAppearanceState] = useState<AppearanceSettings | null>(
+    null,
+  );
+  const [serverUrl, setServerUrlState] = useState("http://localhost:3000");
+  const [savedMsg, setSavedMsg] = useState(false);
   const [showAppearance, setShowAppearance] = useState(false);
 
   useEffect(() => {
     void getAppearance().then(setAppearanceState);
+    void getActiveServerUrl().then(setServerUrlState);
   }, []);
 
   async function updateAppearance(patch: Partial<AppearanceSettings>) {
     const next = await setAppearance(patch);
     setAppearanceState(next);
     applyAppearance(next);
+  }
+
+  async function handleSaveServerUrl() {
+    await setActiveServerUrl(serverUrl);
+    await sendToBackground({ type: "AUTH_CHANGED" });
+    setSavedMsg(true);
+    setTimeout(() => setSavedMsg(false), 2000);
   }
 
   async function logout() {
@@ -45,28 +62,49 @@ export function SettingsView({
       <div className={`slide-track${showAppearance ? " show-second" : ""}`}>
         <div className="slide-panel">
           <div className="field">
-            <label>Cuenta</label>
+            <label>Cuenta DAMA-CRM</label>
             <input value={session.user?.email ?? ""} disabled />
           </div>
+
+          <div className="field">
+            <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Globe size={12} /> URL del Servidor DAMA-CRM
+            </label>
+            <div style={{ display: "flex", gap: 6 }}>
+              <input
+                value={serverUrl}
+                onChange={(e) => setServerUrlState(e.target.value)}
+                placeholder="http://localhost:3000"
+              />
+              <button
+                type="button"
+                className="btn secondary"
+                style={{ width: "auto", padding: "0 12px" }}
+                onClick={handleSaveServerUrl}
+              >
+                {savedMsg ? "✓" : "Guardar"}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="nav-btn"
+            style={{ marginTop: 10, marginBottom: 10 }}
+            onClick={() => setShowAppearance(true)}
+          >
+            <span className="nav-btn-label">
+              <Palette size={14} /> Apariencia (Claro / Oscuro)
+            </span>
+            <ChevronRight size={15} />
+          </button>
 
           <button className="btn danger" onClick={logout} disabled={busy}>
             Cerrar sesión
           </button>
 
-          <button
-            type="button"
-            className="nav-btn"
-            style={{ marginTop: 14 }}
-            onClick={() => setShowAppearance(true)}
-          >
-            <span className="nav-btn-label">
-              <Palette size={14} /> Apariencia
-            </span>
-            <ChevronRight size={15} />
-          </button>
-
           <p className="muted" style={{ marginTop: 14 }}>
-            dama-agile-planner Extension v{version}
+            DAMA-CRM Harvest Timer Extension v{version} (Chrome & Firefox)
           </p>
         </div>
 
@@ -95,8 +133,8 @@ export function SettingsView({
                     })
                   }
                 >
-                  <option value="dark">Oscuro</option>
-                  <option value="light">Claro</option>
+                  <option value="dark">Oscuro (Carbon Slate)</option>
+                  <option value="light">Claro (Soft Slate)</option>
                 </select>
               </div>
 
@@ -120,7 +158,9 @@ export function SettingsView({
                 <input
                   type="checkbox"
                   checked={appearance.compact}
-                  onChange={(e) => void updateAppearance({ compact: e.target.checked })}
+                  onChange={(e) =>
+                    void updateAppearance({ compact: e.target.checked })
+                  }
                 />
                 Modo compacto
               </label>

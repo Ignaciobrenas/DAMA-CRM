@@ -1,28 +1,29 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Globe, LogIn } from "lucide-react";
 import { login, verifyTwoFactor } from "@/lib/api-client";
-import { setSession, getPendingTwoFactor, setPendingTwoFactor } from "@/lib/storage";
+import {
+  setSession,
+  getPendingTwoFactor,
+  setPendingTwoFactor,
+  getActiveServerUrl,
+  setActiveServerUrl,
+} from "@/lib/storage";
 import { sendToBackground } from "@/lib/messaging";
 import type { LoginResponse } from "@/types/api";
-
-// Login flow: email/password -> optional 2FA code. The server URL is baked in
-// at build time (see lib/config.ts) — this only ever talks to one server, so
-// there's nothing to ask the user for or request host permission on.
 
 export function LoginView({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [serverUrl, setServerUrlState] = useState("http://localhost:3000");
+  const [showServerConfig, setShowServerConfig] = useState(false);
   const [code, setCode] = useState("");
   const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [twoFactorMethod, setTwoFactorMethod] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // The popup is destroyed (losing all React state) whenever it loses focus —
-  // e.g. switching tabs to read a 2FA code from email. Rehydrate the pending
-  // 2FA step from storage so reopening resumes at "enter code" instead of
-  // restarting the whole login.
   useEffect(() => {
+    void getActiveServerUrl().then(setServerUrlState);
     void getPendingTwoFactor().then((pending) => {
       if (!pending) return;
       setPendingToken(pending.pendingToken);
@@ -31,7 +32,8 @@ export function LoginView({ onDone }: { onDone: () => void }) {
   }, []);
 
   async function finishLogin(user: any, token: string) {
-    await setSession({ token, user });
+    await setActiveServerUrl(serverUrl);
+    await setSession({ token, user, serverUrl });
     await sendToBackground({ type: "AUTH_CHANGED" });
     onDone();
   }
@@ -41,7 +43,8 @@ export function LoginView({ onDone }: { onDone: () => void }) {
     setError(null);
     setBusy(true);
     try {
-      const res: LoginResponse = await login(email, password);
+      await setActiveServerUrl(serverUrl);
+      const res: LoginResponse = await login(email.trim(), password, serverUrl);
 
       if ("token" in res && res.token) {
         await finishLogin(res.user, res.token);
@@ -66,7 +69,7 @@ export function LoginView({ onDone }: { onDone: () => void }) {
       }
       setError("Respuesta de login no reconocida");
     } catch (err: any) {
-      setError(err?.message ?? "Error al iniciar sesión");
+      setError(err?.message ?? "Error al iniciar sesión con tu cuenta de DAMA-CRM");
     } finally {
       setBusy(false);
     }
@@ -91,7 +94,44 @@ export function LoginView({ onDone }: { onDone: () => void }) {
   return (
     <div className="content">
       <div className="header login-header">
-        <img src="/dama_agile_planner_logo.png" className="header-logo" alt="dama-agile-planner" />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <img
+            src="/assets/logos/dama-logo-white.png"
+            className="header-logo"
+            alt="DAMA-CRM"
+          />
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: "2px 6px",
+              borderRadius: 5,
+              background: "rgba(255,255,255,0.1)",
+              color: "#e2e8f0",
+            }}
+          >
+            HARVEST TIMER
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowServerConfig((s) => !s)}
+          title="Configurar URL del servidor DAMA-CRM"
+          style={{
+            background: "transparent",
+            border: "1px solid #334155",
+            color: "#94a3b8",
+            borderRadius: 6,
+            padding: "4px 7px",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 11,
+          }}
+        >
+          <Globe size={12} /> Servidor
+        </button>
       </div>
 
       {pendingToken ? (
@@ -99,10 +139,10 @@ export function LoginView({ onDone }: { onDone: () => void }) {
           <p className="muted">
             {twoFactorMethod === "email"
               ? "Te hemos enviado un código por email. Introdúcelo para continuar."
-              : "Introduce el código de tu app de autenticación (2FA)."}
+              : "Introduce el código de verificación 2FA de tu cuenta DAMA."}
           </p>
           <div className="field">
-            <label>Código</label>
+            <label>Código 2FA</label>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -113,7 +153,7 @@ export function LoginView({ onDone }: { onDone: () => void }) {
           </div>
           {error && <div className="error">{error}</div>}
           <button className="btn" disabled={busy}>
-            {busy ? "Verificando…" : "Verificar"}
+            {busy ? "Verificando…" : "Verificar y Entrar"}
           </button>
           <button
             type="button"
@@ -127,18 +167,41 @@ export function LoginView({ onDone }: { onDone: () => void }) {
               setError(null);
             }}
           >
-            <ArrowLeft size={13} /> Volver
+            <ArrowLeft size={13} /> Volver al inicio de sesión
           </button>
         </form>
       ) : (
         <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 12 }}>
+            <h2 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700 }}>
+              Inicia sesión en DAMA-CRM
+            </h2>
+            <p className="muted" style={{ margin: 0 }}>
+              Conecta tu cuenta para fichar horas y controlar tareas al estilo Harvest.
+            </p>
+          </div>
+
+          {showServerConfig && (
+            <div className="field">
+              <label>Servidor API DAMA-CRM</label>
+              <input
+                type="url"
+                value={serverUrl}
+                onChange={(e) => setServerUrlState(e.target.value)}
+                placeholder="http://localhost:3000"
+              />
+            </div>
+          )}
+
           <div className="field">
-            <label>Email</label>
+            <label>Correo electrónico de DAMA</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@empresa.com"
               autoComplete="username"
+              required
               autoFocus
             />
           </div>
@@ -148,12 +211,15 @@ export function LoginView({ onDone }: { onDone: () => void }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               autoComplete="current-password"
+              required
             />
           </div>
           {error && <div className="error">{error}</div>}
-          <button className="btn" disabled={busy}>
-            {busy ? "Entrando…" : "Iniciar sesión"}
+          <button className="btn" disabled={busy} style={{ marginTop: 6 }}>
+            <LogIn size={14} />
+            {busy ? "Conectando con DAMA…" : "Iniciar sesión con DAMA"}
           </button>
         </form>
       )}

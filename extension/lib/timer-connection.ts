@@ -1,19 +1,16 @@
-import { io, type Socket } from "socket.io-client";
-import type { ActiveTimerState } from "@shared/types";
-import { getSession, setStoredTimer } from "./storage";
-import { SERVER_URL } from "./config";
+import type { ActiveTimerState } from "@/types/api";
+import { getSession, setStoredTimer, getActiveServerUrl } from "./storage";
 import { broadcast } from "./messaging";
-import { updateBadge } from "./badge";
+import { updateBadge, recordToActiveTimerState } from "./badge";
 import { deliverIncoming } from "./push";
+import { getHarvestClockStatus } from "./api-client";
 
-// Owns the socket.io connection to the dama-agile-planner `/ws` timer channel from the
-// background worker. Mirrors client/lib/timer-socket.ts but targets an explicit
-// server URL (the extension is not same-origin) and drives the badge + storage.
-//
-// MV3 note: the worker is killed when idle, dropping the socket. `ensureConnected`
-// is safe to call repeatedly (on wake / alarm) and reconnects + resyncs.
+// Owns the persistent connection & server sync to DAMA-CRM's `/ws` WebSocket
+// and `/api/employees/time-tracking/status` PostgreSQL endpoint.
+// Because the timer timestamps are stored in PostgreSQL on the server,
+// closing the browser or shutting down the PC never loses the active timer.
 
-let socket: Socket | null = null;
+let ws: WebSocket | null = null;
 let currentToken: string | null = null;
 
 async function applyState(timer: ActiveTimerState | null): Promise<void> {
@@ -22,75 +19,107 @@ async function applyState(timer: ActiveTimerState | null): Promise<void> {
   broadcast({ type: "TIMER_STATE", timer });
 }
 
+/**
+ * Reconcile extension timer state with PostgreSQL server truth
+ */
+export async function syncTimerFromServer(): Promise<ActiveTimerState | null> {
+  const { token } = await getSession();
+  if (!token) {
+    await applyState(null);
+    return null;
+  }
+  try {
+    const status = await getHarvestClockStatus();
+    const timer = status?.isClockedIn
+      ? recordToActiveTimerState(status.activeRecord)
+      : null;
+    await applyState(timer);
+    return timer;
+  } catch {
+    return null;
+  }
+}
+
 export async function ensureConnected(): Promise<void> {
   const { token } = await getSession();
-  if (!token || !SERVER_URL) {
+  const serverUrl = await getActiveServerUrl();
+  if (!token || !serverUrl) {
     disconnectTimer();
     return;
   }
 
-  // Recreate the socket if credentials changed (e.g. re-login as another user).
-  if (socket && currentToken !== token) {
+  // Always sync immediately from PostgreSQL REST API
+  await syncTimerFromServer();
+
+  if (ws && currentToken !== token) {
     disconnectTimer();
   }
 
-  if (!socket) {
-    currentToken = token;
-    socket = io(SERVER_URL, {
-      path: "/ws",
-      auth: { token },
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-    });
+  if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+    try {
+      currentToken = token;
+      const wsUrl = serverUrl.replace(/^http/i, "ws") + "/ws";
+      ws = new WebSocket(wsUrl);
 
-    socket.on("timer:state", (timer: ActiveTimerState | null) => {
-      void applyState(timer ?? null);
-    });
+      ws.onopen = () => {
+        try {
+          ws?.send(
+            JSON.stringify({
+              event: "auth:identify",
+              data: { token },
+            }),
+          );
+        } catch {
+          // ignore
+        }
+      };
 
-    // Primary notification channel — see server/realtime/timer-socket.ts
-    // notifyNewNotification(). Near-instant and needs no VAPID config, unlike
-    // Web Push; the poll alarm only has to catch what this misses.
-    socket.on(
-      "notification:new",
-      (n: { id: string; title: string; message: string; actionUrl?: string | null }) => {
-        void deliverIncoming(n);
-      },
-    );
+      ws.onmessage = (evt) => {
+        try {
+          const msg = JSON.parse(String(evt.data));
+          if (
+            msg.event === "timer:updated" ||
+            msg.event === "attendance:clock_in" ||
+            msg.event === "attendance:clock_out"
+          ) {
+            void syncTimerFromServer();
+          } else if (msg.event === "notification:new" && msg.data) {
+            void deliverIncoming(msg.data);
+          }
+        } catch {
+          // ignore malformed messages
+        }
+      };
 
-    socket.on("connect", () => {
-      // Resync from the server on (re)connect.
-      socket?.emit("timer:get");
-    });
+      ws.onclose = () => {
+        ws = null;
+      };
 
-    socket.on("connect_error", (err) => {
-      // Unauthorized -> token likely expired; the API layer / auth flow handles
-      // re-login. Just log here.
-      console.warn("[timer] connect_error", err?.message);
-    });
-  } else if (!socket.connected) {
-    socket.connect();
-    socket.emit("timer:get");
+      ws.onerror = () => {
+        ws = null;
+      };
+    } catch {
+      ws = null;
+    }
   }
 }
 
-/** Push a new timer state to the server (and reflect it locally immediately). */
 export async function setTimer(timer: ActiveTimerState | null): Promise<void> {
-  await ensureConnected();
-  socket?.emit("timer:set", timer);
   await applyState(timer);
 }
 
 export function requestTimer(): void {
-  socket?.emit("timer:get");
+  void syncTimerFromServer();
 }
 
 export function disconnectTimer(): void {
-  if (socket) {
-    socket.removeAllListeners();
-    socket.disconnect();
-    socket = null;
+  if (ws) {
+    try {
+      ws.close();
+    } catch {
+      // ignore
+    }
+    ws = null;
   }
   currentToken = null;
 }

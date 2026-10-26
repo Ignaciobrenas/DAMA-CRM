@@ -1,4 +1,4 @@
-import { defineBackground } from "wxt/utils/define-background";
+import { defineBackground } from "wxt/sandbox";
 import { browser } from "wxt/browser";
 import {
   ensureConnected,

@@ -1,7 +1,69 @@
-// API response shapes as actually returned by the dama-agile-planner Express server.
-// NOTE: shared/types.ts has an older/aspirational `Notification` shape
-// (entityType/entityId) that does NOT match the real API — the real endpoint
-// returns the Prisma model below with `actionUrl`. Use these types instead.
+// Shared API & Timer contracts for the DAMA-CRM Browser Extension (Chrome & Firefox)
+
+export interface ActiveTimerState {
+  id?: string;
+  taskId: string;
+  taskKey: string;
+  taskTitle: string;
+  projectId?: string | null;
+  projectName?: string | null;
+  reason?: string | null;
+  notes?: string | null;
+  isBillable?: boolean;
+  startTime: number; // UTC ms of current running segment (lastResumedAt or clockIn)
+  clockInIso?: string;
+  accumulatedSeconds?: number; // Seconds accumulated prior to current running segment
+  elapsed: number; // Frozen ms when paused
+  isPaused: boolean;
+}
+
+export interface HarvestTimeRecord {
+  id: string;
+  clockIn: string;
+  clockOut?: string | null;
+  lastResumedAt?: string | null;
+  pausedAt?: string | null;
+  accumulatedSeconds?: number;
+  elapsedSeconds?: number;
+  durationMinutes?: number;
+  isPaused?: boolean;
+  type?: string;
+  reason?: string | null;
+  notes?: string | null;
+  projectId?: string | null;
+  projectName?: string | null;
+  taskId?: string | null;
+  taskTitle?: string | null;
+  isBillable?: boolean;
+}
+
+export interface HarvestClockStatus {
+  isClockedIn: boolean;
+  activeRecord: HarvestTimeRecord | null;
+  todayMinutes: number;
+  todaySeconds?: number;
+  todayRecordCount?: number;
+  todayRecords?: HarvestTimeRecord[];
+  serverTimestamp?: string;
+}
+
+export interface TrackableProject {
+  id: string;
+  name: string;
+  key?: string;
+  source: string;
+}
+
+export interface TrackableTask {
+  id: string;
+  key: string;
+  title: string;
+  status: string;
+  priority: string;
+  projectId: string;
+  projectName: string;
+  source: string;
+}
 
 export interface ServerNotification {
   id: string;
@@ -33,9 +95,9 @@ export interface AuthUser {
   name?: string | null;
   avatar?: string | null;
   role?: string;
+  tenantId?: string;
 }
 
-// POST /api/auth/login can return one of these shapes.
 export interface LoginSuccess {
   user: AuthUser;
   token: string;

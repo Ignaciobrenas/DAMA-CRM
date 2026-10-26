@@ -1,14 +1,13 @@
 import { browser } from "wxt/browser";
-import type { AuthUser } from "@/types/api";
-import type { ActiveTimerState } from "@shared/types";
+import type { AuthUser, ActiveTimerState } from "@/types/api";
+import { DEFAULT_SERVER_URL } from "./config";
 
-// Single source of truth for cross-context state, held in chrome.storage.local.
-// Both the popup and the background worker read/write here; storage.onChanged is
-// the sync channel between them.
+// Single source of truth for cross-context state, held in browser.storage.local.
 
 export interface StoredSession {
   token: string | null;
   user: AuthUser | null;
+  serverUrl?: string;
 }
 
 export interface ExtensionState {
@@ -25,16 +24,18 @@ export interface PendingTwoFactor {
 const KEYS = {
   token: "token",
   user: "user",
+  serverUrl: "serverUrl",
   timer: "timer",
   lastSeenNotificationId: "lastSeenNotificationId",
   pendingTwoFactor: "pendingTwoFactor",
 } as const;
 
 export async function getSession(): Promise<StoredSession> {
-  const r = await browser.storage.local.get([KEYS.token, KEYS.user]);
+  const r = await browser.storage.local.get([KEYS.token, KEYS.user, KEYS.serverUrl]);
   return {
     token: (r[KEYS.token] as string) ?? null,
     user: (r[KEYS.user] as AuthUser) ?? null,
+    serverUrl: ((r[KEYS.serverUrl] as string) || DEFAULT_SERVER_URL).replace(/\/$/, ""),
   };
 }
 
@@ -42,7 +43,19 @@ export async function setSession(patch: Partial<StoredSession>): Promise<void> {
   const data: Record<string, unknown> = {};
   if ("token" in patch) data[KEYS.token] = patch.token;
   if ("user" in patch) data[KEYS.user] = patch.user;
+  if ("serverUrl" in patch && patch.serverUrl) {
+    data[KEYS.serverUrl] = patch.serverUrl.replace(/\/$/, "");
+  }
   await browser.storage.local.set(data);
+}
+
+export async function getActiveServerUrl(): Promise<string> {
+  const r = await browser.storage.local.get(KEYS.serverUrl);
+  return ((r[KEYS.serverUrl] as string) || DEFAULT_SERVER_URL).replace(/\/$/, "");
+}
+
+export async function setActiveServerUrl(url: string): Promise<void> {
+  await browser.storage.local.set({ [KEYS.serverUrl]: url.replace(/\/$/, "") });
 }
 
 export async function clearAuth(): Promise<void> {

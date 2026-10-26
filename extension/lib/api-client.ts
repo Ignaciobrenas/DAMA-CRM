@@ -1,16 +1,15 @@
-import { getSession, clearAuth } from "./storage";
+import { getSession, clearAuth, getActiveServerUrl } from "./storage";
 import { broadcast } from "./messaging";
-import { SERVER_URL } from "./config";
 import type {
   ServerNotification,
   Note,
   LoginResponse,
   AuthUser,
+  HarvestClockStatus,
+  HarvestTimeRecord,
+  TrackableProject,
+  TrackableTask,
 } from "@/types/api";
-
-// Thin fetch wrapper: prepends the (build-time, see lib/config.ts) server base
-// URL, attaches the JWT as a Bearer token, and treats any 401 as an expired
-// session (clears the token and notifies the UI to route back to login).
 
 export class ApiError extends Error {
   status: number;
@@ -27,24 +26,27 @@ function joinUrl(base: string, path: string): string {
 interface RequestOptions {
   method?: string;
   body?: unknown;
-  auth?: boolean; // default true
+  auth?: boolean;
   tokenOverride?: string;
+  serverUrlOverride?: string;
 }
 
 export async function apiFetch<T = unknown>(
   path: string,
   opts: RequestOptions = {},
 ): Promise<T> {
-  if (!SERVER_URL) throw new ApiError(0, "Server URL not configured");
+  const baseUrl = opts.serverUrlOverride || (await getActiveServerUrl());
+  if (!baseUrl) throw new ApiError(0, "URL del servidor DAMA-CRM no configurada");
 
   const headers: Record<string, string> = {};
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
 
   const useAuth = opts.auth !== false;
-  const token = opts.tokenOverride ?? (await getSession()).token;
+  const session = await getSession();
+  const token = opts.tokenOverride ?? session.token;
   if (useAuth && token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(joinUrl(SERVER_URL, path), {
+  const res = await fetch(joinUrl(baseUrl, path), {
     method: opts.method ?? "GET",
     headers,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
@@ -53,14 +55,15 @@ export async function apiFetch<T = unknown>(
   if (res.status === 401 && useAuth) {
     await clearAuth();
     broadcast({ type: "AUTH_EXPIRED" });
-    throw new ApiError(401, "Session expired");
+    throw new ApiError(401, "Sesión expirada. Inicia sesión de nuevo.");
   }
 
   if (!res.ok) {
-    let msg = `Request failed (${res.status})`;
+    let msg = `Error de servidor (${res.status})`;
     try {
       const data = await res.json();
-      if (data?.error) msg = data.error;
+      if (data?.message) msg = data.message;
+      else if (data?.error) msg = data.error;
     } catch {
       /* ignore */
     }
@@ -72,89 +75,210 @@ export async function apiFetch<T = unknown>(
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-// ---- Auth ---------------------------------------------------------------
+// ---- Auth (Compatible with DAMA-CRM /api/auth/login & /api/auth/me) ----
 
-export function login(email: string, password: string): Promise<LoginResponse> {
-  return apiFetch<LoginResponse>("/api/auth/login", {
+export async function login(
+  email: string,
+  password: string,
+  serverUrlOverride?: string,
+): Promise<LoginResponse> {
+  const raw: any = await apiFetch("/api/auth/login", {
     method: "POST",
     body: { email, password },
     auth: false,
+    serverUrlOverride,
   });
+
+  const payload = raw?.data ?? raw;
+  if (payload?.accessToken || payload?.token) {
+    return {
+      user: payload.user,
+      token: payload.accessToken || payload.token,
+    };
+  }
+  if (payload?.requiresTwoFactor || payload?.requires2FA) {
+    return {
+      requires2FA: true,
+      method: payload.method || "email",
+      pendingToken: payload.tempToken || payload.pendingToken,
+      user: payload.user,
+    };
+  }
+  return payload as LoginResponse;
 }
 
-export function verifyTwoFactor(
+export async function verifyTwoFactor(
   pendingToken: string,
   code: string,
 ): Promise<{ user: AuthUser; token: string }> {
-  return apiFetch("/api/auth/2fa/verify", {
+  const raw: any = await apiFetch("/api/auth/verify-2fa", {
     method: "POST",
-    body: { pendingToken, code },
+    body: { tempToken: pendingToken, pendingToken, code },
     auth: false,
   });
+  const payload = raw?.data ?? raw;
+  return {
+    user: payload.user,
+    token: payload.accessToken || payload.token,
+  };
 }
 
-export function verifyToken(): Promise<{ user: AuthUser }> {
-  return apiFetch<{ user: AuthUser }>("/api/auth/verify");
+export async function verifyToken(): Promise<{ user: AuthUser }> {
+  const raw: any = await apiFetch("/api/auth/me");
+  const user = raw?.data ?? raw?.user ?? raw;
+  return { user };
+}
+
+// ---- Harvest Persistent Time Tracking & Fichajes ------------------------
+
+export async function getHarvestClockStatus(): Promise<HarvestClockStatus> {
+  const raw: any = await apiFetch("/api/employees/time-tracking/status");
+  return (raw?.data ?? raw) as HarvestClockStatus;
+}
+
+export async function getTrackableTasks(): Promise<{
+  projects: TrackableProject[];
+  tasks: TrackableTask[];
+}> {
+  const raw: any = await apiFetch("/api/employees/time-tracking/tasks");
+  return (raw?.data ?? raw ?? { projects: [], tasks: [] }) as {
+    projects: TrackableProject[];
+    tasks: TrackableTask[];
+  };
+}
+
+export async function startHarvestTimer(input: {
+  projectId?: string | null;
+  projectName?: string | null;
+  taskId?: string | null;
+  taskTitle?: string | null;
+  reason?: string;
+  notes?: string;
+  isBillable?: boolean;
+  switchTask?: boolean;
+}): Promise<HarvestTimeRecord> {
+  const raw: any = await apiFetch("/api/employees/time-tracking/clock-in", {
+    method: "POST",
+    body: input,
+  });
+  return (raw?.data ?? raw) as HarvestTimeRecord;
+}
+
+export async function pauseHarvestTimer(): Promise<HarvestTimeRecord> {
+  const raw: any = await apiFetch("/api/employees/time-tracking/timer/pause", {
+    method: "POST",
+  });
+  return (raw?.data ?? raw) as HarvestTimeRecord;
+}
+
+export async function resumeHarvestTimer(): Promise<HarvestTimeRecord> {
+  const raw: any = await apiFetch("/api/employees/time-tracking/timer/resume", {
+    method: "POST",
+  });
+  return (raw?.data ?? raw) as HarvestTimeRecord;
+}
+
+export async function updateHarvestTimer(input: {
+  projectId?: string | null;
+  projectName?: string | null;
+  taskId?: string | null;
+  taskTitle?: string | null;
+  reason?: string;
+  notes?: string;
+  isBillable?: boolean;
+}): Promise<HarvestTimeRecord> {
+  const raw: any = await apiFetch("/api/employees/time-tracking/timer/update", {
+    method: "POST",
+    body: input,
+  });
+  return (raw?.data ?? raw) as HarvestTimeRecord;
+}
+
+export async function stopHarvestTimer(notes?: string): Promise<HarvestTimeRecord> {
+  const raw: any = await apiFetch("/api/employees/time-tracking/clock-out", {
+    method: "POST",
+    body: { notes },
+  });
+  return (raw?.data ?? raw) as HarvestTimeRecord;
 }
 
 // ---- Notifications ------------------------------------------------------
 
-export function getNotifications(): Promise<ServerNotification[]> {
-  return apiFetch<ServerNotification[]>("/api/notifications");
+export async function getNotifications(): Promise<ServerNotification[]> {
+  const raw: any = await apiFetch("/api/notifications");
+  return (raw?.data ?? raw ?? []) as ServerNotification[];
 }
 
-export function markNotificationRead(id: string): Promise<unknown> {
-  return apiFetch(`/api/notifications/${id}/read`, { method: "POST" });
+export async function markNotificationRead(id: string): Promise<unknown> {
+  return apiFetch(`/api/notifications/${id}/read`, { method: "PATCH" }).catch(() =>
+    apiFetch(`/api/notifications/${id}/read`, { method: "POST" }),
+  );
 }
 
-export function markAllNotificationsRead(): Promise<unknown> {
-  return apiFetch("/api/notifications/read-all", { method: "POST" });
+export async function markAllNotificationsRead(): Promise<unknown> {
+  return apiFetch("/api/notifications/read-all", { method: "PATCH" }).catch(() =>
+    apiFetch("/api/notifications/read-all", { method: "POST" }),
+  );
 }
 
-// ---- Notes --------------------------------------------------------------
+// ---- Notes (/api/planner/notes) -----------------------------------------
 
-export function getNotes(): Promise<Note[]> {
-  return apiFetch<Note[]>("/api/notes");
+export async function getNotes(): Promise<Note[]> {
+  const raw: any = await apiFetch("/api/planner/notes");
+  return (raw?.data ?? raw ?? []) as Note[];
 }
 
-export function createNote(input: {
+export async function createNote(input: {
   content: string;
   title?: string | null;
   color?: string;
   pinned?: boolean;
 }): Promise<Note> {
-  return apiFetch<Note>("/api/notes", { method: "POST", body: input });
+  const raw: any = await apiFetch("/api/planner/notes", {
+    method: "POST",
+    body: input,
+  });
+  return (raw?.data ?? raw) as Note;
 }
 
-export function updateNote(
+export async function updateNote(
   id: string,
   input: Partial<Pick<Note, "title" | "content" | "color" | "pinned" | "order">>,
 ): Promise<Note> {
-  return apiFetch<Note>(`/api/notes/${id}`, { method: "PUT", body: input });
-}
-
-export function togglePinNote(id: string): Promise<Note> {
-  return apiFetch<Note>(`/api/notes/${id}/pin`, { method: "POST" });
-}
-
-export function deleteNote(id: string): Promise<unknown> {
-  return apiFetch(`/api/notes/${id}`, { method: "DELETE" });
-}
-
-// ---- Timer / Harvest ------------------------------------------------------
-
-export function getTask(id: string): Promise<{ id: string; projectId: string }> {
-  return apiFetch(`/api/tasks/${id}`);
-}
-
-export function sendTaskToHarvest(
-  taskId: string,
-  hours: number,
-): Promise<{ success: boolean }> {
-  return apiFetch(`/api/tasks/${taskId}/send-to-harvest`, {
-    method: "POST",
-    body: { hours },
+  const raw: any = await apiFetch(`/api/planner/notes/${id}`, {
+    method: "PUT",
+    body: input,
   });
+  return (raw?.data ?? raw) as Note;
+}
+
+export async function togglePinNote(id: string): Promise<Note> {
+  const raw: any = await apiFetch(`/api/planner/notes/${id}/pin`, {
+    method: "POST",
+  });
+  return (raw?.data ?? raw) as Note;
+}
+
+export async function deleteNote(id: string): Promise<unknown> {
+  return apiFetch(`/api/planner/notes/${id}`, { method: "DELETE" });
+}
+
+// ---- Legacy compatibility helpers ---------------------------------------
+
+export async function getTask(id: string): Promise<{ id: string; projectId: string }> {
+  const raw: any = await apiFetch(`/api/projects/tasks/${id}`).catch(() => ({
+    id,
+    projectId: "",
+  }));
+  return raw?.data ?? raw;
+}
+
+export async function sendTaskToHarvest(
+  _taskId: string,
+  _hours: number,
+): Promise<{ success: boolean }> {
+  await stopHarvestTimer();
+  return { success: true };
 }
 
 // ---- Push ---------------------------------------------------------------
