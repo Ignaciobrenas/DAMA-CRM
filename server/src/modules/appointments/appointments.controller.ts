@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../prisma';
+import { getRequestTenant, isGodSuperAdmin } from '../../utils/tenant';
 
 export interface SalonServiceItem {
   id: string;
@@ -102,9 +103,12 @@ async function ensureDbServices(tenantId: string): Promise<any[]> {
 
   if (services.length === 0) {
     for (const s of DEFAULT_SERVICES) {
-      await prisma.appointmentService.create({
-        data: {
-          id: s.id,
+      const scopedId = tenantId === 'master' ? s.id : `${s.id}-${tenantId}`;
+      await prisma.appointmentService.upsert({
+        where: { id: scopedId },
+        update: {},
+        create: {
+          id: scopedId,
           tenantId,
           name: s.name,
           category: s.category,
@@ -137,10 +141,13 @@ async function ensureDbAppointments(tenantId: string): Promise<any[]> {
   if (appointments.length === 0) {
     const services = await ensureDbServices(tenantId);
     const selectedSrv = services[1] || services[0];
+    const scopedAptId = tenantId === 'master' ? 'apt-001' : `apt-001-${tenantId}`;
 
-    await prisma.appointment.create({
-      data: {
-        id: 'apt-001',
+    await prisma.appointment.upsert({
+      where: { id: scopedAptId },
+      update: {},
+      create: {
+        id: scopedAptId,
         tenantId,
         clientName: 'Elena Ramos García',
         clientPhone: '+34 612 345 678',
@@ -176,7 +183,7 @@ async function ensureDbAppointments(tenantId: string): Promise<any[]> {
  */
 export async function listServices(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const services = await ensureDbServices(tenantId);
     res.json({ success: true, data: services });
   } catch (err: any) {
@@ -190,7 +197,7 @@ export async function listServices(req: Request, res: Response): Promise<void> {
  */
 export async function createOrUpdateService(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const { id, name, category, durationMin, price, supplyCost, description, isPopular } = req.body;
 
     if (!name || price === undefined) {
@@ -235,7 +242,7 @@ export async function createOrUpdateService(req: Request, res: Response): Promis
  */
 export async function listAppointments(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const { startDate, endDate, staffId, status, query } = req.query;
 
     const rawAppointments = await ensureDbAppointments(tenantId);
@@ -302,7 +309,7 @@ export async function listAppointments(req: Request, res: Response): Promise<voi
  */
 export async function createAppointment(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const {
       clientName,
       clientPhone,
@@ -414,13 +421,18 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
  */
 export async function updateAppointment(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const { id } = req.params;
     const updates = req.body;
 
     const existing = await prisma.appointment.findUnique({ where: { id } });
     if (!existing) {
       res.status(404).json({ success: false, message: 'Cita no encontrada' });
+      return;
+    }
+
+    if (!isGodSuperAdmin(req) && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar esta cita' });
       return;
     }
 
@@ -495,11 +507,17 @@ export async function updateAppointment(req: Request, res: Response): Promise<vo
  */
 export async function deleteAppointment(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = getRequestTenant(req);
     const { id } = req.params;
     const existing = await prisma.appointment.findUnique({ where: { id } });
 
     if (!existing) {
       res.status(404).json({ success: false, message: 'Cita no encontrada' });
+      return;
+    }
+
+    if (!isGodSuperAdmin(req) && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar esta cita' });
       return;
     }
 
@@ -516,7 +534,7 @@ export async function deleteAppointment(req: Request, res: Response): Promise<vo
  */
 export async function getRevenueStats(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const rawAppts = await ensureDbAppointments(tenantId);
 
     const now = new Date();
@@ -608,7 +626,7 @@ export async function getRevenueStats(req: Request, res: Response): Promise<void
  */
 export async function exportAppointmentsCsv(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const rawAppts = await ensureDbAppointments(tenantId);
     const { generateCsvBuffer } = await import('../../services/report-exporter.service');
 
@@ -673,7 +691,7 @@ export async function exportAppointmentsCsv(req: Request, res: Response): Promis
  */
 export async function exportAppointmentsPdf(req: Request, res: Response): Promise<void> {
   try {
-    const tenantId = req.user?.tenantId || 'master';
+    const tenantId = getRequestTenant(req);
     const rawAppts = await ensureDbAppointments(tenantId);
     const { generateReportPdf } = await import('../../services/report-exporter.service');
 

@@ -933,9 +933,7 @@ export async function signPublicQuote(req: Request, res: Response): Promise<void
     let createdInvoice = null;
 
     if (!existingInvoice) {
-      const year = new Date().getFullYear();
-      const count = await prisma.invoice.count({ where: { tenantId: quote.tenantId || 'master' } });
-      const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
+      const invoiceNumber = await getNextDocumentNumber(prisma, 'invoice', 'FAC', quote.tenantId || 'master');
 
       createdInvoice = await prisma.invoice.create({
         data: {
@@ -1534,9 +1532,7 @@ export async function rectifyInvoice(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const year = new Date().getFullYear();
-    const count = await prisma.invoice.count({ where: { tenantId } });
-    const invoiceNumber = `REC-${year}-${String(count + 1).padStart(4, '0')}`;
+    const invoiceNumber = await getNextDocumentNumber(prisma, 'invoice', 'REC', tenantId);
 
     // Negative items or adjusted rectify amount
     const isPartial = rectifyAmount !== undefined && rectifyAmount !== null && parseFloat(rectifyAmount) > 0;
@@ -1626,9 +1622,7 @@ export async function duplicateInvoice(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const year = new Date().getFullYear();
-    const count = await prisma.invoice.count({ where: { tenantId } });
-    const invoiceNumber = `FAC-${year}-${String(count + 1).padStart(4, '0')}`;
+    const invoiceNumber = await getNextDocumentNumber(prisma, 'invoice', 'FAC', tenantId);
 
     const duplicate = await prisma.invoice.create({
       data: {

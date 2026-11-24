@@ -36,14 +36,11 @@ export async function getNextDocumentNumber(
   const prefixYear = `${prefix}-${year}-`;
 
   // Find the record with the highest existing sequential number for this prefix and year
+  // Note: document number columns have global @unique constraints in Prisma schema,
+  // so sequence lookup must inspect global maximum for this prefix+year across all tenants.
   const where: any = {
     [cfg.field]: { startsWith: prefixYear },
   };
-
-  // Only filter by tenantId if the model actually has tenantId
-  if (type !== 'boardTask') {
-    where.tenantId = tenantId;
-  }
 
   const latest = await client[cfg.model].findFirst({
     where,
