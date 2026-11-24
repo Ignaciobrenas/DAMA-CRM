@@ -27,6 +27,7 @@ import {
   getUserNotes,
   createUserNote,
   updateUserNote,
+  togglePinUserNote,
   deleteUserNote,
   getTaskTemplates,
   createTaskTemplate,
@@ -77,6 +78,7 @@ router.delete('/reminders/:id', deleteReminder);
 router.get('/notes', getUserNotes);
 router.post('/notes', createUserNote);
 router.put('/notes/:id', updateUserNote);
+router.post('/notes/:id/pin', togglePinUserNote);
 router.delete('/notes/:id', deleteUserNote);
 
 // Templates & Changelog

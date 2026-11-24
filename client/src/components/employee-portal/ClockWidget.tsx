@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiRequest } from '../../services/api';
+import { wsClient } from '../../services/websocket';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 
@@ -171,11 +172,13 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
     };
     window.addEventListener('dama:timer-updated', handleCustomSync);
     window.addEventListener('focus', handleCustomSync);
+    const unsubWs = wsClient.on('timer:updated', handleCustomSync);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('dama:timer-updated', handleCustomSync);
       window.removeEventListener('focus', handleCustomSync);
+      unsubWs();
     };
   }, [fetchStatus]);
 

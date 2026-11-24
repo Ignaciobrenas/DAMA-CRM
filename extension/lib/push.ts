@@ -7,10 +7,11 @@ import {
 } from "./api-client";
 import {
   getSession,
+  getActiveServerUrl,
   getLastSeenNotificationId,
   setLastSeenNotificationId,
 } from "./storage";
-import { SERVER_URL } from "./config";
+import { DEFAULT_WEB_URL } from "./config";
 import { buildDeepLink } from "./deep-link";
 import type { ServerNotification } from "@/types/api";
 
@@ -56,7 +57,9 @@ export async function showOsNotification(n: {
   message: string;
   actionUrl?: string | null;
 }): Promise<void> {
-  const url = buildDeepLink(SERVER_URL, n.actionUrl);
+  const srv = await getActiveServerUrl();
+  const webBase = srv.includes(":3000") ? DEFAULT_WEB_URL : srv;
+  const url = buildDeepLink(webBase, n.actionUrl);
   await rememberClickTarget(n.id, url);
   try {
     await browser.notifications.create(n.id, {
@@ -137,13 +140,13 @@ export async function handlePushPayload(raw: string | null): Promise<void> {
   try {
     data = raw ? JSON.parse(raw) : {};
   } catch {
-    data = { title: "dama-agile-planner", message: raw ?? "" };
+    data = { title: "DAMA-CRM", message: raw ?? "" };
   }
   if (!data.id) {
     // No id to de-dupe against (shouldn't happen server-side) — show as-is.
     await showOsNotification({
       id: `push-${Date.now()}`,
-      title: data.title ?? "dama-agile-planner",
+      title: data.title ?? "DAMA-CRM",
       message: data.message ?? "",
       actionUrl: data.actionUrl ?? null,
     });
@@ -151,7 +154,7 @@ export async function handlePushPayload(raw: string | null): Promise<void> {
   }
   await deliverIncoming({
     id: data.id,
-    title: data.title ?? "dama-agile-planner",
+    title: data.title ?? "DAMA-CRM",
     message: data.message ?? "",
     actionUrl: data.actionUrl ?? null,
   });
@@ -161,7 +164,8 @@ export async function handlePushPayload(raw: string | null): Promise<void> {
 
 export async function pollNotifications(): Promise<void> {
   const { token } = await getSession();
-  if (!token || !SERVER_URL) return;
+  const srv = await getActiveServerUrl();
+  if (!token || !srv) return;
 
   let list: ServerNotification[];
   try {
