@@ -89,8 +89,8 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
     setLoading(true);
     try {
       const res = await api.get('/god/tenants');
-      if (res.data?.success) {
-        setTenants(res.data.data);
+      if (res.success && res.data) {
+        setTenants(res.data);
       }
     } catch (err: any) {
       toast.error(t('godMode.fetchError'));
@@ -116,16 +116,18 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
         maxUsers: newMaxUsers,
       });
 
-      if (res.data?.success) {
+      if (res.success) {
         toast.success(t('godMode.tenantCreated'));
         setActiveSubTab('list');
         setNewSlug('');
         setNewName('');
         setNewDomain('');
         fetchTenants();
+      } else {
+        toast.error(res.message || t('godMode.createError'));
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || t('godMode.createError'));
+      toast.error(err?.message || t('godMode.createError'));
     } finally {
       setSubmitting(false);
     }
@@ -194,9 +196,11 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
       const res = await api.patch(`/god/tenants/${tenant.id}/status`, {
         status: tenant.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE',
       });
-      if (res.data?.success) {
-        toast.success(res.data.message);
+      if (res.success) {
+        toast.success(res.message || 'Estado actualizado');
         fetchTenants();
+      } else {
+        toast.error(res.message || t('godMode.statusError'));
       }
     } catch (err: any) {
       toast.error(t('godMode.statusError'));

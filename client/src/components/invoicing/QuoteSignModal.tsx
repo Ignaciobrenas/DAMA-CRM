@@ -117,13 +117,15 @@ export const QuoteSignModal: React.FC<QuoteSignModalProps> = ({
         signedBy: signerName.trim(),
       });
 
-      if (res.data?.success) {
+      if (res.success) {
         toast.success(t('quotes.signedSuccess'));
         onSignedSuccess();
         onClose();
+      } else {
+        toast.error(res.message || t('quotes.signError'));
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || t('quotes.signError'));
+      toast.error(err?.message || t('quotes.signError'));
     } finally {
       setSubmitting(false);
     }

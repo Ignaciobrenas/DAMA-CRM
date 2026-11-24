@@ -24,11 +24,13 @@ export const PublicQuoteSign: React.FC = () => {
     setLoading(true);
     try {
       const res = await api.get(`/invoices/quotes/public/${token}`);
-      if (res.data?.success) {
-        setQuote(res.data.data);
+      if (res.success && res.data) {
+        setQuote(res.data);
+      } else {
+        setError(res.message || t('quotes.quoteNotFound'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || t('quotes.quoteNotFound'));
+      setError(err?.message || t('quotes.quoteNotFound'));
     } finally {
       setLoading(false);
     }
