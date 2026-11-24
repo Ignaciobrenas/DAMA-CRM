@@ -143,10 +143,11 @@ export async function createContact(req: Request, res: Response): Promise<void> 
       where: { email: normalizedEmail },
     });
     if (existingContact) {
+      const canSeeExisting = isGodSuperAdmin(req) || existingContact.tenantId === tenantId;
       res.status(409).json({
         success: false,
-        message: `Ya existe un contacto registrado con el correo electrónico "${normalizedEmail}" (${existingContact.firstName} ${existingContact.lastName})`,
-        data: existingContact,
+        message: `Ya existe un contacto registrado con el correo electrónico "${normalizedEmail}"`,
+        ...(canSeeExisting ? { data: existingContact } : {}),
       });
       return;
     }
@@ -301,7 +302,7 @@ export async function bulkDeleteContacts(req: Request, res: Response): Promise<v
     // Block contacts with invoices
     if (blockedIds.size > 0) {
       await prisma.contact.updateMany({
-        where: { id: { in: Array.from(blockedIds) } },
+        where: { id: { in: Array.from(blockedIds) }, ...(!isSuper ? { tenantId } : {}) },
         data: {
           isLead: false,
           notes: `[BLOQUEO DE DATOS RGPD ART. 32 / LGT]: Sujeto a deber de conservación fiscal por facturas emitidas. Acceso restringido exclusivamente a requerimientos judiciales o de la AEAT. Registrado el ${new Date().toISOString()}`,
@@ -389,11 +390,17 @@ export async function importContacts(req: Request, res: Response): Promise<void>
       return;
     }
 
+    const isSuper = isGodSuperAdmin(req);
     const createdOrUpdated = [];
     for (const item of items) {
       const email = (item.email && String(item.email).trim().toLowerCase()) || `contacto_${Date.now().toString().slice(-6)}_${Math.floor(Math.random() * 1000)}@damacrm.local`;
       const firstName = String(item.firstName || item.name || 'Sin Nombre').trim();
       const lastName = String(item.lastName || '').trim();
+
+      const existing = await prisma.contact.findUnique({ where: { email } });
+      if (existing && !isSuper && existing.tenantId !== tenantId) {
+        continue;
+      }
 
       const contact = await prisma.contact.upsert({
         where: { email },

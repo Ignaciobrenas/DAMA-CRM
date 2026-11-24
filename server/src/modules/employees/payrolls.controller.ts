@@ -138,6 +138,16 @@ export const updatePayrollStatus = async (req: Request, res: Response): Promise<
       return;
     }
 
+    const existing = await prisma.payroll.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Nómina no encontrada' });
+      return;
+    }
+    if (!isSuper && existing.tenantId !== (currentUser?.tenantId || 'master')) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar una nómina de otra empresa' });
+      return;
+    }
+
     const updated = await prisma.payroll.update({
       where: { id },
       data: {

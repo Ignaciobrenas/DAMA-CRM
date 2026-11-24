@@ -146,7 +146,19 @@ export async function createBoard(req: Request, res: Response): Promise<void> {
 export async function updateBoard(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const { name, description, color, methodology, archived, budgetedHours } = req.body;
+
+    const existing = await prisma.board.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Tablero no encontrado' });
+      return;
+    }
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'Acceso denegado a este tablero' });
+      return;
+    }
 
     const board = await prisma.board.update({
       where: { id },
@@ -172,6 +184,17 @@ export async function updateBoard(req: Request, res: Response): Promise<void> {
 export async function deleteBoard(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
+    const existing = await prisma.board.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Tablero no encontrado' });
+      return;
+    }
+    if (!isSuper && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'Acceso denegado a este tablero' });
+      return;
+    }
     await prisma.board.delete({ where: { id } });
     res.json({ success: true, message: 'Tablero eliminado correctamente' });
   } catch (error: any) {
@@ -331,6 +354,11 @@ export async function updateBoardTask(req: Request, res: Response): Promise<void
       return;
     }
 
+    if (!isGodSuperAdmin(req) && existingTask.board?.tenantId && existingTask.board.tenantId !== getRequestTenant(req)) {
+      res.status(403).json({ success: false, message: 'Acceso denegado a esta tarea' });
+      return;
+    }
+
     const data: any = {};
     if (title !== undefined) data.title = title.trim();
     if (description !== undefined) data.description = description ? description.trim() : null;
@@ -456,6 +484,18 @@ export async function updateBoardTask(req: Request, res: Response): Promise<void
 export async function deleteBoardTask(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const existingTask = await prisma.boardTask.findUnique({
+      where: { id },
+      include: { board: { select: { tenantId: true } } },
+    });
+    if (!existingTask) {
+      res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+      return;
+    }
+    if (!isGodSuperAdmin(req) && existingTask.board?.tenantId && existingTask.board.tenantId !== getRequestTenant(req)) {
+      res.status(403).json({ success: false, message: 'Acceso denegado a esta tarea' });
+      return;
+    }
     await prisma.boardTask.delete({ where: { id } });
     res.json({ success: true, message: 'Tarea eliminada correctamente' });
   } catch (error: any) {
@@ -663,9 +703,14 @@ export async function getChangelogReleases(req: Request, res: Response): Promise
 export async function getSprints(req: Request, res: Response): Promise<void> {
   try {
     const { boardId, status } = req.query;
+    const tenantId = getRequestTenant(req);
+    const isSuper = isGodSuperAdmin(req);
     const where: any = {};
     if (boardId) where.boardId = boardId as string;
     if (status) where.status = status as string;
+    if (!isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']) {
+      where.board = { tenantId };
+    }
 
     const sprints = await prisma.boardSprint.findMany({
       where,
