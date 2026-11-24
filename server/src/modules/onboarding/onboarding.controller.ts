@@ -303,14 +303,17 @@ export async function completeOnboarding(req: Request, res: Response): Promise<v
       });
 
       // 5. Create default initial pipeline stages for sales if none exist
-      const defaultStages = [
-        { name: 'Lead / Prospecto', order: 0, color: '#3B82F6', probability: 20 },
-        { name: 'Contacto Cualificado', order: 1, color: '#8B5CF6', probability: 40 },
-        { name: 'Presupuesto Enviado', order: 2, color: '#F59E0B', probability: 70 },
-        { name: 'Negociación / Cierre', order: 3, color: '#10B981', probability: 90 },
-      ];
-      for (const st of defaultStages) {
-        await tx.dealStage.create({ data: st });
+      const existingStagesCount = await tx.dealStage.count();
+      if (existingStagesCount === 0) {
+        const defaultStages = [
+          { name: 'Lead / Prospecto', order: 0, color: '#3B82F6', probability: 20 },
+          { name: 'Contacto Cualificado', order: 1, color: '#8B5CF6', probability: 40 },
+          { name: 'Presupuesto Enviado', order: 2, color: '#F59E0B', probability: 70 },
+          { name: 'Negociación / Cierre', order: 3, color: '#10B981', probability: 90 },
+        ];
+        for (const st of defaultStages) {
+          await tx.dealStage.create({ data: st });
+        }
       }
 
       // 6. Create invited team members if any
@@ -333,8 +336,10 @@ export async function completeOnboarding(req: Request, res: Response): Promise<v
           });
 
           const mParts = (member.name || 'Colaborador').split(' ');
-          await tx.employee.create({
-            data: {
+          await tx.employee.upsert({
+            where: { userId: mUser.id },
+            update: { tenantId: slug },
+            create: {
               userId: mUser.id,
               tenantId: slug,
               firstName: mParts[0],
