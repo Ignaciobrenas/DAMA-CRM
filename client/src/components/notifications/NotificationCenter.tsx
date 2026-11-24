@@ -262,14 +262,14 @@ export const NotificationCenter: React.FC = () => {
                   onClick={() => setIsOpen(false)}
                 />
 
-                {/* Dropdown pinned at the Top Right below Topbar */}
-                <div className="fixed top-14 right-2 sm:right-6 z-50 pointer-events-none">
+                {/* Centered Notification Modal per AGENTS.md Rule 3 */}
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto pointer-events-none">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.96, y: -8 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: -8 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-                    className="pointer-events-auto w-[calc(100vw-1rem)] sm:w-[420px] max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden max-h-[calc(100vh-4.5rem)]"
+                    className="pointer-events-auto m-auto w-[calc(100vw-1rem)] sm:w-[440px] max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden max-h-[85vh]"
                   >
                     {/* Header */}
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60">

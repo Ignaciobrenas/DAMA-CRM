@@ -212,7 +212,7 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 m-auto"
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -228,7 +228,7 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 {t('godMode.title')}
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono font-medium">
-                  SuperAdmin
+                  Administrador
                 </span>
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -512,7 +512,7 @@ export const GodModeModal: React.FC<GodModeModalProps> = ({
                                 </h4>
                                 {tenant.isGodTenant && (
                                   <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold">
-                                    GOD
+                                    Empresa Principal
                                   </span>
                                 )}
                               </div>

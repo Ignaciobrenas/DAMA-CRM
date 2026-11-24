@@ -382,7 +382,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
 export async function register(req: Request, res: Response): Promise<void> {
   res.status(403).json({
     success: false,
-    message: 'El registro público de cuentas está deshabilitado. Los nuevos usuarios deben ser aprovisionados por el Administrador de su Empresa o por el SuperAdmin God.',
+    message: 'El registro público de cuentas está deshabilitado. Los nuevos usuarios deben ser aprovisionados por el Administrador de su Empresa o por el Administrador Principal.',
   });
 }
 
