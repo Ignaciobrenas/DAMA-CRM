@@ -59,22 +59,25 @@ export async function getCalendarEvents(req: Request, res: Response): Promise<vo
     const whereClause: any = {
       tenantId,
     };
+    const andConditions: any[] = [];
 
     if (startDate && endDate) {
-      whereClause.OR = [
-        {
-          startDate: {
-            gte: new Date(startDate as string),
-            lte: new Date(endDate as string),
+      andConditions.push({
+        OR: [
+          {
+            startDate: {
+              gte: new Date(startDate as string),
+              lte: new Date(endDate as string),
+            },
           },
-        },
-        {
-          endDate: {
-            gte: new Date(startDate as string),
-            lte: new Date(endDate as string),
+          {
+            endDate: {
+              gte: new Date(startDate as string),
+              lte: new Date(endDate as string),
+            },
           },
-        },
-      ];
+        ],
+      });
     }
 
     if (type && type !== 'ALL') {
@@ -96,11 +99,13 @@ export async function getCalendarEvents(req: Request, res: Response): Promise<vo
         select: { projectId: true },
       });
       const projectIds = userProjects.map((p) => p.projectId);
-      whereClause.OR = [
-        { userId },
-        { isCompanyWide: true },
-        { projectId: { in: projectIds } },
-      ];
+      andConditions.push({
+        OR: [
+          { userId },
+          { isCompanyWide: true },
+          { projectId: { in: projectIds } },
+        ],
+      });
     } else if (userId) {
       const userProjects = await prisma.projectMember.findMany({
         where: { userId },
@@ -108,11 +113,17 @@ export async function getCalendarEvents(req: Request, res: Response): Promise<vo
       });
       const projectIds = userProjects.map((p) => p.projectId);
 
-      whereClause.OR = [
-        { userId },
-        { isCompanyWide: true },
-        ...(projectIds.length > 0 ? [{ projectId: { in: projectIds } }] : []),
-      ];
+      andConditions.push({
+        OR: [
+          { userId },
+          { isCompanyWide: true },
+          ...(projectIds.length > 0 ? [{ projectId: { in: projectIds } }] : []),
+        ],
+      });
+    }
+
+    if (andConditions.length > 0) {
+      whereClause.AND = andConditions;
     }
 
     const events = await prisma.calendarEvent.findMany({
