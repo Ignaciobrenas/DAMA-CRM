@@ -322,20 +322,26 @@ export async function downloadInvoicePdf(req: Request, res: Response): Promise<v
 
     if (!invoice.proforma) {
       try {
-        const issuerNif = branding.companyTaxId || 'B00000000';
-        const prevHash = await getPreviousInvoiceHash(invoice.tenantId);
-        const vfResult = calculateVerifactuHash({
-          issuerNif,
-          invoiceNumber: invoice.invoiceNumber,
-          issueDate: invoice.issueDate,
-          invoiceType: invoice.isRectifying ? 'R1' : 'F1',
-          taxAmount: invoice.taxAmount,
-          totalAmount: invoice.total,
-          previousRecordHash: prevHash,
-        });
+        if (invoice.verifactuHash && invoice.verifactuQrUrl) {
+          verifactuHash = invoice.verifactuHash;
+          verifactuQrBuffer = await generateVerifactuQrBuffer(invoice.verifactuQrUrl);
+        } else {
+          const issuerNif = branding.companyTaxId || 'B00000000';
+          const prevHash = invoice.previousInvoiceHash ?? (await getPreviousInvoiceHash(invoice.tenantId));
+          const vfResult = calculateVerifactuHash({
+            issuerNif,
+            invoiceNumber: invoice.invoiceNumber,
+            issueDate: invoice.issueDate,
+            invoiceType: invoice.isRectifying ? 'R1' : 'F1',
+            taxAmount: invoice.taxAmount,
+            totalAmount: invoice.total,
+            previousRecordHash: prevHash,
+            generationTimestamp: invoice.verifactuGeneratedAt || invoice.createdAt,
+          });
 
-        verifactuHash = vfResult.hash;
-        verifactuQrBuffer = await generateVerifactuQrBuffer(vfResult.qrUrl);
+          verifactuHash = invoice.verifactuHash || vfResult.hash;
+          verifactuQrBuffer = await generateVerifactuQrBuffer(invoice.verifactuQrUrl || vfResult.qrUrl);
+        }
       } catch (vfErr) {
         console.error('Veri*Factu hash/QR computation note:', vfErr);
       }
