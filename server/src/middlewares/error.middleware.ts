@@ -45,7 +45,7 @@ export async function errorHandler(err: any, req: Request, res: Response, next: 
         stack: err.stack,
         method: req.method,
         path: req.path,
-        userId: (req as any).user?.userId || null,
+        userId: req.user?.id || (req as any).user?.userId || null,
         ipAddress: req.ip || req.socket?.remoteAddress || null,
         headers: JSON.stringify(safeHeaders),
         body: safeBody,
