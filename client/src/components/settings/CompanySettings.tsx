@@ -83,7 +83,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ onOpenPdfStudi
   };
 
   const hasCustomLogo = Boolean(form.logoUrl && form.logoUrl.trim() !== '');
-  const activeLogoSrc = hasCustomLogo ? form.logoUrl : './assets/logos/dama-logo-dark.png';
+  const activeLogoSrc = hasCustomLogo ? form.logoUrl : '/assets/logos/dama-logo-dark.png';
 
   return (
     <form onSubmit={handleSave} className="space-y-6" data-testid="company-settings-form">
@@ -176,7 +176,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ onOpenPdfStudi
                   alt="Logo activo"
                   className="h-8 max-w-[140px] object-contain"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = './assets/logos/dama-logo-dark.png';
+                    (e.target as HTMLImageElement).src = '/assets/logos/dama-logo-dark.png';
                   }}
                 />
                 {hasCustomLogo && (
@@ -304,7 +304,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({ onOpenPdfStudi
                     alt="Logo"
                     className="h-6 max-w-[90px] rounded object-contain"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = './assets/logos/dama-logo-dark.png';
+                      (e.target as HTMLImageElement).src = '/assets/logos/dama-logo-dark.png';
                     }}
                   />
                   <span className="font-bold text-xs text-slate-900 dark:text-white truncate">

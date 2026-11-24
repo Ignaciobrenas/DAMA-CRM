@@ -84,7 +84,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         role="dialog"
         aria-modal="true"
         onClick={onClose}
-        className="fixed top-14 inset-x-0 bottom-0 z-40 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 m-auto bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto"
       >
         {/* Modal / Popup Card */}
         <motion.div

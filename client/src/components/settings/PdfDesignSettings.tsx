@@ -90,7 +90,7 @@ export const PdfDesignSettings: React.FC = () => {
 
   const resolvedPreviewLogo = hasCustomCompanyLogo
     ? form.logoUrl
-    : './assets/logos/dama-logo-dark.png';
+    : '/assets/logos/dama-logo-dark.png';
 
   const activeTemplate = form.pdfTemplate || 'MODERN_STRIPE';
   const activeAccent = form.pdfAccentColor || form.primaryColor || '#2563EB';
@@ -321,7 +321,7 @@ export const PdfDesignSettings: React.FC = () => {
                     data-testid="img-pdf-logo-preview"
                     className="max-h-12 max-w-full object-contain"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = './assets/logos/dama-logo-dark.png';
+                      (e.target as HTMLImageElement).src = '/assets/logos/dama-logo-dark.png';
                     }}
                   />
                 </div>
@@ -655,7 +655,7 @@ export const PdfDesignSettings: React.FC = () => {
                       alt="Logo en documento"
                       className="h-9 max-w-[130px] object-contain"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = './assets/logos/dama-logo-dark.png';
+                        (e.target as HTMLImageElement).src = '/assets/logos/dama-logo-dark.png';
                       }}
                     />
                   ) : (

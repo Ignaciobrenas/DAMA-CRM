@@ -6,7 +6,7 @@ import { isGodSuperAdmin } from '../../utils/tenant';
 export async function getTenants(req: Request, res: Response): Promise<void> {
   try {
     if (!isGodSuperAdmin(req)) {
-      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de SuperAdmin God Mode' });
+      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de Administrador Principal' });
       return;
     }
 
@@ -14,13 +14,13 @@ export async function getTenants(req: Request, res: Response): Promise<void> {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Ensure master and god root tenants exist
+    // Ensure primary organization tenants exist
     await prisma.tenant.upsert({
       where: { slug: 'master' },
       update: { isGodTenant: true },
       create: {
         slug: 'master',
-        name: 'DAMA Master Enterprise',
+        name: 'DAMA Empresa Principal',
         isGodTenant: true,
         status: 'ACTIVE',
         plan: 'ENTERPRISE',
@@ -35,13 +35,13 @@ export async function getTenants(req: Request, res: Response): Promise<void> {
       update: { isGodTenant: true },
       create: {
         slug: 'god',
-        name: 'DAMA God Root SuperAdmin',
+        name: 'DAMA Organización Principal',
         isGodTenant: true,
         status: 'ACTIVE',
         plan: 'ENTERPRISE',
         maxUsers: 999,
-        domain: 'god.damacrm.com',
-        branding: JSON.stringify({ companyName: 'DAMA God SuperAdmin' }),
+        domain: 'admin.damacrm.com',
+        branding: JSON.stringify({ companyName: 'DAMA Organización Principal' }),
       },
     });
 
@@ -86,7 +86,7 @@ export async function getTenants(req: Request, res: Response): Promise<void> {
 export async function createTenant(req: Request, res: Response): Promise<void> {
   try {
     if (!isGodSuperAdmin(req)) {
-      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de SuperAdmin God Mode' });
+      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de Administrador Principal' });
       return;
     }
 
@@ -150,7 +150,7 @@ export async function createTenant(req: Request, res: Response): Promise<void> {
 export async function toggleTenantStatus(req: Request, res: Response): Promise<void> {
   try {
     if (!isGodSuperAdmin(req)) {
-      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de SuperAdmin God Mode' });
+      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de Administrador Principal' });
       return;
     }
 
@@ -164,7 +164,7 @@ export async function toggleTenantStatus(req: Request, res: Response): Promise<v
     }
 
     if (tenant.isGodTenant) {
-      res.status(400).json({ success: false, message: 'No es posible suspender el Tenant Maestro (God Tenant)' });
+      res.status(400).json({ success: false, message: 'No es posible suspender la Empresa Principal' });
       return;
     }
 
@@ -198,7 +198,7 @@ export async function toggleTenantStatus(req: Request, res: Response): Promise<v
 export async function switchTenant(req: Request, res: Response): Promise<void> {
   try {
     if (!isGodSuperAdmin(req)) {
-      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de SuperAdmin God Mode' });
+      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de Administrador Principal' });
       return;
     }
 
@@ -252,7 +252,7 @@ export async function switchTenant(req: Request, res: Response): Promise<void> {
 export async function getGlobalStats(req: Request, res: Response): Promise<void> {
   try {
     if (!isGodSuperAdmin(req)) {
-      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de SuperAdmin God Mode' });
+      res.status(403).json({ success: false, message: 'Acceso restringido: requiere permisos de Administrador Principal' });
       return;
     }
 

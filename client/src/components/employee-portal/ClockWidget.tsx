@@ -409,7 +409,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
         aria-label="Fichaje de entrada y Timer Harvest"
         data-testid="clock-in-modal"
         onClick={() => setIsModalOpen(false)}
-        className="fixed top-14 inset-x-0 bottom-0 z-40 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 m-auto overflow-y-auto animate-in fade-in duration-150"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 m-auto overflow-y-auto animate-in fade-in duration-150"
       >
         <div
           onClick={(e) => e.stopPropagation()}
@@ -738,7 +738,7 @@ export const ClockWidget: React.FC<{ compact?: boolean; onStatusChange?: () => v
         aria-label="Fichaje de salida"
         data-testid="clock-out-modal"
         onClick={() => setIsClockOutModalOpen(false)}
-        className="fixed top-14 inset-x-0 bottom-0 z-40 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 m-auto overflow-y-auto animate-in fade-in duration-150"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 m-auto overflow-y-auto animate-in fade-in duration-150"
       >
         <div
           onClick={(e) => e.stopPropagation()}
