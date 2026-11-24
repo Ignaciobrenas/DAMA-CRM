@@ -393,7 +393,7 @@ export async function testIntegration(req: Request, res: Response): Promise<void
     const { prisma } = require('../../prisma');
     await prisma.auditLog.create({
       data: {
-        userId: (req as any).user?.userId || null,
+        userId: req.user?.id || (req as any).user?.userId || null,
         action: 'INTEGRATION_TEST',
         entity: 'Integration',
         entityId: connector,
@@ -413,7 +413,7 @@ export async function testIntegration(req: Request, res: Response): Promise<void
         stack: err.stack,
         method: req.method,
         path: req.path,
-        userId: (req as any).user?.userId || null,
+        userId: req.user?.id || (req as any).user?.userId || null,
         ipAddress: req.ip || req.socket?.remoteAddress || null,
       }
     }).catch((e: any) => console.error(e));

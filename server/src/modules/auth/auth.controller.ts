@@ -296,6 +296,7 @@ export async function verify2FA(req: Request, res: Response): Promise<void> {
       token,
       user: {
         id: user.id,
+        tenantId: user.tenantId,
         name: user.name,
         email: user.email,
         avatar: user.avatar,

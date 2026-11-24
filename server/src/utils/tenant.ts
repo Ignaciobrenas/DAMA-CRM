@@ -14,12 +14,6 @@ export interface UserContext {
 export function isGodSuperAdmin(userOrReq: Request | UserContext | null | undefined): boolean {
   if (!userOrReq) return false;
   const user = 'user' in userOrReq ? (userOrReq as any).user : (userOrReq as UserContext);
-  
-  // If request has god slug in headers
-  if ('headers' in userOrReq) {
-    const headerSlug = (userOrReq as any).headers?.['x-tenant-slug'] || (userOrReq as any).headers?.['x-tenant-id'];
-    if (headerSlug === 'god') return true;
-  }
 
   if (!user) return false;
 

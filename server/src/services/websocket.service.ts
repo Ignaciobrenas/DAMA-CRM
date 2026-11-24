@@ -59,12 +59,12 @@ class WebSocketService {
             ws.isAlive = true;
             ws.send(JSON.stringify({ event: 'pong', timestamp: new Date().toISOString() }));
           } else if (parsed.event === 'auth:identify') {
-            // Verify JWT token if provided
+            // Strictly verify JWT token before binding userId or tenantId
             if (parsed.data?.token) {
               try {
                 const payload = verifyToken(parsed.data.token);
                 ws.userId = payload.userId;
-                ws.tenantId = parsed.data?.tenantId || 'master';
+                ws.tenantId = (payload as any).tenantId || parsed.data?.tenantId || 'master';
                 ws.isAuthenticated = true;
                 ws.send(JSON.stringify({
                   event: 'auth:authenticated',
@@ -73,15 +73,20 @@ class WebSocketService {
                 }));
               } catch {
                 ws.isAuthenticated = false;
+                ws.userId = undefined;
+                ws.tenantId = undefined;
               }
             } else {
-              ws.tenantId = parsed.data?.tenantId || 'master';
-              ws.userId = parsed.data?.userId;
+              ws.isAuthenticated = false;
             }
           } else if (parsed.event === 'omnichannel:typing') {
-            this.broadcastExcept(ws, 'omnichannel:typing', parsed.data);
+            if (ws.isAuthenticated) {
+              this.broadcastExcept(ws, 'omnichannel:typing', parsed.data);
+            }
           } else if (parsed.event === 'chat:message') {
-            this.broadcast('omnichannel:message', parsed.data);
+            if (ws.isAuthenticated) {
+              this.broadcastToTenant(ws.tenantId || 'master', 'omnichannel:message', parsed.data);
+            }
           }
         } catch {
           // Ignore malformed client messages quietly
@@ -149,7 +154,8 @@ class WebSocketService {
     this.clients.forEach((client) => {
       if (
         client.readyState === WebSocket.OPEN &&
-        (!client.tenantId || client.tenantId === tenantId || client.tenantId === 'master')
+        client.isAuthenticated &&
+        (client.tenantId === tenantId || client.tenantId === 'master' || client.tenantId === 'god')
       ) {
         try {
           client.send(serialized);
