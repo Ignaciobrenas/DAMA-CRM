@@ -468,6 +468,10 @@ export async function getAdminSystemAnalytics(req: Request, res: Response): Prom
     const os = await import('os');
     const isSuper = isGodSuperAdmin(req);
     const tenantId = getRequestTenant(req);
+    const tenantWhere: any = !isSuper || req.query.tenantId || req.headers['x-switch-tenant-id'] || req.headers['x-tenant-id']
+      ? { tenantId }
+      : {};
+    const taskWhere: any = tenantWhere.tenantId ? { project: { tenantId } } : {};
 
     const [
       userCount,
@@ -480,16 +484,17 @@ export async function getAdminSystemAnalytics(req: Request, res: Response): Prom
       auditLogCount,
       auditLogs,
     ] = await Promise.all([
-      prisma.user.count(),
-      prisma.company.count(),
-      prisma.contact.count(),
-      prisma.deal.count(),
-      prisma.invoice.count(),
-      prisma.product.count(),
-      prisma.task.count(),
-      prisma.auditLog.count().catch(() => 0),
+      prisma.user.count({ where: tenantWhere }),
+      prisma.company.count({ where: tenantWhere }),
+      prisma.contact.count({ where: tenantWhere }),
+      prisma.deal.count({ where: tenantWhere }),
+      prisma.invoice.count({ where: tenantWhere }),
+      prisma.product.count({ where: tenantWhere }),
+      prisma.task.count({ where: taskWhere }),
+      prisma.auditLog.count({ where: tenantWhere }).catch(() => 0),
       prisma.auditLog
         .findMany({
+          where: tenantWhere,
           take: 10,
           orderBy: { createdAt: 'desc' },
         })
@@ -497,6 +502,7 @@ export async function getAdminSystemAnalytics(req: Request, res: Response): Prom
     ]);
 
     const allDeals = await prisma.deal.findMany({
+      where: tenantWhere,
       select: { value: true, status: true },
     });
     const wonDeals = allDeals.filter((d) => d.status === 'WON');
@@ -505,7 +511,7 @@ export async function getAdminSystemAnalytics(req: Request, res: Response): Prom
     const totalWonRevenue = wonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
 
     const paidInvoices = await prisma.invoice.findMany({
-      where: { status: 'PAID' },
+      where: { ...tenantWhere, status: 'PAID' },
       select: { total: true, issueDate: true },
     });
     const totalPaidRevenue = paidInvoices.reduce((sum, i) => sum + i.total, 0);

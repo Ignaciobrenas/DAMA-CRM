@@ -189,10 +189,11 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
       where: { sku: finalSku },
     });
     if (existingProduct) {
+      const canSeeExisting = isGodSuperAdmin(req) || existingProduct.tenantId === tenantId;
       res.status(409).json({
         success: false,
-        message: `Ya existe un producto registrado con el SKU "${finalSku}" (${existingProduct.name})`,
-        data: existingProduct,
+        message: `Ya existe un producto registrado con el SKU "${finalSku}"`,
+        ...(canSeeExisting ? { data: existingProduct } : {}),
       });
       return;
     }
@@ -754,10 +755,15 @@ export async function importInventory(req: Request, res: Response): Promise<void
       return;
     }
 
+    const isSuper = isGodSuperAdmin(req);
     const createdOrUpdated = [];
     for (const item of items) {
       if (!item.name) continue;
       const sku = (item.sku && String(item.sku).trim()) || `SKU-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 100)}`;
+      const existing = await prisma.product.findUnique({ where: { sku } });
+      if (existing && !isSuper && existing.tenantId !== tenantId) {
+        continue;
+      }
       const price = parseFloat(item.price) || 0;
       const costPrice = item.costPrice ? parseFloat(item.costPrice) : 0;
       const stock = parseInt(item.stock, 10) || 0;
@@ -1571,6 +1577,11 @@ export async function receiveStockTransfer(req: Request, res: Response): Promise
       return;
     }
 
+    if (!isGodSuperAdmin(req) && existing.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para recepcionar este traspaso' });
+      return;
+    }
+
     if (existing.status === 'RECEIVED' || existing.status === 'DISCREPANCY') {
       res.status(400).json({ success: false, message: 'Este traspaso ya ha sido recepcionado previamente' });
       return;
@@ -1737,6 +1748,11 @@ export async function downloadStockTransferPdf(req: Request, res: Response): Pro
 
     if (!transfer) {
       res.status(404).json({ success: false, message: 'Traspaso no encontrado' });
+      return;
+    }
+
+    if (!isGodSuperAdmin(req) && transfer.tenantId !== tenantId) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para acceder a este traspaso' });
       return;
     }
 

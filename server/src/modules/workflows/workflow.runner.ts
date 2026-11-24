@@ -12,10 +12,12 @@ export interface WorkflowEvent {
 export async function dispatchWorkflowEvent(event: WorkflowEvent): Promise<void> {
   setImmediate(async () => {
     try {
+      const eventTenantId = event.data?.tenantId || 'master';
       const activeWorkflows = await prisma.workflow.findMany({
         where: {
           trigger: event.trigger,
           isActive: true,
+          tenantId: eventTenantId,
         },
       });
 
@@ -62,6 +64,7 @@ export async function executeWorkflow(workflow: any, triggerData: Record<string,
           ? `Proyecto: ${triggerData.title}`
           : `Proyecto Automático (${workflow.name})`;
 
+        const wfTenantId = workflow.tenantId || triggerData.tenantId || 'master';
         const project = await prisma.project.create({
           data: {
             name: projectName,
@@ -70,6 +73,7 @@ export async function executeWorkflow(workflow: any, triggerData: Record<string,
             priority: 'HIGH',
             dealId: validDealId,
             budget: typeof triggerData.value === 'number' ? triggerData.value : 15000,
+            tenantId: wfTenantId,
           },
         });
         resultData = {
@@ -95,15 +99,21 @@ export async function executeWorkflow(workflow: any, triggerData: Record<string,
       }
 
       case 'create_task': {
-        // Guarantee a valid Project ID for task foreign key
+        const wfTenantId = workflow.tenantId || triggerData.tenantId || 'master';
+        // Guarantee a valid Project ID for task foreign key within the same tenant
         let targetProjectId = triggerData.projectId;
         if (targetProjectId) {
           const projectExists = await prisma.project.findUnique({ where: { id: targetProjectId } });
-          if (!projectExists) targetProjectId = null;
+          if (!projectExists || (projectExists.tenantId && projectExists.tenantId !== wfTenantId)) {
+            targetProjectId = null;
+          }
         }
 
         if (!targetProjectId) {
-          const firstProject = await prisma.project.findFirst({ select: { id: true } });
+          const firstProject = await prisma.project.findFirst({
+            where: { tenantId: wfTenantId },
+            select: { id: true },
+          });
           if (firstProject) {
             targetProjectId = firstProject.id;
           } else {
@@ -113,6 +123,7 @@ export async function executeWorkflow(workflow: any, triggerData: Record<string,
                 description: 'Contenedor automático para tareas generadas por reglas de workflow',
                 status: 'ACTIVE',
                 priority: 'MEDIUM',
+                tenantId: wfTenantId,
               },
             });
             targetProjectId = defaultProject.id;
