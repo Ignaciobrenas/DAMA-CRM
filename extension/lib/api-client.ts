@@ -252,7 +252,10 @@ export async function updateNote(
   return (raw?.data ?? raw) as Note;
 }
 
-export async function togglePinNote(id: string): Promise<Note> {
+export async function togglePinNote(id: string, pinned?: boolean): Promise<Note> {
+  if (pinned !== undefined) {
+    return updateNote(id, { pinned });
+  }
   const raw: any = await apiFetch(`/api/planner/notes/${id}/pin`, {
     method: "POST",
   });

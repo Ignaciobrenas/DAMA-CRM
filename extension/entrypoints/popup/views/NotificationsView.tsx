@@ -17,7 +17,8 @@ import {
   markAllNotificationsRead,
 } from "@/lib/api-client";
 import { buildDeepLink } from "@/lib/deep-link";
-import { SERVER_URL } from "@/lib/config";
+import { DEFAULT_WEB_URL } from "@/lib/config";
+import { getActiveServerUrl } from "@/lib/storage";
 import type { ServerNotification } from "@/types/api";
 
 const EMOJI_RE =
@@ -87,7 +88,9 @@ export function NotificationsView() {
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
       void markNotificationRead(n.id).catch(() => {});
     }
-    const url = buildDeepLink(SERVER_URL, n.actionUrl);
+    const srv = await getActiveServerUrl();
+    const webBase = srv.includes(":3000") ? DEFAULT_WEB_URL : srv;
+    const url = buildDeepLink(webBase, n.actionUrl);
     if (url) await browser.tabs.create({ url });
   }
 

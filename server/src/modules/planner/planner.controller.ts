@@ -924,7 +924,18 @@ export async function deleteReminder(req: Request, res: Response): Promise<void>
 export async function updateUserNote(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
     const { title, content, color, pinned, order } = req.body;
+
+    const existing = await prisma.userNote.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Nota no encontrada' });
+      return;
+    }
+    if (userId && existing.userId !== userId && !isGodSuperAdmin(req)) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para editar esta nota' });
+      return;
+    }
 
     const note = await prisma.userNote.update({
       where: { id },
@@ -943,9 +954,42 @@ export async function updateUserNote(req: Request, res: Response): Promise<void>
   }
 }
 
+export async function togglePinUserNote(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const existing = await prisma.userNote.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Nota no encontrada' });
+      return;
+    }
+    if (userId && existing.userId !== userId && !isGodSuperAdmin(req)) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para modificar esta nota' });
+      return;
+    }
+    const note = await prisma.userNote.update({
+      where: { id },
+      data: { pinned: !existing.pinned },
+    });
+    res.json({ success: true, data: note });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export async function deleteUserNote(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
+    const existing = await prisma.userNote.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Nota no encontrada' });
+      return;
+    }
+    if (userId && existing.userId !== userId && !isGodSuperAdmin(req)) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para eliminar esta nota' });
+      return;
+    }
     await prisma.userNote.delete({ where: { id } });
     res.json({ success: true, message: 'Nota eliminada' });
   } catch (error: any) {

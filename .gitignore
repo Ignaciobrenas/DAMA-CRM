@@ -38,6 +38,7 @@ redis-data/
 .idea/
 .DS_Store
 Thumbs.db
+*.exe
 
 # Playwright & E2E Test Artifacts
 playwright-report/

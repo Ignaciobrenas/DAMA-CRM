@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { apiRequest, downloadFile } from '../services/api';
+import { wsClient } from '../services/websocket';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { soundService } from '../services/sound';
@@ -80,7 +81,11 @@ export const MyTime: React.FC = () => {
     loadData();
     const onTimerSync = () => loadData();
     window.addEventListener('dama:timer-updated', onTimerSync);
-    return () => window.removeEventListener('dama:timer-updated', onTimerSync);
+    const unsubWs = wsClient.on('timer:updated', onTimerSync);
+    return () => {
+      window.removeEventListener('dama:timer-updated', onTimerSync);
+      unsubWs();
+    };
   }, []);
 
   useEffect(() => {

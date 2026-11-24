@@ -52,7 +52,7 @@ export function NotesView() {
       sortNotes(prev.map((n) => (n.id === note.id ? { ...n, pinned: !n.pinned } : n))),
     );
     try {
-      await togglePinNote(note.id);
+      await togglePinNote(note.id, !note.pinned);
     } catch {
       void load();
     }
