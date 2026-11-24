@@ -104,11 +104,15 @@ export async function apiRequest<T = any>(
       window.dispatchEvent(new Event('auth:unauthorized'));
     }
 
-    // For file downloads (like PDF)
+    // For file downloads (like PDF or CSV)
     const contentType = res.headers.get('content-type');
     if (contentType && contentType.includes('application/pdf')) {
       const blob = await res.blob();
       return { success: true, data: blob as any };
+    }
+    if (contentType && contentType.includes('text/csv')) {
+      const text = await res.text();
+      return { success: true, data: text as any };
     }
 
     const data = await res.json().catch(() => ({}));

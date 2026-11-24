@@ -30,8 +30,8 @@ export const AgingReportModal: React.FC<AgingReportModalProps> = ({
     setLoading(true);
     try {
       const res = await api.get('/invoices/aging/report');
-      if (res.data?.success) {
-        setData(res.data.data);
+      if (res.success && res.data) {
+        setData(res.data);
       }
     } catch (err) {
       toast.error(t('dunning.fetchError'));
@@ -68,16 +68,18 @@ export const AgingReportModal: React.FC<AgingReportModalProps> = ({
         notes: payNotes,
       });
 
-      if (res.data?.success) {
-        toast.success(res.data.message);
+      if (res.success) {
+        toast.success(res.message || t('dunning.paymentSuccess'));
         setSelectedInvoiceId(null);
         setPayAmount('');
         setPayNotes('');
         fetchReport();
         onPaymentRecorded();
+      } else {
+        toast.error(res.message || t('dunning.paymentError'));
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || t('dunning.paymentError'));
+      toast.error(err?.message || t('dunning.paymentError'));
     } finally {
       setPaying(false);
     }
