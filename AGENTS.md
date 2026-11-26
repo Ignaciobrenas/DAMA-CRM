@@ -44,3 +44,35 @@
   - **Google Chrome**: Manifest V3 (`npm run build`).
   - **Mozilla Firefox**: Manifest V2/V3 Gecko (`npm run build:firefox`).
   - Ambas extensiones deben conectarse al backend de DAMA-CRM mediante REST (`/api/auth/login`, `/api/employees/time-tracking/*`) y WebSocket, manteniendo el badge numérico actualizado con el timer Harvest en segundo plano.
+
+## 8. Arquitectura Modular y Prohibición de Monolitos
+- **Cero Monolitos**: Queda prohibido concentrar la lógica de múltiples plataformas, servicios o vistas complejas en un único fichero monolítico.
+- **Separación por Dominio y Conector**:
+  - En el backend (`server/src/modules/integrations/`), el motor común vive en `core/` (`connector.interface.ts`, `mapping-engine.ts`, `http-client.ts`, `config.store.ts`, `connector.registry.ts`) y cada plataforma externa debe residir en su propio subdirectorio modular bajo `connectors/<plataforma>/` separando tipos (`*.types.ts`), catálogos/contratos (`*.catalog.ts` / `*.contract.ts`), utilidades de protocolo (`*.padding.ts`, `*.xml.ts`, `*.queries.ts`, `*.reconciliation.ts`) e implementación del conector (`*.connector.ts`).
+  - En el frontend (`client/src/`), las páginas deben delegar en componentes modulares reutilizables bajo `client/src/components/<modulo>/` evitando componentes página gigantes.
+- **Principio de Responsabilidad Única**: Los controladores y servicios fachada deben delegar en el registro de conectores (`ConnectorRegistry`) y en módulos especializados.
+
+## 9. Flujo de Trabajo en Git: Ramas y Commits Estructurados
+- **Desarrollo en Ramas**: Todo desarrollo de funcionalidades, conectores o correcciones debe realizarse en ramas dedicadas con nomenclatura semántica (`feature/<alcance>`, `fix/<alcance>`, `refactor/<alcance>`).
+- **Commits Estructurados (Conventional Commits)**:
+  - Usar prefijos claros y descriptivos: `feat(<scope>): ...`, `fix(<scope>): ...`, `refactor(<scope>): ...`, `test(<scope>): ...`, `docs(<scope>): ...`.
+  - Cada commit debe representar una unidad lógica coherente, compilable y verificada.
+
+## 10. Higiene del Repositorio: Prohibición de Planes y Contextos Externos
+- **Sin Planes ni Documentos de Contexto Externo**: Queda terminantemente prohibido incluir en el repositorio ficheros de planificación interna (`PLAN.md`, `TODO.md`, borradores de trabajo) o volcados de contexto de plataformas externas (`contexto*.md`).
+- El repositorio solo debe contener código fuente productivo, tests automatizados, configuraciones del sistema y documentación oficial del proyecto.
+
+## 11. Estándares Técnicos de Conectores ERP y E-Commerce
+- **Motor Declarativo de Mapeo (`MappingEngine`)**: Soporte nativo para reglas declarativas `{ to, from, value, operations, settings }` con transformaciones (`uppercase`, `lowercase`, `trim`, `toNumber`, `formatDate`, `padLeft`), límites `maxLength`/`min`/`max` y resolución de provincia desde código postal español.
+- **a3ERP (`connectors/a3erp/`)**:
+  - Autenticación vía `POST /api/Login` con cabecera `User-Agent` obligatoria y limpieza de comillas del JWT en texto plano.
+  - Lectura mediante `GET /api/proc/<Nombre>` con paginación `X-Pagination` (máx. 50/página) y filtros en cabecera `Parameters` (JSON en Base64).
+  - Escritura asíncrona mediante `POST /api/custom/<Grupo>/<Acción>` + sondeo de `GET /api/task/{TaskId}`, aplicando códigos cuadrados (15 caracteres para `CODART`, 4 para `CODPROVI`, 8 para el resto de códigos numéricos, sin cuadrar `TIPOCONT` ni alfanuméricos) y la regla `IVAINCLUIDO` (`PRCMONEDAMASIVA` vs `PRCMONEDA`, omitiendo campos calculados como `BASE`, `TOTDOC`, `CONTABLE`).
+- **Sage 200 (`connectors/sage/`)**:
+  - Conector híbrido REST (`POST /api/v1/<Entidad>/create` + `GET /api/v1/<Entidad>/{taskId}/status`) y GraphQL (`/graphql`), cumpliendo el contrato de las 7 entidades `TmpIME_*` (`Documents` con los 10 tipos `PVE`/`ALC`/`FAC`/`OFE`/`FPC`/`PCO`/`ALP`/`FAP`/`OFC`/`FPP`, `ClientesProveedores`, `Domicilios`, `Products`, `StockMovements`, `Inventories`) y el ciclo de vida `TaskStatus` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`).
+- **PrestaShop (`connectors/prestashop/`)**:
+  - Arquitectura dual: **Webservice Clásico** (`/api/<recurso>`, `ws_key`, XML nativo / JSON lectura, `display=full`, `date=1`, actualización XML parcial de `stock_availables` con solo `id` y `quantity`) y **Admin API PrestaShop 9** (`/admin-api/<recurso>`, OAuth2 `client_credentials` con caché de token y campos localizados por locale `{"es-ES": "..."}`).
+- **Shopify (`connectors/shopify/`)**:
+  - Basado en **GraphQL Admin API** (`/admin/api/{version}/graphql.json`) con identificadores globales `gid://shopify/...`, paginación Relay por cursor, representación monetaria `MoneyBag` (`*Set`), soporte B2B (`PurchasingCompany`, `PriceList`, `Catalog`, metafields `sage.*`/`b2b.*`), mutaciones modernas idempotentes (`productSet`, `publishablePublish`, `inventorySetQuantities`, `productVariantsBulkUpdate`) y verificación de webhooks HMAC-SHA256 en tiempo constante.
+- **WooCommerce (`connectors/woocommerce/`)**:
+  - Basado en **REST API v3** (`/wp-json/wc/v3/<recurso>`), paginación `X-WP-Total`/`X-WP-TotalPages`, operaciones `/batch` (hasta 100 elementos), extracción de NIF desde `meta_data` (`_billing_nif`), poda de seguridad de bloques vacíos en pedidos, reconciliación de cliente por NIF con retención `on_hold`/`pending_approval` ante discrepancias, stock por variación y cálculo de precios con IVA incluido según `tax_class`.
