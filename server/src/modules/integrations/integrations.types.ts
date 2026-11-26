@@ -1,4 +1,5 @@
 export type ConnectorType =
+  | 'a3erp'
   | 'odoo'
   | 'woocommerce'
   | 'shopify'
@@ -15,6 +16,37 @@ export type ConnectorType =
   | 'sage_200';
 
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error' | 'pending';
+
+export interface A3ErpConfig {
+  enabled: boolean;
+  baseUrl: string;
+  username: string;
+  password?: string;
+  hasPassword?: boolean;
+  environmentName?: string;
+  defaultSerie?: string;
+  defaultWarehouse?: string;
+  defaultCurrency?: string;
+  defaultPaymentMethod?: string;
+  defaultPaymentDoc?: string;
+  defaultRegIva?: string;
+  tipoContable?: string;
+  ivaIncluido?: boolean;
+  fallbackCustomerCode?: string;
+  fallbackArticleCode?: string;
+  autoCreateCustomer?: boolean;
+  autoCreateAddress?: boolean;
+  pollAttempts?: number;
+  pollIntervalSeconds?: number;
+  pageSize?: number;
+  syncProducts: boolean;
+  syncOrders: boolean;
+  syncStock: boolean;
+  syncPrices: boolean;
+  status: IntegrationStatus;
+  lastSyncAt?: string;
+  lastError?: string;
+}
 
 export interface OdooConfig {
   enabled: boolean;
@@ -40,6 +72,16 @@ export interface WooCommerceConfig {
   consumerSecret?: string;
   hasConsumerSecret?: boolean;
   webhookSecret?: string;
+  apiVersion?: string;
+  pricesIncludeTax?: boolean;
+  defaultTaxClass?: string;
+  reducedTaxClass?: string;
+  holdOrderOnCustomerMismatch?: boolean;
+  batchSize?: number;
+  syncProducts?: boolean;
+  syncOrders?: boolean;
+  syncStock?: boolean;
+  syncPrices?: boolean;
   status: IntegrationStatus;
   lastSyncAt?: string;
   lastError?: string;
@@ -53,6 +95,18 @@ export interface ShopifyConfig {
   apiSecretKey?: string;
   hasApiSecretKey?: boolean;
   webhookSecret?: string;
+  apiVersion?: string;
+  skuField?: 'sku' | 'barcode';
+  locationId?: string;
+  publicationId?: string;
+  b2bEnabled?: boolean;
+  b2bRequiredTag?: string;
+  b2bSubtotalThreshold?: number;
+  ivaIncluido?: boolean;
+  syncProducts?: boolean;
+  syncOrders?: boolean;
+  syncStock?: boolean;
+  syncPrices?: boolean;
   status: IntegrationStatus;
   lastSyncAt?: string;
   lastError?: string;
@@ -153,15 +207,26 @@ export interface OpenCartConfig {
 export interface Sage200Config {
   enabled: boolean;
   baseUrl: string;
+  graphqlEndpoint?: string;
   subscriptionKey?: string;
   hasSubscriptionKey?: boolean;
   clientId?: string;
   clientSecret?: string;
   hasClientSecret?: boolean;
   companyId?: string;
+  codigoEmpresa?: number;
+  defaultDocumentType?: 'PVE' | 'ALC' | 'FAC' | 'OFE' | 'FPC' | 'PCO' | 'ALP' | 'FAP' | 'OFC' | 'FPP';
+  defaultSerie?: string;
+  defaultWarehouse?: string;
+  usarContadorSage?: number;
+  pollAttempts?: number;
+  pollIntervalSeconds?: number;
+  scopes?: string[];
   syncCustomers: boolean;
   syncInvoices: boolean;
   syncLedgers: boolean;
+  syncOrders?: boolean;
+  syncStockMovements?: boolean;
   status: IntegrationStatus;
   lastSyncAt?: string;
   lastError?: string;
@@ -172,15 +237,29 @@ export interface PrestashopConfig {
   storeUrl: string;
   wsKey?: string;
   hasWsKey?: boolean;
+  adminApiEnabled?: boolean;
+  adminClientId?: string;
+  adminClientSecret?: string;
+  hasAdminClientSecret?: boolean;
+  defaultLocale?: string;
+  defaultShopId?: number;
+  skuField?: 'reference' | 'ean13' | 'upc' | 'isbn' | 'mpn';
+  orderStatesReady?: number[];
+  excludeOrderStates?: number[];
+  ivaIncluido?: boolean;
   syncProducts: boolean;
   syncOrders: boolean;
   syncCustomers: boolean;
+  syncStock?: boolean;
+  syncPrices?: boolean;
   status: IntegrationStatus;
   lastSyncAt?: string;
   lastError?: string;
 }
 
 export interface ProductAttributeMapping {
+  a3erp?: Record<string, any>;
+  prestashop?: Record<string, any>;
   unopim?: Record<string, any>;
   opencart?: Record<string, any>;
   sage?: Record<string, any>;
@@ -192,6 +271,7 @@ export interface ProductAttributeMapping {
 }
 
 export interface IntegrationsConfig {
+  a3erp: A3ErpConfig;
   odoo: OdooConfig;
   woocommerce: WooCommerceConfig;
   shopify: ShopifyConfig;
@@ -205,4 +285,3 @@ export interface IntegrationsConfig {
   sage_50?: Sage50Config;
   sage_200?: Sage200Config;
 }
-
