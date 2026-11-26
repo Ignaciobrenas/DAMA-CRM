@@ -171,7 +171,7 @@ export class PrestaShopCatalogHelper {
    * (`standard`=21%, `reduced`=10%, `super_reduced`=4% / "foodstuff") tal como hace `Price_Update_v11`.
    */
   public static resolveSpanishTaxRulesGroupId(
-    taxClassOrRate: 'standard' | 'reduced' | 'super_reduced' | number,
+    taxClassOrRate: 'standard' | 'reduced' | 'super_reduced' | 'exempt' | number,
     groups: Array<{ taxRulesGroupId?: number; id?: number; name: string }> = []
   ): number {
     const targetType =

@@ -291,8 +291,8 @@ export class WooCommerceReconciliationEngine {
    */
   public static calculateVatIncludedPrice(
     basePriceWithoutTax: number,
-    taxType: 'standard' | 'reduced' | 'super_reduced' | number = 'standard',
-    customStoreTaxClassNames?: { standard?: string; reduced?: string; superReduced?: string }
+    taxType: 'standard' | 'reduced' | 'super_reduced' | 'exempt' | number = 'standard',
+    customStoreTaxClassNames?: { standard?: string; reduced?: string; superReduced?: string; exempt?: string }
   ): { regularPrice: string; taxRateMultiplier: number; taxClass: string } {
     let multiplier = 1.21;
     let taxClass = customStoreTaxClassNames?.standard || 'Estándard';
@@ -303,6 +303,9 @@ export class WooCommerceReconciliationEngine {
     } else if (taxType === 'super_reduced' || taxType === 4) {
       multiplier = 1.04;
       taxClass = customStoreTaxClassNames?.superReduced || 'Superreducido';
+    } else if (taxType === 'exempt' || taxType === 0) {
+      multiplier = 1.0;
+      taxClass = customStoreTaxClassNames?.exempt || 'Zero rate';
     }
 
     const finalPrice = Number((Number(basePriceWithoutTax || 0) * multiplier).toFixed(2));

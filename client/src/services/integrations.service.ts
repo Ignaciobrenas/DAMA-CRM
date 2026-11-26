@@ -9,6 +9,31 @@ export interface ConnectorPublicConfig {
 }
 
 export interface IntegrationsResponseData {
+  a3erp?: ConnectorPublicConfig & {
+    baseUrl: string;
+    username: string;
+    hasPassword?: boolean;
+    environmentName?: string;
+    defaultSerie?: string;
+    defaultWarehouse?: string;
+    defaultCurrency?: string;
+    defaultPaymentMethod?: string;
+    defaultPaymentDoc?: string;
+    defaultRegIva?: string;
+    tipoContable?: string;
+    ivaIncluido?: boolean;
+    fallbackCustomerCode?: string;
+    fallbackArticleCode?: string;
+    autoCreateCustomer?: boolean;
+    autoCreateAddress?: boolean;
+    pollAttempts?: number;
+    pollIntervalSeconds?: number;
+    pageSize?: number;
+    syncProducts: boolean;
+    syncOrders: boolean;
+    syncStock: boolean;
+    syncPrices: boolean;
+  };
   odoo: ConnectorPublicConfig & {
     url: string;
     db: string;
@@ -23,12 +48,22 @@ export interface IntegrationsResponseData {
     hasConsumerKey: boolean;
     hasConsumerSecret: boolean;
     webhookSecret?: string;
+    pricesIncludeTax?: boolean;
+    defaultTaxClass?: string;
+    reducedTaxClass?: string;
+    holdOrderOnCustomerMismatch?: boolean;
   };
   shopify: ConnectorPublicConfig & {
     shopDomain: string;
     hasAccessToken: boolean;
     hasApiSecretKey: boolean;
     webhookSecret?: string;
+    apiVersion?: string;
+    skuField?: 'sku' | 'barcode';
+    locationId?: string;
+    publicationId?: string;
+    b2bEnabled?: boolean;
+    ivaIncluido?: boolean;
   };
   opencart?: ConnectorPublicConfig & {
     storeUrl: string;
@@ -37,6 +72,19 @@ export interface IntegrationsResponseData {
     syncProducts?: boolean;
     syncOrders?: boolean;
     syncCustomers?: boolean;
+  };
+  prestashop?: ConnectorPublicConfig & {
+    storeUrl: string;
+    hasWsKey?: boolean;
+    adminApiEnabled?: boolean;
+    adminClientId?: string;
+    hasAdminClientSecret?: boolean;
+    defaultLocale?: string;
+    defaultShopId?: number;
+    skuField?: string;
+    syncProducts: boolean;
+    syncOrders: boolean;
+    syncCustomers: boolean;
   };
   n8n: ConnectorPublicConfig & {
     webhookUrl: string;
@@ -80,7 +128,12 @@ export interface IntegrationsResponseData {
   };
   sage_200?: ConnectorPublicConfig & {
     baseUrl: string;
+    graphqlEndpoint?: string;
     companyId?: string;
+    codigoEmpresa?: number;
+    defaultDocumentType?: string;
+    defaultSerie?: string;
+    defaultWarehouse?: string;
     hasSubscriptionKey?: boolean;
     hasClientSecret?: boolean;
     syncCustomers: boolean;
@@ -158,6 +211,23 @@ export const integrationsService = {
   async syncNow(connector: string): Promise<{ success: boolean; message: string; count?: number }> {
     const res = await apiRequest(`/integrations/${connector}/sync`, {
       method: 'POST',
+    });
+    return res as any;
+  },
+
+  async getConnectorCatalog(connector: string): Promise<{ success: boolean; connector: string; data: any }> {
+    const res = await apiRequest(`/integrations/${connector}/catalog`);
+    return res as any;
+  },
+
+  async executeConnectorOperation(
+    connector: string,
+    operation: string,
+    payload: Record<string, any> = {}
+  ): Promise<{ success: boolean; operation: string; connector: string; message: string; data?: any; errors?: string[] }> {
+    const res = await apiRequest(`/integrations/${connector}/execute`, {
+      method: 'POST',
+      body: JSON.stringify({ operation, payload }),
     });
     return res as any;
   },

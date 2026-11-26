@@ -509,7 +509,7 @@ export class WooCommerceConnector implements IPlatformConnector<WooCommerceConfi
   public async updatePrice(params: {
     externalId: number | string;
     basePriceWithoutTax: number;
-    taxType?: 'standard' | 'reduced' | 'super_reduced' | number;
+    taxType?: 'standard' | 'reduced' | 'super_reduced' | 'exempt' | number;
     customTaxClass?: string;
   }): Promise<ConnectorOperationResult> {
     const cfg = this.getConfig();
