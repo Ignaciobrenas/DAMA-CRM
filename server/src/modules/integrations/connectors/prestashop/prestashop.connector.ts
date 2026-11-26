@@ -566,7 +566,7 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
   public async updatePrice(params: {
     productId: number | string;
     basePriceTaxExcluded: number;
-    taxClass?: 'standard' | 'reduced' | 'super_reduced' | number;
+    taxClass?: 'standard' | 'reduced' | 'super_reduced' | 'exempt' | number;
     unity?: string;
     weight?: number;
   }): Promise<ConnectorOperationResult> {

@@ -46,28 +46,12 @@ import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { soundService } from '../services/sound';
 import { ApiConfiguratorModal } from '../components/integrations/ApiConfiguratorModal';
+import {
+  buildConnectorCatalog,
+  ConnectorCardDefinition,
+} from '../components/integrations/ConnectorCatalog';
+import { PlatformExplorerModal } from '../components/integrations/PlatformExplorerModal';
 import { ThinkingOrb } from 'thinking-orbs';
-
-interface ConnectorCardDefinition {
-  id: string;
-  name: string;
-  category: string;
-  categorySlug: 'ecommerce' | 'erp' | 'automation' | 'messaging' | 'pim' | 'payments' | 'productivity';
-  icon: React.ElementType;
-  logoUrl: string;
-  badgeColor: string;
-  iconBg: string;
-  iconColor: string;
-  protocol: string;
-  syncMode: string;
-  description: string;
-  supported: string[];
-  docsUrl: string;
-  config?: any;
-  isSystem?: boolean;
-  endpointUrl?: string;
-  canSync?: boolean;
-}
 
 export const Integrations: React.FC = () => {
   const { t } = useLanguage();
@@ -112,6 +96,8 @@ export const Integrations: React.FC = () => {
   const [isApiConfiguratorOpen, setIsApiConfiguratorOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [selectedLogsConnector, setSelectedLogsConnector] = useState<ConnectorCardDefinition | null>(null);
+  const [explorerModalOpen, setExplorerModalOpen] = useState(false);
+  const [selectedExplorerConnector, setSelectedExplorerConnector] = useState<ConnectorCardDefinition | null>(null);
 
   const fetchIntegrations = async () => {
     try {
@@ -365,245 +351,19 @@ export const Integrations: React.FC = () => {
     soundService.play('action');
   };
 
-  // Catálogo integral de conectores con capacidades, protocolos y enlaces oficiales
-  const connectorsList: ConnectorCardDefinition[] = [
-    {
-      id: 'odoo',
-      name: 'Odoo ERP & CRM',
-      category: 'ERP & Contabilidad',
-      categorySlug: 'erp',
-      icon: Building2,
-      logoUrl: '/assets/logos/integrations/odoo.png',
-      badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-      iconBg: 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-800/50',
-      iconColor: 'text-purple-600 dark:text-purple-400',
-      protocol: 'XML-RPC / JSON-RPC 2.0',
-      syncMode: 'Bidireccional / En cola',
-      description: 'Sincronización de contactos (res.partner), presupuestos, facturas (account.move) e inventario con Odoo Community & Enterprise.',
-      supported: ['Contactos', 'Facturas', 'Presupuestos', 'Impuestos', 'Productos'],
-      docsUrl: 'https://www.odoo.com/documentation/17.0/developer/reference/external_api.html',
-      config: integrations?.odoo,
-      canSync: true,
-    },
-    {
-      id: 'woocommerce',
-      name: 'WooCommerce',
-      category: 'Comercio Electrónico',
-      categorySlug: 'ecommerce',
-      icon: ShoppingBag,
-      logoUrl: '/assets/logos/integrations/woocommerce.png',
-      badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
-      iconBg: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50',
-      iconColor: 'text-indigo-600 dark:text-indigo-400',
-      protocol: 'REST API v3 + Webhooks',
-      syncMode: 'Tiempo Real (Webhooks)',
-      description: 'Importación automática de pedidos como tratos ganados y clientes en tiempo real con cálculo de stock y estados de pago.',
-      supported: ['Pedidos', 'Clientes', 'Webhooks en tiempo real', 'Stock'],
-      docsUrl: 'https://woocommerce.github.io/woocommerce-rest-api-docs/',
-      config: integrations?.woocommerce,
-      endpointUrl: endpoints?.woocommerceWebhook,
-      canSync: true,
-    },
-    {
-      id: 'shopify',
-      name: 'Shopify Store',
-      category: 'Comercio Electrónico',
-      categorySlug: 'ecommerce',
-      icon: Globe,
-      logoUrl: '/assets/logos/integrations/shopify.png',
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
-      iconColor: 'text-emerald-600 dark:text-emerald-400',
-      protocol: 'Admin API + HMAC-SHA256',
-      syncMode: 'Tiempo Real Cifrado',
-      description: 'Conexión con tiendas Shopify con verificación criptográfica HMAC-SHA256, sincronización de checkout y órdenes.',
-      supported: ['Pedidos', 'Clientes', 'HMAC SHA-256', 'Catálogo', 'Fulfillment'],
-      docsUrl: 'https://shopify.dev/docs/api/admin-rest',
-      config: integrations?.shopify,
-      endpointUrl: endpoints?.shopifyWebhook,
-      canSync: true,
-    },
-    {
-      id: 'opencart',
-      name: 'OpenCart Store',
-      category: 'Comercio Electrónico',
-      categorySlug: 'ecommerce',
-      icon: ShoppingBag,
-      logoUrl: '/assets/logos/integrations/opencart.png',
-      badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800',
-      iconBg: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800/50',
-      iconColor: 'text-sky-600 dark:text-sky-400',
-      protocol: 'OpenCart REST API / Webhooks',
-      syncMode: 'Bidireccional / Catálogo & Pedidos',
-      description: 'Conexión integral con tiendas OpenCart (v3 / v4). Sincronización de catálogo, atributos de producto, pedidos y clientes.',
-      supported: ['Pedidos', 'Clientes', 'Catálogo', 'Atributos & Opciones', 'Stock'],
-      docsUrl: 'https://docs.opencart.com/',
-      config: integrations?.opencart,
-      endpointUrl: endpoints?.opencartWebhook,
-      canSync: true,
-    },
-    {
-      id: 'n8n',
-      name: 'n8n Workflow Automation',
-      category: 'Automatización & Flujos',
-      categorySlug: 'automation',
-      icon: Zap,
-      logoUrl: '/assets/logos/integrations/n8n.png',
-      badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800',
-      iconBg: 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800/50',
-      iconColor: 'text-rose-600 dark:text-rose-400',
-      protocol: 'Outbound REST + Inbound Action',
-      syncMode: 'Disparadores Instantáneos',
-      description: 'Disparador de eventos en tiempo real desde DAMA hacia n8n y ejecutor de acciones inbound para orquestar pipelines ilimitados.',
-      supported: ['Eventos Webhook', 'Acciones Inbound', 'API Keys', 'Triggers CRM'],
-      docsUrl: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/',
-      config: integrations?.n8n,
-      endpointUrl: endpoints?.n8nActionEndpoint,
-    },
-    {
-      id: 'stripe',
-      name: 'Stripe Payments',
-      category: 'Pasarelas de Pago',
-      categorySlug: 'payments',
-      icon: CreditCard,
-      logoUrl: '/assets/logos/integrations/stripe.png',
-      badgeColor: 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 border-violet-200 dark:border-violet-800',
-      iconBg: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-100 dark:border-violet-800/50',
-      iconColor: 'text-violet-600 dark:text-violet-400',
-      protocol: 'Stripe API v1 + Webhooks TLS 1.3',
-      syncMode: 'Eventos 3D-Secure',
-      description: 'Cobro de facturas y presupuestos directamente desde el portal del cliente con tarjeta de crédito, débito SEPA y Apple Pay.',
-      supported: ['Checkout Sessions', 'Payment Intents', 'Suscripciones', 'SEPA'],
-      docsUrl: 'https://stripe.com/docs/api',
-      config: integrations?.stripe,
-      endpointUrl: endpoints?.stripeWebhook,
-      canSync: true,
-    },
-    {
-      id: 'zapier',
-      name: 'Zapier Webhooks',
-      category: 'Automatización & Flujos',
-      categorySlug: 'automation',
-      icon: Sparkles,
-      logoUrl: '/assets/logos/integrations/zapier.png',
-      badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-      iconBg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/50',
-      iconColor: 'text-amber-600 dark:text-amber-400',
-      protocol: 'REST Hooks / Webhooks Inbound',
-      syncMode: 'Zaps en Tiempo Real',
-      description: 'Conecta DAMA-CRM con más de 5.000 aplicaciones a través de webhooks estándar de entrada y salida para flujos no-code.',
-      supported: ['Disparadores Zaps', 'Acciones', 'Multi-app workflows', 'Filtros'],
-      docsUrl: 'https://zapier.com/apps/webhook/integrations',
-      config: integrations?.zapier,
-      endpointUrl: endpoints?.zapierWebhook,
-    },
-    {
-      id: 'google_calendar',
-      name: 'Google Calendar',
-      category: 'Productividad & Agenda',
-      categorySlug: 'productivity',
-      icon: Calendar,
-      logoUrl: '/assets/logos/integrations/google-calendar.png',
-      badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800',
-      iconBg: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800/50',
-      iconColor: 'text-sky-600 dark:text-sky-400',
-      protocol: 'Google Calendar API v3 / CalDAV',
-      syncMode: 'Bidireccional 15 min',
-      description: 'Sincroniza reuniones de oportunidades de venta, llamadas programadas y tareas directamente con la agenda de Google Workspace.',
-      supported: ['Reuniones', 'Eventos en tiempo real', 'Recordatorios', 'Google Meet'],
-      docsUrl: 'https://developers.google.com/calendar/api',
-      config: integrations?.google_calendar,
-      canSync: true,
-    },
-    {
-      id: 'unopim',
-      name: 'UnoPIM (Catálogo & PIM)',
-      category: 'Catálogo & PIM',
-      categorySlug: 'pim',
-      icon: Boxes,
-      logoUrl: '/assets/logos/integrations/unopim.png',
-      badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-      iconBg: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/50',
-      iconColor: 'text-blue-600 dark:text-blue-400',
-      protocol: 'Webhooks JSON + Sync Cron',
-      syncMode: 'Diario Nocturno / Push',
-      description: 'Recepción de catálogo de productos multivariante, sincronización nocturna e integración con inventario centralizado.',
-      supported: ['Catálogo', 'Variantes', 'Stock automático', 'SKUs'],
-      docsUrl: 'https://unopim.com/docs',
-      endpointUrl: endpoints?.unopimWebhook,
-    },
-    {
-      id: 'whatsapp',
-      name: 'WhatsApp Cloud (Meta API)',
-      category: 'Mensajería Omnicanal',
-      categorySlug: 'messaging',
-      icon: MessageSquare,
-      logoUrl: '/assets/logos/integrations/whatsapp.png',
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
-      iconColor: 'text-emerald-600 dark:text-emerald-400',
-      protocol: 'Meta Graph API v19.0',
-      syncMode: 'Tiempo Real Webhook',
-      description: 'Bandeja omnicanal unificada para atención al cliente, mensajes de plantilla HSM verificados y webhooks directos de Meta Cloud.',
-      supported: ['Chat 24/7', 'Webhooks Meta', 'Plantillas HSM', 'Agentes'],
-      docsUrl: 'https://developers.facebook.com/docs/whatsapp/cloud-api',
-      endpointUrl: endpoints?.whatsappWebhook,
-    },
-    {
-      id: 'sage_one',
-      name: 'Sage Business Cloud (Sage One)',
-      category: 'ERP & Contabilidad',
-      categorySlug: 'erp',
-      icon: Building2,
-      logoUrl: '/assets/logos/integrations/sage.png',
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
-      iconColor: 'text-emerald-600 dark:text-emerald-400',
-      protocol: 'Sage Accounting API v3.1 / OAuth2',
-      syncMode: 'Bidireccional REST',
-      description: 'Conexión oficial con Sage Business Cloud (Sage 1) para sincronización automática de clientes, catálogo de artículos y facturas de venta.',
-      supported: ['Clientes (Sales Ledger)', 'Facturas de Venta', 'Catálogo de Artículos', 'Impuestos SII'],
-      docsUrl: 'https://developer.sage.com/accounting/reference/',
-      config: integrations?.sage_one,
-      canSync: true,
-    },
-    {
-      id: 'sage_50',
-      name: 'Sage 50cloud / Desktop',
-      category: 'ERP & Contabilidad',
-      categorySlug: 'erp',
-      icon: Layers,
-      logoUrl: '/assets/logos/integrations/sage.png',
-      badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800',
-      iconBg: 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border-teal-100 dark:border-teal-800/50',
-      iconColor: 'text-teal-600 dark:text-teal-400',
-      protocol: 'SData Protocol & Desktop Engine',
-      syncMode: 'Subcuentas 430 & Almacén',
-      description: 'Enlace contable y de stock con Sage 50. Gestión de subcuentas contables de clientes, facturas emitidas y existencias.',
-      supported: ['Subcuentas 430', 'Facturas Expedidas', 'Control de Stock', 'Asientos Contables'],
-      docsUrl: 'https://developer.sage.com/50-cloud/',
-      config: integrations?.sage_50,
-      canSync: true,
-    },
-    {
-      id: 'sage_200',
-      name: 'Sage 200 Advanced Enterprise',
-      category: 'ERP & Contabilidad',
-      categorySlug: 'erp',
-      icon: Building2,
-      logoUrl: '/assets/logos/integrations/sage.png',
-      badgeColor: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
-      iconBg: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-800/50',
-      iconColor: 'text-cyan-600 dark:text-cyan-400',
-      protocol: 'REST API v1 / SData v2.0 Enterprise',
-      syncMode: 'Multidivisa & Analítica',
-      description: 'Integración avanzada con la suite Sage 200 para sincronización multidivisa, contabilidad financiera, pedidos y clientes corporativos.',
-      supported: ['Sales Ledger Accounts', 'Financial Journals', 'Facturación Multidivisa', 'Almacenes Múltiples'],
-      docsUrl: 'https://developer.sage.com/sage-200/',
-      config: integrations?.sage_200,
-      canSync: true,
-    },
-  ];
+  // Abrir Explorador de Plataforma y Flujos
+  const openPlatformExplorer = (item: ConnectorCardDefinition, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedExplorerConnector(item);
+    setExplorerModalOpen(true);
+    soundService.play('action');
+  };
+
+  // Catálogo modular de conectores
+  const connectorsList: ConnectorCardDefinition[] = useMemo(
+    () => buildConnectorCatalog(integrations, endpoints),
+    [integrations, endpoints]
+  );
 
   // Métricas y conteos
   const stats = useMemo(() => {
@@ -1135,6 +895,19 @@ export const Integrations: React.FC = () => {
                       <span>Logs</span>
                     </button>
 
+                    {/* Explorador de Plataforma y Flujos si aplica */}
+                    {item.hasPlatformExplorer && (
+                      <button
+                        data-testid={`connector-explorer-btn-${item.id}`}
+                        onClick={(e) => openPlatformExplorer(item, e)}
+                        className="py-2 px-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors active:scale-95"
+                        title="Explorar catálogo técnico y ejecutar flujos del conector"
+                      >
+                        <Terminal className="w-3.5 h-3.5" />
+                        <span>Flujos</span>
+                      </button>
+                    )}
+
                     {/* Sincronizar si es aplicable */}
                     {item.canSync && isConnected && (
                       <button
@@ -1252,6 +1025,154 @@ export const Integrations: React.FC = () => {
                     <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-color peer-disabled:opacity-50"></div>
                   </label>
                 </div>
+
+                {/* A3ERP Specific Fields */}
+                {selectedConnector === 'a3erp' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Endpoint API REST a3ERP (Sit.a3ERP.Api)
+                      </label>
+                      <input
+                        type="url"
+                        disabled={!isAdmin}
+                        placeholder="http://172.30.4.129:4433"
+                        value={editingConfig.baseUrl || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, baseUrl: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          UserId a3ERP
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="SA"
+                          value={editingConfig.username || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, username: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Contraseña (POST /api/Login)
+                        </label>
+                        <input
+                          type="password"
+                          disabled={!isAdmin}
+                          placeholder={editingConfig.hasPassword ? '•••••••• (Preservada)' : 'Contraseña a3ERP'}
+                          value={editingConfig.password || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, password: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Serie Por Defecto
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="BORRADOR"
+                          value={editingConfig.defaultSerie || 'BORRADOR'}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, defaultSerie: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Almacén (CODALM)
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="1"
+                          value={editingConfig.defaultWarehouse || '1'}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, defaultWarehouse: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Cliente Fallback
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="CONTADO"
+                          value={editingConfig.fallbackCustomerCode || 'CONTADO'}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, fallbackCustomerCode: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* PRESTASHOP Specific Fields */}
+                {selectedConnector === 'prestashop' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        URL de la Tienda PrestaShop (8 / 9)
+                      </label>
+                      <input
+                        type="url"
+                        disabled={!isAdmin}
+                        placeholder="https://tienda-prestashop.com"
+                        value={editingConfig.storeUrl || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, storeUrl: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Webservice Key Clásico (ws_key para /api/)
+                      </label>
+                      <input
+                        type="password"
+                        disabled={!isAdmin}
+                        placeholder={editingConfig.hasWsKey ? '•••••••• (Preservada)' : 'Clave de 32 caracteres de Webservice'}
+                        value={editingConfig.wsKey || ''}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, wsKey: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-brand-color outline-none font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Admin API Client ID (PS 9 OAuth2)
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isAdmin}
+                          placeholder="ps9_admin_client"
+                          value={editingConfig.adminClientId || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, adminClientId: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Admin API Client Secret (PS 9)
+                        </label>
+                        <input
+                          type="password"
+                          disabled={!isAdmin}
+                          placeholder={editingConfig.hasAdminClientSecret ? '•••••••• (Preservada)' : 'Client Secret OAuth2'}
+                          value={editingConfig.adminClientSecret || ''}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, adminClientSecret: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* ODOO Specific Fields */}
                 {selectedConnector === 'odoo' && (
@@ -2449,6 +2370,13 @@ export const Integrations: React.FC = () => {
       <ApiConfiguratorModal
         isOpen={isApiConfiguratorOpen}
         onClose={() => setIsApiConfiguratorOpen(false)}
+      />
+
+      {/* Platform Technical Explorer & Workflow Runner Modal */}
+      <PlatformExplorerModal
+        isOpen={explorerModalOpen}
+        connector={selectedExplorerConnector}
+        onClose={() => setExplorerModalOpen(false)}
       />
     </div>
   );

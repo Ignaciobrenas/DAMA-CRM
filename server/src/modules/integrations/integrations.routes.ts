@@ -5,6 +5,8 @@ import {
   updateIntegration,
   testIntegration,
   syncIntegration,
+  getConnectorCatalog,
+  executeConnectorOperation,
   handleWooCommerceWebhook,
   handleShopifyWebhook,
   handleOpenCartWebhook,
@@ -41,9 +43,10 @@ router.post('/zapier/webhook', handleZapierWebhook);
 // -----------------------------------------------------------------------------
 router.use(authMiddleware);
 
-// Lectura de estado permitida a usuarios autenticados
+// Lectura de estado y catálogos técnicos permitida a usuarios autenticados
 router.get('/', getIntegrations);
 router.get('/attributes/schema', getAttributesSchema);
+router.get('/:connector/catalog', getConnectorCatalog);
 router.post('/attributes/auto-map-bulk', requirePermission('inventory', 'update'), bulkAutoMapAttributes);
 router.post('/email/test', sendTestEmail);
 router.post('/email/preview', previewEmailTemplate);
@@ -52,7 +55,7 @@ router.post('/email/preview', previewEmailTemplate);
 router.put('/:connector', requirePermission('integrations', 'manage'), updateIntegration);
 router.post('/:connector/test', requirePermission('integrations', 'manage'), testIntegration);
 router.post('/:connector/sync', requirePermission('integrations', 'manage'), syncIntegration);
+router.post('/:connector/execute', requirePermission('integrations', 'manage'), executeConnectorOperation);
 router.post('/n8n/test', requirePermission('integrations', 'manage'), triggerN8nTest);
 
 export default router;
-

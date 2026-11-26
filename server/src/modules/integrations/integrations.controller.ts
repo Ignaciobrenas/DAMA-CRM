@@ -2,6 +2,24 @@ import { Request, Response } from 'express';
 import { IntegrationsService } from './integrations.service';
 import { ConnectorType } from './integrations.types';
 
+const ALLOWED_CONNECTORS: ConnectorType[] = [
+  'a3erp',
+  'odoo',
+  'woocommerce',
+  'shopify',
+  'opencart',
+  'prestashop',
+  'n8n',
+  'unopim',
+  'whatsapp',
+  'stripe',
+  'zapier',
+  'google_calendar',
+  'sage_one',
+  'sage_50',
+  'sage_200',
+];
+
 export function getIntegrations(req: Request, res: Response): void {
   try {
     const config = IntegrationsService.getPublicConfig();
@@ -12,6 +30,7 @@ export function getIntegrations(req: Request, res: Response): void {
     const endpoints = {
       woocommerceWebhook: `${baseUrl}/api/integrations/woocommerce/webhook`,
       shopifyWebhook: `${baseUrl}/api/integrations/shopify/webhook`,
+      opencartWebhook: `${baseUrl}/api/integrations/opencart/webhook`,
       n8nActionEndpoint: `${baseUrl}/api/integrations/n8n/action`,
       stripeWebhook: `${baseUrl}/api/integrations/stripe/webhook`,
       zapierWebhook: `${baseUrl}/api/integrations/zapier/webhook`,
@@ -38,6 +57,113 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
 
     const apps = [
       {
+        id: 'a3erp',
+        nombre: 'a3ERP (Wolters Kluwer / esofitec)',
+        categoria: 'ERP & Contabilidad',
+        tipo: 'Sit.a3ERP.Api REST v2.4 (Procs + Custom Tasks)',
+        estado: config.a3erp.status,
+        activo: config.a3erp.enabled,
+        descripcion:
+          'Conector integral con a3ERP: 26 procedimientos de lectura paginados (X-Pagination / Parameters Base64), 42 endpoints de escritura asíncrona con sondeo de TaskId y cuadrado automático de códigos (15/8/4).',
+        capacidades: ['Artículos & Tarifas', 'Pedidos (AltaPedidoVenta)', 'Clientes por NIF', 'Stock & Tallas', 'Códigos Cuadrados'],
+        documentacion: 'https://apis.esofitec.com/a3erp-api/openapi.json',
+        configuracion: {
+          baseUrl: config.a3erp.baseUrl,
+          usuario: config.a3erp.username,
+          tienePassword: config.a3erp.hasPassword,
+          seriePorDefecto: config.a3erp.defaultSerie,
+          almacenPorDefecto: config.a3erp.defaultWarehouse,
+          ivaIncluido: config.a3erp.ivaIncluido,
+          ultimaSincronizacion: config.a3erp.lastSyncAt || null,
+        },
+      },
+      {
+        id: 'sage_200',
+        nombre: 'Sage 200 Advanced Enterprise (StoamConnectAPIv2)',
+        categoria: 'ERP Empresarial & Fabricación',
+        tipo: 'REST API v1 (TmpIME + ImportaIME) & GraphQL ES256',
+        estado: config.sage_200?.status || 'disconnected',
+        activo: config.sage_200?.enabled || false,
+        descripcion:
+          'Integración empresarial con Sage 200 mediante LCOEM.dll (DameContador + ImportaIME sobre 7 entidades TmpIME_* con 612 campos auditados) y lectura GraphQL de 259 modelos.',
+        capacidades: ['10 Tipos Documento (PVE/FAC/ALC)', 'ClientesProveedores', 'Domicilios', 'Traspasos de Stock', 'GraphQL 259 Modelos'],
+        documentacion: 'https://developer.sage.com/sage-200/',
+        configuracion: {
+          baseUrl: config.sage_200?.baseUrl,
+          codigoEmpresa: config.sage_200?.codigoEmpresa,
+          tieneSubscriptionKey: config.sage_200?.hasSubscriptionKey,
+          companyId: config.sage_200?.companyId,
+          sincronizarClientes: config.sage_200?.syncCustomers,
+          sincronizarFacturas: config.sage_200?.syncInvoices,
+          sincronizarLibros: config.sage_200?.syncLedgers,
+          ultimaSincronizacion: config.sage_200?.lastSyncAt || null,
+        },
+      },
+      {
+        id: 'prestashop',
+        nombre: 'PrestaShop (Dual API v8 / v9)',
+        categoria: 'Comercio Electrónico',
+        tipo: 'Webservice Clásico XML (/api/) + Admin API CQRS (/admin-api/)',
+        estado: config.prestashop?.status || 'disconnected',
+        activo: config.prestashop?.enabled || false,
+        descripcion:
+          'Arquitectura dual paralela: Webservice clásico (69 recursos, pedidos en bloque, stock_availables XML parcial) y Admin API de PrestaShop 9 (OAuth2, 33 dominios, productos localizados y combinaciones).',
+        capacidades: ['Pedidos en Bloque', 'Admin API OAuth2', 'Combinaciones & Variantes', 'Stock XML Parcial', 'Auditoría Duplicados'],
+        documentacion: 'https://devdocs.prestashop-project.org/9/',
+        configuracion: {
+          storeUrl: config.prestashop?.storeUrl,
+          tieneWsKey: config.prestashop?.hasWsKey,
+          tieneAdminClientSecret: config.prestashop?.hasAdminClientSecret,
+          defaultLocale: config.prestashop?.defaultLocale,
+          sincronizarProductos: config.prestashop?.syncProducts,
+          sincronizarPedidos: config.prestashop?.syncOrders,
+          sincronizarClientes: config.prestashop?.syncCustomers,
+          ultimaSincronizacion: config.prestashop?.lastSyncAt || null,
+        },
+      },
+      {
+        id: 'shopify',
+        nombre: 'Shopify Store (Admin GraphQL & B2B)',
+        categoria: 'Comercio Electrónico',
+        tipo: 'Admin GraphQL API (2026-04) & Webhooks HMAC-SHA256',
+        estado: config.shopify.status,
+        activo: config.shopify.enabled,
+        descripcion:
+          'Conector exclusivo GraphQL Admin API con GIDs, paginación Relay por cursor, MoneyBag (*Set), soporte B2B (PurchasingCompany, PriceList, metafields sage.*/b2b.*) y mutaciones idempotentes productSet e inventorySetQuantities.',
+        capacidades: ['GraphQL 2026-04', 'productSet Idempotente', 'B2B PurchasingCompany', 'inventorySetQuantities', 'HMAC SHA-256'],
+        documentacion: 'https://shopify.dev/docs/api/admin-graphql',
+        webhookUrl: `${baseUrl}/api/integrations/shopify/webhook`,
+        eventosSoportados: ['orders/create', 'customers/create', 'products/update'],
+        configuracion: {
+          shopDomain: config.shopify.shopDomain,
+          apiVersion: config.shopify.apiVersion,
+          skuField: config.shopify.skuField,
+          tieneAccessToken: config.shopify.hasAccessToken,
+          tieneApiSecretKey: config.shopify.hasApiSecretKey,
+          ultimaSincronizacion: config.shopify.lastSyncAt || null,
+        },
+      },
+      {
+        id: 'woocommerce',
+        nombre: 'WooCommerce (REST API v3)',
+        categoria: 'Comercio Electrónico',
+        tipo: 'REST API v3 (/wp-json/wc/v3/) & Batch Operations',
+        estado: config.woocommerce.status,
+        activo: config.woocommerce.enabled,
+        descripcion:
+          'Conector completo REST API v3 con 16 familias de entidades, operaciones /batch (hasta 100), extracción de _billing_nif, poda de seguridad, reconciliación de cliente por NIF con retención on_hold y cálculo de precios con IVA incluido.',
+        capacidades: ['REST API v3 (16 Entidades)', 'Reconciliación NIF (on_hold)', 'Poda de Seguridad', 'Variaciones /batch', 'Precios con IVA'],
+        documentacion: 'https://woocommerce.github.io/woocommerce-rest-api-docs/',
+        webhookUrl: `${baseUrl}/api/integrations/woocommerce/webhook`,
+        eventosSoportados: ['order.created', 'order.updated', 'customer.created'],
+        configuracion: {
+          storeUrl: config.woocommerce.storeUrl,
+          tieneConsumerKey: config.woocommerce.hasConsumerKey,
+          tieneConsumerSecret: config.woocommerce.hasConsumerSecret,
+          ultimaSincronizacion: config.woocommerce.lastSyncAt || null,
+        },
+      },
+      {
         id: 'odoo',
         nombre: 'Odoo ERP & CRM',
         categoria: 'ERP & Contabilidad',
@@ -56,65 +182,6 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
           sincronizarFacturas: config.odoo.syncInvoices,
           sincronizarProductos: config.odoo.syncProducts,
           ultimaSincronizacion: config.odoo.lastSyncAt || null,
-        },
-      },
-      {
-        id: 'woocommerce',
-        nombre: 'WooCommerce',
-        categoria: 'Comercio Electrónico',
-        tipo: 'Webhooks & REST API v3',
-        estado: config.woocommerce.status,
-        activo: config.woocommerce.enabled,
-        descripcion: 'Recepción de pedidos en tiempo real, creación automática de tratos en el pipeline y sincronización de clientes.',
-        capacidades: ['Pedidos', 'Clientes', 'Webhooks en tiempo real', 'Stock'],
-        documentacion: 'https://woocommerce.github.io/woocommerce-rest-api-docs/',
-        webhookUrl: `${baseUrl}/api/integrations/woocommerce/webhook`,
-        eventosSoportados: ['order.created', 'order.updated', 'customer.created'],
-        configuracion: {
-          storeUrl: config.woocommerce.storeUrl,
-          tieneConsumerKey: config.woocommerce.hasConsumerKey,
-          tieneConsumerSecret: config.woocommerce.hasConsumerSecret,
-          ultimaSincronizacion: config.woocommerce.lastSyncAt || null,
-        },
-      },
-      {
-        id: 'shopify',
-        nombre: 'Shopify Store',
-        categoria: 'Comercio Electrónico',
-        tipo: 'Webhooks HMAC-SHA256 & Admin API',
-        estado: config.shopify.status,
-        activo: config.shopify.enabled,
-        descripcion: 'Integración criptográficamente verificada con tiendas Shopify para importar pedidos, crear leads y sincronizar catálogo.',
-        capacidades: ['Pedidos', 'Clientes', 'HMAC SHA-256', 'Catálogo'],
-        documentacion: 'https://shopify.dev/docs/api/admin-rest',
-        webhookUrl: `${baseUrl}/api/integrations/shopify/webhook`,
-        eventosSoportados: ['orders/create', 'customers/create', 'products/update'],
-        configuracion: {
-          shopDomain: config.shopify.shopDomain,
-          tieneAccessToken: config.shopify.hasAccessToken,
-          tieneApiSecretKey: config.shopify.hasApiSecretKey,
-          ultimaSincronizacion: config.shopify.lastSyncAt || null,
-        },
-      },
-      {
-        id: 'prestashop',
-        nombre: 'PrestaShop',
-        categoria: 'Comercio Electrónico',
-        tipo: 'Webservice XML',
-        estado: config.prestashop?.status || 'disconnected',
-        activo: config.prestashop?.enabled || false,
-        descripcion: 'Sincronización de catálogo, clientes y pedidos bidireccional mediante el webservice nativo de PrestaShop.',
-        capacidades: ['Pedidos', 'Clientes', 'Catálogo', 'Direcciones'],
-        documentacion: 'https://devdocs.prestashop-project.org/8/webservice/',
-        webhookUrl: '',
-        eventosSoportados: [],
-        configuracion: {
-          storeUrl: config.prestashop?.storeUrl,
-          tieneWsKey: config.prestashop?.hasWsKey,
-          sincronizarProductos: config.prestashop?.syncProducts,
-          sincronizarPedidos: config.prestashop?.syncOrders,
-          sincronizarClientes: config.prestashop?.syncCustomers,
-          ultimaSincronizacion: config.prestashop?.lastSyncAt || null,
         },
       },
       {
@@ -271,26 +338,6 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
           ultimaSincronizacion: config.sage_50?.lastSyncAt || null,
         },
       },
-      {
-        id: 'sage_200',
-        nombre: 'Sage 200 Advanced Enterprise',
-        categoria: 'ERP Empresarial & Fabricación',
-        tipo: 'REST API v1 / SData v2.0 Enterprise',
-        estado: config.sage_200?.status || 'disconnected',
-        activo: config.sage_200?.enabled || false,
-        descripcion: 'Integración avanzada con la suite Sage 200 para sincronización multidivisa, contabilidad analítica, pedidos y clientes corporativos.',
-        capacidades: ['Sales Ledger Accounts', 'Financial Journals', 'Facturación Multidivisa', 'Almacenes Múltiples'],
-        documentacion: 'https://developer.sage.com/sage-200/',
-        configuracion: {
-          baseUrl: config.sage_200?.baseUrl,
-          tieneSubscriptionKey: config.sage_200?.hasSubscriptionKey,
-          companyId: config.sage_200?.companyId,
-          sincronizarClientes: config.sage_200?.syncCustomers,
-          sincronizarFacturas: config.sage_200?.syncInvoices,
-          sincronizarLibros: config.sage_200?.syncLedgers,
-          ultimaSincronizacion: config.sage_200?.lastSyncAt || null,
-        },
-      },
     ];
 
     res.json({
@@ -308,21 +355,7 @@ export function getIntegracionesDeTerceros(req: Request, res: Response): void {
 export function updateIntegration(req: Request, res: Response): void {
   try {
     const { connector } = req.params;
-    const allowed: ConnectorType[] = [
-      'odoo',
-      'woocommerce',
-      'shopify',
-      'opencart',
-      'prestashop',
-      'n8n',
-      'stripe',
-      'zapier',
-      'google_calendar',
-      'sage_one',
-      'sage_50',
-      'sage_200',
-    ];
-    if (!allowed.includes(connector as ConnectorType)) {
+    if (!ALLOWED_CONNECTORS.includes(connector as ConnectorType)) {
       res.status(400).json({ success: false, message: `Conector inválido: ${connector}` });
       return;
     }
@@ -341,83 +374,30 @@ export function updateIntegration(req: Request, res: Response): void {
 export async function testIntegration(req: Request, res: Response): Promise<void> {
   try {
     const { connector } = req.params;
-    let result: { success: boolean; message: string; details?: any };
-
-    switch (connector) {
-      case 'odoo':
-        result = await IntegrationsService.testOdoo(req.body);
-        break;
-      case 'woocommerce':
-        result = await IntegrationsService.testWooCommerce(req.body);
-        break;
-      case 'prestashop':
-        result = await IntegrationsService.testPrestashop(req.body);
-        break;
-      case 'shopify':
-        result = await IntegrationsService.testShopify(req.body);
-        break;
-      case 'opencart':
-        result = await IntegrationsService.testOpenCart(req.body);
-        break;
-      case 'n8n':
-        result = await IntegrationsService.testN8n(req.body);
-        break;
-      case 'stripe':
-        result = await IntegrationsService.testStripe(req.body);
-        break;
-      case 'zapier':
-        result = await IntegrationsService.testZapier(req.body);
-        break;
-      case 'google_calendar':
-        result = await IntegrationsService.testGoogleCalendar(req.body);
-        break;
-      case 'sage_one':
-        result = await IntegrationsService.testSageOne(req.body);
-        break;
-      case 'sage_50':
-        result = await IntegrationsService.testSage50(req.body);
-        break;
-      case 'sage_200':
-        result = await IntegrationsService.testSage200(req.body);
-        break;
-      case 'unopim':
-      case 'whatsapp':
-        result = { success: true, message: `Conector nativo ${connector} activo y respondiendo.` };
-        break;
-      default:
-        res.status(400).json({ success: false, message: `Conector no soportado para test: ${connector}` });
-        return;
+    if (!ALLOWED_CONNECTORS.includes(connector as ConnectorType)) {
+      res.status(400).json({ success: false, message: `Conector no soportado para test: ${connector}` });
+      return;
     }
 
-    // Asynchronously log to DB
+    const result = await IntegrationsService.testConnector(connector as ConnectorType, req.body);
+
     const { prisma } = require('../../prisma');
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user?.id || (req as any).user?.userId || null,
-        action: 'INTEGRATION_TEST',
-        entity: 'Integration',
-        entityId: connector,
-        details: JSON.stringify({ success: result.success, message: result.message }),
-        ipAddress: req.ip || req.socket?.remoteAddress || null,
-        tenantId: (req as any).user?.tenantId || 'master'
-      }
-    }).catch((e: any) => console.error(e));
+    await prisma.auditLog
+      .create({
+        data: {
+          userId: req.user?.id || (req as any).user?.userId || null,
+          action: 'INTEGRATION_TEST',
+          entity: 'Integration',
+          entityId: connector,
+          details: JSON.stringify({ success: result.success, message: result.message }),
+          ipAddress: req.ip || req.socket?.remoteAddress || null,
+          tenantId: (req as any).user?.tenantId || 'master',
+        },
+      })
+      .catch(() => {});
 
     res.status(result.success ? 200 : 400).json(result);
   } catch (err: any) {
-    const { prisma } = require('../../prisma');
-    await prisma.systemErrorLog.create({
-      data: {
-        statusCode: 500,
-        message: `[Integration Test Error] ${err.message}`,
-        stack: err.stack,
-        method: req.method,
-        path: req.path,
-        userId: req.user?.id || (req as any).user?.userId || null,
-        ipAddress: req.ip || req.socket?.remoteAddress || null,
-      }
-    }).catch((e: any) => console.error(e));
-
     res.status(500).json({ success: false, message: err.message });
   }
 }
@@ -425,14 +405,76 @@ export async function testIntegration(req: Request, res: Response): Promise<void
 export async function syncIntegration(req: Request, res: Response): Promise<void> {
   try {
     const { connector } = req.params;
-    const allowed = ['odoo', 'woocommerce', 'shopify', 'opencart', 'stripe', 'google_calendar', 'sage_one', 'sage_50', 'sage_200'];
-    if (!allowed.includes(connector)) {
-      res.status(400).json({ success: false, message: `La sincronización manual solo aplica a: ${allowed.join(', ')}` });
+    const syncAllowed: ConnectorType[] = [
+      'a3erp',
+      'odoo',
+      'woocommerce',
+      'shopify',
+      'opencart',
+      'prestashop',
+      'stripe',
+      'google_calendar',
+      'sage_one',
+      'sage_50',
+      'sage_200',
+    ];
+    if (!syncAllowed.includes(connector as ConnectorType)) {
+      res.status(400).json({
+        success: false,
+        message: `La sincronización manual solo aplica a: ${syncAllowed.join(', ')}`,
+      });
       return;
     }
 
-    const result = await IntegrationsService.syncConnector(connector as any);
+    const tenantId = (req as any).user?.tenantId || (req.headers['x-tenant-id'] as string) || 'master';
+    const result = await IntegrationsService.syncConnector(connector as ConnectorType, tenantId);
     res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export function getConnectorCatalog(req: Request, res: Response): void {
+  try {
+    const { connector } = req.params;
+    const catalog = IntegrationsService.getConnectorCatalog(connector as ConnectorType);
+    if (!catalog) {
+      res.status(404).json({
+        success: false,
+        message: `Catálogo técnico no encontrado para el conector '${connector}'.`,
+      });
+      return;
+    }
+    res.json({
+      success: true,
+      connector,
+      data: catalog,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function executeConnectorOperation(req: Request, res: Response): Promise<void> {
+  try {
+    const { connector } = req.params;
+    const { operation, payload } = req.body || {};
+    if (!operation) {
+      res.status(400).json({
+        success: false,
+        message: 'El campo operation es obligatorio para ejecutar una operación de conector.',
+      });
+      return;
+    }
+
+    const tenantId = (req as any).user?.tenantId || (req.headers['x-tenant-id'] as string) || 'master';
+    const result = await IntegrationsService.executeConnectorOperation(
+      connector as ConnectorType,
+      operation,
+      payload || {},
+      tenantId
+    );
+    res.status(result.success ? 200 : 400).json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -493,7 +535,8 @@ export async function handleN8nAction(req: Request, res: Response): Promise<void
       const authHeader = req.headers.authorization;
       const apiKeyHeader = req.headers['x-api-key'];
       const bodyApiKey = req.body?.apiKey;
-      const providedKey = apiKeyHeader || bodyApiKey || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader);
+      const providedKey =
+        apiKeyHeader || bodyApiKey || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader);
       if (providedKey !== n8nConfig.apiKey) {
         res.status(401).json({ success: false, message: 'Clave API de n8n no válida o no proporcionada' });
         return;
@@ -532,7 +575,7 @@ export async function handleOpenCartWebhook(req: Request, res: Response): Promis
   }
 }
 
-export function getAttributesSchema(req: Request, res: Response): void {
+export function getAttributesSchema(_req: Request, res: Response): void {
   try {
     const schema = IntegrationsService.getConnectorsAttributesSchema();
     res.json({
@@ -584,4 +627,3 @@ export async function previewEmailTemplate(req: Request, res: Response): Promise
     res.status(500).json({ success: false, message: err.message });
   }
 }
-
