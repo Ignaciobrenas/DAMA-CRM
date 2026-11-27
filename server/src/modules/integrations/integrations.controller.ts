@@ -102,7 +102,7 @@ export async function testIntegration(req: Request, res: Response): Promise<void
     await prisma.auditLog
       .create({
         data: {
-          userId: req.user?.id || (req as any).user?.userId || null,
+          userId: (req as any).user?.id || (req as any).user?.userId || null,
           action: 'INTEGRATION_TEST',
           entity: 'Integration',
           entityId: connector,
