@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
+  CalendarClock,
   Filter,
+  Layers,
   Link2,
   Plug,
   Radio,
   RefreshCw,
   Search,
   Sliders,
+  Workflow,
   X,
 } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
@@ -32,6 +35,9 @@ import {
   MassTestSummary,
 } from '../components/integrations/MassDiagnosticBanner';
 import { PlatformExplorerModal } from '../components/integrations/PlatformExplorerModal';
+import { ConnectionsWorkspace } from '../components/sync/connections/ConnectionsWorkspace';
+import { DefinitionsWorkspace } from '../components/sync/definitions/DefinitionsWorkspace';
+import { SyncTasksWorkspace } from '../components/sync/tasks/SyncTasksWorkspace';
 
 const CATEGORIES = [
   { id: 'all', label: 'Todas las integraciones' },
@@ -51,6 +57,9 @@ export const Integrations: React.FC = () => {
   const isAdmin = user?.role === 'ADMIN' || hasPermission('integrations', 'manage');
 
   const [loading, setLoading] = useState(true);
+  const [activeWorkspace, setActiveWorkspace] = useState<
+    'connectors' | 'connections' | 'definitions' | 'sync-tasks'
+  >('connectors');
   const [integrations, setIntegrations] = useState<IntegrationsResponseData | null>(null);
   const [endpoints, setEndpoints] = useState<IntegrationsEndpoints | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -474,6 +483,43 @@ export const Integrations: React.FC = () => {
       {/* Mass Diagnostic Banner */}
       <MassDiagnosticBanner summary={massTestSummary} onClose={() => setMassTestSummary(null)} />
 
+      {/* Top-Level Sync Hub Workspace Switcher */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-2 shadow-xs flex flex-wrap items-center gap-1.5">
+        {[
+          { id: 'connectors', label: 'Conectores & Plataformas', icon: Plug },
+          { id: 'connections', label: 'Conexiones & Entornos', icon: Layers },
+          { id: 'definitions', label: 'Definiciones', icon: Workflow },
+          { id: 'sync-tasks', label: 'Tareas de Sincronización', icon: CalendarClock },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const active = activeWorkspace === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setActiveWorkspace(tab.id as any);
+                soundService.play('action');
+              }}
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all active:scale-[0.98] ${
+                active
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {activeWorkspace === 'connections' && <ConnectionsWorkspace isAdmin={isAdmin} />}
+      {activeWorkspace === 'definitions' && <DefinitionsWorkspace isAdmin={isAdmin} />}
+      {activeWorkspace === 'sync-tasks' && <SyncTasksWorkspace isAdmin={isAdmin} />}
+
+      {activeWorkspace === 'connectors' && (
+      <>
       {/* Search & Filters */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -615,6 +661,8 @@ export const Integrations: React.FC = () => {
             />
           ))}
         </div>
+      )}
+      </>
       )}
 
       {/* Modular Centered Modals */}
