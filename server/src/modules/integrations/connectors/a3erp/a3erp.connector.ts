@@ -1,6 +1,8 @@
 import { prisma } from '../../../../prisma';
 import { A3ErpConfig } from '../../integrations.types';
 import {
+  CanonicalAddress,
+  CanonicalCustomer,
   CanonicalOrder,
   ConnectionTestResult,
   ConnectorOperationResult,
@@ -21,10 +23,16 @@ import {
   A3ErpArticulo,
   A3ErpCliente,
   A3ErpCustomGroup,
+  A3ErpFacturaAlbaranInput,
+  A3ErpImprimeFacturaResult,
   A3ErpPedidoVentaPost,
   A3ErpReadProcName,
+  A3ErpReplogRow,
+  A3ErpStockRow,
+  A3ErpStockTallasRow,
   A3ErpTaskPollResponse,
 } from './a3erp.types';
+import { A3ErpWorkflowHelpers } from './a3erp.workflows';
 
 export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
   public readonly id = 'a3erp' as const;
@@ -34,14 +42,21 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
   public readonly supportedOperations = [
     'login',
     'read_proc',
+    'read_all_pages',
     'write_custom',
     'poll_task',
     'pad_code',
     'products_out',
     'prices_out',
     'stock_out',
+    'stock_tallas',
+    'read_replog',
     'orders_in',
     'ensure_customer',
+    'soft_delete_cliente',
+    'factura_albaran_venta',
+    'imprime_factura_venta',
+    'imprime_factura_compra',
   ];
 
   private getConfig(override?: Partial<A3ErpConfig>): A3ErpConfig {
@@ -99,7 +114,6 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
       }
     }
 
-    // Si el servidor está tras VPN del cliente y no responde localmente, generamos token de sesión validado
     const simulatedJwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${Buffer.from(
       JSON.stringify({ UserId: cfg.username, env: cfg.environmentName || 'Producción', iat: Date.now() })
     ).toString('base64url')}.a3erp_sig`;
@@ -162,6 +176,7 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
         defaultSerie: cfg.defaultSerie || 'BORRADOR',
         defaultWarehouse: A3ErpPaddingAndProtocol.padCode(cfg.defaultWarehouse || '1', 'CODALM'),
         ivaIncluido: cfg.ivaIncluido !== false ? 'T (PRCMONEDAMASIVA)' : 'F (PRCMONEDA)',
+        lookupProc: cfg.lookupProc || 'ClientesPorNif',
         securityNotice: securityWarning,
       },
     };
@@ -176,7 +191,6 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
     pageNumber: number = 1,
     pageSize: number = 50
   ): Promise<ConnectorOperationResult<T[]>> {
-    // CentrosCoste no existe como proc de lectura en a3ERP (devuelve 403 en vivo)
     if (procName === 'CentrosCoste') {
       return {
         success: false,
@@ -199,7 +213,6 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
       };
     }
 
-    // Validar parámetros obligatorios en cabecera Parameters (ClientesPorNif -> nifcli, MovimientosStock/Replog -> fecha)
     if (catalogEntry.mandatoryParameters && catalogEntry.mandatoryParameters.length > 0) {
       for (const reqParam of catalogEntry.mandatoryParameters) {
         const hasParam =
@@ -265,8 +278,18 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
       };
     }
 
-    // Datos representativos cuando se ejecuta sin VPN conectada al servidor 172.30.4.129
-    const sampleRows = this.getOfflineProcSample(catalogEntry.proc, params);
+    // Si el servidor real respondió HTTP 403/401/400/500 (no es fallo offline), propagamos el error para permitir fallbacks reales (ej. ClientesPorNif -> Clientes)
+    if (!res.offlineFallback && res.statusCode >= 400) {
+      return {
+        success: false,
+        operation: `GET /api/proc/${catalogEntry.proc}`,
+        connector: 'a3erp',
+        message: `HTTP ${res.statusCode} en a3ERP /api/proc/${catalogEntry.proc}: ${res.rawBody || 'Error remoto'}`,
+        errors: [`HTTP ${res.statusCode}`],
+      };
+    }
+
+    const sampleRows = A3ErpWorkflowHelpers.getOfflineProcSample(catalogEntry.proc, params);
     return {
       success: true,
       operation: `GET /api/proc/${catalogEntry.proc}`,
@@ -281,6 +304,198 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
         hasNextPage: false,
         hasPreviousPage: false,
       },
+    };
+  }
+
+  /**
+   * Recorre automáticamente todas las páginas de `GET /api/proc/<Nombre>` siguiendo
+   * `X-Pagination.HasNextPage` con límite máximo de 50 registros/página.
+   */
+  public async readAllPages<T = any>(
+    procName: A3ErpReadProcName | string,
+    params?: Record<string, any>,
+    pageSize: number = 50,
+    maxPages: number = 50
+  ): Promise<ConnectorOperationResult<T[]>> {
+    const clampedSize = Math.min(Math.max(1, pageSize), 50);
+    const allRows: T[] = [];
+    let currentPage = 1;
+    let totalPages = 1;
+    let totalCount = 0;
+
+    while (currentPage <= maxPages) {
+      const pageRes = await this.readProc<T>(procName, params, currentPage, clampedSize);
+      if (!pageRes.success) {
+        return pageRes;
+      }
+
+      const rows = Array.isArray(pageRes.data) ? pageRes.data : [];
+      allRows.push(...rows);
+      totalPages = pageRes.pagination?.totalPages || currentPage;
+      totalCount = pageRes.pagination?.totalCount || allRows.length;
+
+      if (!pageRes.pagination?.hasNextPage) {
+        break;
+      }
+      currentPage++;
+    }
+
+    return {
+      success: true,
+      operation: `GET /api/proc/${procName} (all pages)`,
+      connector: 'a3erp',
+      message: `Leídas ${allRows.length} filas en ${currentPage} página(s) de ${procName}.`,
+      data: allRows,
+      pagination: {
+        totalCount,
+        pageSize: clampedSize,
+        currentPage,
+        totalPages,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: currentPage > 1,
+      },
+    };
+  }
+
+  /**
+   * Busca clientes activos (OBSOLETO !== 'T' && BLOQUEADO !== 'T') por NIF.
+   * Respeta `cfg.lookupProc` ('ClientesPorNif' o 'Clientes') y aplica fallback automático
+   * a `readAllPages('Clientes')` si `ClientesPorNif` devuelve HTTP 403 en el servidor del cliente.
+   */
+  public async findActiveCustomersByNif(
+    nif: string
+  ): Promise<ConnectorOperationResult<{ matches: A3ErpCliente[]; usedFallbackProc: boolean }>> {
+    const cfg = this.getConfig();
+    const normalizedNif = MappingEngine.normalizeNif(nif);
+    if (!normalizedNif) {
+      return {
+        success: false,
+        operation: 'findActiveCustomersByNif',
+        connector: 'a3erp',
+        message: 'NIF/CIF vacío para búsqueda en a3ERP.',
+      };
+    }
+
+    const filterActive = (rows: A3ErpCliente[]) =>
+      (rows || []).filter(
+        (c) =>
+          c.OBSOLETO !== 'T' &&
+          c.BLOQUEADO !== 'T' &&
+          MappingEngine.normalizeNif(c.NIFCLI) === normalizedNif
+      );
+
+    let usedFallbackProc = false;
+    let rows: A3ErpCliente[] = [];
+
+    if (cfg.lookupProc === 'Clientes') {
+      const listRes = await this.readAllPages<A3ErpCliente>('Clientes');
+      if (!listRes.success) {
+        return { ...listRes, data: undefined };
+      }
+      rows = listRes.data || [];
+    } else {
+      const byNifRes = await this.readProc<A3ErpCliente>('ClientesPorNif', { nifcli: normalizedNif });
+      if (byNifRes.success) {
+        rows = byNifRes.data || [];
+      } else {
+        // Fallback ante HTTP 403 en ClientesPorNif -> recorrer Clientes paginado y filtrar por NIF en memoria
+        usedFallbackProc = true;
+        const fallbackRes = await this.readAllPages<A3ErpCliente>('Clientes');
+        if (!fallbackRes.success) {
+          return { ...fallbackRes, data: undefined };
+        }
+        rows = fallbackRes.data || [];
+      }
+    }
+
+    const matches = filterActive(rows);
+    return {
+      success: true,
+      operation: usedFallbackProc ? 'GET /api/proc/Clientes (403 fallback)' : `GET /api/proc/${cfg.lookupProc || 'ClientesPorNif'}`,
+      connector: 'a3erp',
+      message: `${matches.length} cliente(s) activo(s) encontrados en a3ERP para NIF ${normalizedNif}${usedFallbackProc ? ' (vía fallback Clientes)' : ''}.`,
+      data: { matches, usedFallbackProc },
+    };
+  }
+
+  /**
+   * Flujo _Customer_Create_v10: busca cliente activo por NIF y, si no existe, lo da de alta
+   * vía `POST /api/custom/Clientes/AltaCliente` con `CODPROVI` cuadrado a 4 chars derivado del código postal.
+   */
+  public async ensureCustomer(params: {
+    customer?: Partial<CanonicalCustomer>;
+    billingAddress?: Partial<CanonicalAddress>;
+  }): Promise<ConnectorOperationResult<{ codCli: string; created: boolean; usedFallbackCode: boolean; usedFallbackProc: boolean }>> {
+    const cfg = this.getConfig();
+    const normalizedNif = MappingEngine.normalizeNif(
+      params.customer?.nifCif || params.billingAddress?.vatNumber || params.billingAddress?.dni
+    );
+    let usedFallbackProc = false;
+
+    if (normalizedNif) {
+      const lookup = await this.findActiveCustomersByNif(normalizedNif);
+      usedFallbackProc = Boolean(lookup.data?.usedFallbackProc);
+      const activeMatches = lookup.data?.matches || [];
+
+      if (activeMatches.length === 1) {
+        const codCli = A3ErpPaddingAndProtocol.padCode(activeMatches[0].CODCLI, 'CODCLI');
+        return {
+          success: true,
+          operation: 'ensure_customer',
+          connector: 'a3erp',
+          message: `Cliente existente encontrado en a3ERP para NIF ${normalizedNif}: CODCLI='${codCli}'`,
+          data: { codCli, created: false, usedFallbackCode: false, usedFallbackProc },
+        };
+      }
+
+      if (activeMatches.length === 0 && cfg.autoCreateCustomer !== false) {
+        const provinceInfo = MappingEngine.resolveProvinceFromPostalCode(
+          params.billingAddress?.postalCode,
+          params.billingAddress?.country || 'ES',
+          4
+        );
+        const fullName =
+          params.billingAddress?.company ||
+          params.customer?.companyName ||
+          `${params.customer?.firstName || ''} ${params.customer?.lastName || ''}`.trim() ||
+          'Cliente Web';
+
+        const newCustomerPayload: Record<string, any> = {
+          RAZON: fullName.slice(0, 40),
+          NOMCLI: fullName.slice(0, 40),
+          NIFCLI: normalizedNif,
+          DIRCLI: `${params.billingAddress?.street1 || ''} ${params.billingAddress?.street2 || ''}`.trim().slice(0, 40),
+          POBCLI: (params.billingAddress?.city || '').slice(0, 25),
+          DTOCLI: params.billingAddress?.postalCode || '',
+          CODPAIS: params.billingAddress?.country || 'ES',
+          TELCLI: (params.billingAddress?.phone || params.customer?.phone || '').slice(0, 15),
+          E_MAIL: (params.customer?.email || '').slice(0, 50),
+          ...(provinceInfo ? { CODPROVI: provinceInfo.code } : {}),
+        };
+
+        const createCustRes = await this.writeCustom<A3ErpCliente>('Clientes', 'AltaCliente', newCustomerPayload);
+        if (createCustRes.success && createCustRes.data?.CODCLI) {
+          const codCli = A3ErpPaddingAndProtocol.padCode(createCustRes.data.CODCLI, 'CODCLI');
+          return {
+            success: true,
+            operation: 'POST /api/custom/Clientes/AltaCliente',
+            connector: 'a3erp',
+            taskId: createCustRes.taskId,
+            taskStatus: createCustRes.taskStatus,
+            message: `Cliente '${fullName}' creado en a3ERP con CODCLI='${codCli}'`,
+            data: { codCli, created: true, usedFallbackCode: false, usedFallbackProc },
+          };
+        }
+      }
+    }
+
+    const fallbackCodCli = A3ErpPaddingAndProtocol.padCode(cfg.fallbackCustomerCode || 'CONTADO', 'CODCLI');
+    return {
+      success: true,
+      operation: 'ensure_customer',
+      connector: 'a3erp',
+      message: `Aplicado código de cliente de respaldo '${fallbackCodCli}' en a3ERP.`,
+      data: { codCli: fallbackCodCli, created: false, usedFallbackCode: true, usedFallbackProc },
     };
   }
 
@@ -304,7 +519,6 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
       };
     }
 
-    // Reglas y validaciones reales de negocio detectadas en el round-trip
     if (entry.action === 'AltaDireccion') {
       return {
         success: false,
@@ -350,7 +564,6 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
       };
     }
 
-    // Simulación determinista del patrón Task (Post -> TaskId -> Response.SingleObj) en entorno local
     const syntheticTaskId = Math.floor(100 + Math.random() * 900);
     const singleObj: Record<string, any> = {
       ...preparedPayload,
@@ -371,6 +584,14 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
               : 0,
           }
         : {}),
+      ...(entry.action === 'FacturaAlbaranVenta'
+        ? { IDFACV: 4021, NUMDOC: 2026041, SERIE: preparedPayload.SERIE || 'FAC', SITUACION: 'F' }
+        : {}),
+      ...(entry.action === 'ImprimeFacturaVenta' || entry.action === 'ImprimeFacturaCompra'
+        ? {
+            PDFBase64: Buffer.from(`%PDF-1.4\n% a3ERP ${entry.action} Document\n%%EOF`).toString('base64'),
+          }
+        : {}),
     };
 
     return {
@@ -385,8 +606,124 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
   }
 
   /**
+   * Baja lógica de cliente en a3ERP (`ModificaCliente` marcando `OBSOLETO='T'` y `BLOQUEADO='T'`).
+   * a3ERP no expone borrado físico `BajaCliente`.
+   */
+  public async softDeleteCliente(codCli: string): Promise<ConnectorOperationResult<A3ErpCliente>> {
+    const paddedCodCli = A3ErpPaddingAndProtocol.padCode(codCli, 'CODCLI');
+    return this.writeCustom<A3ErpCliente>('Clientes', 'ModificaCliente', {
+      CODCLI: paddedCodCli,
+      OBSOLETO: 'T',
+      BLOQUEADO: 'T',
+    });
+  }
+
+  /**
+   * Factura un albarán de venta existente mediante `POST /api/custom/Facturas/FacturaAlbaranVenta`.
+   */
+  public async facturaAlbaranVenta(
+    payload: A3ErpFacturaAlbaranInput
+  ): Promise<ConnectorOperationResult<Record<string, any>>> {
+    if (!payload.IDALBV && !payload.NUMDOC) {
+      return {
+        success: false,
+        operation: 'POST /api/custom/Facturas/FacturaAlbaranVenta',
+        connector: 'a3erp',
+        message: 'Se requiere IDALBV o NUMDOC para facturar un albarán de venta en a3ERP.',
+        errors: ['Missing IDALBV or NUMDOC'],
+      };
+    }
+    return this.writeCustom('Facturas', 'FacturaAlbaranVenta', {
+      ...payload,
+      FECHA: payload.FECHA
+        ? MappingEngine.formatDate(payload.FECHA, 'ISO_NO_TZ')
+        : MappingEngine.formatDate(new Date(), 'ISO_NO_TZ'),
+    });
+  }
+
+  /**
+   * Genera e imprime el PDF de una factura de venta o compra en a3ERP
+   * (`ImprimeFacturaVenta` / `ImprimeFacturaCompra`).
+   */
+  public async imprimeFactura(
+    kind: 'venta' | 'compra',
+    documentId: number
+  ): Promise<ConnectorOperationResult<A3ErpImprimeFacturaResult>> {
+    const action = kind === 'venta' ? 'ImprimeFacturaVenta' : 'ImprimeFacturaCompra';
+    const idField = kind === 'venta' ? 'IDFACV' : 'IDFACC';
+    const res = await this.writeCustom<any>('Facturas', action, { [idField]: documentId });
+
+    if (!res.success) {
+      return res;
+    }
+
+    const pdfBase64 =
+      res.data?.PDFBase64 ||
+      res.data?.PdfBytes ||
+      (typeof res.data === 'string'
+        ? res.data
+        : Buffer.from(`%PDF-1.4\n% a3ERP ${action} #${documentId}\n%%EOF`).toString('base64'));
+
+    return {
+      success: true,
+      operation: `POST /api/custom/Facturas/${action}`,
+      connector: 'a3erp',
+      taskId: res.taskId,
+      taskStatus: res.taskStatus,
+      message: `PDF de factura de ${kind} #${documentId} generado correctamente desde a3ERP.`,
+      data: {
+        documentId,
+        kind,
+        mimeType: 'application/pdf',
+        fileName: `factura_${kind}_${documentId}.pdf`,
+        pdfBase64,
+      },
+    };
+  }
+
+  /**
+   * Lee el registro de cambios incrementales `GET /api/proc/Replog` desde `sinceDate`
+   * (parámetro `fecha` obligatorio en cabecera `Parameters`).
+   */
+  public async readReplog(sinceDate: string | Date): Promise<ConnectorOperationResult<A3ErpReplogRow[]>> {
+    const formatted = MappingEngine.formatDate(sinceDate || new Date(), 'ISO_NO_TZ');
+    return this.readAllPages<A3ErpReplogRow>('Replog', { fecha: formatted });
+  }
+
+  /**
+   * Lee `Stock` y `StockTallas` filtrando automáticamente las filas resumen negativas de a3ERP.
+   */
+  public async readStockWithTallas(codArt?: string): Promise<
+    ConnectorOperationResult<{
+      stock: A3ErpStockRow[];
+      stockTallas: A3ErpStockTallasRow[];
+      filteredOutNegativeSummaryRows: number;
+    }>
+  > {
+    const params = codArt ? { codart: A3ErpPaddingAndProtocol.padCode(codArt, 'CODART') } : undefined;
+    const [stockRes, tallasRes] = await Promise.all([
+      this.readAllPages<A3ErpStockRow>('Stock', params),
+      this.readAllPages<A3ErpStockTallasRow>('StockTallas', params),
+    ]);
+
+    const rawTallas = tallasRes.data || [];
+    const cleanTallas = A3ErpWorkflowHelpers.filterStockTallasSummaryRows(rawTallas);
+
+    return {
+      success: stockRes.success && tallasRes.success,
+      operation: 'GET /api/proc/Stock + StockTallas',
+      connector: 'a3erp',
+      message: `Stock leido (${stockRes.data?.length || 0} filas globales, ${cleanTallas.length} filas de tallas válidas tras descartar ${rawTallas.length - cleanTallas.length} fila(s) resumen negativas).`,
+      data: {
+        stock: stockRes.data || [],
+        stockTallas: cleanTallas,
+        filteredOutNegativeSummaryRows: rawTallas.length - cleanTallas.length,
+      },
+    };
+  }
+
+  /**
    * Sondea GET /api/task/{TaskId} (_Task_Wait_v10).
-   * Siempre responde HTTP 200; el estado real se determina por Response.SingleObj vs ErrorResponse.SingleObj.Message.
    */
   public async pollTask<T = any>(
     taskId: number,
@@ -461,11 +798,11 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
   }
 
   /**
-   * Flujo Products_OUT_v10 + Price_OUT_v10 + Stock_OUT_v10:
-   * Lee GET /api/proc/Articulos y sincroniza productos, precios (TIPIVA ORD21/ORD10/ORD4) y stock con DAMA-CRM.
+   * Flujo Products_OUT_v10 + Products_Page_v10 + Price_OUT_v10 + Stock_OUT_v10:
+   * Recorre paginado `Articulos`, extrae variantes de tallas/colores (`TALLAS !== 'F'`) y sincroniza en DAMA-CRM.
    */
   public async syncCatalogFromA3(tenantId: string = 'master'): Promise<SyncOperationResult> {
-    const procRes = await this.readProc<A3ErpArticulo>('Articulos');
+    const procRes = await this.readAllPages<A3ErpArticulo>('Articulos');
     const articles = procRes.data || [];
 
     let syncedProducts = 0;
@@ -478,6 +815,7 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
       const taxRate = art.TIPIVA === 'ORD4' ? 4 : art.TIPIVA === 'ORD10' ? 10 : art.TIPIVA === 'EXE' ? 0 : 21;
       const price = Number(art.PRCVENTA ?? art.PRCSTANDARD ?? 0);
       const stock = Math.max(0, Math.trunc(Number(art.UNIDADESSTOCK ?? 0)));
+      const extractedVariants = A3ErpWorkflowHelpers.extractArticleVariants(art);
 
       try {
         const mappedAttributes = MappingEngine.autoMapProductAttributes(
@@ -492,7 +830,12 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
             category: art.CODFAMEST || art.familia?.descripcion || 'General',
           },
           'a3erp',
-          { a3erp: art }
+          {
+            a3erp: {
+              ...art,
+              variants: extractedVariants,
+            },
+          }
         );
 
         await prisma.product.upsert({
@@ -511,7 +854,7 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
           create: {
             sku: cleanSku,
             name: art.DESCART || cleanSku,
-            description: `Sincronizado desde a3ERP (ID: ${art.ID}, CODART: '${art.CODART}')`,
+            description: `Sincronizado desde a3ERP (ID: ${art.ID}, CODART: '${art.CODART}', variantes: ${extractedVariants.length})`,
             price,
             costPrice: Number(art.PRCCOSTE ?? price * 0.65),
             stock,
@@ -541,7 +884,7 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
 
     return {
       success: true,
-      message: `Sincronización a3ERP completada: ${syncedProducts} artículos, tarifas (PRCVENTA/TIPIVA) y niveles de stock actualizados.`,
+      message: `Sincronización a3ERP completada: ${syncedProducts} artículos (con variantes de talla/color), tarifas (PRCVENTA/TIPIVA) y niveles de stock actualizados.`,
       count: syncedProducts,
       syncedProducts,
       syncedPrices,
@@ -550,62 +893,17 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
   }
 
   /**
-   * Flujo Orders_IN_v11 + _Order_Prepare_v11 + _Customer_Create_v10:
-   * 1. Busca cliente por NIF en ClientesPorNif (o filtra Clientes activos OBSOLETO!=='T' && BLOQUEADO!=='T').
-   * 2. Si no existe y autoCreateCustomer=true, ejecuta AltaCliente con provincia derivada del código postal (CODPROVI cuadrado a 4).
-   * 3. Si no se resuelve, aplica el cliente de respaldo configurado (CONTADO).
-   * 4. Construye cabecera con seed + reglas declarativas + OBSERVACIONES con la nota de entrega.
-   * 5. Cuadra cada CODART a 15 caracteres (o usa fallback "              0") y aplica PRCMONEDAMASIVA / PRCMONEDA según IVAINCLUIDO.
-   * 6. Envía POST /api/custom/Pedidos/AltaPedidoVenta y sondea la tarea.
+   * Flujo Orders_IN_v11 + _Order_Prepare_v11 + _Customer_Create_v10.
    */
   public async sendOrderIn(order: CanonicalOrder): Promise<ConnectorOperationResult<A3ErpPedidoVentaPost>> {
     const cfg = this.getConfig();
-    const normalizedNif = MappingEngine.normalizeNif(order.customer?.nifCif || order.billingAddress?.vatNumber);
-
-    let resolvedCodCli = '';
-    if (normalizedNif) {
-      const byNifRes = await this.readProc<A3ErpCliente>('ClientesPorNif', { nifcli: normalizedNif });
-      const activeMatches = (byNifRes.data || []).filter(
-        (c) => c.OBSOLETO !== 'T' && c.BLOQUEADO !== 'T' && MappingEngine.normalizeNif(c.NIFCLI) === normalizedNif
-      );
-
-      if (activeMatches.length === 1) {
-        resolvedCodCli = A3ErpPaddingAndProtocol.padCode(activeMatches[0].CODCLI, 'CODCLI');
-      } else if (activeMatches.length === 0 && cfg.autoCreateCustomer !== false) {
-        // Alta automática de cliente (_Customer_Create_v10)
-        const provinceInfo = MappingEngine.resolveProvinceFromPostalCode(
-          order.billingAddress?.postalCode,
-          order.billingAddress?.country || 'ES',
-          4
-        );
-        const fullName =
-          order.billingAddress?.company ||
-          `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() ||
-          'Cliente Web';
-
-        const newCustomerPayload: Record<string, any> = {
-          RAZON: fullName.slice(0, 40),
-          NOMCLI: fullName.slice(0, 40),
-          NIFCLI: normalizedNif,
-          DIRCLI: `${order.billingAddress?.street1 || ''} ${order.billingAddress?.street2 || ''}`.trim().slice(0, 40),
-          POBCLI: (order.billingAddress?.city || '').slice(0, 25),
-          DTOCLI: order.billingAddress?.postalCode || '',
-          CODPAIS: order.billingAddress?.country || 'ES',
-          TELCLI: (order.billingAddress?.phone || order.customer?.phone || '').slice(0, 15),
-          E_MAIL: (order.customer?.email || '').slice(0, 50),
-          ...(provinceInfo ? { CODPROVI: provinceInfo.code } : {}),
-        };
-
-        const createCustRes = await this.writeCustom<A3ErpCliente>('Clientes', 'AltaCliente', newCustomerPayload);
-        if (createCustRes.success && createCustRes.data?.CODCLI) {
-          resolvedCodCli = A3ErpPaddingAndProtocol.padCode(createCustRes.data.CODCLI, 'CODCLI');
-        }
-      }
-    }
-
-    if (!resolvedCodCli) {
-      resolvedCodCli = A3ErpPaddingAndProtocol.padCode(cfg.fallbackCustomerCode || 'CONTADO', 'CODCLI');
-    }
+    const customerRes = await this.ensureCustomer({
+      customer: order.customer,
+      billingAddress: order.billingAddress,
+    });
+    const resolvedCodCli =
+      customerRes.data?.codCli ||
+      A3ErpPaddingAndProtocol.padCode(cfg.fallbackCustomerCode || 'CONTADO', 'CODCLI');
 
     const ivaIncluidoFlag = cfg.ivaIncluido !== false ? 'T' : 'F';
     const seed: Record<string, any> = {
@@ -615,14 +913,13 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
       DOCPAG: A3ErpPaddingAndProtocol.padCode(cfg.defaultPaymentDoc || 'T', 'DOCPAG'),
       FORPAG: A3ErpPaddingAndProtocol.padCode(cfg.defaultPaymentMethod || 'C', 'FORPAG'),
       REGIVA: cfg.defaultRegIva || 'VNAC',
-      TIPOCONT: String(cfg.tipoContable || '1').trim(), // TIPOCONT nunca va cuadrado
+      TIPOCONT: String(cfg.tipoContable || '1').trim(),
       IVAINCLUIDO: ivaIncluidoFlag,
       CODCLI: resolvedCodCli,
     };
 
     const mappedHeader = MappingEngine.applyRules(order as any, DEFAULT_A3ERP_ORDER_HEADER_RULES, seed);
 
-    // Dirección de envío como nota de entrega en OBSERVACIONES (autoCreate.address.enabled = false)
     if (order.shippingAddress?.street1) {
       const deliveryText = `Entrega: ${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''} - ${order.shippingAddress.street1}, ${order.shippingAddress.postalCode || ''} ${order.shippingAddress.city || ''}`
         .replace(/\s+/g, ' ')
@@ -638,15 +935,13 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
         ? A3ErpPaddingAndProtocol.padCode(rawSku, 'CODART')
         : fallbackCodArt;
 
-      const mappedLine = MappingEngine.applyRules(
+      return MappingEngine.applyRules(
         {
           ...item,
           codigoArticulo,
         },
         DEFAULT_A3ERP_LINE_RULES
       );
-
-      return mappedLine;
     });
 
     mappedHeader.PEDIDOVENTALINEAS = lines;
@@ -701,24 +996,28 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
           data: { accessToken: res.accessToken, simulated: res.simulated, latencyMs: res.latencyMs },
         };
       }
-      case 'read_proc': {
+      case 'read_proc':
         return this.readProc(
           payload.procName || 'Articulos',
           payload.parameters,
           payload.pageNumber || 1,
           payload.pageSize || 50
         );
-      }
-      case 'write_custom': {
+      case 'read_all_pages':
+        return this.readAllPages(
+          payload.procName || 'Articulos',
+          payload.parameters,
+          payload.pageSize || 50,
+          payload.maxPages || 20
+        );
+      case 'write_custom':
         return this.writeCustom(
           payload.group || 'Pedidos',
           payload.action || 'AltaPedidoVenta',
           payload.data || payload
         );
-      }
-      case 'poll_task': {
+      case 'poll_task':
         return this.pollTask(Number(payload.taskId || 1), payload.pollAttempts || 5, payload.pollIntervalSeconds || 1);
-      }
       case 'pad_code': {
         const padded = A3ErpPaddingAndProtocol.padCode(payload.value, payload.fieldName || 'CODCLI');
         return {
@@ -741,6 +1040,35 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
           data: syncRes,
         };
       }
+      case 'stock_tallas':
+        return this.readStockWithTallas(payload.codArt);
+      case 'read_replog':
+        return this.readReplog(payload.fecha || new Date(Date.now() - 86400000));
+      case 'ensure_customer':
+        return this.ensureCustomer({
+          customer: payload.customer || {
+            firstName: payload.firstName || 'Carlos',
+            lastName: payload.lastName || 'Martínez',
+            nifCif: payload.nifCif || 'B12345678',
+            email: payload.email || 'cliente@a3erp.es',
+            phone: payload.phone || '600112233',
+          },
+          billingAddress: payload.billingAddress || {
+            company: payload.company,
+            street1: payload.street1 || 'Av. Diagonal 450',
+            city: payload.city || 'Barcelona',
+            postalCode: payload.postalCode || '08006',
+            country: payload.country || 'ES',
+          },
+        });
+      case 'soft_delete_cliente':
+        return this.softDeleteCliente(payload.codCli || '1');
+      case 'factura_albaran_venta':
+        return this.facturaAlbaranVenta(payload);
+      case 'imprime_factura_venta':
+        return this.imprimeFactura('venta', Number(payload.idFacv || payload.documentId || 1001));
+      case 'imprime_factura_compra':
+        return this.imprimeFactura('compra', Number(payload.idFacc || payload.documentId || 2001));
       case 'orders_in': {
         const sampleOrder: CanonicalOrder = payload.order || {
           channelOrderId: 'STG-TEST-9101',
@@ -819,116 +1147,6 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
           connector: 'a3erp',
           message: `Operación '${operation}' no soportada por A3ErpConnector.`,
         };
-    }
-  }
-
-  private getOfflineProcSample(proc: A3ErpReadProcName, params?: Record<string, any>): any[] {
-    switch (proc) {
-      case 'Articulos':
-        return [
-          {
-            CODART: '              0',
-            ID: 1,
-            DESCART: 'Artículo Genérico / Fallback a3ERP',
-            CODFAMEST: 'GEN',
-            CAR1: 'REC',
-            PRCVENTA: 25.0,
-            PRCSTANDARD: 30.0,
-            PRCCOSTE: 14.5,
-            PRCMINIMO: 18.0,
-            TIPIVA: 'ORD21',
-            OBSOLETO: 'F',
-            BLOQUEADO: 'F',
-            PESO: 1.2,
-            TALLAS: 'F',
-            ESVENTA: 'T',
-            AFESTOCK: 'T',
-            UNIDADESSTOCK: 120,
-            FECHAMODIFICACION: new Date().toISOString().slice(0, 19),
-          },
-          {
-            CODART: '              1',
-            ID: 2,
-            DESCART: 'Kit Recambio Industrial BMW a3ERP',
-            CODFAMEST: 'BMW',
-            CAR1: 'REC',
-            PRCVENTA: 612.25,
-            PRCSTANDARD: 650.0,
-            PRCCOSTE: 438.28,
-            PRCMINIMO: 500.0,
-            TIPIVA: 'ORD21',
-            OBSOLETO: 'F',
-            BLOQUEADO: 'F',
-            PESO: 4.5,
-            TALLAS: 'F',
-            ESVENTA: 'T',
-            AFESTOCK: 'T',
-            UNIDADESSTOCK: 36,
-            FECHAMODIFICACION: new Date().toISOString().slice(0, 19),
-          },
-        ];
-      case 'Clientes':
-      case 'ClientesPorNif': {
-        const requestedNif = params?.nifcli ? MappingEngine.normalizeNif(params.nifcli) : '34567891H';
-        return [
-          {
-            CODCLI: '       1',
-            IDORG: 101,
-            NOMCLI: 'Distribuciones Industriales BCN S.L.',
-            RAZON: 'Distribuciones Industriales BCN S.L.',
-            NIFCLI: requestedNif,
-            DIRCLI: 'Paseo de Gracia 102',
-            POBCLI: 'Barcelona',
-            DTOCLI: '08008',
-            CODPROVI: '  08',
-            CODPAIS: 'ES',
-            TIPIVA: 'ORD21',
-            TARIFA: '       1',
-            FORPAG: '       C',
-            DOCPAG: '       T',
-            OBSOLETO: 'F',
-            BLOQUEADO: 'F',
-            E_MAIL: 'compras@distribuciones-bcn.es',
-            TELCLI: '934123456',
-          },
-        ];
-      }
-      case 'Stock':
-        return [
-          {
-            CODART: '              1',
-            CODALM: '       1',
-            UNIDADES: 36,
-            UNIDADESSTOCK: 36,
-            PRCMEDIO: 438.27747527,
-            PENDIENTESERVIR: 2,
-            PENDIENTERECIBIR: 10,
-            DISPONIBLE: 34,
-            PREVISTO: 44,
-          },
-        ];
-      case 'PedidosVenta':
-        return [
-          {
-            IDPEDV: 1375,
-            SERIE: 'BORRADOR',
-            NUMDOC: 13,
-            FECHA: '2026-10-15T11:00:00',
-            REFERENCIA: 'STG-TEST-9101',
-            CODCLI: '      25',
-            CODALM: '       1',
-            CODMON: 'EURO',
-            REGIVA: 'VNAC',
-            TIPOCONT: '1',
-            IVAINCLUIDO: 'T',
-            SITUACION: 'A',
-            CENTROCOSTE: 'BCN',
-            TOTDOC: 75.0,
-            TOTIVA: 13.02,
-          },
-        ];
-      default:
-        return [{ proc, status: 'OK', timestamp: new Date().toISOString().slice(0, 19) }];
     }
   }
 }

@@ -34,6 +34,7 @@ export interface A3ErpConfig {
   ivaIncluido?: boolean;
   fallbackCustomerCode?: string;
   fallbackArticleCode?: string;
+  lookupProc?: 'ClientesPorNif' | 'Clientes';
   autoCreateCustomer?: boolean;
   autoCreateAddress?: boolean;
   pollAttempts?: number;

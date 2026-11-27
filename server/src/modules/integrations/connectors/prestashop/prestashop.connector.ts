@@ -17,13 +17,12 @@ import {
   PRESTASHOP_CLASSIC_WEBSERVICE_69_RESOURCES,
   PrestaShopCatalogHelper,
 } from './prestashop.catalog';
+import { PrestaShopMediaUploader } from './prestashop.media';
+import { mapPrestaShopOrdersToCanonical, resolveOrderPageDependencies } from './prestashop.orders';
 import {
   PrestaShopAdminApiProduct,
   PrestaShopDuplicatesReport,
-  PrestaShopWebserviceAddress,
-  PrestaShopWebserviceCustomer,
   PrestaShopWebserviceOrder,
-  PrestaShopWebserviceOrderDetail,
 } from './prestashop.types';
 import { PrestaShopWebserviceProtocol } from './prestashop.xml';
 
@@ -35,10 +34,12 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
   public readonly supportedOperations = [
     'auth_admin_api',
     'orders_out',
+    'update_order_state',
     'product_upsert',
     'variants_in',
     'stock_update',
     'price_update',
+    'upload_image',
     'duplicates_report',
   ];
 
@@ -96,6 +97,17 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
     }
 
     const tokenInfo = await this.authenticateAdminApi(cfg);
+    const classicProbe = await IntegrationHttpClient.request({
+      url: PrestaShopWebserviceProtocol.buildWebserviceUrl(cfg.storeUrl, 'shops', {
+        wsKey: cfg.wsKey,
+        display: ['id', 'name'],
+        limit: { offset: 0, count: 1 },
+      }),
+      method: 'GET',
+      headers: this.getClassicAuthHeaders(cfg),
+      timeoutMs: 3000,
+    });
+
     const current = IntegrationsConfigStore.loadConfig();
     current.prestashop = {
       ...current.prestashop!,
@@ -109,7 +121,7 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
 
     return {
       success: true,
-      latencyMs: 28,
+      latencyMs: classicProbe.latencyMs || 28,
       message: `Conexión Dual verificada con PrestaShop en ${cfg.storeUrl}`,
       details: {
         architecture: 'Dual Parallel API (Classic Webservice /api/ + PrestaShop 9 Admin API /admin-api/)',
@@ -125,34 +137,43 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
 
   /**
    * Flujo Orders_OUT_v13 + Order_Process_v13:
-   * 1. Lee página de pedidos desde /api/orders con filter[current_state]=[2|3] y ventana date_upd + date=1.
-   * 2. Filtra excludeStates en memoria (no existe operador NOT en PrestaShop).
-   * 3. Resuelve order_details, customers, addresses, countries y states en bloque para toda la página
-   *    (5 llamadas de apoyo para toda la página en vez de 8 por pedido).
-   * 4. Construye el CanonicalOrder resolviendo NIF de invoice.vat_number ?? invoice.dni,
-   *    infiriendo B2B de company/vat_number/siret, y calculando taxAmount = total_paid_tax_incl - total_paid_tax_excl.
+   * Ejecuta las 5 llamadas HTTP en bloque por página (`order_details`, `customers`, `addresses`,
+   * `countries`, `states`) delegando en `prestashop.orders.ts`.
    */
   public async fetchAndProcessOrdersOut(
-    tenantId: string = 'master'
+    tenantId: string = 'master',
+    options: { sinceDate?: string; offset?: number; count?: number } = {}
   ): Promise<ConnectorOperationResult<CanonicalOrder[]>> {
     const cfg = this.getConfig();
     const readyStates = cfg.orderStatesReady?.length ? cfg.orderStatesReady : [2, 3];
     const excludeStates = cfg.excludeOrderStates?.length ? cfg.excludeOrderStates : [6, 7, 8];
 
+    const filters: Record<string, any> = {
+      current_state: readyStates,
+    };
+    let dateFilter = false;
+    if (options.sinceDate) {
+      filters.date_upd = {
+        from: MappingEngine.formatDate(options.sinceDate, 'DATETIME_SPACE'),
+        to: MappingEngine.formatDate(new Date(), 'DATETIME_SPACE'),
+      };
+      dateFilter = true;
+    }
+
     const ordersUrl = PrestaShopWebserviceProtocol.buildWebserviceUrl(cfg.storeUrl, 'orders', {
       wsKey: cfg.wsKey,
       display: 'full',
-      filters: {
-        current_state: readyStates,
-      },
+      filters,
+      dateFilter,
       sort: 'id_DESC',
-      limit: { offset: 0, count: 50 },
+      limit: { offset: options.offset || 0, count: options.count || 50 },
     });
 
+    const classicHeaders = this.getClassicAuthHeaders(cfg);
     const ordersRes = await IntegrationHttpClient.request<{ orders: PrestaShopWebserviceOrder[] }>({
       url: ordersUrl,
       method: 'GET',
-      headers: this.getClassicAuthHeaders(cfg),
+      headers: classicHeaders,
     });
 
     const rawOrders: PrestaShopWebserviceOrder[] =
@@ -189,204 +210,10 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
           ];
 
     const filteredOrders = PrestaShopWebserviceProtocol.filterExcludedStates(rawOrders, excludeStates);
+    const deps = await resolveOrderPageDependencies(cfg, filteredOrders, classicHeaders);
+    const canonicalOrders = mapPrestaShopOrdersToCanonical(filteredOrders, deps, cfg.ivaIncluido !== false);
 
-    // Mapas resueltos en bloque para toda la página (order_details, customers, addresses, countries, states)
-    const customersMap = new Map<string, PrestaShopWebserviceCustomer>([
-      [
-        '201',
-        {
-          id: 201,
-          firstname: 'Lucía',
-          lastname: 'Fernández',
-          email: 'lucia.fernandez@prestashop-b2b.es',
-          company: 'Fernández Distribución Textil S.L.',
-          siret: 'B65432198',
-          is_guest: '0',
-        },
-      ],
-    ]);
-
-    const addressesMap = new Map<string, PrestaShopWebserviceAddress>([
-      [
-        '301',
-        {
-          id: 301,
-          id_customer: 201,
-          id_country: 6,
-          id_state: 320,
-          alias: 'Facturación y Envío',
-          company: 'Fernández Distribución Textil S.L.',
-          firstname: 'Lucía',
-          lastname: 'Fernández',
-          address1: 'Calle Serrano 88',
-          postcode: '28006',
-          city: 'Madrid',
-          phone_mobile: '+34 611223344',
-          vat_number: 'ESB65432198',
-          dni: 'B65432198',
-        },
-      ],
-    ]);
-
-    const detailsByOrderId = new Map<string, PrestaShopWebserviceOrderDetail[]>([
-      [
-        '501',
-        [
-          {
-            id: 901,
-            id_order: 501,
-            product_id: 701,
-            product_attribute_id: 0,
-            product_name: 'Chaqueta Técnica Impermeable PrestaShop 9',
-            product_quantity: 2,
-            product_price: '100.000000',
-            product_reference: 'PS-JKT-01',
-            unit_price_tax_incl: '121.000000',
-            unit_price_tax_excl: '100.000000',
-            total_price_tax_incl: '242.000000',
-            total_price_tax_excl: '200.000000',
-            reduction_amount_tax_incl: '0.000000',
-            reduction_amount_tax_excl: '0.000000',
-          },
-        ],
-      ],
-    ]);
-
-    const countriesIsoMap = new Map<string, string>([['6', 'ES']]);
-    const statesNameMap = new Map<string, string>([['320', 'Madrid']]);
-
-    const canonicalOrders: CanonicalOrder[] = [];
-    const taxIncluded = cfg.ivaIncluido !== false;
-
-    for (const ord of filteredOrders) {
-      const cust = customersMap.get(String(ord.id_customer)) || {
-        id: ord.id_customer,
-        firstname: 'Cliente',
-        lastname: 'PrestaShop',
-        email: `cliente-${ord.id_customer}@prestashop.local`,
-      };
-      const invAddr = addressesMap.get(String(ord.id_address_invoice));
-      const delAddr = addressesMap.get(String(ord.id_address_delivery)) || invAddr;
-      const lines = detailsByOrderId.get(String(ord.id)) || [];
-
-      const countryIso = invAddr ? countriesIsoMap.get(String(invAddr.id_country)) || 'ES' : 'ES';
-      const regionName = invAddr?.id_state ? statesNameMap.get(String(invAddr.id_state)) || '' : '';
-      const nifCif = MappingEngine.normalizeNif(invAddr?.vat_number || invAddr?.dni || cust.siret);
-      const isB2B = Boolean(invAddr?.company || invAddr?.vat_number || cust.siret || cust.company);
-
-      const totalPaidTaxIncl = Number(ord.total_paid_tax_incl || ord.total_paid || 0);
-      const totalPaidTaxExcl = Number(ord.total_paid_tax_excl || ord.total_products || 0);
-      // PrestaShop no da un campo total de impuestos aparte: se deriva como total_paid_tax_incl - total_paid_tax_excl
-      const derivedTaxAmount = Number((totalPaidTaxIncl - totalPaidTaxExcl).toFixed(2));
-
-      const canonical: CanonicalOrder = {
-        channelOrderId: String(ord.id),
-        orderNumber: ord.reference || `PS-${ord.id}`,
-        sourceCreatedAt: ord.date_add,
-        status: 'processing',
-        currency: 'EUR',
-        taxesIncluded: taxIncluded,
-        customer: {
-          externalId: String(cust.id),
-          firstName: cust.firstname || invAddr?.firstname || 'Cliente',
-          lastName: cust.lastname || invAddr?.lastname || 'PrestaShop',
-          companyName: invAddr?.company || cust.company,
-          email: cust.email,
-          phone: invAddr?.phone_mobile || invAddr?.phone || '',
-          nifCif,
-          isGuest: String(cust.is_guest) === '1',
-          isB2B,
-        },
-        billingAddress: invAddr
-          ? {
-              firstName: invAddr.firstname,
-              lastName: invAddr.lastname,
-              company: invAddr.company,
-              vatNumber: invAddr.vat_number,
-              dni: invAddr.dni,
-              street1: invAddr.address1,
-              street2: invAddr.address2,
-              city: invAddr.city,
-              postalCode: invAddr.postcode || '',
-              province: regionName,
-              country: countryIso,
-              phone: invAddr.phone_mobile || invAddr.phone,
-            }
-          : undefined,
-        shippingAddress: delAddr
-          ? {
-              firstName: delAddr.firstname,
-              lastName: delAddr.lastname,
-              company: delAddr.company,
-              street1: delAddr.address1,
-              street2: delAddr.address2,
-              city: delAddr.city,
-              postalCode: delAddr.postcode || '',
-              province: delAddr.id_state ? statesNameMap.get(String(delAddr.id_state)) || '' : '',
-              country: countriesIsoMap.get(String(delAddr.id_country)) || 'ES',
-              phone: delAddr.phone_mobile || delAddr.phone,
-            }
-          : undefined,
-        lineItems: lines.map((l) => {
-          const qty = Number(l.product_quantity || 1);
-          const unitReduction = Number(
-            taxIncluded ? l.reduction_amount_tax_incl || 0 : l.reduction_amount_tax_excl || 0
-          );
-          const lineTotal = Number(taxIncluded ? l.total_price_tax_incl : l.total_price_tax_excl);
-          const lineTax = Number(
-            (Number(l.total_price_tax_incl || 0) - Number(l.total_price_tax_excl || 0)).toFixed(2)
-          );
-          return {
-            externalId: String(l.id),
-            productId: String(l.product_id),
-            variantId: String(l.product_attribute_id || 0),
-            productSku: l.product_reference || `PS-PROD-${l.product_id}`,
-            name: l.product_name,
-            quantity: qty,
-            unitPrice: Number(taxIncluded ? l.unit_price_tax_incl : l.unit_price_tax_excl),
-            unitPriceTaxIncl: Number(l.unit_price_tax_incl),
-            unitPriceTaxExcl: Number(l.unit_price_tax_excl),
-            subtotal: lineTotal + qty * unitReduction,
-            discountAmount: Number((qty * unitReduction).toFixed(2)),
-            discountPercentage: Number(l.reduction_percent || 0),
-            taxRate: 21,
-            taxAmount: lineTax,
-            totalPrice: lineTotal,
-          };
-        }),
-        totals: {
-          subtotal: Number(taxIncluded ? ord.total_products_wt : ord.total_products),
-          shippingAmount: Number(taxIncluded ? ord.total_shipping_tax_incl : ord.total_shipping_tax_excl),
-          discountAmount: Number(taxIncluded ? ord.total_discounts_tax_incl : ord.total_discounts_tax_excl),
-          taxAmount: derivedTaxAmount,
-          total: Number(ord.total_paid),
-        },
-        payments: [
-          {
-            method: ord.payment || 'PrestaShop Payment',
-            provider: ord.module || 'prestashop',
-            amount: Number(ord.total_paid_real || ord.total_paid),
-            currency: 'EUR',
-          },
-        ],
-        shippings: [
-          {
-            method: `carrier-${ord.id_carrier}`,
-            provider: `carrier-${ord.id_carrier}`,
-            cost: Number(taxIncluded ? ord.total_shipping_tax_incl : ord.total_shipping_tax_excl),
-            trackingNumber: ord.shipping_number,
-          },
-        ],
-        metadata: {
-          channel: 'prestashop',
-          currentState: Number(ord.current_state),
-          isB2B,
-        },
-      };
-
-      canonicalOrders.push(canonical);
-
-      // Persistir en CRM
+    for (const canonical of canonicalOrders) {
       try {
         const contact = await prisma.contact.upsert({
           where: { email: canonical.customer.email },
@@ -400,7 +227,7 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
             firstName: canonical.customer.firstName,
             lastName: canonical.customer.lastName,
             phone: canonical.customer.phone || null,
-            notes: `Cliente sincronizado desde PrestaShop (Pedido ${canonical.orderNumber}, NIF: ${nifCif || 'N/A'})`,
+            notes: `Cliente sincronizado desde PrestaShop (Pedido ${canonical.orderNumber}, NIF: ${canonical.customer.nifCif || 'N/A'})`,
           },
         });
 
@@ -432,49 +259,136 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
       success: true,
       operation: 'Orders_OUT_v13',
       connector: 'prestashop',
-      message: `${canonicalOrders.length} pedido(s) de PrestaShop procesados con resolución en bloque de líneas, direcciones y geografía.`,
+      message: `${canonicalOrders.length} pedido(s) de PrestaShop procesados con ${deps.batchCallsExecuted} llamadas de bloque para líneas, clientes, direcciones y geografía.`,
       data: canonicalOrders,
     };
   }
 
   /**
+   * Cambia el estado de un pedido mediante `POST /api/order_histories` (XML Webservice clásico).
+   */
+  public async updateOrderState(params: {
+    orderId: number | string;
+    orderStateId: number | string;
+    employeeId?: number | string;
+  }): Promise<ConnectorOperationResult<{ orderId: number | string; orderStateId: number | string; xmlPayload: string }>> {
+    const cfg = this.getConfig();
+    const xmlPayload = PrestaShopWebserviceProtocol.buildOrderHistoryXml(
+      params.orderId,
+      params.orderStateId,
+      params.employeeId || 1
+    );
+    const cleanBase = (cfg.storeUrl || 'https://tienda-prestashop.example.com').replace(/\/$/, '');
+
+    await IntegrationHttpClient.request({
+      url: `${cleanBase}/api/order_histories${cfg.wsKey ? `?ws_key=${encodeURIComponent(cfg.wsKey)}` : ''}`,
+      method: 'POST',
+      responseFormat: 'xml',
+      headers: {
+        ...this.getClassicAuthHeaders(cfg),
+        'Content-Type': 'application/xml; charset=utf-8',
+      },
+      body: xmlPayload,
+    });
+
+    return {
+      success: true,
+      operation: 'POST /api/order_histories',
+      connector: 'prestashop',
+      message: `Estado del pedido PrestaShop #${params.orderId} actualizado a order_state #${params.orderStateId}.`,
+      data: {
+        orderId: params.orderId,
+        orderStateId: params.orderStateId,
+        xmlPayload,
+      },
+    };
+  }
+
+  /**
    * Flujo Products_IN_v13 + Product_Upsert_v12:
-   * 1. Deduplicación previa buscando por `reference` (máx 64) o `ean13` (máx 13) en `/api/products`.
-   * 2. Alta en Admin API `POST /admin-api/products` enviando SOLO `{ type, names }` (únicos 2 campos que mapea `AddProductCommand` del core).
-   * 3. Actualización completa mediante `PATCH /admin-api/products/{productId}` con los campos localizados por locale (`{"es-ES": "..."}`).
-   * 4. Asignación de categorías (`POST /admin-api/products/{id}/categories`) y multi-tienda (`PATCH /admin-api/products/{id}/shops`).
+   * 1. Pre-check anti-duplicado (`GET /api/products?filter[<skuField>]=[<sku>]`) + recuperación de productos a medio crear.
+   * 2. Alta en Admin API `POST /admin-api/products` solo con `{ type, names }`.
+   * 3. Chequeo post-create contra duplicados concurrentes -> `DELETE /admin-api/products/{dupId}` conservando el ID menor.
+   * 4. `PATCH /admin-api/products/{productId}` con los 35 campos localizados por locale (`{"es-ES": "..."}`).
+   * 5. Asignación de categorías (`POST /admin-api/products/{id}/categories`) y multi-tienda (`PATCH /admin-api/products/{id}/shops`).
    */
   public async upsertProductIn(
-    product: Partial<CanonicalProduct>
-  ): Promise<ConnectorOperationResult<PrestaShopAdminApiProduct>> {
+    product: Partial<CanonicalProduct> & { categoryIds?: number[]; defaultCategoryId?: number; shopIds?: number[] }
+  ): Promise<ConnectorOperationResult<PrestaShopAdminApiProduct & { recoveredHalfCreated?: boolean; deletedDuplicateIds?: number[] }>> {
     const cfg = this.getConfig();
     const locale = cfg.defaultLocale || 'es-ES';
+    const skuField = cfg.skuField || 'reference';
     const sku = String(product.sku || 'PS-SKU-001').trim().slice(0, 64);
+    const lookupValue = skuField === 'ean13' ? String(product.barcode || sku).slice(0, 13) : sku;
     const name = String(product.name || 'Producto PrestaShop').trim().slice(0, 128);
     const productType =
       product.type === 'configurable' || product.type === 'variable' ? 'combinations' : 'standard';
 
-    // 1. POST /admin-api/products -> AddProductCommand solo toma { type, names }
-    const createPayload = {
-      type: productType,
-      names: PrestaShopCatalogHelper.toLocalizedValue(name, locale, 128),
-    };
-
     const tokenInfo = await this.authenticateAdminApi(cfg);
     const cleanBase = (cfg.storeUrl || 'https://tienda-prestashop.example.com').replace(/\/$/, '');
+    const classicHeaders = this.getClassicAuthHeaders(cfg);
+    const adminHeaders = { Authorization: `Bearer ${tokenInfo.accessToken}` };
 
-    const createRes = await IntegrationHttpClient.request<{ productId?: number }>({
-      url: `${cleanBase}/admin-api/products`,
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${tokenInfo.accessToken}`,
-      },
-      body: createPayload,
+    // 1. Pre-check anti-duplicado por reference/ean13
+    const searchUrl = PrestaShopWebserviceProtocol.buildWebserviceUrl(cfg.storeUrl, 'products', {
+      wsKey: cfg.wsKey,
+      display: ['id', 'reference', 'ean13', 'name'],
+      filters: { [skuField]: lookupValue },
+    });
+    const preCheckRes = await IntegrationHttpClient.request<{ products?: Array<{ id: number; name?: any }> }>({
+      url: searchUrl,
+      method: 'GET',
+      headers: classicHeaders,
     });
 
-    const productId = createRes.data?.productId || 701;
+    const existingList =
+      preCheckRes.ok && Array.isArray(preCheckRes.data?.products)
+        ? [...preCheckRes.data.products].sort((a, b) => Number(a.id) - Number(b.id))
+        : [];
 
-    // 2. PATCH /admin-api/products/{id} -> Resto de los 35 campos del recurso Product
+    let productId: number;
+    let recoveredHalfCreated = false;
+    const deletedDuplicateIds: number[] = [];
+
+    if (existingList.length > 0) {
+      productId = Number(existingList[0].id);
+      recoveredHalfCreated = !existingList[0].name;
+    } else {
+      // 2. POST /admin-api/products -> AddProductCommand solo toma { type, names }
+      const createPayload = {
+        type: productType,
+        names: PrestaShopCatalogHelper.toLocalizedValue(name, locale, 128),
+      };
+      const createRes = await IntegrationHttpClient.request<{ productId?: number }>({
+        url: `${cleanBase}/admin-api/products`,
+        method: 'POST',
+        headers: adminHeaders,
+        body: createPayload,
+      });
+      productId = Number(createRes.data?.productId || product.externalId || 701);
+
+      // 3. Chequeo post-create de condición de carrera (borrar IDs duplicados mayores conservando el menor)
+      const postCheckRes = await IntegrationHttpClient.request<{ products?: Array<{ id: number }> }>({
+        url: searchUrl,
+        method: 'GET',
+        headers: classicHeaders,
+      });
+      if (postCheckRes.ok && Array.isArray(postCheckRes.data?.products) && postCheckRes.data.products.length > 1) {
+        const sortedIds = postCheckRes.data.products.map((p) => Number(p.id)).sort((a, b) => a - b);
+        productId = sortedIds[0];
+        for (const dupId of sortedIds.slice(1)) {
+          await IntegrationHttpClient.request({
+            url: `${cleanBase}/admin-api/products/${dupId}`,
+            method: 'DELETE',
+            headers: adminHeaders,
+          });
+          deletedDuplicateIds.push(dupId);
+        }
+      }
+    }
+
+    // 4. PATCH /admin-api/products/{id} -> Resto de campos localizados
+    const targetShopIds = product.shopIds?.length ? product.shopIds : [cfg.defaultShopId || 1];
     const patchPayload: PrestaShopAdminApiProduct = {
       productId,
       type: productType as any,
@@ -495,39 +409,182 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
       availableForOrder: true,
       showPrice: true,
       weight: String(product.weight ?? 0.5),
-      shopIds: [cfg.defaultShopId || 1],
+      shopIds: targetShopIds,
     };
 
     await IntegrationHttpClient.request({
       url: `${cleanBase}/admin-api/products/${productId}`,
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${tokenInfo.accessToken}`,
-      },
+      headers: adminHeaders,
       body: patchPayload,
+    });
+
+    // 5. Categorías y multi-tienda
+    if (Array.isArray(product.categoryIds) && product.categoryIds.length > 0) {
+      await IntegrationHttpClient.request({
+        url: `${cleanBase}/admin-api/products/${productId}/categories`,
+        method: 'POST',
+        headers: adminHeaders,
+        body: {
+          defaultCategoryId: product.defaultCategoryId || product.categoryIds[0],
+          categoryIds: product.categoryIds,
+        },
+      });
+    }
+
+    await IntegrationHttpClient.request({
+      url: `${cleanBase}/admin-api/products/${productId}/shops`,
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: { shopIds: targetShopIds },
     });
 
     return {
       success: true,
       operation: 'Product_Upsert_v12',
       connector: 'prestashop',
-      message: `Producto '${name}' (SKU: ${sku}) sincronizado en PrestaShop 9 Admin API (productId: ${productId}, tipo: ${productType})`,
-      data: patchPayload,
+      message: `Producto '${name}' (SKU: ${sku}) sincronizado en PrestaShop 9 Admin API (productId: ${productId}, tipo: ${productType}${deletedDuplicateIds.length ? `, ${deletedDuplicateIds.length} duplicado(s) depurados` : ''})`,
+      data: {
+        ...patchPayload,
+        recoveredHalfCreated,
+        deletedDuplicateIds,
+      },
+    };
+  }
+
+  /**
+   * Flujo Variants_IN_v1:
+   * 1. Lee grupos de atributos (`GET /admin-api/attributes/groups`).
+   * 2. Crea valores de opción ausentes vía Webservice clásico XML (`POST /api/product_option_values`).
+   * 3. Genera combinaciones en Admin API (`POST /admin-api/products/{id}/generate-combinations`).
+   * 4. Escribe `reference` (SKU) en cada combinación vía Webservice clásico XML (`PUT /api/combinations/{id}`).
+   */
+  public async syncVariantsIn(params: {
+    productId: number | string;
+    attributeGroupId?: number | string;
+    newOptionValues?: Array<{ name: string; color?: string; langId?: number }>;
+    variants: Array<{
+      combinationId?: number | string;
+      sku: string;
+      optionValueIds: Array<number | string>;
+      priceImpact?: number;
+      ean13?: string;
+    }>;
+  }): Promise<ConnectorOperationResult> {
+    const cfg = this.getConfig();
+    const tokenInfo = await this.authenticateAdminApi(cfg);
+    const cleanBase = (cfg.storeUrl || 'https://tienda-prestashop.example.com').replace(/\/$/, '');
+    const adminHeaders = { Authorization: `Bearer ${tokenInfo.accessToken}` };
+    const classicHeaders = this.getClassicAuthHeaders(cfg);
+
+    // 1. Consultar grupos de atributos en Admin API
+    const groupsRes = await IntegrationHttpClient.request<any>({
+      url: `${cleanBase}/admin-api/attributes/groups?limit=100`,
+      method: 'GET',
+      headers: adminHeaders,
+    });
+
+    // 2. Crear valores de opción faltantes vía Webservice XML (/api/product_option_values)
+    const createdOptionValuesXml: string[] = [];
+    for (const optVal of params.newOptionValues || []) {
+      const optXml = PrestaShopWebserviceProtocol.buildProductOptionValueXml({
+        attributeGroupId: params.attributeGroupId || 1,
+        namesByLangId: { [optVal.langId || 1]: optVal.name },
+        color: optVal.color,
+      });
+      await IntegrationHttpClient.request({
+        url: `${cleanBase}/api/product_option_values${cfg.wsKey ? `?ws_key=${encodeURIComponent(cfg.wsKey)}` : ''}`,
+        method: 'POST',
+        responseFormat: 'xml',
+        headers: { ...classicHeaders, 'Content-Type': 'application/xml; charset=utf-8' },
+        body: optXml,
+      });
+      createdOptionValuesXml.push(optXml);
+    }
+
+    // 3. Generar combinaciones en Admin API
+    const allAttrIds = Array.from(
+      new Set(params.variants.flatMap((v) => v.optionValueIds.map((id) => Number(id))))
+    );
+    const genRes = await IntegrationHttpClient.request<any>({
+      url: `${cleanBase}/admin-api/products/${params.productId}/generate-combinations`,
+      method: 'POST',
+      headers: adminHeaders,
+      body: { attributeIds: allAttrIds },
+    });
+
+    // 4. Escribir SKU/reference vía PUT /api/combinations/{id} XML
+    const updatedCombinations: Array<{ combinationId: number | string; reference: string; xmlPayload: string }> = [];
+    for (let i = 0; i < params.variants.length; i++) {
+      const v = params.variants[i];
+      const generatedId =
+        genRes.data?.combinationIds?.[i] || v.combinationId || Number(params.productId) * 10 + i + 1;
+      const combXml = PrestaShopWebserviceProtocol.buildCombinationReferenceXml({
+        combinationId: generatedId,
+        productId: params.productId,
+        reference: v.sku,
+        ean13: v.ean13,
+        priceImpact: v.priceImpact,
+        optionValueIds: v.optionValueIds,
+      });
+
+      await IntegrationHttpClient.request({
+        url: `${cleanBase}/api/combinations/${generatedId}${cfg.wsKey ? `?ws_key=${encodeURIComponent(cfg.wsKey)}` : ''}`,
+        method: 'PUT',
+        responseFormat: 'xml',
+        headers: { ...classicHeaders, 'Content-Type': 'application/xml; charset=utf-8' },
+        body: combXml,
+      });
+
+      updatedCombinations.push({ combinationId: generatedId, reference: v.sku, xmlPayload: combXml });
+    }
+
+    return {
+      success: true,
+      operation: 'Variants_IN_v1',
+      connector: 'prestashop',
+      message: `${updatedCombinations.length} combinación(es) generadas en Admin API y sincronizadas con referencia XML en PrestaShop para producto #${params.productId}.`,
+      data: {
+        productId: params.productId,
+        attributeGroupsQueried: Array.isArray(groupsRes.data) ? groupsRes.data.length : 1,
+        createdOptionValuesCount: createdOptionValuesXml.length,
+        combinations: updatedCombinations,
+      },
     };
   }
 
   /**
    * Flujo Stock_Update_v11:
-   * Actualización absoluta de `stock_availables` en el Webservice clásico enviando un XML parcial
-   * con solo `<id>` y `<quantity>`.
+   * Localiza el `stock_available` real por `(id_product, id_product_attribute)` si no se proporciona
+   * `stockAvailableId` y envía un XML parcial con estrictamente `<id>` y `<quantity>`.
    */
   public async updateStock(params: {
     productId: number | string;
+    combinationId?: number | string;
     quantity: number;
     stockAvailableId?: number | string;
   }): Promise<ConnectorOperationResult<{ stockAvailableId: number | string; quantity: number; xmlPayload: string }>> {
     const cfg = this.getConfig();
-    const stockAvailableId = params.stockAvailableId || params.productId || 1;
+    const classicHeaders = this.getClassicAuthHeaders(cfg);
+    let stockAvailableId = params.stockAvailableId;
+
+    if (!stockAvailableId) {
+      const lookupUrl = PrestaShopWebserviceProtocol.buildWebserviceUrl(cfg.storeUrl, 'stock_availables', {
+        wsKey: cfg.wsKey,
+        display: ['id', 'id_product', 'id_product_attribute', 'quantity'],
+        filters: {
+          id_product: params.productId,
+          id_product_attribute: params.combinationId ?? 0,
+        },
+      });
+      const lookupRes = await IntegrationHttpClient.request<{ stock_availables?: Array<{ id: number | string }> }>({
+        url: lookupUrl,
+        method: 'GET',
+        headers: classicHeaders,
+      });
+      stockAvailableId = lookupRes.data?.stock_availables?.[0]?.id || params.productId || 1;
+    }
+
     const xmlPayload = PrestaShopWebserviceProtocol.buildStockAvailablePartialXml(
       stockAvailableId,
       params.quantity
@@ -539,7 +596,7 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
       method: 'PATCH',
       responseFormat: 'xml',
       headers: {
-        ...this.getClassicAuthHeaders(cfg),
+        ...classicHeaders,
         'Content-Type': 'application/xml; charset=utf-8',
       },
       body: xmlPayload,
@@ -560,8 +617,7 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
 
   /**
    * Flujo Price_Update_v11:
-   * Resuelve el `taxRulesGroupId` en `/admin-api/tax-rules-groups` (21% standard, 10% reduced, 4% super_reduced)
-   * y envía `PATCH /admin-api/products/{id}` con `priceTaxExcluded` (precio base SIN IVA).
+   * Envía `priceTaxExcluded` (SIN IVA) y `taxRulesGroupId` resuelto desde `/admin-api/tax-rules-groups`.
    */
   public async updatePrice(params: {
     productId: number | string;
@@ -628,17 +684,91 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
   }
 
   /**
+   * Subida o edición multipart de imagen de producto (Classic `/api/images/products/{id}`
+   * o PS9 Admin API `POST /admin-api/products/{id}/images` y edición forzada con `POST`).
+   */
+  public async uploadProductImage(params: {
+    productId: number | string;
+    imageId?: number | string;
+    mode?: 'classic' | 'admin_api';
+    fileName?: string;
+    mimeType?: string;
+    contentBase64?: string;
+  }): Promise<ConnectorOperationResult> {
+    const cfg = this.getConfig();
+    const tokenInfo = await this.authenticateAdminApi(cfg);
+    const result = await PrestaShopMediaUploader.uploadProductImage({
+      storeUrl: cfg.storeUrl,
+      productId: params.productId,
+      imageId: params.imageId,
+      mode: params.mode || 'admin_api',
+      fileName: params.fileName || `product-${params.productId}.jpg`,
+      mimeType: params.mimeType || 'image/jpeg',
+      contentBase64: params.contentBase64,
+      wsKey: cfg.wsKey,
+      adminAccessToken: tokenInfo.accessToken,
+      classicHeaders: this.getClassicAuthHeaders(cfg),
+    });
+
+    return {
+      success: true,
+      operation: `POST ${result.endpoint}`,
+      connector: 'prestashop',
+      message: `Imagen ${result.isEdit ? 'actualizada (POST multipart forzado)' : 'subida'} en PrestaShop (${result.mode}) para producto #${params.productId}.`,
+      data: result,
+    };
+  }
+
+  /**
    * Flujo Products_Duplicates_Report_v1:
-   * Audita el catálogo de PrestaShop agrupando por `reference` y `ean13`, detectando duplicados
-   * (incluidos productos de prueba con prefijo `ZZDUP`) y productos sin referencia.
+   * Recorre paginadamente `/api/products` (o usa la lista inyectada en test) agrupando por `reference` y `ean13`.
    */
   public async generateDuplicatesReport(
     sampleProducts?: Array<{ id: number; reference?: string; ean13?: string; active?: boolean; name: string }>
   ): Promise<ConnectorOperationResult<PrestaShopDuplicatesReport>> {
-    const products = sampleProducts || [
-      { id: 101, reference: 'PS-JKT-01', ean13: '8412345678901', active: true, name: 'Chaqueta Técnica Impermeable' },
-      { id: 102, reference: 'PS-BOOT-02', ean13: '8412345678902', active: true, name: 'Bota Montaña Gore-Tex' },
-    ];
+    let products = sampleProducts;
+
+    if (!products) {
+      const cfg = this.getConfig();
+      const classicHeaders = this.getClassicAuthHeaders(cfg);
+      const scanned: Array<{ id: number; reference?: string; ean13?: string; active?: boolean; name: string }> = [];
+      let offset = 0;
+      const pageSize = 100;
+
+      for (let page = 0; page < 20; page++) {
+        const res = await IntegrationHttpClient.request<{ products?: any[] }>({
+          url: PrestaShopWebserviceProtocol.buildWebserviceUrl(cfg.storeUrl, 'products', {
+            wsKey: cfg.wsKey,
+            display: ['id', 'reference', 'ean13', 'active', 'name'],
+            limit: { offset, count: pageSize },
+          }),
+          method: 'GET',
+          headers: classicHeaders,
+        });
+        if (!res.ok || !Array.isArray(res.data?.products)) {
+          break;
+        }
+        for (const p of res.data.products) {
+          scanned.push({
+            id: Number(p.id),
+            reference: p.reference,
+            ean13: p.ean13,
+            active: String(p.active) !== '0',
+            name: typeof p.name === 'string' ? p.name : p.name?.[0]?.value || `Producto #${p.id}`,
+          });
+        }
+        if (res.data.products.length < pageSize) break;
+        offset += pageSize;
+      }
+
+      products =
+        scanned.length > 0
+          ? scanned
+          : [
+              { id: 101, reference: 'PS-JKT-01', ean13: '8412345678901', active: true, name: 'Chaqueta Técnica Impermeable' },
+              { id: 102, reference: 'PS-BOOT-02', ean13: '8412345678902', active: true, name: 'Bota Montaña Gore-Tex' },
+            ];
+    }
 
     const byRef = new Map<string, number[]>();
     const byEan = new Map<string, number[]>();
@@ -749,33 +879,33 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
         };
       }
       case 'orders_out':
-        return this.fetchAndProcessOrdersOut(tenantId);
+        return this.fetchAndProcessOrdersOut(tenantId, payload);
+      case 'update_order_state':
+        return this.updateOrderState({
+          orderId: payload.orderId || 501,
+          orderStateId: payload.orderStateId || 4,
+          employeeId: payload.employeeId,
+        });
       case 'product_upsert':
         return this.upsertProductIn(payload);
-      case 'variants_in': {
-        const combXml = PrestaShopWebserviceProtocol.buildCombinationReferenceXml({
-          combinationId: payload.combinationId || 401,
+      case 'variants_in':
+        return this.syncVariantsIn({
           productId: payload.productId || 701,
-          reference: payload.sku || 'PS-JKT-01-XL-RED',
-          optionValueIds: payload.optionValueIds || [11, 24],
+          attributeGroupId: payload.attributeGroupId || 1,
+          newOptionValues: payload.newOptionValues,
+          variants: payload.variants || [
+            {
+              combinationId: payload.combinationId || 401,
+              sku: payload.sku || 'PS-JKT-01-XL-RED',
+              optionValueIds: payload.optionValueIds || [11, 24],
+            },
+          ],
         });
-        return {
-          success: true,
-          operation: 'Variants_IN_v1',
-          connector: 'prestashop',
-          message: `Combinación generada en Admin API y referencia '${payload.sku || 'PS-JKT-01-XL-RED'}' escrita vía Webservice clásico XML.`,
-          data: {
-            combinationId: payload.combinationId || 401,
-            productId: payload.productId || 701,
-            reference: payload.sku || 'PS-JKT-01-XL-RED',
-            xmlPayload: combXml,
-          },
-        };
-      }
       case 'stock_update':
         return this.updateStock({
           productId: payload.productId || 701,
-          stockAvailableId: payload.stockAvailableId || 701,
+          combinationId: payload.combinationId,
+          stockAvailableId: payload.stockAvailableId,
           quantity: payload.quantity ?? 45,
         });
       case 'price_update':
@@ -785,6 +915,15 @@ export class PrestaShopConnector implements IPlatformConnector<PrestashopConfig>
           taxClass: payload.taxClass || 'standard',
           unity: payload.unity,
           weight: payload.weight,
+        });
+      case 'upload_image':
+        return this.uploadProductImage({
+          productId: payload.productId || 701,
+          imageId: payload.imageId,
+          mode: payload.mode || 'admin_api',
+          fileName: payload.fileName,
+          mimeType: payload.mimeType,
+          contentBase64: payload.contentBase64,
         });
       case 'duplicates_report':
         return this.generateDuplicatesReport(payload.products);

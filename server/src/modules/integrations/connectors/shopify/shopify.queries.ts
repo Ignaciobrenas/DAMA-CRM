@@ -367,4 +367,50 @@ export const SHOPIFY_GRAPHQL_QUERIES = {
       }
     }
   `,
+
+  METAFIELDS_SET_MUTATION: `
+    mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
+      metafieldsSet(metafields: $metafields) {
+        metafields {
+          id
+          namespace
+          key
+          value
+          type
+        }
+        userErrors {
+          field
+          message
+          code
+        }
+      }
+    }
+  `,
+
+  PRICE_LISTS_QUERY: `
+    query PriceListsCatalog($first: Int!, $after: String) {
+      priceLists(first: $first, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          name
+          currency
+          parent {
+            adjustment {
+              type
+              value
+            }
+          }
+          catalog {
+            id
+            title
+            status
+          }
+        }
+      }
+    }
+  `,
 };

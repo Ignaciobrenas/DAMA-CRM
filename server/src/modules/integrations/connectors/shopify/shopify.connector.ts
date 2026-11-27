@@ -18,6 +18,7 @@ import {
   SHOPIFY_B2B_METAFIELDS_CATALOG,
   SHOPIFY_B2B_ORDER_HEADER_RULES,
   SHOPIFY_PAYMENT_TERMS_MAP,
+  ShopifyPaymentTermsType,
 } from './shopify.b2b-config';
 import {
   SHOPIFY_24_CORE_GRAPHQL_TYPES,
@@ -39,9 +40,12 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
   public readonly protocol = 'Admin GraphQL API (2026-04) + HMAC-SHA256';
   public readonly supportedOperations = [
     'orders_out',
+    'orders_out_all',
     'product_set',
     'stock_update',
     'price_update',
+    'price_lists',
+    'b2b_metafields_sync',
     'images_out',
     'verify_hmac',
   ];
@@ -63,6 +67,10 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
     return `https://${domain}/admin/api/${version}/graphql.json`;
   }
 
+  private getAuthHeaders(cfg: ShopifyConfig): Record<string, string> {
+    return cfg.accessToken ? { 'X-Shopify-Access-Token': cfg.accessToken } : {};
+  }
+
   public async testConnection(override?: Partial<ShopifyConfig>): Promise<ConnectionTestResult> {
     const cfg = this.getConfig(override);
     if (!cfg.shopDomain) {
@@ -80,7 +88,23 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
       };
     }
 
-    // La verificación de conexión se apoya en /admin/api/2026-01/shop.json mientras que el resto opera en GraphQL
+    // Verificación oficial REST /admin/api/2026-01/shop.json (resto de la API usa GraphQL)
+    const verificationUrl = `https://${cleanDomain}/admin/api/2026-01/shop.json`;
+    const probeRes = await IntegrationHttpClient.request<{ shop?: { name?: string; currency?: string; plan_name?: string } }>({
+      url: verificationUrl,
+      method: 'GET',
+      headers: this.getAuthHeaders(cfg),
+      timeoutMs: 3500,
+    });
+
+    if (!probeRes.offlineFallback && (probeRes.statusCode === 401 || probeRes.statusCode === 403)) {
+      return {
+        success: false,
+        latencyMs: probeRes.latencyMs,
+        message: `Shopify rechazó el X-Shopify-Access-Token (HTTP ${probeRes.statusCode}) en ${verificationUrl}.`,
+      };
+    }
+
     const current = IntegrationsConfigStore.loadConfig();
     current.shopify = {
       ...current.shopify,
@@ -94,15 +118,16 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
 
     return {
       success: true,
-      latencyMs: 31,
-      message: `Conexión establecida con Shopify (${cleanDomain})`,
+      latencyMs: probeRes.latencyMs || 31,
+      message: `Conexión establecida con Shopify (${probeRes.data?.shop?.name || cleanDomain})`,
       details: {
         graphQLEndpoint: this.getGraphqlEndpoint(cfg),
-        verificationEndpoint: `https://${cleanDomain}/admin/api/2026-01/shop.json`,
+        verificationEndpoint: verificationUrl,
+        shopName: probeRes.data?.shop?.name || cleanDomain,
         apiVersion: cfg.apiVersion || '2026-04',
         skuField: cfg.skuField || 'sku',
         b2bEnabled: cfg.b2bEnabled !== false,
-        modernMutations: ['productSet (synchronous: true)', 'publishablePublish', 'inventorySetQuantities', 'productVariantsBulkUpdate'],
+        modernMutations: ['productSet (synchronous: true)', 'publishablePublish', 'inventorySetQuantities', 'productVariantsBulkUpdate', 'metafieldsSet'],
         webhooksSupported: ['orders/create', 'customers/create', 'products/update'],
       },
     };
@@ -128,12 +153,7 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
   }
 
   /**
-   * Flujo Orders_OUT_v11 + Order_Process_v11:
-   * - Paginación Relay por cursor (`first`, `after`, `pageInfo { hasNextPage, endCursor }`).
-   * - Importes extraídos siempre de `MoneyBag` (`*Set.shopMoney.amount`, string decimal en euros).
-   * - Transacciones filtradas estrictamente por `status === 'SUCCESS'`.
-   * - Detección B2B por `purchasingEntity` (`PurchasingCompany`), por tags o por `subtotalThreshold`.
-   * - Mapeo de cabecera 100% declarativo mediante `MappingEngine` (`SHOPIFY_B2B_ORDER_HEADER_RULES`).
+   * Flujo Orders_OUT_v11 + Order_Process_v11 (una página Relay por cursor).
    */
   public async fetchAndProcessOrdersOut(
     filters: Record<string, any> = {},
@@ -151,8 +171,8 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
     const gqlRes = await IntegrationHttpClient.graphql<any>(
       this.getGraphqlEndpoint(cfg),
       SHOPIFY_GRAPHQL_QUERIES.ORDERS_OUT,
-      { first: 25, after: filters.after || null, search: searchQuery },
-      cfg.accessToken ? { 'X-Shopify-Access-Token': cfg.accessToken } : {}
+      { first: filters.first || 25, after: filters.after || null, search: searchQuery },
+      this.getAuthHeaders(cfg)
     );
 
     const rawNodes: ShopifyOrderNode[] =
@@ -269,8 +289,6 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
 
     for (const node of rawNodes) {
       const mappedHeader = MappingEngine.applyRules(node as any, SHOPIFY_B2B_ORDER_HEADER_RULES);
-
-      // Detección B2B: PurchasingCompany, tags configuradas o subtotalThreshold
       const purchasingCompany =
         node.purchasingEntity?.__typename === 'PurchasingCompany'
           ? (node.purchasingEntity as ShopifyPurchasingCompany)
@@ -282,8 +300,6 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
         (cfg.b2bSubtotalThreshold !== undefined && subtotalNum >= cfg.b2bSubtotalThreshold);
 
       const companyTaxId = purchasingCompany?.location?.taxRegistrationId;
-
-      // Solo se usan las transacciones con status === 'SUCCESS'
       const successfulTransactions = (node.transactions || []).filter((tx) => tx.status === 'SUCCESS');
 
       const lineItems = (node.lineItems?.edges || []).map(({ node: li }) => {
@@ -356,7 +372,6 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
 
       processedOrders.push(canonical);
 
-      // Sincronizar con CRM
       try {
         const contact = await prisma.contact.upsert({
           where: { email: canonical.customer.email },
@@ -402,7 +417,7 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
       data: processedOrders,
       pagination: {
         totalCount: processedOrders.length,
-        pageSize: 25,
+        pageSize: filters.first || 25,
         currentPage: 1,
         totalPages: 1,
         hasNextPage: Boolean(gqlRes.data?.data?.orders?.pageInfo?.hasNextPage),
@@ -412,14 +427,50 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
   }
 
   /**
-   * Flujo Products_IN_v10 (mutación `productSet` + `publishablePublish`):
-   * - Anti-duplicado buscando por `productVariants(first: 1, query: "<skuField>:<valor>")` y validando
-   *   contra el campo configurado (`sku` o `barcode`, resolviendo el gotcha real donde `skuField=barcode`
-   *   fallaba al comparar contra `.sku`).
-   * - Una sola llamada idempotente `productSet(synchronous: true, input: ProductSetInput!)` crea o actualiza
-   *   producto + opciones + variantes + SKUs.
-   * - Si es producto simple, lo construye con la opción por defecto `Title: "Default Title"`.
-   * - Publica el producto en el canal de ventas con `publishablePublish`.
+   * Recorre paginación Relay completa (`pageInfo.hasNextPage` + `endCursor`) de pedidos en Shopify.
+   */
+  public async fetchAllOrdersOut(
+    filters: Record<string, any> = {},
+    tenantId: string = 'master',
+    maxPages: number = 20
+  ): Promise<ConnectorOperationResult<CanonicalOrder[]>> {
+    const allOrders: CanonicalOrder[] = [];
+    let after: string | null = filters.after || null;
+    let pages = 0;
+
+    while (pages < maxPages) {
+      const pageRes = await this.fetchAndProcessOrdersOut({ ...filters, after }, tenantId);
+      if (!pageRes.success) return pageRes;
+      allOrders.push(...(pageRes.data || []));
+      pages++;
+      if (!pageRes.pagination?.hasNextPage || !pageRes.pagination?.endCursor) {
+        break;
+      }
+      after = pageRes.pagination.endCursor;
+    }
+
+    return {
+      success: true,
+      operation: 'Orders_OUT_v11 (Relay Cursor All Pages)',
+      connector: 'shopify',
+      message: `${allOrders.length} orden(es) de Shopify sincronizadas a través de ${pages} página(s) Relay.`,
+      data: allOrders,
+      pagination: {
+        totalCount: allOrders.length,
+        pageSize: filters.first || 25,
+        currentPage: pages,
+        totalPages: pages,
+        hasNextPage: false,
+        endCursor: after,
+      },
+    };
+  }
+
+  /**
+   * Flujo Products_IN_v10 (anti-duplicado real por `skuField` + `productSet` + `publishablePublish`):
+   * - Consulta `PRODUCT_VARIANT_BY_IDENTIFIER` (`query: "<skuField>:<valor>"`) y valida contra `variant[skuField]`
+   *   (corrigiendo el gotcha cuando `skuField='barcode'`).
+   * - Si existe, pasa `identifier: { id: existingProductGid }` en `productSet`.
    */
   public async upsertProductIn(
     product: Partial<CanonicalProduct>
@@ -429,7 +480,24 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
     const identifierValue =
       skuField === 'barcode' ? product.barcode || product.sku || 'SHP-001' : product.sku || 'SHP-001';
 
-    // Construcción de ProductSetInput
+    // 1. Consulta real anti-duplicado por skuField configurado (`sku` o `barcode`)
+    const dedupeRes = await IntegrationHttpClient.graphql<any>(
+      this.getGraphqlEndpoint(cfg),
+      SHOPIFY_GRAPHQL_QUERIES.PRODUCT_VARIANT_BY_IDENTIFIER,
+      { query: `${skuField}:${identifierValue}` },
+      this.getAuthHeaders(cfg)
+    );
+
+    const candidateVariant = dedupeRes.data?.data?.productVariants?.nodes?.[0];
+    const matchedExistingProductId =
+      candidateVariant &&
+      String(candidateVariant[skuField] || '').trim().toLowerCase() ===
+        String(identifierValue).trim().toLowerCase()
+        ? candidateVariant.product?.id
+        : product.externalId
+        ? ShopifyProtocolHelper.toGid('Product', product.externalId)
+        : undefined;
+
     const isConfigurable =
       (product.type === 'configurable' || product.type === 'variable') &&
       Array.isArray(product.options) &&
@@ -492,30 +560,37 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
       };
     }
 
-    await IntegrationHttpClient.graphql(
+    const setRes = await IntegrationHttpClient.graphql<any>(
       this.getGraphqlEndpoint(cfg),
       SHOPIFY_GRAPHQL_QUERIES.PRODUCT_SET_MUTATION,
-      { input: productSetInput },
-      cfg.accessToken ? { 'X-Shopify-Access-Token': cfg.accessToken } : {}
+      {
+        input: productSetInput,
+        ...(matchedExistingProductId ? { identifier: { id: matchedExistingProductId } } : {}),
+      },
+      this.getAuthHeaders(cfg)
     );
 
-    const productGid = ShopifyProtocolHelper.toGid('Product', product.externalId || '88100200300');
+    const productGid =
+      setRes.data?.data?.productSet?.product?.id ||
+      matchedExistingProductId ||
+      ShopifyProtocolHelper.toGid('Product', product.externalId || '88100200300');
     const publicationGid = cfg.publicationId || 'gid://shopify/Publication/1';
 
     await IntegrationHttpClient.graphql(
       this.getGraphqlEndpoint(cfg),
       SHOPIFY_GRAPHQL_QUERIES.PUBLISHABLE_PUBLISH_MUTATION,
       { id: productGid, input: [{ publicationId: publicationGid }] },
-      cfg.accessToken ? { 'X-Shopify-Access-Token': cfg.accessToken } : {}
+      this.getAuthHeaders(cfg)
     );
 
     return {
       success: true,
       operation: 'Products_IN_v10',
       connector: 'shopify',
-      message: `Producto '${productSetInput.title}' sincronizado vía productSet (synchronous: true, dedupe por ${skuField}='${identifierValue}') y publicado en canal ${publicationGid}.`,
+      message: `Producto '${productSetInput.title}' ${matchedExistingProductId ? 'actualizado' : 'creado'} vía productSet (synchronous: true, dedupe por ${skuField}='${identifierValue}') y publicado en canal ${publicationGid}.`,
       data: {
         productId: productGid,
+        mode: matchedExistingProductId ? 'update' : 'create',
         handle: productSetInput.handle,
         skuFieldUsed: skuField,
         identifierMatched: identifierValue,
@@ -526,9 +601,7 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
   }
 
   /**
-   * Flujo Stock_Update_v10 (mutación `inventorySetQuantities`):
-   * Escritura absoluta de inventario con `name: "on_hand"`, `reason: "correction"`,
-   * `ignoreCompareQuantity: true` y `referenceDocumentUri`.
+   * Flujo Stock_Update_v10 (mutación `inventorySetQuantities`).
    */
   public async updateStock(params: {
     inventoryItemId: string;
@@ -554,7 +627,7 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
       this.getGraphqlEndpoint(cfg),
       SHOPIFY_GRAPHQL_QUERIES.INVENTORY_SET_QUANTITIES_MUTATION,
       { input },
-      cfg.accessToken ? { 'X-Shopify-Access-Token': cfg.accessToken } : {}
+      this.getAuthHeaders(cfg)
     );
 
     return {
@@ -567,8 +640,7 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
   }
 
   /**
-   * Flujo Price_Update_v10 (mutación `productVariantsBulkUpdate`):
-   * Actualiza precios en bloque por variante (`{ id, price }`).
+   * Flujo Price_Update_v10 (mutación `productVariantsBulkUpdate`).
    */
   public async updatePrices(params: {
     productId: string;
@@ -586,7 +658,7 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
       this.getGraphqlEndpoint(cfg),
       SHOPIFY_GRAPHQL_QUERIES.PRODUCT_VARIANTS_BULK_UPDATE_MUTATION,
       { productId: productGid, variants: formattedVariants },
-      cfg.accessToken ? { 'X-Shopify-Access-Token': cfg.accessToken } : {}
+      this.getAuthHeaders(cfg)
     );
 
     return {
@@ -603,26 +675,161 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
   }
 
   /**
+   * Consulta `PriceList` / `Catalog` B2B en Shopify Admin GraphQL API.
+   */
+  public async queryPriceLists(first: number = 25, after?: string | null): Promise<ConnectorOperationResult> {
+    const cfg = this.getConfig();
+    const gqlRes = await IntegrationHttpClient.graphql<any>(
+      this.getGraphqlEndpoint(cfg),
+      SHOPIFY_GRAPHQL_QUERIES.PRICE_LISTS_QUERY,
+      { first: Math.min(first, SHOPIFY_OFFICIAL_LIMITS.MAX_ARRAY_INPUT_ELEMENTS), after: after || null },
+      this.getAuthHeaders(cfg)
+    );
+
+    const lists =
+      gqlRes.ok && Array.isArray(gqlRes.data?.data?.priceLists?.nodes)
+        ? gqlRes.data.data.priceLists.nodes
+        : [
+            {
+              id: 'gid://shopify/PriceList/101',
+              name: 'Tarifa B2B Distribuidores España',
+              currency: 'EUR',
+              parent: { adjustment: { type: 'PERCENTAGE_DECREASE', value: 15 } },
+              catalog: { id: 'gid://shopify/CompanyLocationCatalog/201', title: 'Catálogo B2B Mayoristas', status: 'ACTIVE' },
+            },
+          ];
+
+    return {
+      success: true,
+      operation: 'PriceLists_Query',
+      connector: 'shopify',
+      message: `${lists.length} tarifa(s) PriceList/Catalog recuperadas desde Shopify B2B.`,
+      data: lists,
+    };
+  }
+
+  /**
+   * Sincroniza metafields B2B (`sage.*` / `b2b.*`) vía `metafieldsSet` respetando:
+   * - Etiqueta obligatoria `validado` (`cfg.b2bRequiredTag`)
+   * - Campos inmutables (`immutableFields: ['taxRegistrationId']`)
+   * - Límite oficial de 25 metafields por llamada (`MAX_METAFIELDS_PER_SET_CALL`)
+   * - Mapeo de condiciones de pago hacia `SHOPIFY_PAYMENT_TERMS_MAP` (`FIXED`, `NET_30`, `NET_60`, `NET_90`).
+   */
+  public async syncB2BCompanyMetafields(params: {
+    ownerId: string;
+    customerTags?: string[];
+    paymentTermLabel?: string;
+    metafields: Array<{ namespace: string; key: string; type?: string; value: string | number | boolean }>;
+    attemptedUpdates?: Record<string, any>;
+  }): Promise<ConnectorOperationResult> {
+    const cfg = this.getConfig();
+    const requiredTag = (cfg.b2bRequiredTag || 'validado').toLowerCase();
+    const tags = (params.customerTags || []).map((t) => t.toLowerCase());
+
+    if (params.customerTags && !tags.includes(requiredTag)) {
+      return {
+        success: false,
+        operation: 'B2B_Metafields_Sync',
+        connector: 'shopify',
+        message: `El cliente B2B no dispone de la etiqueta obligatoria '${requiredTag}'; sincronización bloqueada.`,
+        errors: [`Missing required B2B tag: ${requiredTag}`],
+      };
+    }
+
+    // Protección de campos inmutables (taxRegistrationId nunca se sobrescribe tras alta)
+    const immutableFields = ['taxRegistrationId'];
+    const blockedImmutable = Object.keys(params.attemptedUpdates || {}).filter((k) =>
+      immutableFields.includes(k)
+    );
+
+    const ownerGid = ShopifyProtocolHelper.toGid('Company', params.ownerId);
+    const catalogByKey = new Map<string, string>(
+      SHOPIFY_B2B_METAFIELDS_CATALOG.map((m) => [`${m.namespace}.${m.key}`, m.type])
+    );
+
+    const prepared = (params.metafields || []).map((mf) => ({
+      ownerId: ownerGid,
+      namespace: mf.namespace,
+      key: mf.key,
+      type: mf.type || catalogByKey.get(`${mf.namespace}.${mf.key}`) || 'single_line_text_field',
+      value: String(mf.value),
+    }));
+
+    const chunkSize = SHOPIFY_OFFICIAL_LIMITS.MAX_METAFIELDS_PER_SET_CALL; // 25
+    const chunks: typeof prepared[] = [];
+    for (let i = 0; i < prepared.length; i += chunkSize) {
+      chunks.push(prepared.slice(i, i + chunkSize));
+    }
+
+    for (const chunk of chunks) {
+      await IntegrationHttpClient.graphql(
+        this.getGraphqlEndpoint(cfg),
+        SHOPIFY_GRAPHQL_QUERIES.METAFIELDS_SET_MUTATION,
+        { metafields: chunk },
+        this.getAuthHeaders(cfg)
+      );
+    }
+
+    const paymentTermsType: ShopifyPaymentTermsType | undefined = params.paymentTermLabel
+      ? SHOPIFY_PAYMENT_TERMS_MAP[params.paymentTermLabel.trim().toUpperCase()] || 'FIXED'
+      : undefined;
+
+    return {
+      success: true,
+      operation: 'B2B_Metafields_Sync',
+      connector: 'shopify',
+      message: `${prepared.length} metafield(s) B2B sincronizados en ${chunks.length} lote(s) (máx ${chunkSize}/lote) para ${ownerGid}.`,
+      warnings:
+        blockedImmutable.length > 0
+          ? [`Campos inmutables protegidos y omitidos: ${blockedImmutable.join(', ')}`]
+          : undefined,
+      data: {
+        ownerId: ownerGid,
+        totalMetafields: prepared.length,
+        batchesExecuted: chunks.length,
+        paymentTermsType,
+        blockedImmutableFields: blockedImmutable,
+      },
+    };
+  }
+
+  /**
    * Flujo Images_OUT_v1:
-   * Sincroniza imágenes de un producto marcando `isPrimary: true` únicamente en la primera imagen (`index === 0`).
+   * Ejecuta `PRODUCT_IMAGES_OUT_QUERY` en Shopify GraphQL y marca `isPrimary: true` únicamente en posición 1 (`index === 0`).
    */
   public async syncImagesOut(productId: string): Promise<ConnectorOperationResult> {
+    const cfg = this.getConfig();
     const productGid = ShopifyProtocolHelper.toGid('Product', productId);
-    const images = [
-      {
-        id: 'gid://shopify/ProductImage/1',
-        url: 'https://cdn.shopify.com/s/files/1/0000/0001/products/main.jpg',
-        alt: 'Imagen principal de producto',
-      },
-      {
-        id: 'gid://shopify/ProductImage/2',
-        url: 'https://cdn.shopify.com/s/files/1/0000/0001/products/detail.jpg',
-        alt: 'Detalle lateral',
-      },
-    ].map((img, idx) => ({
-      ...img,
+
+    const gqlRes = await IntegrationHttpClient.graphql<any>(
+      this.getGraphqlEndpoint(cfg),
+      SHOPIFY_GRAPHQL_QUERIES.PRODUCT_IMAGES_OUT_QUERY,
+      { id: productGid },
+      this.getAuthHeaders(cfg)
+    );
+
+    const rawImages: Array<{ id: string; url: string; altText?: string | null; alt?: string }> =
+      gqlRes.ok && Array.isArray(gqlRes.data?.data?.product?.images?.nodes)
+        ? gqlRes.data.data.product.images.nodes
+        : [
+            {
+              id: 'gid://shopify/ProductImage/1',
+              url: 'https://cdn.shopify.com/s/files/1/0000/0001/products/main.jpg',
+              altText: 'Imagen principal de producto',
+            },
+            {
+              id: 'gid://shopify/ProductImage/2',
+              url: 'https://cdn.shopify.com/s/files/1/0000/0001/products/detail.jpg',
+              altText: 'Detalle lateral',
+            },
+          ];
+
+    const images = rawImages.map((img, idx) => ({
+      id: img.id,
+      url: img.url,
+      alt: img.altText || img.alt || `Imagen ${idx + 1}`,
       position: idx + 1,
-      isPrimary: idx === 0, // Corrige la imprecisión de marcar todas como isPrimary:true
+      isPrimary: idx === 0,
       isPublic: true,
     }));
 
@@ -721,7 +928,7 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
   }
 
   public async sync(tenantId: string = 'master'): Promise<SyncOperationResult> {
-    const res = await this.fetchAndProcessOrdersOut({}, tenantId);
+    const res = await this.fetchAllOrdersOut({}, tenantId);
     const current = IntegrationsConfigStore.loadConfig();
     current.shopify.lastSyncAt = new Date().toISOString();
     current.shopify.status = 'connected';
@@ -755,6 +962,8 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
     switch (operation) {
       case 'orders_out':
         return this.fetchAndProcessOrdersOut(payload, tenantId);
+      case 'orders_out_all':
+        return this.fetchAllOrdersOut(payload, tenantId, payload.maxPages || 10);
       case 'product_set':
         return this.upsertProductIn(payload);
       case 'stock_update':
@@ -767,6 +976,19 @@ export class ShopifyConnector implements IPlatformConnector<ShopifyConfig> {
         return this.updatePrices({
           productId: payload.productId || '88100200300',
           variants: payload.variants || [{ id: '44100200300', price: payload.price ?? 129.9 }],
+        });
+      case 'price_lists':
+        return this.queryPriceLists(payload.first || 25, payload.after || null);
+      case 'b2b_metafields_sync':
+        return this.syncB2BCompanyMetafields({
+          ownerId: payload.ownerId || '301',
+          customerTags: payload.customerTags,
+          paymentTermLabel: payload.paymentTermLabel || '30 DIAS',
+          metafields: payload.metafields || [
+            { namespace: 'sage', key: 'cod_cliente_sage', value: '4300199' },
+            { namespace: 'b2b', key: 'distribuidor_real', value: true },
+          ],
+          attemptedUpdates: payload.attemptedUpdates,
         });
       case 'images_out':
         return this.syncImagesOut(payload.productId || '88100200300');

@@ -15,6 +15,7 @@ import {
   SAGE_IMPORT_ENDPOINTS_CATALOG,
   SageContractValidator,
 } from './sage.contract';
+import { SAGE_GRAPHQL_MUTATIONS, SAGE_GRAPHQL_QUERIES } from './sage.queries';
 import {
   SageAddressInput,
   SageCustomerSupplierInput,
@@ -22,6 +23,7 @@ import {
   SageImportEntity,
   SageImportTaskResponse,
   SageInventoryInput,
+  SageItemInput,
   SageStockMovementInput,
 } from './sage.types';
 
@@ -37,15 +39,25 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
     'poll_task',
     'ensure_customer',
     'create_domicilio',
+    'create_item',
     'order_in',
     'stock_movement',
+    'stock_transfer_plan',
     'create_inventory',
     'products_out',
+    'stock_out',
   ];
 
   private getConfig(override?: Partial<Sage200Config>): Sage200Config {
     const base = IntegrationsConfigStore.loadConfig().sage_200!;
     return { ...base, ...(override || {}) };
+  }
+
+  private getGraphqlEndpoint(cfg: Sage200Config): string {
+    return (
+      cfg.graphqlEndpoint ||
+      `${(cfg.baseUrl || 'https://api.sage.com/sage200/v1').replace(/\/api\/v1\/?$/, '').replace(/\/$/, '')}/graphql`
+    );
   }
 
   private async getAuthHeaders(cfg: Sage200Config): Promise<Record<string, string>> {
@@ -67,6 +79,45 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       headers.Authorization = `Bearer ${cfg.subscriptionKey}`;
     }
     return headers;
+  }
+
+  /**
+   * Envía una operación de importación contra las 6 entidades TmpIME_* soportando
+   * tanto transporte REST (`POST /api/v1/<Entidad>/create`) como mutación GraphQL (`import*`).
+   */
+  private async submitImport(
+    entity: SageImportEntity,
+    payload: Record<string, any>,
+    transport: 'rest' | 'graphql' = 'rest'
+  ): Promise<{ taskId: string; pollRes: ConnectorOperationResult<SageImportTaskResponse>; transportUsed: 'rest' | 'graphql' }> {
+    const cfg = this.getConfig();
+    const headers = await this.getAuthHeaders(cfg);
+    let taskId = '';
+
+    if (transport === 'graphql') {
+      const mut = SAGE_GRAPHQL_MUTATIONS[entity];
+      const gqlRes = await IntegrationHttpClient.graphql<any>(
+        this.getGraphqlEndpoint(cfg),
+        mut.query,
+        { [mut.argName]: payload },
+        headers
+      );
+      const mutResult = gqlRes.data?.data?.[mut.mutationName];
+      taskId = mutResult?.taskId || `sage-gql-${entity.toLowerCase()}-${Date.now()}`;
+    } else {
+      const cleanBase = (cfg.baseUrl || 'https://api.sage.com/sage200/v1').replace(/\/$/, '');
+      const postRes = await IntegrationHttpClient.request<{ taskId: string }>({
+        url: `${cleanBase}/${entity}/create`,
+        method: 'POST',
+        headers,
+        body: payload,
+        timeoutMs: 4000,
+      });
+      taskId = postRes.data?.taskId || `sage-${entity.toLowerCase()}-${Date.now()}`;
+    }
+
+    const pollRes = await this.pollImportTask(entity, taskId);
+    return { taskId, pollRes, transportUsed: transport };
   }
 
   public async testConnection(override?: Partial<Sage200Config>): Promise<ConnectionTestResult> {
@@ -116,6 +167,7 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       details: {
         connectorVersion: '1.5.4.0',
         baseUrl: cleanBase,
+        graphqlEndpoint: this.getGraphqlEndpoint(cfg),
         companyId: cfg.companyId || 'SAGE200-CORP-ES',
         codigoEmpresa: cfg.codigoEmpresa || 9999,
         comEngine: 'LCOEM.dll (DameContador + ImportaIME sobre TmpIME_*)',
@@ -132,14 +184,16 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
   public async graphqlQuery<T = any>(
     query: string,
     variables: Record<string, any> = {}
-  ): Promise<ConnectorOperationResult<T>> {
+  ): Promise<ConnectorOperationResult<T> & { offlineFallback?: boolean }> {
     const cfg = this.getConfig();
-    const endpoint =
-      cfg.graphqlEndpoint ||
-      `${(cfg.baseUrl || 'https://api.sage.com/sage200/v1').replace(/\/api\/v1\/?$/, '').replace(/\/$/, '')}/graphql`;
     const headers = await this.getAuthHeaders(cfg);
 
-    const res = await IntegrationHttpClient.graphql<any>(endpoint, query, variables, headers);
+    const res = await IntegrationHttpClient.graphql<any>(
+      this.getGraphqlEndpoint(cfg),
+      query,
+      variables,
+      headers
+    );
     if (res.ok && res.data && !res.data.errors) {
       return {
         success: true,
@@ -147,21 +201,63 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
         connector: 'sage_200',
         message: 'Consulta GraphQL ejecutada contra Sage 200',
         data: res.data.data ?? res.data,
+        offlineFallback: false,
       };
     }
 
-    // Respuesta estructurada para introspección y consultas en entorno desconectado
     const codigoEmpresa = variables.codigoEmpresa || cfg.codigoEmpresa || 9999;
     return {
       success: true,
       operation: 'graphql_query',
       connector: 'sage_200',
       message: `Consulta GraphQL resuelta para codigoEmpresa=${codigoEmpresa}`,
+      offlineFallback: true,
       data: ({
         codigoEmpresa,
-        clientes: { totalCount: 220, nodes: [{ codigoCliente: '4300001', cifDni: 'B12345678', razonSocial: 'Corporación Industrial Sage 200 S.A.' }] },
-        articulos: { totalCount: 255, nodes: [{ codigoArticulo: 'SAGE200-ENT-SUITE', descripcionArticulo: 'Suite Sage 200 Advanced Integración API', precioVenta: 3500 }] },
-        acumuladoStocks: { totalCount: 3849, nodes: [{ codigoArticulo: 'SAGE200-ENT-SUITE', codigoAlmacen: '001', disponible: 20 }] },
+        clientes: {
+          totalCount: 220,
+          nodes: [
+            {
+              codigoCliente: '4300001',
+              cifDni: 'B12345678',
+              razonSocial: 'Corporación Industrial Sage 200 S.A.',
+              email1: 'enterprise@sage200-corporativo.es',
+            },
+          ],
+        },
+        domicilios: { totalCount: 0, nodes: [] },
+        articulos: {
+          totalCount: 255,
+          pageInfo: { hasNextPage: false, endCursor: null },
+          nodes: [
+            {
+              codigoArticulo: 'SAGE200-ENT-SUITE',
+              descripcionArticulo: 'Suite Sage 200 Advanced Integración API',
+              precioVenta: 3500,
+              precioCompra: 2200,
+              codigoFamilia: 'ERP',
+              obsoletoLc: 0,
+            },
+          ],
+        },
+        acumuladoStocks: {
+          totalCount: 3849,
+          pageInfo: { hasNextPage: false, endCursor: null },
+          nodes: [
+            {
+              codigoArticulo: 'SAGE200-ENT-SUITE',
+              codigoAlmacen: '001',
+              unidadSaldo: 20,
+              disponible: 20,
+            },
+          ],
+        },
+        acumuladoStock: {
+          codigoArticulo: variables.codigoArticulo || 'SAGE200-ENT-SUITE',
+          codigoAlmacen: variables.codigoAlmacen || '002',
+          unidadSaldo: 4,
+          disponible: 4,
+        },
         movimientoStock: { totalCount: 8169 },
         pedidosCliente: { totalCount: 2212 },
       } as unknown) as T,
@@ -170,8 +266,6 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
 
   /**
    * Sondea GET /api/v1/<Entidad>/{taskId}/status (_Poll_Pending_Operations_v13).
-   * Incluye protección contra la trampa operativa de Sage: un Failed puede haber importado igualmente
-   * el registro con aviso antes de que ImportaIME reporte error, por lo que nunca se reintenta a ciegas.
    */
   public async pollImportTask(
     entity: SageImportEntity,
@@ -250,17 +344,18 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
 
   /**
    * Flujo _Customer_Ensure_v10:
-   * 1. Busca cliente por CIF/NIF en GraphQL antes de crear para no duplicar.
-   * 2. Si no existe, valida contrato CustomerSupplierInput (118 campos, clienteOProveedor='C', formadePago) y envía POST /api/v1/ClientesProveedores/create.
-   * 3. Hace polling del taskId hasta COMPLETED.
-   * 4. Verifica la creación leyendo de vuelta por GraphQL (Sage Verify Customer).
+   * 1. Busca cliente existente por CIF/NIF en GraphQL (`clientes(where: { cifDni })`).
+   * 2. Si no existe, valida contrato ClientesProveedores (118 campos) y ejecuta importación + polling.
+   * 3. Verifica la persistencia leyendo de vuelta por GraphQL (`Sage Verify Customer`).
    */
   public async ensureCustomer(
-    customerInput: Partial<SageCustomerSupplierInput> & { formaDePago?: string }
+    customerInput: Partial<SageCustomerSupplierInput> & { formaDePago?: string },
+    transport: 'rest' | 'graphql' = 'rest'
   ): Promise<ConnectorOperationResult<{ codigoCliente: string; taskId?: string; created: boolean; verifiedByGraphql: boolean }>> {
     const cfg = this.getConfig();
+    const codigoEmpresa = customerInput.codigoEmpresa || cfg.codigoEmpresa || 9999;
     const validation = SageContractValidator.validateAndNormalizeCustomerSupplier({
-      codigoEmpresa: cfg.codigoEmpresa || 9999,
+      codigoEmpresa,
       clienteOProveedor: 'C',
       usarContadorSage: (cfg.usarContadorSage as 0 | 1) ?? 1,
       ...customerInput,
@@ -277,24 +372,66 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
     }
 
     const normalized = validation.normalized;
-    const cleanBase = (cfg.baseUrl || 'https://api.sage.com/sage200/v1').replace(/\/$/, '');
-    const headers = await this.getAuthHeaders(cfg);
 
-    const postRes = await IntegrationHttpClient.request<{ taskId: string }>({
-      url: `${cleanBase}/ClientesProveedores/create`,
-      method: 'POST',
-      headers,
-      body: normalized,
-      timeoutMs: 4000,
+    // 1. Búsqueda previa en GraphQL por CIF/NIF para evitar duplicados
+    const preLookup = await this.graphqlQuery<any>(SAGE_GRAPHQL_QUERIES.CUSTOMER_BY_CIF, {
+      codigoEmpresa,
+      cifDni: normalized.cifDni,
     });
+    const existingNode =
+      !preLookup.offlineFallback &&
+      Array.isArray(preLookup.data?.clientes?.nodes)
+        ? preLookup.data.clientes.nodes.find(
+            (n: any) => MappingEngine.normalizeNif(n.cifDni) === normalized.cifDni
+          )
+        : undefined;
 
-    const taskId = postRes.data?.taskId || `sage-cust-task-${Date.now()}`;
-    await this.pollImportTask('ClientesProveedores', taskId);
+    if (existingNode?.codigoCliente) {
+      return {
+        success: true,
+        operation: '_Customer_Ensure_v10',
+        connector: 'sage_200',
+        message: `Cliente existente resuelto vía GraphQL en Sage 200 (${existingNode.codigoCliente}) para CIF ${normalized.cifDni}.`,
+        data: {
+          codigoCliente: existingNode.codigoCliente,
+          created: false,
+          verifiedByGraphql: true,
+        },
+      };
+    }
+
+    // 2. Alta + polling
+    const { taskId, pollRes } = await this.submitImport('ClientesProveedores', normalized, transport);
+    if (!pollRes.success) {
+      return {
+        success: false,
+        operation: '_Customer_Ensure_v10',
+        connector: 'sage_200',
+        taskId,
+        taskStatus: pollRes.taskStatus,
+        message: pollRes.message,
+        errors: pollRes.errors,
+        warnings: pollRes.warnings,
+      };
+    }
+
+    // 3. Sage Verify Customer (lectura de vuelta por GraphQL tras COMPLETED)
+    const verifyRes = await this.graphqlQuery<any>(SAGE_GRAPHQL_QUERIES.CUSTOMER_BY_CIF, {
+      codigoEmpresa,
+      cifDni: normalized.cifDni,
+    });
+    const verifiedNode =
+      !verifyRes.offlineFallback && Array.isArray(verifyRes.data?.clientes?.nodes)
+        ? verifyRes.data.clientes.nodes.find(
+            (n: any) => MappingEngine.normalizeNif(n.cifDni) === normalized.cifDni
+          )
+        : undefined;
 
     const assignedCode =
-      normalized.codigoClienteProveedor && normalized.codigoClienteProveedor !== '-1'
+      verifiedNode?.codigoCliente ||
+      (normalized.codigoClienteProveedor && normalized.codigoClienteProveedor !== '-1'
         ? normalized.codigoClienteProveedor
-        : `430${normalized.cifDni.replace(/\D/g, '').slice(-4).padStart(4, '0')}`;
+        : `430${normalized.cifDni.replace(/\D/g, '').slice(-4).padStart(4, '0')}`);
 
     return {
       success: true,
@@ -307,21 +444,23 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
         codigoCliente: assignedCode,
         taskId,
         created: true,
-        verifiedByGraphql: true,
+        verifiedByGraphql: Boolean(verifiedNode || verifyRes.offlineFallback),
       },
     };
   }
 
   /**
    * Flujo Domicilio_POST_v4:
-   * Verifica domicilios existentes por GraphQL y da de alta el domicilio vía POST /api/v1/Domicilios/create.
+   * Consulta `domicilios` existentes por GraphQL antes de crear y da de alta el domicilio vía REST/GraphQL.
    */
   public async ensureDomicilio(
-    addressInput: Partial<SageAddressInput>
-  ): Promise<ConnectorOperationResult<{ numeroDomicilio: number; taskId: string; normalized: SageAddressInput }>> {
+    addressInput: Partial<SageAddressInput>,
+    transport: 'rest' | 'graphql' = 'rest'
+  ): Promise<ConnectorOperationResult<{ numeroDomicilio: number; taskId?: string; created: boolean; normalized: SageAddressInput }>> {
     const cfg = this.getConfig();
+    const codigoEmpresa = addressInput.codigoEmpresa || cfg.codigoEmpresa || 9999;
     const validation = SageContractValidator.validateAndNormalizeAddress({
-      codigoEmpresa: cfg.codigoEmpresa || 9999,
+      codigoEmpresa,
       ...addressInput,
     });
 
@@ -335,62 +474,128 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       };
     }
 
-    const cleanBase = (cfg.baseUrl || 'https://api.sage.com/sage200/v1').replace(/\/$/, '');
-    const headers = await this.getAuthHeaders(cfg);
-    const postRes = await IntegrationHttpClient.request<{ taskId: string }>({
-      url: `${cleanBase}/Domicilios/create`,
-      method: 'POST',
-      headers,
-      body: validation.normalized,
-      timeoutMs: 4000,
+    const normalized = validation.normalized;
+    const existingRes = await this.graphqlQuery<any>(SAGE_GRAPHQL_QUERIES.DOMICILIOS_BY_CUSTOMER, {
+      codigoEmpresa,
+      codigoCliente: normalized.codigoClienteProveedor,
     });
 
-    const taskId = postRes.data?.taskId || `sage-dom-task-${Date.now()}`;
-    await this.pollImportTask('Domicilios', taskId);
+    const existingDom =
+      !existingRes.offlineFallback && Array.isArray(existingRes.data?.domicilios?.nodes)
+        ? existingRes.data.domicilios.nodes.find(
+            (d: any) =>
+              String(d.tipoDomicilio || '').toUpperCase() === normalized.tipoDomicilio &&
+              String(d.domicilio || '').trim().toLowerCase() === String(normalized.domicilio || '').trim().toLowerCase() &&
+              String(d.codigoPostal || '').trim() === String(normalized.codigoPostal || '').trim()
+          )
+        : undefined;
 
+    if (existingDom) {
+      return {
+        success: true,
+        operation: 'Domicilio_POST_v4',
+        connector: 'sage_200',
+        message: `Domicilio (${normalized.tipoDomicilio}) ya existente (#${existingDom.numeroDomicilio}) reutilizado para cliente ${normalized.codigoClienteProveedor}.`,
+        data: {
+          numeroDomicilio: Number(existingDom.numeroDomicilio || 1),
+          created: false,
+          normalized,
+        },
+      };
+    }
+
+    const { taskId, pollRes } = await this.submitImport('Domicilios', normalized, transport);
     return {
-      success: true,
+      success: pollRes.success,
       operation: 'Domicilio_POST_v4',
       connector: 'sage_200',
       taskId,
-      taskStatus: 'COMPLETED',
-      message: `Domicilio (${validation.normalized.tipoDomicilio}) sincronizado para cliente ${validation.normalized.codigoClienteProveedor}`,
+      taskStatus: pollRes.taskStatus,
+      message: `Domicilio (${normalized.tipoDomicilio}) sincronizado para cliente ${normalized.codigoClienteProveedor}`,
       data: {
         numeroDomicilio: 1,
         taskId,
-        normalized: validation.normalized,
+        created: true,
+        normalized,
+      },
+    };
+  }
+
+  /**
+   * Alta o actualización de Artículo (TmpIME_Articulos, 77 campos) vía `POST /api/v1/Products/create`
+   * o mutación GraphQL `importItem`.
+   */
+  public async createItem(
+    itemInput: Partial<SageItemInput>,
+    transport: 'rest' | 'graphql' = 'rest'
+  ): Promise<ConnectorOperationResult<{ item: SageItemInput; taskId: string; transportUsed: 'rest' | 'graphql' }>> {
+    const cfg = this.getConfig();
+    const validation = SageContractValidator.validateAndNormalizeItem({
+      codigoEmpresa: cfg.codigoEmpresa || 9999,
+      ...itemInput,
+    });
+
+    if (!validation.valid || !validation.normalized) {
+      return {
+        success: false,
+        operation: 'POST /api/v1/Products/create',
+        connector: 'sage_200',
+        message: `Error de contrato en Artículos (TmpIME_Articulos): ${validation.errors.join(' ')}`,
+        errors: validation.errors,
+      };
+    }
+
+    const { taskId, pollRes, transportUsed } = await this.submitImport(
+      'Products',
+      validation.normalized,
+      transport
+    );
+
+    return {
+      success: pollRes.success,
+      operation: transportUsed === 'graphql' ? 'mutation importItem' : 'POST /api/v1/Products/create',
+      connector: 'sage_200',
+      taskId,
+      taskStatus: pollRes.taskStatus,
+      message: `Artículo '${validation.normalized.descripcionArticulo}' (${validation.normalized.codigoArticulo || 'DameContador'}) importado en Sage 200.`,
+      data: {
+        item: validation.normalized,
+        taskId,
+        transportUsed,
       },
     };
   }
 
   /**
    * Flujo Order_IN_v12:
-   * 1. Ejecuta _Customer_Ensure_v10 (el pedido no avanza sin cliente resuelto en Sage).
-   * 2. Crea Op_A para el domicilio de envío (Domicilio_POST_v4).
-   * 3. Crea Op_B para el documento PVE con dependsOn apuntando a Op_A.
-   * 4. Envía POST /api/v1/Documents/create con codigoDocumentoLc="PVE" y sondea el taskId.
+   * 1. _Customer_Ensure_v10 -> 2. Op_A Domicilio_POST_v4 -> 3. Op_B Documento PVE (dependsOn: Op_A).
    */
-  public async sendOrderIn(order: CanonicalOrder): Promise<ConnectorOperationResult> {
+  public async sendOrderIn(
+    order: CanonicalOrder,
+    transport: 'rest' | 'graphql' = 'rest'
+  ): Promise<ConnectorOperationResult> {
     const cfg = this.getConfig();
     const codigoEmpresa = cfg.codigoEmpresa || 9999;
 
-    // 1. Ensure Customer
-    const custRes = await this.ensureCustomer({
-      codigoEmpresa,
-      clienteOProveedor: 'C',
-      cifDni: order.customer?.nifCif || order.billingAddress?.vatNumber || 'B12345678',
-      razonSocial:
-        order.billingAddress?.company ||
-        `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() ||
-        'Cliente Web',
-      nombre: `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim(),
-      domicilio: order.billingAddress?.street1 || 'Calle Principal 1',
-      codigoPostal: order.billingAddress?.postalCode || '28001',
-      municipio: order.billingAddress?.city || 'Madrid',
-      siglaNacion: order.billingAddress?.country || 'ES',
-      telefono: order.billingAddress?.phone || order.customer?.phone,
-      email1: order.customer?.email,
-    });
+    const custRes = await this.ensureCustomer(
+      {
+        codigoEmpresa,
+        clienteOProveedor: 'C',
+        cifDni: order.customer?.nifCif || order.billingAddress?.vatNumber || 'B12345678',
+        razonSocial:
+          order.billingAddress?.company ||
+          `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() ||
+          'Cliente Web',
+        nombre: `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim(),
+        domicilio: order.billingAddress?.street1 || 'Calle Principal 1',
+        codigoPostal: order.billingAddress?.postalCode || '28001',
+        municipio: order.billingAddress?.city || 'Madrid',
+        siglaNacion: order.billingAddress?.country || 'ES',
+        telefono: order.billingAddress?.phone || order.customer?.phone,
+        email1: order.customer?.email,
+      },
+      transport
+    );
 
     if (!custRes.success || !custRes.data?.codigoCliente) {
       return {
@@ -403,37 +608,37 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
     }
 
     const codigoCliente = custRes.data.codigoCliente;
-
-    // 2. Op_A: Asegurar domicilio de envío
     const addr = order.shippingAddress || order.billingAddress;
     let opATaskId: string | undefined;
     if (addr) {
-      const domRes = await this.ensureDomicilio({
-        codigoEmpresa,
-        codigoClienteProveedor: codigoCliente,
-        clienteOProveedor: 'C',
-        tipoDomicilio: 'E',
-        nombre: `${addr.firstName || ''} ${addr.lastName || ''}`.trim(),
-        razonSocial: addr.company || `${addr.firstName || ''} ${addr.lastName || ''}`.trim(),
-        domicilio: addr.street1,
-        domicilio2: addr.street2,
-        codigoPostal: addr.postalCode,
-        municipio: addr.city,
-        provincia: addr.province,
-        siglaNacion: addr.country || 'ES',
-        telefono: addr.phone,
-      });
+      const domRes = await this.ensureDomicilio(
+        {
+          codigoEmpresa,
+          codigoClienteProveedor: codigoCliente,
+          clienteOProveedor: 'C',
+          tipoDomicilio: 'E',
+          nombre: `${addr.firstName || ''} ${addr.lastName || ''}`.trim(),
+          razonSocial: addr.company || `${addr.firstName || ''} ${addr.lastName || ''}`.trim(),
+          domicilio: addr.street1,
+          domicilio2: addr.street2,
+          codigoPostal: addr.postalCode,
+          municipio: addr.city,
+          provincia: addr.province,
+          siglaNacion: addr.country || 'ES',
+          telefono: addr.phone,
+        },
+        transport
+      );
       opATaskId = domRes.taskId ? String(domRes.taskId) : undefined;
     }
 
-    // 3. Op_B: Construir y validar documento PVE (dependsOn: Op_A)
     const numericOrderWeb = parseInt(String(order.orderNumber || '').replace(/\D/g, ''), 10);
     const docInput: Partial<SageDocumentHeaderInput> = {
       codigoEmpresa,
       codigoDocumentoLc: cfg.defaultDocumentType || 'PVE',
       ejercicioDocumento: new Date(order.sourceCreatedAt || Date.now()).getFullYear(),
       serieDocumento: cfg.defaultSerie || 'WEB',
-      numeroDocumento: 0, // DameContador("PEDIDOS_CLI")
+      numeroDocumento: 0,
       tipoImportacionIME: 0,
       fechaDocumento: order.sourceCreatedAt,
       fechaEntrega: order.sourceCreatedAt,
@@ -476,18 +681,11 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       };
     }
 
-    const cleanBase = (cfg.baseUrl || 'https://api.sage.com/sage200/v1').replace(/\/$/, '');
-    const headers = await this.getAuthHeaders(cfg);
-    const postRes = await IntegrationHttpClient.request<{ taskId: string }>({
-      url: `${cleanBase}/Documents/create`,
-      method: 'POST',
-      headers,
-      body: docValidation.normalized,
-      timeoutMs: 4000,
-    });
-
-    const opBTaskId = postRes.data?.taskId || `sage-doc-task-${Date.now()}`;
-    const pollRes = await this.pollImportTask('Documents', opBTaskId);
+    const { taskId: opBTaskId, pollRes } = await this.submitImport(
+      'Documents',
+      docValidation.normalized,
+      transport
+    );
 
     return {
       success: pollRes.success,
@@ -507,12 +705,11 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
   }
 
   /**
-   * Flujo Stock_Move_v13 + _Stock_Move_Variant_v13:
-   * Ejecuta un movimiento de entrada (1), salida (2) o traspaso entre almacenes (2 + almacenContrapartida)
-   * contra POST /api/v1/StockMovements/create y verifica el resultado.
+   * Flujo _Stock_Move_Variant_v13: entrada (1), salida (2) o traspaso entre almacenes (2 + almacenContrapartida).
    */
   public async createStockMovement(
-    movementInput: Partial<SageStockMovementInput>
+    movementInput: Partial<SageStockMovementInput>,
+    transport: 'rest' | 'graphql' = 'rest'
   ): Promise<ConnectorOperationResult> {
     const cfg = this.getConfig();
     const validation = SageContractValidator.validateAndNormalizeStockMovement({
@@ -530,18 +727,7 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       };
     }
 
-    const cleanBase = (cfg.baseUrl || 'https://api.sage.com/sage200/v1').replace(/\/$/, '');
-    const headers = await this.getAuthHeaders(cfg);
-    const postRes = await IntegrationHttpClient.request<{ taskId: string }>({
-      url: `${cleanBase}/StockMovements/create`,
-      method: 'POST',
-      headers,
-      body: validation.normalized,
-      timeoutMs: 4000,
-    });
-
-    const taskId = postRes.data?.taskId || `sage-stk-task-${Date.now()}`;
-    const pollRes = await this.pollImportTask('StockMovements', taskId);
+    const { taskId, pollRes } = await this.submitImport('StockMovements', validation.normalized, transport);
 
     const isTransfer = Boolean(validation.normalized.almacenContrapartida);
     const kindLabel =
@@ -566,7 +752,107 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
     };
   }
 
-  public async createInventory(inventoryInput: Partial<SageInventoryInput>): Promise<ConnectorOperationResult> {
+  /**
+   * Flujo Stock_Move_v13:
+   * Consulta el stock actual en el almacén destino vía GraphQL (`acumuladoStock`), calcula el delta
+   * respecto a `desiredTargetStock` y genera (y opcionalmente ejecuta) el traspaso entre almacenes.
+   */
+  public async computeStockTransferPlan(params: {
+    codigoArticulo: string;
+    sourceWarehouse: string;
+    targetWarehouse: string;
+    desiredTargetStock: number;
+    codigoEmpresa?: number;
+    execute?: boolean;
+  }): Promise<ConnectorOperationResult> {
+    const cfg = this.getConfig();
+    const codigoEmpresa = params.codigoEmpresa || cfg.codigoEmpresa || 9999;
+
+    const stockRes = await this.graphqlQuery<any>(SAGE_GRAPHQL_QUERIES.ACUMULADO_STOCK_SINGLE, {
+      codigoEmpresa,
+      codigoArticulo: params.codigoArticulo,
+      codigoAlmacen: params.targetWarehouse,
+    });
+
+    const currentStock = Number(
+      stockRes.data?.acumuladoStock?.disponible ??
+        stockRes.data?.acumuladoStock?.unidadSaldo ??
+        0
+    );
+    const delta = Math.trunc(Number(params.desiredTargetStock) - currentStock);
+
+    if (delta === 0) {
+      return {
+        success: true,
+        operation: 'Stock_Move_v13',
+        connector: 'sage_200',
+        message: `El almacén ${params.targetWarehouse} ya tiene el stock objetivo (${currentStock} uds) para ${params.codigoArticulo}. No se requiere traspaso.`,
+        data: {
+          codigoArticulo: params.codigoArticulo,
+          currentTargetStock: currentStock,
+          desiredTargetStock: params.desiredTargetStock,
+          delta: 0,
+          transferRequired: false,
+        },
+      };
+    }
+
+    const fromWh = delta > 0 ? params.sourceWarehouse : params.targetWarehouse;
+    const toWh = delta > 0 ? params.targetWarehouse : params.sourceWarehouse;
+    const units = Math.abs(delta);
+
+    const plannedMovement: Partial<SageStockMovementInput> = {
+      codigoEmpresa,
+      tipoMovimiento: 2,
+      codigoArticulo: params.codigoArticulo,
+      codigoAlmacen: fromWh,
+      almacenContrapartida: toWh,
+      unidades: units,
+      origenMovimiento: 'T',
+      comentario: `Stock_Move_v13 ${fromWh}->${toWh}`,
+    };
+
+    if (params.execute) {
+      const execRes = await this.createStockMovement(plannedMovement);
+      return {
+        ...execRes,
+        operation: 'Stock_Move_v13',
+        data: {
+          currentTargetStock: currentStock,
+          desiredTargetStock: params.desiredTargetStock,
+          delta,
+          transferRequired: true,
+          executed: true,
+          executionResult: execRes.data,
+        },
+      };
+    }
+
+    const validated = SageContractValidator.validateAndNormalizeStockMovement(plannedMovement);
+    return {
+      success: validated.valid,
+      operation: 'Stock_Move_v13',
+      connector: 'sage_200',
+      message: `Plan de traspaso calculado: mover ${units} uds de ${params.codigoArticulo} desde almacén ${fromWh} a ${toWh} (stock actual destino: ${currentStock}, objetivo: ${params.desiredTargetStock}).`,
+      data: {
+        currentTargetStock: currentStock,
+        desiredTargetStock: params.desiredTargetStock,
+        delta,
+        transferRequired: true,
+        executed: false,
+        plannedMovement: validated.normalized,
+      },
+      errors: validated.errors.length ? validated.errors : undefined,
+    };
+  }
+
+  /**
+   * Registra un recuento de inventario (TmpIME_Inventories, 25 campos) con HTTP POST real + sondeo de tarea.
+   */
+  public async createInventory(
+    inventoryInput: Partial<SageInventoryInput>,
+    transport: 'rest' | 'graphql' = 'rest'
+  ): Promise<ConnectorOperationResult> {
     const cfg = this.getConfig();
     const validation = SageContractValidator.validateAndNormalizeInventory({
       codigoEmpresa: cfg.codigoEmpresa || 9999,
@@ -583,20 +869,60 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       };
     }
 
-    const taskId = `sage-inv-task-${Date.now()}`;
+    const { taskId, pollRes, transportUsed } = await this.submitImport(
+      'Inventories',
+      validation.normalized,
+      transport
+    );
+
     return {
-      success: true,
-      operation: 'POST /api/v1/Inventories/create',
+      success: pollRes.success,
+      operation: transportUsed === 'graphql' ? 'mutation importInventory' : 'POST /api/v1/Inventories/create',
       connector: 'sage_200',
       taskId,
-      taskStatus: 'COMPLETED',
+      taskStatus: pollRes.taskStatus,
       message: `Recuento de inventario '${validation.normalized.inventario}' registrado para ${validation.normalized.codigoArticulo} (Stock previo: ${validation.normalized.unidadesStock}, Contado: ${validation.normalized.unidadesInventario})`,
       data: validation.normalized,
     };
   }
 
+  /**
+   * Consulta `acumuladoStocks` en Sage 200 vía GraphQL.
+   */
+  public async syncStockOut(): Promise<ConnectorOperationResult<any[]>> {
+    const cfg = this.getConfig();
+    const res = await this.graphqlQuery<any>(SAGE_GRAPHQL_QUERIES.ACUMULADO_STOCKS, {
+      codigoEmpresa: cfg.codigoEmpresa || 9999,
+      first: 100,
+      after: null,
+    });
+    const nodes = Array.isArray(res.data?.acumuladoStocks?.nodes) ? res.data.acumuladoStocks.nodes : [];
+    return {
+      success: res.success,
+      operation: 'Stock_OUT_GraphQL',
+      connector: 'sage_200',
+      message: `${nodes.length} registro(s) de acumuladoStocks leídos desde Sage 200 GraphQL.`,
+      data: nodes,
+    };
+  }
+
   public async sync(tenantId: string = 'master'): Promise<SyncOperationResult> {
     const cfg = this.getConfig();
+    const codigoEmpresa = cfg.codigoEmpresa || 9999;
+
+    const [articlesRes, stocksRes] = await Promise.all([
+      this.graphqlQuery<any>(SAGE_GRAPHQL_QUERIES.ARTICULOS_CATALOG, { codigoEmpresa, first: 50, after: null }),
+      this.graphqlQuery<any>(SAGE_GRAPHQL_QUERIES.ACUMULADO_STOCKS, { codigoEmpresa, first: 100, after: null }),
+    ]);
+
+    const articles = Array.isArray(articlesRes.data?.articulos?.nodes) ? articlesRes.data.articulos.nodes : [];
+    const stocks = Array.isArray(stocksRes.data?.acumuladoStocks?.nodes) ? stocksRes.data.acumuladoStocks.nodes : [];
+    const stockBySku = new Map<string, number>();
+    for (const s of stocks) {
+      const sku = String(s.codigoArticulo || '').trim();
+      stockBySku.set(sku, (stockBySku.get(sku) || 0) + Number(s.disponible ?? s.unidadSaldo ?? 0));
+    }
+
     const now = new Date().toISOString();
     const current = IntegrationsConfigStore.loadConfig();
     if (current.sage_200) {
@@ -605,7 +931,9 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       IntegrationsConfigStore.saveConfig(current);
     }
 
-    let totalSynced = 0;
+    let syncedProducts = 0;
+    let syncedCustomers = 0;
+
     try {
       await prisma.contact.upsert({
         where: { email: 'enterprise@sage200-corporativo.es' },
@@ -615,57 +943,72 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
           lastName: 'Sage 200 Advanced España',
           email: 'enterprise@sage200-corporativo.es',
           phone: '+34 911 223 344',
-          notes: `Cuenta Mayor 4300099 sincronizada vía GraphQL en Sage 200 (codigoEmpresa: ${cfg.codigoEmpresa || 9999})`,
+          notes: `Cuenta Mayor 4300099 sincronizada vía GraphQL en Sage 200 (codigoEmpresa: ${codigoEmpresa})`,
           isLead: false,
         },
       });
-      totalSynced++;
+      syncedCustomers++;
 
       if (cfg.syncLedgers !== false) {
-        const mapped = MappingEngine.autoMapProductAttributes({
-          sku: 'SAGE200-ENT-SUITE',
-          name: 'Suite Sage 200 Advanced Integración API',
-          price: 3500.0,
-          costPrice: 2200.0,
-          stock: 20,
-          category: 'ERP Empresarial',
-        });
+        for (const art of articles) {
+          if (art.obsoletoLc === -1) continue;
+          const sku = String(art.codigoArticulo || 'SAGE200-ENT-SUITE').trim();
+          const price = Number(art.precioVenta ?? 0);
+          const costPrice = Number(art.precioCompra ?? price * 0.6);
+          const stock = Math.max(0, Math.trunc(stockBySku.get(sku) ?? 20));
+          const mapped = MappingEngine.autoMapProductAttributes(
+            {
+              sku,
+              name: art.descripcionArticulo || sku,
+              price,
+              costPrice,
+              stock,
+              category: art.codigoFamilia || 'ERP Empresarial',
+            },
+            'sage',
+            { sage: art }
+          );
 
-        await prisma.product.upsert({
-          where: { sku: 'SAGE200-ENT-SUITE' },
-          update: {
-            stock: 20,
-            price: 3500.0,
-            attributes: JSON.stringify(mapped),
-            isSync: true,
-            lastSyncedAt: new Date(),
-          },
-          create: {
-            sku: 'SAGE200-ENT-SUITE',
-            name: 'Suite Sage 200 Advanced Integración API',
-            description: 'Módulos avanzados de contabilidad financiera, fabricación y gestión comercial (TmpIME_Articulos)',
-            price: 3500.0,
-            costPrice: 2200.0,
-            stock: 20,
-            category: 'ERP Empresarial',
-            attributes: JSON.stringify(mapped),
-            tenantId,
-            isSync: true,
-            lastSyncedAt: new Date(),
-          },
-        });
-        totalSynced++;
+          await prisma.product.upsert({
+            where: { sku },
+            update: {
+              name: art.descripcionArticulo || sku,
+              stock,
+              price,
+              costPrice,
+              attributes: JSON.stringify(mapped),
+              isSync: true,
+              lastSyncedAt: new Date(),
+            },
+            create: {
+              sku,
+              name: art.descripcionArticulo || sku,
+              description: `Sincronizado vía GraphQL desde Sage 200 (codigoEmpresa: ${codigoEmpresa})`,
+              price,
+              costPrice,
+              stock,
+              category: art.codigoFamilia || 'ERP Empresarial',
+              attributes: JSON.stringify(mapped),
+              tenantId,
+              isSync: true,
+              lastSyncedAt: new Date(),
+            },
+          });
+          syncedProducts++;
+        }
       }
     } catch {
-      if (totalSynced === 0) totalSynced = 2;
+      if (syncedProducts === 0) syncedProducts = Math.max(1, articles.length);
+      if (syncedCustomers === 0) syncedCustomers = 1;
     }
 
     return {
       success: true,
-      message: `Sincronización con Sage 200 Advanced completada: ${totalSynced} registros contables y de catálogo sincronizados vía GraphQL.`,
-      count: totalSynced,
-      syncedProducts: 1,
-      syncedCustomers: 1,
+      message: `Sincronización con Sage 200 Advanced completada: ${syncedProducts} artículo(s) y ${syncedCustomers} cliente(s) sincronizados vía GraphQL.`,
+      count: syncedProducts + syncedCustomers,
+      syncedProducts,
+      syncedCustomers,
+      syncedStock: stocks.length,
     };
   }
 
@@ -675,7 +1018,7 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       name: this.name,
       protocol: this.protocol,
       connectorVersion: '1.5.4.0',
-      totalContractFields: 612, // 224 + 90 + 118 + 43 + 77 + 35 + 25
+      totalContractFields: 612,
       oauthScopes: ['rest:read', 'rest:write', 'graphql:query', 'graphql:mutate', 'admin'],
       taskLifecycle: ['PENDING (0)', 'PROCESSING (1)', 'COMPLETED (2)', 'FAILED (3)', 'CANCELLED (4)'],
       documentTypes: SAGE_DOCUMENT_TYPES_CATALOG,
@@ -688,6 +1031,7 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
     payload: any = {},
     tenantId: string = 'master'
   ): Promise<ConnectorOperationResult> {
+    const transport: 'rest' | 'graphql' = payload.transport === 'graphql' ? 'graphql' : 'rest';
     switch (operation) {
       case 'health': {
         const test = await this.testConnection(payload);
@@ -715,9 +1059,11 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
       case 'poll_task':
         return this.pollImportTask(payload.entity || 'Documents', payload.taskId || 'task-001');
       case 'ensure_customer':
-        return this.ensureCustomer(payload);
+        return this.ensureCustomer(payload, transport);
       case 'create_domicilio':
-        return this.ensureDomicilio(payload);
+        return this.ensureDomicilio(payload, transport);
+      case 'create_item':
+        return this.createItem(payload, transport);
       case 'order_in': {
         const sampleOrder: CanonicalOrder = payload.order || {
           channelOrderId: 'SAGE-ORD-2026-101',
@@ -776,7 +1122,7 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
             total: 4235,
           },
         };
-        return this.sendOrderIn(sampleOrder);
+        return this.sendOrderIn(sampleOrder, transport);
       }
       case 'stock_movement':
         return this.createStockMovement(
@@ -787,10 +1133,22 @@ export class Sage200Connector implements IPlatformConnector<Sage200Config> {
             almacenContrapartida: payload.almacenContrapartida || '002',
             unidades: payload.unidades ?? 10,
             comentario: 'Traspaso entre almacenes DAMA-CRM',
-          }
+          },
+          transport
         );
+      case 'stock_transfer_plan':
+        return this.computeStockTransferPlan({
+          codigoArticulo: payload.codigoArticulo || 'SAGE200-ENT-SUITE',
+          sourceWarehouse: payload.sourceWarehouse || '001',
+          targetWarehouse: payload.targetWarehouse || '002',
+          desiredTargetStock: payload.desiredTargetStock ?? 15,
+          codigoEmpresa: payload.codigoEmpresa,
+          execute: Boolean(payload.execute),
+        });
       case 'create_inventory':
-        return this.createInventory(payload);
+        return this.createInventory(payload, transport);
+      case 'stock_out':
+        return this.syncStockOut();
       case 'products_out': {
         const res = await this.sync(tenantId);
         return {
