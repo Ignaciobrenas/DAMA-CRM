@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
+import { soundService } from '../services/sound';
+import { ToastDeduplicator } from '../utils/toast-dedupe';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -22,6 +24,8 @@ interface ToastContextType {
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
+
+const MAX_VISIBLE_TOASTS = 4;
 
 const toastIcons = {
   success: CheckCircle2,
@@ -57,21 +61,33 @@ const toastColors = {
   },
 };
 
-import { soundService } from '../services/sound';
-
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const deduplicatorRef = useRef<ToastDeduplicator>(new ToastDeduplicator(4000));
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const dismiss = useCallback((id: string) => {
+    const existingTimer = timersRef.current.get(id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      timersRef.current.delete(id);
+    }
+    deduplicatorRef.current.release(id);
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const showToast = useCallback(
     (type: ToastType, title: string, message?: string, duration = 4000) => {
-      const id = Math.random().toString(36).substring(2, 9);
-      const newToast: ToastItem = { id, type, title, message, duration };
+      const checkResult = deduplicatorRef.current.check(type, title, message);
+      if (!checkResult.allowed) {
+        return;
+      }
 
-      // Play matching friendly synthesized chime
+      const id = `${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
+      const newToast: ToastItem = { id, type, title, message, duration };
+      deduplicatorRef.current.register(id, checkResult.keys, duration);
+
+      // Play matching friendly synthesized chime once per unique alert
       if (type === 'success') {
         soundService.playSuccessChime();
       } else if (type === 'error' || type === 'warning') {
@@ -80,12 +96,28 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         soundService.playMessageChime();
       }
 
-      setToasts((prev) => [...prev, newToast]);
+      setToasts((prev) => {
+        const next = [...prev, newToast];
+        if (next.length > MAX_VISIBLE_TOASTS) {
+          const evicted = next.slice(0, next.length - MAX_VISIBLE_TOASTS);
+          for (const item of evicted) {
+            const t = timersRef.current.get(item.id);
+            if (t) {
+              clearTimeout(t);
+              timersRef.current.delete(item.id);
+            }
+            deduplicatorRef.current.release(item.id);
+          }
+          return next.slice(-MAX_VISIBLE_TOASTS);
+        }
+        return next;
+      });
 
       if (duration > 0) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           dismiss(id);
         }, duration);
+        timersRef.current.set(id, timer);
       }
     },
     [dismiss]
@@ -96,14 +128,27 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const warning = useCallback((title: string, message?: string) => showToast('warning', title, message), [showToast]);
   const info = useCallback((title: string, message?: string) => showToast('info', title, message), [showToast]);
 
-  React.useEffect(() => {
-    const handleGlobalToastError = (e: any) => {
-      const { title, message } = e.detail || {};
+  useEffect(() => {
+    const handleGlobalToastError = (e: Event) => {
+      const customEvent = e as CustomEvent<{ title?: string; message?: string }>;
+      const { title, message } = customEvent.detail || {};
       if (title) error(title, message);
     };
     window.addEventListener('app:toast-error', handleGlobalToastError);
-    return () => window.removeEventListener('app:toast-error', handleGlobalToastError);
+    return () => {
+      window.removeEventListener('app:toast-error', handleGlobalToastError);
+    };
   }, [error]);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of timersRef.current.values()) {
+        clearTimeout(timer);
+      }
+      timersRef.current.clear();
+      deduplicatorRef.current.clear();
+    };
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info, dismiss }}>
