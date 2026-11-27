@@ -1711,3 +1711,390 @@ model ExpenseReminderConfig {
 
   @@map("expense_reminder_configs")
 }
+
+model SystemErrorLog {
+  id          String   @id @default(uuid())
+  statusCode  Int?
+  message     String
+  stack       String?
+  method      String?
+  path        String?
+  userId      String?
+  ipAddress   String?
+  headers     String?  // JSON string
+  body        String?  // JSON string
+  createdAt   DateTime @default(now())
+
+  @@map("system_error_logs")
+}
+
+// -----------------------------------------------------------------------------
+// Enterprise Multi-Channel Sync Hub: Connections, Definitions, Tasks & Operations
+// -----------------------------------------------------------------------------
+
+model SyncChannelType {
+  id           String                   @id @default(uuid())
+  tenantId     String                   @default("master")
+  name         String
+  description  String?
+  type         String                   @default("B2C") // B2B | B2C | ERP | 3PL | CRM
+  capabilities String?                  @default("{}")
+  connectorKey String?
+  versions     SyncChannelVersionType[]
+  channels     SyncChannel[]
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("sync_channel_types")
+}
+
+model SyncChannelVersionType {
+  id          String          @id @default(uuid())
+  tenantId    String          @default("master")
+  version     String
+  description String?
+  typeId      String
+  channelType SyncChannelType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  channels    SyncChannel[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([typeId, version])
+  @@index([tenantId, typeId])
+  @@map("sync_channel_version_types")
+}
+
+model SyncEnvironment {
+  id          String           @id @default(uuid())
+  tenantId    String           @default("master")
+  name        String
+  description String?
+  status      String           @default("active")
+  url         String?
+  version     String?
+  health      String           @default("healthy")
+  uptime      String?
+  lastDeploy  DateTime?
+  connections SyncConnection[]
+  apiKeys     SyncApiKey[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("sync_environments")
+}
+
+model SyncChannel {
+  id                  String                          @id @default(uuid())
+  tenantId            String                          @default("master")
+  name                String
+  description         String?
+  status              String                          @default("active")
+  typeId              String
+  versionId           String
+  channelType         SyncChannelType                 @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  versionType         SyncChannelVersionType          @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  connections         SyncConnection[]
+  metadataDefinitions SyncChannelMetadataDefinition[]
+  sourceTasks         SyncTask[]                      @relation("SyncTaskSourceChannel")
+  targetTasks         SyncTask[]                      @relation("SyncTaskTargetChannel")
+  createdAt           DateTime                        @default(now())
+  updatedAt           DateTime                        @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId, typeId])
+  @@map("sync_channels")
+}
+
+model SyncConnection {
+  id                  String          @id @default(uuid())
+  tenantId            String          @default("master")
+  endpoint            String
+  type                String          @default("api")
+  status              String          @default("disconnected")
+  lastTest            DateTime?
+  credentials         String?
+  config              String?         @default("{}")
+  channelId           String
+  environmentId       String
+  channel             SyncChannel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  environment         SyncEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  rateLimitUsed       Int             @default(0)
+  rateLimitMax        Int             @default(1000)
+  rateLimitResetAt    DateTime?
+  avgResponseTime     Float           @default(0)
+  lastResponseTime    Int?
+  healthChecksOk      Int             @default(0)
+  healthChecksTotal   Int             @default(0)
+  lastErrorMessage    String?
+  lastErrorAt         DateTime?
+  warningMessage      String?
+  licenseExpiresAt    DateTime?
+  licenseCheckedAt    DateTime?
+  licenseAlertLevel   String?
+  reportedVersion     String?
+  oauthState          String?
+  oauthStateExpiresAt DateTime?
+  apiKeys             SyncApiKey[]
+  sourceTasks         SyncTask[]      @relation("SyncTaskSourceConnection")
+  targetTasks         SyncTask[]      @relation("SyncTaskTargetConnection")
+  operations          SyncOperation[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@unique([channelId, environmentId])
+  @@index([tenantId, status])
+  @@index([tenantId, environmentId])
+  @@map("sync_connections")
+}
+
+model SyncApiKey {
+  id            String           @id @default(uuid())
+  tenantId      String           @default("master")
+  name          String
+  keyValue      String
+  keyMask       String
+  type          String           @default("api_key")
+  permissions   String           @default("[]")
+  status        String           @default("active")
+  expiresAt     DateTime?
+  lastUsedAt    DateTime?
+  connectionId  String?
+  environmentId String?
+  connection    SyncConnection?  @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  environment   SyncEnvironment? @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([tenantId, status])
+  @@map("sync_api_keys")
+}
+
+model SyncChannelMetadataDefinition {
+  id           String      @id @default(uuid())
+  tenantId     String      @default("master")
+  channelId    String
+  channel      SyncChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  entityType   String
+  key          String
+  label        String
+  dataType     String      @default("string")
+  required     Boolean     @default(false)
+  defaultValue String?
+  description  String?
+  namespace    String?
+  mappingPath  String?
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([channelId, entityType, key])
+  @@index([tenantId, channelId])
+  @@map("sync_channel_metadata_definitions")
+}
+
+model SyncTaskTypeCategory {
+  id          String         @id @default(uuid())
+  tenantId    String         @default("master")
+  key         String
+  name        String
+  description String?
+  icon        String         @default("sync")
+  color       String         @default("#3b82f6")
+  order       Int            @default(0)
+  isActive    Boolean        @default(true)
+  metadata    String?        @default("{}")
+  taskTypes   SyncTaskType[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([tenantId, key])
+  @@index([tenantId, order])
+  @@map("sync_task_type_categories")
+}
+
+model SyncTaskType {
+  id                         String                  @id @default(uuid())
+  tenantId                   String                  @default("master")
+  name                       String
+  description                String?
+  categoryId                 String
+  category                   SyncTaskTypeCategory    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  icon                       String                  @default("refresh-cw")
+  color                      String                  @default("#3b82f6")
+  isActive                   Boolean                 @default(true)
+  isSystem                   Boolean                 @default(false)
+  workflowConfig             String?                 @default("{}")
+  supportedChannelTypeIds    String                  @default("[]")
+  supportedChannelVersionIds String                  @default("[]")
+  dataEntityType             String                  @default("products")
+  operationType              String                  @default("incremental")
+  direction                  String                  @default("bidirectional")
+  requiresFile               Boolean                 @default(false)
+  scheduleConstraints        String?                 @default("{}")
+  executionConfig            String?                 @default("{}")
+  monitoringConfig           String?                 @default("{}")
+  documentation              String?                 @default("{}")
+  version                    String                  @default("1.0.0")
+  lastUsed                   DateTime?
+  usageCount                 Int                     @default(0)
+  createdById                String?
+  parameters                 SyncTaskTypeParameter[]
+  tasks                      SyncTask[]
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId, categoryId])
+  @@index([tenantId, dataEntityType])
+  @@map("sync_task_types")
+}
+
+model SyncTaskTypeParameter {
+  id           String       @id @default(uuid())
+  taskTypeId   String
+  taskType     SyncTaskType @relation(fields: [taskTypeId], references: [id], onDelete: Cascade)
+  name         String
+  key          String
+  type         String       @default("string")
+  description  String?
+  required     Boolean      @default(false)
+  defaultValue String?
+  options      String?      @default("[]")
+  validation   String?      @default("{}")
+  order        Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([taskTypeId, key])
+  @@index([taskTypeId])
+  @@map("sync_task_type_parameters")
+}
+
+model SyncTask {
+  id                 String              @id @default(uuid())
+  tenantId           String              @default("master")
+  name               String
+  description        String?
+  schedule           String              @default("manual")
+  scheduleDisplay    String?
+  status             String              @default("active")
+  executionType      String              @default("cron")
+  lastRun            DateTime?
+  nextRun            DateTime?
+  successCount       Int                 @default(0)
+  errorCount         Int                 @default(0)
+  enabled            Boolean             @default(true)
+  taskTypeId         String
+  taskType           SyncTaskType        @relation(fields: [taskTypeId], references: [id], onDelete: Restrict)
+  configuration      String?             @default("{}")
+  sourceChannelId    String?
+  targetChannelId    String?
+  sourceConnectionId String?
+  targetConnectionId String?
+  sourceChannel      SyncChannel?        @relation("SyncTaskSourceChannel", fields: [sourceChannelId], references: [id], onDelete: SetNull)
+  targetChannel      SyncChannel?        @relation("SyncTaskTargetChannel", fields: [targetChannelId], references: [id], onDelete: SetNull)
+  sourceConnection   SyncConnection?     @relation("SyncTaskSourceConnection", fields: [sourceConnectionId], references: [id], onDelete: SetNull)
+  targetConnection   SyncConnection?     @relation("SyncTaskTargetConnection", fields: [targetConnectionId], references: [id], onDelete: SetNull)
+  fileUrl            String?
+  fileConfig         String?             @default("{}")
+  executionProgress  String?             @default("{}")
+  executionSummary   String?             @default("{}")
+  executions         SyncTaskExecution[]
+  operations         SyncOperation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+  @@index([tenantId, executionType])
+  @@index([tenantId, taskTypeId])
+  @@map("sync_tasks")
+}
+
+model SyncTaskExecution {
+  id               String    @id @default(uuid())
+  tenantId         String    @default("master")
+  taskId           String
+  task             SyncTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  status           String    @default("running")
+  triggerType      String    @default("manual")
+  triggeredById    String?
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  durationMs       Int?
+  recordsProcessed Int       @default(0)
+  recordsSucceeded Int       @default(0)
+  recordsFailed    Int       @default(0)
+  summary          String?
+  errorMessage     String?
+  details          String?   @default("{}")
+  createdAt        DateTime  @default(now())
+
+  @@index([tenantId, taskId, startedAt])
+  @@map("sync_task_executions")
+}
+
+model SyncOperation {
+  id                String                    @id @default(uuid())
+  tenantId          String                    @default("master")
+  operation         String
+  entityType        String
+  status            String                    @default("queued")
+  connectionId      String
+  connection        SyncConnection            @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  syncTaskId        String?
+  syncTask          SyncTask?                 @relation(fields: [syncTaskId], references: [id], onDelete: SetNull)
+  externalJobId     String?
+  payloadHash       String
+  totalEntities     Int                       @default(0)
+  succeededEntities Int                       @default(0)
+  failedEntities    Int                       @default(0)
+  skippedEntities   Int                       @default(0)
+  metadata          String?                   @default("{}")
+  errorMessage      String?
+  submittedAt       DateTime?
+  completedAt       DateTime?
+  entities          SyncOperationEntity[]
+  dependencies      SyncOperationDependency[] @relation("OperationDependsOn")
+  dependents        SyncOperationDependency[] @relation("OperationRequiredBy")
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, connectionId, payloadHash])
+  @@map("sync_operations")
+}
+
+model SyncOperationEntity {
+  id           String        @id @default(uuid())
+  operationId  String
+  operation    SyncOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  entityId     String
+  externalId   String?
+  status       String        @default("pending")
+  errorMessage String?
+  payload      String?       @default("{}")
+  result       String?       @default("{}")
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([operationId, entityId])
+  @@index([operationId, status])
+  @@map("sync_operation_entities")
+}
+
+model SyncOperationDependency {
+  id          String        @id @default(uuid())
+  operationId String
+  dependsOnId String
+  operation   SyncOperation @relation("OperationDependsOn", fields: [operationId], references: [id], onDelete: Cascade)
+  dependsOn   SyncOperation @relation("OperationRequiredBy", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+
+  @@unique([operationId, dependsOnId])
+  @@index([dependsOnId])
+  @@map("sync_operation_dependencies")
+}
