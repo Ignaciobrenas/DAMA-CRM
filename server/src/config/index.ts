@@ -16,6 +16,16 @@ export const config = {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     tempExpiresIn: '10m', // For 2FA OTP verification
   },
+  googleAuth: {
+    clientId: process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CALENDAR_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '',
+    callbackUrl: process.env.GOOGLE_CALLBACK_URL || '',
+    adminEmails: (process.env.GOOGLE_ADMIN_EMAILS || 'ignaciobrenas@gmail.com')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+    allowDevFallback: process.env.ALLOW_DEV_GOOGLE_FALLBACK === 'true',
+  },
   databaseUrl: process.env.DATABASE_URL || 'postgresql://crm_user:crm_password@localhost:5433/dama_crm?schema=public',
   redis: {
     host: process.env.REDIS_HOST || 'localhost',

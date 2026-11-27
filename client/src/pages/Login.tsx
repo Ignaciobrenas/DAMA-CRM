@@ -30,6 +30,12 @@ import { ValidatedInput } from '../components/common/ValidatedInput';
 import { validateEmail, validateRequired, validateNumber, checkPasswordStrength } from '../utils/validators';
 import { apiRequest } from '../services/api';
 import { getSubdomainTenant } from '../utils/subdomain';
+import {
+  fetchGoogleAuthConfig,
+  GoogleAuthConfig,
+  requestGoogleAccessToken,
+  startGoogleRedirectFlow,
+} from '../services/google-auth.service';
 
 interface LoginProps {
   onNavigatePrivacy?: () => void;
@@ -39,7 +45,7 @@ interface LoginProps {
 type AuthMode = 'login' | 'forgot-password' | 'reset-password' | '2fa';
 
 export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePortal }) => {
-  const { login, loginWithGoogle, verify2FA } = useAuth();
+  const { login, loginWithGoogle, completeSessionWithToken, verify2FA } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { branding, getLogo } = useBranding();
@@ -67,6 +73,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [invitedRole, setInvitedRole] = useState<string | null>(null);
+  const [googleConfig, setGoogleConfig] = useState<GoogleAuthConfig | null>(null);
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -87,7 +94,35 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
     } else if (tenantParam && tenantParam !== 'master') {
       localStorage.setItem('dama_switch_tenant', tenantParam);
     }
-  }, []);
+
+    // Handle Google OAuth2 redirect callback params cleanly and scrub URL
+    const googleToken = params.get('googleToken');
+    const googleError = params.get('googleError');
+    if (googleToken || googleError) {
+      params.delete('googleToken');
+      params.delete('googleError');
+      const remainingQuery = params.toString();
+      const cleanUrl = `${window.location.pathname}${remainingQuery ? `?${remainingQuery}` : ''}${window.location.hash}`;
+      window.history.replaceState({}, document.title, cleanUrl);
+
+      if (googleError) {
+        setErrorMessage(googleError);
+      } else if (googleToken) {
+        setIsLoading(true);
+        completeSessionWithToken(googleToken).then((res) => {
+          setIsLoading(false);
+          if (!res.success) {
+            setErrorMessage(res.message || 'No se pudo completar el inicio de sesión con Google.');
+          }
+        });
+      }
+    }
+
+    // Pre-fetch Google OAuth availability silently (no error toast on failure)
+    fetchGoogleAuthConfig()
+      .then((cfg) => setGoogleConfig(cfg))
+      .catch(() => {});
+  }, [completeSessionWithToken]);
 
   // Clear messages when mode changes
   const switchMode = (newMode: AuthMode) => {
@@ -120,17 +155,51 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
     setIsLoading(true);
 
     try {
+      const cfg = googleConfig ?? (await fetchGoogleAuthConfig());
+      setGoogleConfig(cfg);
+      const tenantSlug = getSubdomainTenant() || localStorage.getItem('dama_switch_tenant');
+
+      if (!cfg.configured || !cfg.clientId) {
+        setIsLoading(false);
+        setErrorMessage(
+          'Google Sign-In no está configurado todavía. Define GOOGLE_CLIENT_ID (y opcionalmente GOOGLE_CLIENT_SECRET) en el servidor o en Integraciones.'
+        );
+        return;
+      }
+
+      const tokenResult = await requestGoogleAccessToken(cfg.clientId);
+
+      if (tokenResult.cancelled) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (tokenResult.popupBlocked && cfg.oauthRedirectEnabled) {
+        startGoogleRedirectFlow(tenantSlug);
+        return;
+      }
+
+      if (!tokenResult.accessToken && !tokenResult.credential) {
+        if (cfg.oauthRedirectEnabled) {
+          startGoogleRedirectFlow(tenantSlug);
+          return;
+        }
+        setIsLoading(false);
+        setErrorMessage(tokenResult.errorMessage || 'No se pudo completar la autenticación con Google.');
+        return;
+      }
+
       const res = await loginWithGoogle({
-        email: 'ignaciobrenas@gmail.com',
-        name: 'Ignacio (Google Workspace)',
+        accessToken: tokenResult.accessToken,
+        credential: tokenResult.credential,
       });
       setIsLoading(false);
       if (!res.success) {
-        setErrorMessage(res.message || 'Error al iniciar sesión con Google');
+        setErrorMessage(res.message || 'Error al iniciar sesión con Google.');
       }
     } catch (err: any) {
       setIsLoading(false);
-      setErrorMessage(err.message || 'Error de autenticación con Google');
+      setErrorMessage(err?.message || 'Error de autenticación con Google.');
     }
   };
 
@@ -160,6 +229,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
     const res = await apiRequest('/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email }),
+      suppressToast: true,
     });
     setIsLoading(false);
 
@@ -196,6 +266,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
         code: resetCode,
         newPassword,
       }),
+      suppressToast: true,
     });
     setIsLoading(false);
 

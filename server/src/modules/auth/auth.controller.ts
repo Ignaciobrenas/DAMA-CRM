@@ -5,6 +5,18 @@ import { generateToken, verifyToken } from '../../utils/jwt';
 import { sendOtpEmail, sendPasswordResetEmail } from '../../utils/mailer';
 import { verifyTotpCode } from '../../utils/totp';
 import { logAudit } from '../../middlewares/audit.middleware';
+import { config } from '../../config';
+import {
+  authenticateVerifiedGoogleProfile,
+  buildGoogleAuthorizationUrl,
+  createSignedOAuthState,
+  exchangeGoogleAuthorizationCode,
+  getGoogleAuthRuntimeConfig,
+  GoogleAuthError,
+  verifyGoogleAccessToken,
+  verifyGoogleIdToken,
+  verifySignedOAuthState,
+} from './google-auth.service';
 
 function buildUserPermissions(user: any): Array<{ resource: string; action: string }> {
   const map = new Map<string, { resource: string; action: string }>();
@@ -117,114 +129,176 @@ export async function login(req: Request, res: Response): Promise<void> {
   }
 }
 
+export async function getGoogleAuthConfig(req: Request, res: Response): Promise<void> {
+  const runtime = getGoogleAuthRuntimeConfig(req);
+  res.json({
+    success: true,
+    data: {
+      configured: runtime.configured,
+      clientId: runtime.clientId || null,
+      oauthRedirectEnabled: runtime.oauthRedirectEnabled,
+      callbackUrl: runtime.callbackUrl,
+    },
+  });
+}
+
+export async function startGoogleOAuthRedirect(req: Request, res: Response): Promise<void> {
+  const runtime = getGoogleAuthRuntimeConfig(req);
+  const frontendOrigin =
+    (typeof req.query.origin === 'string' && /^https?:\/\//i.test(req.query.origin)
+      ? req.query.origin.replace(/\/$/, '')
+      : config.frontendUrl.replace(/\/$/, ''));
+
+  if (!runtime.oauthRedirectEnabled) {
+    const errorMsg = encodeURIComponent(
+      'Google OAuth no está configurado en el servidor (falta GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET).'
+    );
+    res.redirect(`${frontendOrigin}/?googleError=${errorMsg}`);
+    return;
+  }
+
+  const tenantId =
+    typeof req.query.tenant === 'string' && req.query.tenant.trim()
+      ? req.query.tenant.trim().toLowerCase()
+      : undefined;
+
+  const state = createSignedOAuthState({ tenantId, frontendOrigin });
+  const authUrl = buildGoogleAuthorizationUrl({
+    clientId: runtime.clientId,
+    callbackUrl: runtime.callbackUrl,
+    state,
+  });
+
+  res.redirect(authUrl);
+}
+
+export async function handleGoogleOAuthCallback(req: Request, res: Response): Promise<void> {
+  const fallbackOrigin = config.frontendUrl.replace(/\/$/, '');
+  try {
+    const oauthError = typeof req.query.error === 'string' ? req.query.error : '';
+    const code = typeof req.query.code === 'string' ? req.query.code : '';
+    const stateParam = typeof req.query.state === 'string' ? req.query.state : '';
+
+    const stateData = stateParam ? verifySignedOAuthState(stateParam) : null;
+    const targetOrigin = stateData?.frontendOrigin || fallbackOrigin;
+
+    if (oauthError) {
+      const msg = encodeURIComponent(
+        oauthError === 'access_denied'
+          ? 'Inicio de sesión con Google cancelado por el usuario.'
+          : `Error de autenticación en Google: ${oauthError}`
+      );
+      res.redirect(`${targetOrigin}/?googleError=${msg}`);
+      return;
+    }
+
+    if (!code || !stateData) {
+      const msg = encodeURIComponent('Respuesta incompleta de Google OAuth.');
+      res.redirect(`${targetOrigin}/?googleError=${msg}`);
+      return;
+    }
+
+    const runtime = getGoogleAuthRuntimeConfig(req);
+    if (!runtime.oauthRedirectEnabled) {
+      const msg = encodeURIComponent('Google OAuth no está configurado en el servidor.');
+      res.redirect(`${targetOrigin}/?googleError=${msg}`);
+      return;
+    }
+
+    const verifiedProfile = await exchangeGoogleAuthorizationCode({
+      code,
+      redirectUri: runtime.callbackUrl,
+      clientId: runtime.clientId,
+      clientSecret: runtime.clientSecret,
+    });
+
+    const session = await authenticateVerifiedGoogleProfile(verifiedProfile, stateData.tenantId);
+    await logAudit(
+      session.user.id,
+      'LOGIN_GOOGLE',
+      'User',
+      session.user.id,
+      { email: session.user.email, provider: 'google', flow: 'oauth2_redirect' },
+      req.ip
+    );
+
+    res.redirect(`${targetOrigin}/?googleToken=${encodeURIComponent(session.token)}`);
+  } catch (error: any) {
+    const message = error instanceof GoogleAuthError ? error.message : 'Error al completar el inicio de sesión con Google.';
+    res.redirect(`${fallbackOrigin}/?googleError=${encodeURIComponent(message)}`);
+  }
+}
+
 export async function loginWithGoogle(req: Request, res: Response): Promise<void> {
   try {
-    const { credential, email, name, avatar } = req.body;
+    const { credential, accessToken, code, redirectUri, email, name, avatar } = req.body || {};
+    const runtime = getGoogleAuthRuntimeConfig(req);
+    const tenantHeader = (req.headers['x-switch-tenant-id'] || req.headers['x-tenant-slug']) as string | undefined;
+    const requestedTenant = tenantHeader?.trim().toLowerCase() || undefined;
 
-    let userEmail = email ? email.toLowerCase().trim() : '';
-    let userName = name || 'Usuario Google';
-    let userAvatar = avatar || null;
+    let verifiedProfile;
 
-    // Decode JWT credential if Google ID Token passed
     if (credential && typeof credential === 'string') {
-      try {
-        const parts = credential.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-          if (payload.email) userEmail = payload.email.toLowerCase().trim();
-          if (payload.name) userName = payload.name;
-          if (payload.picture) userAvatar = payload.picture;
-        }
-      } catch {}
-    }
-
-    if (!userEmail) {
-      res.status(400).json({ success: false, message: 'Se requiere una credencial válida de Google o un correo electrónico para iniciar sesión' });
-      return;
-    }
-
-    let user = await prisma.user.findUnique({
-      where: { email: userEmail },
-      include: {
-        role: {
-          include: {
-            permissions: true,
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      // Auto-provision user on first Google Login
-      const defaultRole =
-        (await prisma.role.findUnique({ where: { name: userEmail === 'ignaciobrenas@gmail.com' ? 'ADMIN' : 'SALES' } })) ||
-        (await prisma.role.findFirst({ where: { name: 'USER' } })) ||
-        (await prisma.role.findFirst());
-
-      if (!defaultRole) {
-        res.status(500).json({ success: false, message: 'Roles no configurados en el sistema' });
-        return;
+      verifiedProfile = await verifyGoogleIdToken(credential, runtime.clientId || undefined);
+    } else if (accessToken && typeof accessToken === 'string') {
+      verifiedProfile = await verifyGoogleAccessToken(accessToken, runtime.clientId || undefined);
+    } else if (code && typeof code === 'string') {
+      if (!runtime.oauthRedirectEnabled) {
+        throw new GoogleAuthError(
+          503,
+          'El servidor requiere GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET para intercambiar códigos OAuth.'
+        );
       }
-
-      user = await prisma.user.create({
-        data: {
-          email: userEmail,
-          name: userName,
-          avatar: userAvatar,
-          passwordHash: await bcrypt.hash(`google_${Date.now()}_${Math.random()}`, 10),
-          roleId: defaultRole.id,
-          tenantId: 'master',
-          isActive: true,
-        },
-        include: {
-          role: {
-            include: {
-              permissions: true,
-            },
-          },
-        },
+      verifiedProfile = await exchangeGoogleAuthorizationCode({
+        code,
+        redirectUri: typeof redirectUri === 'string' && redirectUri ? redirectUri : runtime.callbackUrl,
+        clientId: runtime.clientId,
+        clientSecret: runtime.clientSecret,
       });
+    } else if (
+      config.env !== 'production' &&
+      config.googleAuth.allowDevFallback &&
+      email &&
+      typeof email === 'string'
+    ) {
+      verifiedProfile = {
+        email: email.toLowerCase().trim(),
+        name: name || email.split('@')[0] || 'Usuario Google',
+        avatar: avatar || null,
+        emailVerified: true,
+      };
+    } else {
+      throw new GoogleAuthError(
+        runtime.configured ? 400 : 503,
+        runtime.configured
+          ? 'Se requiere una credencial verificada de Google (ID Token, Access Token o código OAuth).'
+          : 'Google Sign-In no está configurado en el servidor. Añade GOOGLE_CLIENT_ID (y opcionalmente GOOGLE_CLIENT_SECRET) en el archivo .env o en Integraciones.'
+      );
     }
 
-    if (!user.isActive) {
-      res.status(401).json({ success: false, message: 'La cuenta asociada a este correo de Google está inactiva' });
-      return;
-    }
+    const session = await authenticateVerifiedGoogleProfile(verifiedProfile, requestedTenant);
 
-    // Update avatar if changed
-    if (userAvatar && (!user.avatar || user.avatar !== userAvatar)) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { avatar: userAvatar },
-      }).catch(() => {});
-    }
-
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role.name,
-    });
-
-    await logAudit(user.id, 'LOGIN_GOOGLE', 'User', user.id, { email: user.email, provider: 'google' }, req.ip);
+    await logAudit(
+      session.user.id,
+      'LOGIN_GOOGLE',
+      'User',
+      session.user.id,
+      { email: session.user.email, provider: 'google' },
+      req.ip
+    );
 
     res.json({
       success: true,
       require2FA: false,
-      token,
-      user: {
-        id: user.id,
-        tenantId: user.tenantId,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar || userAvatar,
-        twoFactorEnabled: user.twoFactorEnabled,
-        role: user.role.name,
-        preferences: user.preferences ? JSON.parse(user.preferences) : {},
-        permissions: buildUserPermissions(user),
-      },
+      token: session.token,
+      user: session.user,
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    if (error instanceof GoogleAuthError) {
+      res.status(error.statusCode).json({ success: false, message: error.message });
+      return;
+    }
+    res.status(500).json({ success: false, message: error.message || 'Error en autenticación con Google' });
   }
 }
 
