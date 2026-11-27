@@ -36,6 +36,10 @@ import {
   requestGoogleAccessToken,
   startGoogleRedirectFlow,
 } from '../services/google-auth.service';
+import Grainient from '../components/auth/Grainient';
+import InteractiveParticles from '../components/auth/InteractiveParticles';
+
+const LOGIN_GRAINIENT_COLORS = ['#120f17', '#0a162a', '#12529a', '#164bf9', '#c6aafe'];
 
 interface LoginProps {
   onNavigatePrivacy?: () => void;
@@ -298,32 +302,29 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
-      
-      {/* Animated Background */}
+    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-100 dark:bg-[#120f17] transition-colors duration-300">
+
+      {/* Interactive Grainient WebGL Shader + Interactive Particles Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-            rotate: [0, 90, 0]
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] max-w-[800px] max-h-[800px] rounded-full bg-gradient-to-br from-blue-400/30 to-indigo-500/20 dark:from-blue-600/15 dark:to-indigo-900/15 blur-[100px]"
+        <Grainient
+          colors={LOGIN_GRAINIENT_COLORS}
+          angle={55}
+          flow={0.8}
+          silk={0.35}
+          grainAmount={0.08}
+          interactive
+          clickSwirl
+          lightMode={theme !== 'dark'}
         />
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.2, 0.4, 0.2],
-            rotate: [0, -90, 0]
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-[20%] -right-[10%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] rounded-full bg-gradient-to-tl from-purple-400/20 to-blue-500/30 dark:from-purple-800/15 dark:to-blue-900/15 blur-[120px]"
+        <InteractiveParticles lightMode={theme !== 'dark'} density={72} />
+        <div
+          className="absolute inset-0 bg-slate-100/20 dark:bg-slate-950/15 transition-colors duration-300"
+          aria-hidden="true"
         />
       </div>
 
       {/* Auth Card Container */}
-      <div className="w-full max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2rem] shadow-2xl shadow-blue-900/10 dark:shadow-none border border-white/60 dark:border-slate-800/80 p-6 sm:p-8 relative z-10 transition-all duration-300">
+      <div className="w-full max-w-md bg-white/88 dark:bg-slate-900/82 backdrop-blur-2xl rounded-[2rem] shadow-2xl shadow-slate-950/25 dark:shadow-black/50 border border-slate-200/80 dark:border-slate-700/60 p-6 sm:p-8 relative z-10 transition-all duration-300">
         
         {/* Top Controls: Language & Dark/Light Mode */}
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-slate-800/80">
@@ -783,26 +784,28 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
         </AnimatePresence>
       </div>
 
-        {/* External Footer Links */}
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500 dark:text-slate-400 z-10">
-        {onNavigatePortal && (
-          <button
-            onClick={onNavigatePortal}
-            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center space-x-1"
-          >
-            <span>{t('clientPortalLink')}</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
-        )}
-        {onNavigatePrivacy && (
-          <button
-            onClick={onNavigatePrivacy}
-            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline"
-          >
-            {t('privacyPolicy')}
-          </button>
-        )}
-      </div>
+      {/* External Footer Links */}
+      {(onNavigatePortal || onNavigatePrivacy) && (
+        <div className="mt-6 px-4 py-1.5 rounded-full bg-white/75 dark:bg-slate-900/65 backdrop-blur-md border border-slate-200/70 dark:border-white/10 shadow-sm flex flex-wrap items-center justify-center gap-4 text-xs text-slate-700 dark:text-slate-200 z-10">
+          {onNavigatePortal && (
+            <button
+              onClick={onNavigatePortal}
+              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center space-x-1 font-medium"
+            >
+              <span>{t('clientPortalLink')}</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          )}
+          {onNavigatePrivacy && (
+            <button
+              onClick={onNavigatePrivacy}
+              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline font-medium"
+            >
+              {t('privacyPolicy')}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
