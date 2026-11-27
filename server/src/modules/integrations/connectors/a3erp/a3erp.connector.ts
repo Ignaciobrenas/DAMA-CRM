@@ -619,22 +619,23 @@ export class A3ErpConnector implements IPlatformConnector<A3ErpConfig> {
   }
 
   /**
-   * Factura un albarán de venta existente mediante `POST /api/custom/Facturas/FacturaAlbaranVenta`.
+   * Factura un albarán de venta existente mediante `POST /api/custom/Albaranes/FacturaAlbaranVenta`.
    */
   public async facturaAlbaranVenta(
-    payload: A3ErpFacturaAlbaranInput
+    payload: A3ErpFacturaAlbaranInput & { IDDOCU?: number }
   ): Promise<ConnectorOperationResult<Record<string, any>>> {
-    if (!payload.IDALBV && !payload.NUMDOC) {
+    if (!payload.IDDOCU && !payload.IDALBV && !payload.NUMDOC) {
       return {
         success: false,
-        operation: 'POST /api/custom/Facturas/FacturaAlbaranVenta',
+        operation: 'POST /api/custom/Albaranes/FacturaAlbaranVenta',
         connector: 'a3erp',
-        message: 'Se requiere IDALBV o NUMDOC para facturar un albarán de venta en a3ERP.',
-        errors: ['Missing IDALBV or NUMDOC'],
+        message: 'Se requiere IDDOCU, IDALBV o NUMDOC para facturar un albarán de venta en a3ERP.',
+        errors: ['Missing IDDOCU / IDALBV / NUMDOC'],
       };
     }
-    return this.writeCustom('Facturas', 'FacturaAlbaranVenta', {
+    return this.writeCustom('Albaranes', 'FacturaAlbaranVenta', {
       ...payload,
+      IDDOCU: payload.IDDOCU ?? payload.IDALBV,
       FECHA: payload.FECHA
         ? MappingEngine.formatDate(payload.FECHA, 'ISO_NO_TZ')
         : MappingEngine.formatDate(new Date(), 'ISO_NO_TZ'),
