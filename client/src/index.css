@@ -431,7 +431,7 @@ html:not(.dark) .badge-purple {
 
 /* Typography: expressive display face for headings, tidy UI face for body */
 h1, h2, h3, .font-display {
-  font-family: theme('fontFamily.display');
+  font-family: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
   letter-spacing: -0.022em;
   font-feature-settings: 'ss01' 1;
 }
