@@ -26,8 +26,8 @@ interface Ripple {
   alpha: number;
 }
 
-const DARK_TINTS = ['255, 255, 255', '198, 170, 254', '147, 197, 253', '96, 165, 250'];
-const LIGHT_TINTS = ['30, 58, 138', '37, 99, 235', '79, 70, 229', '15, 23, 42'];
+const DARK_TINTS = ['255, 255, 255', '246, 196, 83', '108, 192, 211', '54, 162, 188'];
+const LIGHT_TINTS = ['10, 37, 64', '10, 110, 135', '194, 124, 12', '15, 23, 42'];
 
 /**
  * Lightweight interactive Canvas 2D constellation particle layer designed to sit
@@ -108,8 +108,8 @@ export const InteractiveParticles: React.FC<InteractiveParticlesProps> = ({
 
       const isLight = lightModeRef.current;
       const palette = isLight ? LIGHT_TINTS : DARK_TINTS;
-      const lineTint = isLight ? '37, 99, 235' : '198, 170, 254';
-      const cursorLineTint = isLight ? '29, 78, 216' : '224, 231, 255';
+      const lineTint = isLight ? '10, 110, 135' : '108, 192, 211';
+      const cursorLineTint = isLight ? '10, 58, 80' : '255, 236, 200';
       const interactionRadius = 150;
       const linkDistance = 120;
 

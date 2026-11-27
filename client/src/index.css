@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --brand-color: #2563EB;
+  --brand-color: #0A6E87;
   --custom-radius: 0.5rem;
-  --brand-tint: rgba(37, 99, 235, 0.08);
+  --brand-tint: rgba(10, 110, 135, 0.08);
 }
 
 @layer base {
@@ -32,7 +32,7 @@
 
   /* Accessible focus indicators */
   :focus-visible {
-    outline: 2px solid var(--brand-color, #2563EB);
+    outline: 2px solid var(--brand-color, #0A6E87);
     outline-offset: 2px;
   }
 }
@@ -53,15 +53,15 @@ html:not(.dark) {
   --text-primary: #0F172A;
   --text-secondary: #334155;
   --text-muted: #64748B;
-  --color-primary-soft: #2563EB;
+  --color-primary-soft: #0A6E87;
   --color-success-bg: #D1FAE5;
   --color-success-text: #065F46;
   --color-warning-bg: #FEF3C7;
   --color-warning-text: #92400E;
   --color-danger-bg: #FFE4E6;
   --color-danger-text: #9F1239;
-  --color-info-bg: #DBEAFE;
-  --color-info-text: #1E40AF;
+  --color-info-bg: #D0ECF2;
+  --color-info-text: #0B4659;
 }
 
 /* Light Mode Canvas & Background: Soft, relaxing slate canvas, strictly eliminating blinding glare */
@@ -139,9 +139,9 @@ html:not(.dark) textarea:hover {
 html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):focus,
 html:not(.dark) select:focus,
 html:not(.dark) textarea:focus {
-  border-color: #2563EB !important;
+  border-color: #0A6E87 !important;
   background-color: #FFFFFF !important;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  box-shadow: 0 0 0 3px rgba(10, 110, 135, 0.16) !important;
   outline: none !important;
   transform: none !important;
 }
@@ -253,8 +253,8 @@ html:not(.dark) .text-slate-400 {
 .dark input:not([type="checkbox"]):not([type="radio"]):focus,
 .dark select:focus,
 .dark textarea:focus {
-  border-color: #3B82F6 !important;
-  outline: 2px solid #3B82F6;
+  border-color: #36A2BC !important;
+  outline: 2px solid #36A2BC;
 }
 
 /* Subtle transitions for interactive controls */
@@ -285,16 +285,16 @@ button, a, input, select, textarea {
 
 /* Dynamic Brand Utilities */
 .bg-brand-primary {
-  background-color: var(--brand-color, #2563EB) !important;
+  background-color: var(--brand-color, #0A6E87) !important;
 }
 .text-brand-primary {
-  color: var(--brand-color, #2563EB) !important;
+  color: var(--brand-color, #0A6E87) !important;
 }
 .border-brand-primary {
-  border-color: var(--brand-color, #2563EB) !important;
+  border-color: var(--brand-color, #0A6E87) !important;
 }
 .bg-brand-tint {
-  background-color: var(--brand-tint, rgba(37, 99, 235, 0.1)) !important;
+  background-color: var(--brand-tint, rgba(10, 110, 135, 0.1)) !important;
 }
 
 /* RTL layout support for Arabic */
@@ -400,9 +400,9 @@ html:not(.dark) .badge-emerald {
 }
 
 html:not(.dark) .badge-blue {
-  background-color: #EFF6FF;
-  color: #1D4ED8;
-  border: 1px solid #BFDBFE;
+  background-color: #EAF6F9;
+  color: #0A586D;
+  border: 1px solid #A3D9E5;
 }
 
 html:not(.dark) .badge-amber {
@@ -421,4 +421,152 @@ html:not(.dark) .badge-purple {
   background-color: #F5F3FF;
   color: #6D28D9;
   border: 1px solid #DDD6FE;
+}
+
+/* ==========================================================================
+   DAMA Identity Layer — "Deep sea & saffron"
+   Loaded last on purpose: overrides the generic slate/blue defaults above.
+   Light mode keeps the soft gray canvas mandated by AGENTS.md (no glaring white).
+   ========================================================================== */
+
+/* Typography: expressive display face for headings, tidy UI face for body */
+h1, h2, h3, .font-display {
+  font-family: theme('fontFamily.display');
+  letter-spacing: -0.022em;
+  font-feature-settings: 'ss01' 1;
+}
+
+.tabular-nums-ui,
+td, th {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dark mode: ink surfaces tinted toward the logo navy/petrol instead of flat slate */
+.dark body {
+  background-color: #070D10 !important;
+}
+
+.dark .bg-slate-900,
+.dark .bg-slate-900\/90,
+.dark .bg-slate-900\/80 {
+  background-color: #0D161A !important;
+  border-color: #1F2F35 !important;
+}
+
+.dark .bg-slate-950,
+.dark .bg-slate-950\/40,
+.dark .bg-slate-950\/20 {
+  background-color: #050A0C !important;
+}
+
+.dark .border-slate-800,
+.dark .border-gray-800 {
+  border-color: #1F2F35 !important;
+}
+
+.dark .border-slate-700,
+.dark .border-gray-700 {
+  border-color: #2C4048 !important;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+  background-color: #0D161A !important;
+  border-color: #1F2F35 !important;
+}
+
+.dark th {
+  color: #8FA7AE;
+  background-color: #0D161A;
+  border-bottom: 1px solid #1F2F35;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #243840;
+}
+
+::selection {
+  background: rgba(246, 181, 53, 0.35);
+  color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   React Bits style effects (CSS side)
+   -------------------------------------------------------------------------- */
+
+/* SpotlightCard: cursor-follow radial glow. --mx/--my are set by the pointer
+   listener in components/ui/reactbits/spotlight-pointer.ts */
+.spotlight-card {
+  position: relative;
+  isolation: isolate;
+  --spot-color: rgba(10, 110, 135, 0.11);
+}
+.dark .spotlight-card {
+  --spot-color: rgba(246, 181, 53, 0.1);
+}
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 50%),
+    var(--spot-color),
+    transparent 65%
+  );
+}
+.spotlight-card:hover::before {
+  opacity: 1;
+}
+
+/* ShinyText: highlight sweeping across the text */
+.rb-shiny-text {
+  display: inline-block;
+  color: inherit;
+  background-image: linear-gradient(
+    110deg,
+    currentColor 0%,
+    currentColor 40%,
+    #F6B535 50%,
+    currentColor 60%,
+    currentColor 100%
+  );
+  background-size: 220% 100%;
+  background-position: 150% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.rb-shiny-text.is-shining {
+  animation: rb-shine 3.2s linear infinite;
+}
+@keyframes rb-shine {
+  0% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+/* GradientText: slow animated gradient fill */
+.rb-gradient-text {
+  display: inline-block;
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rb-gradient-shift 8s ease-in-out infinite alternate;
+}
+@keyframes rb-gradient-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-shiny-text.is-shining,
+  .rb-gradient-text {
+    animation: none;
+  }
 }

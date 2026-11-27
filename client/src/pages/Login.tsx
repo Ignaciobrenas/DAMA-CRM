@@ -39,7 +39,7 @@ import {
 import Grainient from '../components/auth/Grainient';
 import InteractiveParticles from '../components/auth/InteractiveParticles';
 
-const LOGIN_GRAINIENT_COLORS = ['#120f17', '#0a162a', '#12529a', '#164bf9', '#c6aafe'];
+const LOGIN_GRAINIENT_COLORS = ['#0B1118', '#0A2540', '#0A6E87', '#36A2BC', '#F6C453'];
 
 interface LoginProps {
   onNavigatePrivacy?: () => void;
@@ -302,7 +302,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigatePrivacy, onNavigatePorta
 
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-100 dark:bg-[#120f17] transition-colors duration-300">
+    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-100 dark:bg-[#0B1118] transition-colors duration-300">
 
       {/* Interactive Grainient WebGL Shader + Interactive Particles Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">

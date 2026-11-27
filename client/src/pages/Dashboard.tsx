@@ -33,6 +33,7 @@ import { useToast } from '../context/ToastContext';
 import { AnimatedCounter } from '../components/ui/AnimatedCounter';
 import { AnimatedIcon } from '../components/ui/AnimatedIcon';
 import { BarChart } from '../components/ui/Charts';
+import { GradientText } from '../components/ui/reactbits/GradientText';
 
 const DEFAULT_WIDGETS = ['kpis', 'cashflow_forecast', 'pipeline_chart', 'recent_tasks', 'top_deals', 'quick_actions'];
 
@@ -283,7 +284,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               <motion.div
                 variants={cardVariants}
                 whileHover={{ y: -3, transition: { duration: 0.18 } }}
-                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md spotlight-card"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('pipelineTotal')}</span>
@@ -318,7 +319,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               <motion.div
                 variants={cardVariants}
                 whileHover={{ y: -3, transition: { duration: 0.18 } }}
-                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md spotlight-card"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('wonSales')}</span>
@@ -343,7 +344,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               <motion.div
                 variants={cardVariants}
                 whileHover={{ y: -3, transition: { duration: 0.18 } }}
-                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md spotlight-card"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('dashboard.conversionRate')}</span>
@@ -363,7 +364,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               <motion.div
                 variants={cardVariants}
                 whileHover={{ y: -3, transition: { duration: 0.18 } }}
-                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md spotlight-card"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('activeDeals')}</span>
@@ -383,7 +384,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
               <motion.div
                 variants={cardVariants}
                 whileHover={{ y: -3, transition: { duration: 0.18 } }}
-                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md"
+                className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-xs transition-shadow hover:shadow-md spotlight-card"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t('openTasks')}</span>
@@ -740,7 +741,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         message: 'Que tengas una jornada productiva y llena de éxitos.',
         icon: Sun,
         colorClass: 'text-amber-500 dark:text-amber-400',
-        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800',
+        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 bg-gradient-to-r from-white via-white to-blue-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/40 spotlight-card',
         date: formattedDate,
       };
     } else if (hours >= 13 && hours < 21) {
@@ -749,7 +750,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         message: 'Aquí tienes el resumen actualizado de la actividad de tu empresa hoy.',
         icon: Sunset,
         colorClass: 'text-orange-500 dark:text-orange-400',
-        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800',
+        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 bg-gradient-to-r from-white via-white to-blue-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/40 spotlight-card',
         date: formattedDate,
       };
     } else {
@@ -758,7 +759,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
         message: 'Revisa los últimos avances y métricas antes de cerrar el día.',
         icon: Moon,
         colorClass: 'text-indigo-500 dark:text-indigo-400',
-        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800',
+        bgClass: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 bg-gradient-to-r from-white via-white to-blue-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/40 spotlight-card',
         date: formattedDate,
       };
     }
@@ -783,7 +784,7 @@ export const Dashboard: React.FC<{ onNavigate: (route: string) => void }> = ({ o
           </div>
           <div>
             <h2 className="text-base font-bold text-gray-900 dark:text-white tracking-tight">
-              {greetingInfo.greeting}, <span className="text-blue-600 dark:text-blue-400">{firstName}</span>
+              {greetingInfo.greeting}, <GradientText className="font-display">{firstName}</GradientText>
             </h2>
             <p className="text-xs text-gray-600 dark:text-slate-300 font-medium">
               {greetingInfo.message}
