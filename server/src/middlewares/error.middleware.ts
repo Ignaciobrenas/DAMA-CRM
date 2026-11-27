@@ -59,5 +59,6 @@ export async function errorHandler(err: any, req: Request, res: Response, next: 
     success: false,
     message: friendlyMessage,
     errors: err.errors || undefined,
+    details: err.details || undefined,
   });
 }
