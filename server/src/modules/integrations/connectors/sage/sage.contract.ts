@@ -5,6 +5,7 @@ import {
   SageDocumentHeaderInput,
   SageDocumentTypeCode,
   SageInventoryInput,
+  SageItemInput,
   SageStockMovementInput,
 } from './sage.types';
 
@@ -438,5 +439,67 @@ export class SageContractValidator {
         tipoImportacionIME: input.tipoImportacionIME ?? 0,
       },
     };
+  }
+
+  /**
+   * Valida y normaliza un Artículo (TmpIME_Articulos, 77 campos documentados):
+   * - codigoEmpresa obligatorio (1..9999)
+   * - descripcionArticulo obligatorio (máx 50)
+   * - codigoArticulo opcional (máx 20; vacío autogenera con DameContador)
+   * - tipoArticulo máx 1 (default 'M' mercancía)
+   * - booleanos Sage en formato 0 | -1 (`colores_`, `obsoletoLc`)
+   */
+  public static validateAndNormalizeItem(
+    input: Partial<SageItemInput>
+  ): { valid: boolean; errors: string[]; normalized?: SageItemInput } {
+    const errors: string[] = [];
+    const codigoEmpresa = Number(input.codigoEmpresa || 9999);
+    if (isNaN(codigoEmpresa) || codigoEmpresa < 1 || codigoEmpresa > 9999) {
+      errors.push('codigoEmpresa debe ser un entero entre 1 y 9999.');
+    }
+
+    const descripcion = String(input.descripcionArticulo || '').trim();
+    if (!descripcion) {
+      errors.push('descripcionArticulo es obligatorio para dar de alta un Artículo (TmpIME_Articulos).');
+    }
+
+    if (input.colores_ !== undefined && input.colores_ !== 0 && input.colores_ !== -1) {
+      errors.push('colores_ en Sage 200 utiliza convención booleana 0 (No) o -1 (Sí).');
+    }
+
+    if (input.obsoletoLc !== undefined && input.obsoletoLc !== 0 && input.obsoletoLc !== -1) {
+      errors.push('obsoletoLc en Sage 200 utiliza convención booleana 0 (Activo) o -1 (Obsoleto).');
+    }
+
+    if (errors.length > 0) {
+      return { valid: false, errors };
+    }
+
+    const normalized: SageItemInput = {
+      codigoEmpresa,
+      descripcionArticulo: descripcion.slice(0, 50),
+      ...(input.codigoArticulo ? { codigoArticulo: String(input.codigoArticulo).trim().slice(0, 20) } : {}),
+      tipoArticulo: (input.tipoArticulo || 'M').trim().toUpperCase().slice(0, 1),
+      tipoImportacionIME: input.tipoImportacionIME ?? 0,
+      ...(input.descripcion2Articulo ? { descripcion2Articulo: String(input.descripcion2Articulo).slice(0, 40) } : {}),
+      ...(input.descripcionLinea ? { descripcionLinea: String(input.descripcionLinea) } : {}),
+      ...(input.comentarioArticulo ? { comentarioArticulo: String(input.comentarioArticulo) } : {}),
+      ...(input.marcaProducto ? { marcaProducto: String(input.marcaProducto).slice(0, 20) } : {}),
+      ...(input.codigoAlternativo ? { codigoAlternativo: String(input.codigoAlternativo).slice(0, 20) } : {}),
+      ...(input.codigoArancelario ? { codigoArancelario: String(input.codigoArancelario).slice(0, 12) } : {}),
+      ...(input.codigoFamilia ? { codigoFamilia: String(input.codigoFamilia).slice(0, 10) } : {}),
+      ...(input.codigoSubfamilia ? { codigoSubfamilia: String(input.codigoSubfamilia).slice(0, 10) } : {}),
+      ...(input.colores_ !== undefined ? { colores_: input.colores_ } : {}),
+      ...(input.grupoTalla_ !== undefined ? { grupoTalla_: Number(input.grupoTalla_) } : {}),
+      ...(input.precioCompra !== undefined ? { precioCompra: Number(input.precioCompra) } : {}),
+      ...(input.precioVenta !== undefined ? { precioVenta: Number(input.precioVenta) } : {}),
+      ...(input.stockMinimo !== undefined ? { stockMinimo: Number(input.stockMinimo) } : {}),
+      ...(input.stockMaximo !== undefined ? { stockMaximo: Number(input.stockMaximo) } : {}),
+      ...(input.pesoBrutoUnitario_ !== undefined ? { pesoBrutoUnitario_: Number(input.pesoBrutoUnitario_) } : {}),
+      ...(input.pesoNetoUnitario_ !== undefined ? { pesoNetoUnitario_: Number(input.pesoNetoUnitario_) } : {}),
+      obsoletoLc: input.obsoletoLc ?? 0,
+    };
+
+    return { valid: true, errors: [], normalized };
   }
 }

@@ -220,3 +220,38 @@ export interface A3ErpPedidoVentaPost {
   CENTROCOSTE?: string;
   PEDIDOVENTALINEAS: A3ErpPedidoVentaLineaInput[];
 }
+
+export interface A3ErpVariantInfo {
+  sku: string;
+  parentCodArt: string;
+  sizeGroup?: string;
+  sizeCode?: string;
+  colorCode?: string;
+  colorName?: string;
+  alternativeCode?: string;
+}
+
+export interface A3ErpReplogRow {
+  TABLA: string;
+  OPERACION: 'I' | 'U' | 'D' | string;
+  CLAVE: string;
+  FECHA: string;
+}
+
+export interface A3ErpFacturaAlbaranInput {
+  IDALBV?: number;
+  NUMDOC?: number;
+  SERIE?: string;
+  FECHA?: string;
+  CODCLI?: string;
+  TIPOCONT?: string;
+  REFERENCIA?: string;
+}
+
+export interface A3ErpImprimeFacturaResult {
+  documentId: number;
+  kind: 'venta' | 'compra';
+  mimeType: 'application/pdf';
+  fileName: string;
+  pdfBase64: string;
+}
