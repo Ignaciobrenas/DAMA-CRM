@@ -45,7 +45,7 @@ export const DEFAULT_BRANDING: BrandingConfig = {
   logoUrl: '',
   logoDarkUrl: '',
   logoLightUrl: '',
-  primaryColor: '#2563EB',
+  primaryColor: '#0A6E87',
   secondaryColor: '#0F172A',
   borderRadius: 'md',
   companyTaxId: 'B87654323',
@@ -78,6 +78,21 @@ export const DEFAULT_BRANDING: BrandingConfig = {
     'Documento mercantil normalizado conforme a ISO 216, ISO 8601, ISO 4217 y Reglamento Veri*Factu (RD 1007/2023 & Orden HAC/1177/2024).',
 };
 
+const LEGACY_DEFAULT_PRIMARY = '#2563EB';
+const DAMA_PRIMARY = '#0A6E87';
+
+/**
+ * Installations that never customised the brand color still carry the old
+ * generic blue default (in localStorage or the API). Treat it as "unset" so the
+ * DAMA identity color applies; any color picked on purpose is kept untouched.
+ */
+function normalizeBranding(config: BrandingConfig): BrandingConfig {
+  if ((config.primaryColor || '').toUpperCase() === LEGACY_DEFAULT_PRIMARY) {
+    return { ...config, primaryColor: DAMA_PRIMARY };
+  }
+  return config;
+}
+
 const RADIUS_MAP: Record<string, string> = {
   sm: '0.5rem',
   md: '0.85rem',
@@ -100,7 +115,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [branding, setBranding] = useState<BrandingConfig>(() => {
     try {
       const saved = localStorage.getItem('dama_crm_branding');
-      return saved ? { ...DEFAULT_BRANDING, ...JSON.parse(saved) } : DEFAULT_BRANDING;
+      return saved ? normalizeBranding({ ...DEFAULT_BRANDING, ...JSON.parse(saved) }) : DEFAULT_BRANDING;
     } catch {
       return DEFAULT_BRANDING;
     }
@@ -129,9 +144,9 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty('--brand-color', branding.primaryColor || '#2563EB');
+    root.style.setProperty('--brand-color', branding.primaryColor || '#0A6E87');
     root.style.setProperty('--custom-radius', RADIUS_MAP[branding.borderRadius] || '0.85rem');
-    root.style.setProperty('--brand-tint', `${branding.primaryColor || '#2563EB'}1A`);
+    root.style.setProperty('--brand-tint', `${branding.primaryColor || '#0A6E87'}1A`);
 
     try {
       localStorage.setItem('dama_crm_branding', JSON.stringify(branding));
@@ -143,7 +158,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .then((res) => {
         if (res.success && res.data) {
           setBranding((prev) => {
-            const merged = { ...prev, ...res.data };
+            const merged = normalizeBranding({ ...prev, ...res.data });
             try {
               localStorage.setItem('dama_crm_branding', JSON.stringify(merged));
             } catch {}
@@ -156,7 +171,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const unsub = wsClient.on('branding:update', (updated: BrandingConfig) => {
       if (updated) {
         setBranding((prev) => {
-          const merged = { ...prev, ...updated };
+          const merged = normalizeBranding({ ...prev, ...updated });
           try {
             localStorage.setItem('dama_crm_branding', JSON.stringify(merged));
           } catch {}

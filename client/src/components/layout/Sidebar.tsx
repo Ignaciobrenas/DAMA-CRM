@@ -245,7 +245,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           : 'gap-2.5 px-2.5 py-1.5 rounded-xl text-[12.5px]'
                       } ${
                         isActive
-                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold shadow-2xs'
+                          ? "bg-indigo-950 text-white dark:bg-white/[0.08] dark:text-white dark:ring-1 dark:ring-white/10 font-semibold shadow-2xs before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-[3px] before:rounded-r-full before:bg-accent-400"
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 font-medium'
                       }`}
                     >
@@ -257,7 +257,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           active={isActive}
                           className={
                             isActive
-                              ? 'text-white dark:text-slate-900'
+                              ? 'text-accent-300'
                               : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100'
                           }
                         />
@@ -268,7 +268,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           {isActive && (
                             <span
                               className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ backgroundColor: branding.primaryColor || '#3B82F6' }}
+                              style={{ backgroundColor: '#F6B535' }}
                             />
                           )}
                         </>

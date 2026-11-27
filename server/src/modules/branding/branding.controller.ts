@@ -52,7 +52,7 @@ export const DEFAULT_BRANDING: BrandingConfig = {
   logoUrl: '',
   logoLightUrl: '',
   logoDarkUrl: '',
-  primaryColor: '#2563EB',
+  primaryColor: '#0A6E87',
   secondaryColor: '#0F172A',
   borderRadius: 'md',
   companyTaxId: 'B87654323',
