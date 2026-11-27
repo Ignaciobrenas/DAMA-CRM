@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '../services/api';
 import { soundService } from '../services/sound';
 
@@ -40,7 +40,13 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ require2FA?: boolean; tempToken?: string; success: boolean; message?: string }>;
-  loginWithGoogle: (googlePayload?: { credential?: string; email?: string; name?: string; avatar?: string }) => Promise<{ success: boolean; message?: string }>;
+  loginWithGoogle: (googlePayload?: {
+    credential?: string;
+    accessToken?: string;
+    code?: string;
+    redirectUri?: string;
+  }) => Promise<{ success: boolean; message?: string }>;
+  completeSessionWithToken: (token: string) => Promise<{ success: boolean; message?: string }>;
   register: (name: string, email: string, password: string, companyName?: string) => Promise<{ success: boolean; message?: string }>;
   verify2FA: (tempToken: string, code: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
@@ -113,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+      suppressToast: true,
     });
 
     if (res.require2FA && res.tempToken) {
@@ -132,11 +139,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: false, message: res.message || 'auth.loginError' };
   };
 
-  const loginWithGoogle = async (googlePayload?: { credential?: string; email?: string; name?: string; avatar?: string }) => {
+  const loginWithGoogle = async (googlePayload?: {
+    credential?: string;
+    accessToken?: string;
+    code?: string;
+    redirectUri?: string;
+  }) => {
     try {
       const res = await apiRequest('/auth/google', {
         method: 'POST',
         body: JSON.stringify(googlePayload || {}),
+        suppressToast: true,
       });
 
       if (res.success && (res as any).token && (res as any).user) {
@@ -154,6 +167,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, message: err.message || 'Error de conexión con Google Auth' };
     }
   };
+
+  const completeSessionWithToken = useCallback(async (token: string) => {
+    try {
+      localStorage.setItem('dama_token', token);
+      const res = await apiRequest('/auth/me', {
+        method: 'GET',
+        suppressToast: true,
+        useCache: false,
+      });
+      if (res.success && res.user) {
+        localStorage.setItem('dama_user', JSON.stringify(res.user));
+        setUser(res.user);
+        if (res.user.preferences?.soundEnabled !== undefined) {
+          soundService.setMuted(!res.user.preferences.soundEnabled);
+        }
+        return { success: true };
+      }
+      localStorage.removeItem('dama_token');
+      localStorage.removeItem('dama_user');
+      return { success: false, message: res.message || 'No se pudo validar la sesión de Google' };
+    } catch (err: any) {
+      localStorage.removeItem('dama_token');
+      localStorage.removeItem('dama_user');
+      return { success: false, message: err?.message || 'Error validando la sesión de Google' };
+    }
+  }, []);
 
   const register = async (name: string, email: string, password: string, companyName?: string) => {
     const res = await apiRequest('/auth/register', {
@@ -175,6 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await apiRequest('/auth/verify-2fa', {
       method: 'POST',
       body: JSON.stringify({ tempToken, code }),
+      suppressToast: true,
     });
 
     if (res.success && (res as any).token && (res as any).user) {
@@ -268,6 +308,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         loginWithGoogle,
+        completeSessionWithToken,
         register,
         verify2FA,
         logout,

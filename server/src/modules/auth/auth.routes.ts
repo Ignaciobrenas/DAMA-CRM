@@ -2,6 +2,9 @@ import { Router } from 'express';
 import {
   login,
   loginWithGoogle,
+  getGoogleAuthConfig,
+  startGoogleOAuthRedirect,
+  handleGoogleOAuthCallback,
   register,
   verify2FA,
   toggle2FA,
@@ -32,6 +35,9 @@ const sensitiveAuthLimiter = rateLimiter({
 });
 
 router.post('/login', loginLimiter, validate(loginSchema), login);
+router.get('/google/config', getGoogleAuthConfig);
+router.get('/google/start', startGoogleOAuthRedirect);
+router.get('/google/callback', handleGoogleOAuthCallback);
 router.post('/google', loginLimiter, loginWithGoogle);
 router.post('/register', register);
 router.post('/verify-2fa', sensitiveAuthLimiter, verify2FA);

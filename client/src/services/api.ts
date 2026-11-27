@@ -1,4 +1,29 @@
+import { ToastDeduplicator } from '../utils/toast-dedupe';
+
 const API_BASE = (import.meta as any).env?.VITE_API_URL || '/api';
+
+// Global deduplicators prevent parallel request bursts from firing duplicate error alerts
+const globalErrorToastDedupe = new ToastDeduplicator(3500);
+let lastUnauthorizedDispatchAt = 0;
+
+function emitGlobalErrorToast(title: string, message: string): void {
+  const check = globalErrorToastDedupe.check('error', title, message);
+  if (!check.allowed) return;
+  const eventId = `api_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  globalErrorToastDedupe.register(eventId, check.keys, 3500);
+  window.dispatchEvent(
+    new CustomEvent('app:toast-error', {
+      detail: { title, message },
+    })
+  );
+}
+
+function emitUnauthorizedEvent(): void {
+  const now = Date.now();
+  if (now - lastUnauthorizedDispatchAt < 3000) return;
+  lastUnauthorizedDispatchAt = now;
+  window.dispatchEvent(new Event('auth:unauthorized'));
+}
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -98,10 +123,18 @@ export async function apiRequest<T = any>(
       headers,
     });
 
-    if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/verify-2fa') && !endpoint.includes('/branding')) {
+    const isAuthEndpoint =
+      endpoint.includes('/auth/login') ||
+      endpoint.includes('/auth/google') ||
+      endpoint.includes('/auth/verify-2fa') ||
+      endpoint.includes('/auth/forgot-password') ||
+      endpoint.includes('/auth/reset-password') ||
+      endpoint.includes('/branding');
+
+    if (res.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('dama_token');
       localStorage.removeItem('dama_user');
-      window.dispatchEvent(new Event('auth:unauthorized'));
+      emitUnauthorizedEvent();
     }
 
     // For file downloads (like PDF or CSV)
@@ -135,7 +168,9 @@ export async function apiRequest<T = any>(
 
       if (!(options as any).suppressToast) {
         const errorTitle =
-          res.status === 403
+          res.status === 401 && !isAuthEndpoint
+            ? 'Sesión Expirada'
+            : res.status === 403
             ? 'Permiso Denegado'
             : res.status === 404
             ? 'Elemento No Encontrado'
@@ -145,14 +180,12 @@ export async function apiRequest<T = any>(
             ? 'Error del Servidor'
             : 'Error en la Solicitud';
 
-        window.dispatchEvent(
-          new CustomEvent('app:toast-error', {
-            detail: {
-              title: errorTitle,
-              message: friendlyMsg,
-            },
-          })
-        );
+        const displayMessage =
+          res.status === 401 && !isAuthEndpoint
+            ? 'Tu sesión ha caducado. Inicia sesión de nuevo para continuar.'
+            : friendlyMsg;
+
+        emitGlobalErrorToast(errorTitle, displayMessage);
       }
 
       return {
@@ -175,14 +208,7 @@ export async function apiRequest<T = any>(
   } catch {
     const errorMsg = 'No se pudo conectar con el servidor. Comprueba tu conexión de red.';
     if (!(options as any).suppressToast) {
-      window.dispatchEvent(
-        new CustomEvent('app:toast-error', {
-          detail: {
-            title: 'Fallo de Red',
-            message: errorMsg,
-          },
-        })
-      );
+      emitGlobalErrorToast('Fallo de Red', errorMsg);
     }
 
     return {
@@ -228,14 +254,7 @@ export async function downloadFile(endpoint: string, fallbackFilename: string): 
     return true;
   } catch (err: any) {
     console.error('Download failed:', err);
-    window.dispatchEvent(
-      new CustomEvent('app:toast-error', {
-        detail: {
-          title: 'Error de Descarga',
-          message: err.message || 'No se pudo descargar el archivo.',
-        },
-      })
-    );
+    emitGlobalErrorToast('Error de Descarga', err.message || 'No se pudo descargar el archivo.');
     return false;
   }
 }

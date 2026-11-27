@@ -49,6 +49,7 @@ app.set('trust proxy', 1);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     hsts: {
       maxAge: 31536000,
       includeSubDomains: true,
@@ -60,11 +61,26 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://fonts.googleapis.com'],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://accounts.google.com'],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://unpkg.com',
+          'https://fonts.googleapis.com',
+          'https://accounts.google.com',
+        ],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
-        connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:'],
+        frameSrc: ["'self'", 'https://accounts.google.com'],
+        connectSrc: [
+          "'self'",
+          'ws:',
+          'wss:',
+          'http:',
+          'https:',
+          'https://accounts.google.com',
+          'https://oauth2.googleapis.com',
+        ],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
       },
