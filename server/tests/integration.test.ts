@@ -262,6 +262,261 @@ describe('DAMA-CRM Integration & Automation Tests', () => {
 
       assert.ok(mapped.woocommerce);
       assert.strictEqual(mapped.woocommerce.sku, 'WKS-IND-01');
+      assert.ok(mapped.a3erp);
+      assert.strictEqual(mapped.a3erp.TIPIVA, 'ORD21');
+      assert.ok(mapped.prestashop);
+      assert.strictEqual(mapped.prestashop.reference, 'WKS-IND-01');
+    });
+  });
+
+  describe('Modular Platform Connectors Suite (a3ERP, Sage 200, PrestaShop, Shopify, WooCommerce)', () => {
+    const {
+      A3ErpPaddingAndProtocol,
+      a3erpConnector,
+      SageContractValidator,
+      sage200Connector,
+      PrestaShopWebserviceProtocol,
+      prestashopConnector,
+      ShopifyProtocolHelper,
+      shopifyConnector,
+      WooCommerceReconciliationEngine,
+      woocommerceConnector,
+    } = require('../src/modules/integrations/connectors');
+
+    it('should enforce a3ERP padded codes (15 for CODART, 4 for CODPROVI, 8 for CODCLI/CODALM, unpadded TIPOCONT & alphanumerics)', () => {
+      assert.strictEqual(A3ErpPaddingAndProtocol.padCode('0', 'CODART'), '              0');
+      assert.strictEqual(A3ErpPaddingAndProtocol.padCode('1', 'CODART'), '              1');
+      assert.strictEqual(A3ErpPaddingAndProtocol.padCode('1', 'CODCLI'), '       1');
+      assert.strictEqual(A3ErpPaddingAndProtocol.padCode('25', 'CODCLI'), '      25');
+      assert.strictEqual(A3ErpPaddingAndProtocol.padCode('08', 'CODPROVI'), '  08');
+      assert.strictEqual(A3ErpPaddingAndProtocol.padCode('1', 'TIPOCONT'), '1');
+      assert.strictEqual(A3ErpPaddingAndProtocol.padCode('A526', 'CODALM'), 'A526');
+      assert.strictEqual(A3ErpPaddingAndProtocol.padCode('CONTADO', 'CODCLI'), 'CONTADO');
+    });
+
+    it('should encode a3ERP Parameters header in Base64 JSON and enforce IVAINCLUIDO / read-only rules', () => {
+      const b64 = A3ErpPaddingAndProtocol.encodeParametersHeader({ nifcli: '34567891H', soloconstock: '1' });
+      assert.ok(b64);
+      const decoded = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+      assert.strictEqual(decoded.nifcli, '34567891H');
+      assert.strictEqual(decoded.soloconstock, true); // Never string "1" (prevents HTTP 500)
+
+      const preparedOrder = A3ErpPaddingAndProtocol.prepareDocumentPayload(
+        {
+          CODCLI: '25',
+          CODALM: '1',
+          TIPOCONT: '1',
+          IVAINCLUIDO: 'T',
+          BASE: 100,
+          TOTDOC: 121,
+          PEDIDOVENTALINEAS: [{ CODART: '1', DESCLIN: 'Maceta', UNIDADES: 2, PRCMONEDAMASIVA: 25, PRCMONEDA: 20.66 }],
+        },
+        { action: 'AltaPedidoVenta', linesField: 'PEDIDOVENTALINEAS' }
+      );
+
+      assert.strictEqual(preparedOrder.CODCLI, '      25');
+      assert.strictEqual(preparedOrder.BASE, undefined);
+      assert.strictEqual(preparedOrder.TOTDOC, undefined);
+      assert.strictEqual(preparedOrder.PEDIDOVENTALINEAS[0].CODART, '              1');
+      assert.strictEqual(preparedOrder.PEDIDOVENTALINEAS[0].PRCMONEDAMASIVA, 25);
+      assert.strictEqual(preparedOrder.PEDIDOVENTALINEAS[0].PRCMONEDA, undefined);
+
+      // ModificaPedidoVenta with lines must strip IVAINCLUIDO
+      const modifiedOrder = A3ErpPaddingAndProtocol.prepareDocumentPayload(
+        {
+          IDPEDV: 1376,
+          IVAINCLUIDO: 'T',
+          PEDIDOVENTALINEAS: [{ CODART: '1', DESCLIN: 'Maceta', UNIDADES: 2, PRCMONEDAMASIVA: 25 }],
+        },
+        { action: 'ModificaPedidoVenta', linesField: 'PEDIDOVENTALINEAS' }
+      );
+      assert.strictEqual(modifiedOrder.IVAINCLUIDO, undefined);
+
+      // StockTallas must filter negative summary rows
+      const filteredStockTallas = A3ErpPaddingAndProtocol.filterValidStockTallasRows([
+        { CODART: '              1', UNIDADES: -1489.0 },
+        { CODART: '              1', CODTALLAH: 'XL', CODTALLAV: 'ROJO', UNIDADES: 15 },
+      ]);
+      assert.strictEqual(filteredStockTallas.length, 1);
+      assert.strictEqual(filteredStockTallas[0].UNIDADES, 15);
+    });
+
+    it('should validate a3ERP mandatory Parameters and execute Orders_IN_v11 end-to-end', async () => {
+      const missingNifRes = await a3erpConnector.readProc('ClientesPorNif', {});
+      assert.strictEqual(missingNifRes.success, false);
+
+      const forbiddenRes = await a3erpConnector.readProc('CentrosCoste');
+      assert.strictEqual(forbiddenRes.success, false);
+
+      const orderInRes = await a3erpConnector.executeOperation('orders_in', {
+        orderNumber: 'STG-TEST-9101',
+        nifCif: 'X7654321L',
+      });
+      assert.strictEqual(orderInRes.success, true);
+      assert.strictEqual(orderInRes.taskStatus, 'COMPLETED');
+    });
+
+    it('should validate Sage 200 612-field IME contracts (Documents, ClientesProveedores, Domicilios, StockMovements)', async () => {
+      // Document validation: date-only YYYY-MM-DD, int codigoNacion=108, int suPedidoWeb
+      const docVal = SageContractValidator.validateAndNormalizeDocument({
+        codigoEmpresa: 9999,
+        codigoDocumentoLc: 'PVE',
+        fechaDocumento: '2026-10-20T14:30:00Z',
+        fechaEntrega: '2026-10-19T10:00:00Z',
+        codigoCliente: '4300001',
+        suPedidoWeb: '9101' as any,
+        lineas: [{ orden: 1, codigoArticulo: 'ART-01', unidades: 3, precio: 50 }],
+      });
+      assert.strictEqual(docVal.valid, true);
+      assert.strictEqual(docVal.normalized.fechaDocumento, '2026-10-20');
+      assert.strictEqual(docVal.normalized.fechaEntrega, '2026-10-20'); // Clamped to >= fechaDocumento
+      assert.strictEqual(docVal.normalized.codigoNacion, 108);
+      assert.strictEqual(docVal.normalized.suPedidoWeb, 9101);
+
+      // Customer validation: clienteOProveedor max 1 char ('C'/'P') and formadePago lowercase 'd'
+      const custVal = SageContractValidator.validateAndNormalizeCustomerSupplier({
+        codigoEmpresa: 9999,
+        clienteOProveedor: 'C',
+        cifDni: 'ES-B12345678',
+        formaDePago: 'GIRO 30 DIAS',
+      });
+      assert.strictEqual(custVal.valid, true);
+      assert.strictEqual(custVal.normalized.clienteOProveedor, 'C');
+      assert.strictEqual(custVal.normalized.formadePago, 'GIRO 30 DIAS');
+
+      // Stock movement transfer: tipoMovimiento=2 + almacenContrapartida -> positive unidades & origenMovimiento='T'
+      const transferVal = SageContractValidator.validateAndNormalizeStockMovement({
+        codigoEmpresa: 9999,
+        tipoMovimiento: 2,
+        codigoArticulo: 'ART-01',
+        codigoAlmacen: '001',
+        almacenContrapartida: '002',
+        unidades: -10,
+      });
+      assert.strictEqual(transferVal.valid, true);
+      assert.strictEqual(transferVal.normalized.unidades, 10);
+      assert.strictEqual(transferVal.normalized.origenMovimiento, 'T');
+
+      // Same source and target warehouse must fail
+      const badTransfer = SageContractValidator.validateAndNormalizeStockMovement({
+        codigoEmpresa: 9999,
+        tipoMovimiento: 2,
+        codigoArticulo: 'ART-01',
+        codigoAlmacen: '001',
+        almacenContrapartida: '001',
+        unidades: 5,
+      });
+      assert.strictEqual(badTransfer.valid, false);
+
+      const sageOrderRes = await sage200Connector.executeOperation('order_in', { orderNumber: '2026101' });
+      assert.strictEqual(sageOrderRes.success, true);
+      assert.ok(sageOrderRes.data.opADomicilioTaskId);
+      assert.ok(sageOrderRes.data.opBDocumentTaskId);
+    });
+
+    it('should build PrestaShop partial XML for stock_availables and run dual-API operations', async () => {
+      const partialXml = PrestaShopWebserviceProtocol.buildStockAvailablePartialXml(701, 42);
+      assert.ok(partialXml.includes('<id><![CDATA[701]]></id>'));
+      assert.ok(partialXml.includes('<quantity><![CDATA[42]]></quantity>'));
+      assert.strictEqual(partialXml.includes('out_of_stock'), false);
+
+      const psUrl = PrestaShopWebserviceProtocol.buildWebserviceUrl('https://shop.es', 'orders', {
+        display: 'full',
+        filters: { current_state: [2, 3], date_upd: { from: '2026-10-01 00:00:00', to: '2026-10-23 23:59:59' } },
+        dateFilter: true,
+      });
+      assert.ok(psUrl.includes('display=full'));
+      assert.ok(psUrl.includes('date=1'));
+      assert.ok(psUrl.includes('output_format=JSON'));
+
+      const dupReport = await prestashopConnector.generateDuplicatesReport([
+        { id: 1, reference: 'ZZDUP-001', name: 'Prod QA 1' },
+        { id: 2, reference: 'ZZDUP-001', name: 'Prod QA 2' },
+        { id: 3, reference: '', name: 'Prod Sin Ref' },
+      ]);
+      assert.strictEqual(dupReport.success, true);
+      assert.strictEqual(dupReport.data.duplicateGroupsByReference.length, 1);
+      assert.strictEqual(dupReport.data.duplicateGroupsByReference[0].isQaTestProduct, true);
+      assert.strictEqual(dupReport.data.productsWithoutReference.length, 1);
+    });
+
+    it('should validate Shopify limits, MoneyBag B2B orders, productSet, and Images_OUT isPrimary fix', async () => {
+      const tooManyOptions = ShopifyProtocolHelper.validateProductSetInput({
+        title: 'Test',
+        productOptions: [
+          { name: 'Opt1', values: [{ name: 'A' }] },
+          { name: 'Opt2', values: [{ name: 'B' }] },
+          { name: 'Opt3', values: [{ name: 'C' }] },
+          { name: 'Opt4', values: [{ name: 'D' }] },
+        ],
+      });
+      assert.strictEqual(tooManyOptions.valid, false);
+
+      const ordersRes = await shopifyConnector.fetchAndProcessOrdersOut();
+      assert.strictEqual(ordersRes.success, true);
+      assert.strictEqual(ordersRes.data[0].payments.length, 1); // Only SUCCESS transaction kept
+      assert.strictEqual(ordersRes.data[0].customer.isB2B, true);
+
+      const imgRes = await shopifyConnector.syncImagesOut('88100200300');
+      assert.strictEqual(imgRes.data.assets[0].isPrimary, true);
+      assert.strictEqual(imgRes.data.assets[1].isPrimary, false);
+    });
+
+    it('should perform WooCommerce order security pruning, NIF customer reconciliation (on_hold), and VAT-included pricing', async () => {
+      // Security pruning & NIF reconciliation with divergent customer data -> holds order on_hold
+      const orderRes = await woocommerceConnector.processOrderOut(
+        {
+          id: 5001,
+          number: '5001',
+          status: 'processing',
+          total: '121.00',
+          total_tax: '21.00',
+          shipping_total: '0.00',
+          discount_total: '0.00',
+          currency: 'EUR',
+          customer_id: 10,
+          billing: {
+            first_name: 'Nombre Cambiado',
+            last_name: 'Morales',
+            address_1: 'Nueva Calle 99',
+            city: 'Málaga',
+            postcode: '29005',
+            country: 'ES',
+            email: 'elena.morales@tienda-online.es',
+          },
+          meta_data: [{ key: '_billing_nif', value: 'B29123456' }],
+          line_items: [{ product_id: 10, sku: 'WC-01', name: 'Item', quantity: 1, subtotal: '121.00', total: '121.00' }],
+        },
+        {
+          nifCif: 'B29123456',
+          firstName: 'Elena',
+          lastName: 'Morales',
+          email: 'elena.morales@tienda-online.es',
+          street1: 'Calle Larios 15',
+          city: 'Málaga',
+          postalCode: '29005',
+        }
+      );
+
+      assert.strictEqual(orderRes.success, true);
+      assert.strictEqual(orderRes.data.reconciliation.status, 'pending_approval');
+      assert.strictEqual(orderRes.data.reconciliation.orderHeldOnHold, true);
+      assert.strictEqual(orderRes.data.order.status, 'on_hold');
+      assert.strictEqual(orderRes.data.order.shippings, undefined); // Pruned because shippingAddress was empty
+
+      // Variable parent stock update must be rejected
+      const parentStockRes = await woocommerceConnector.updateStock({
+        externalId: 100,
+        isVariableParent: true,
+        quantity: 10,
+      });
+      assert.strictEqual(parentStockRes.success, false);
+
+      // VAT-included price calculation (Price_Update_v4)
+      const vatPrice = WooCommerceReconciliationEngine.calculateVatIncludedPrice(100, 'standard');
+      assert.strictEqual(vatPrice.regularPrice, '121.00');
+      const reducedPrice = WooCommerceReconciliationEngine.calculateVatIncludedPrice(100, 'reduced');
+      assert.strictEqual(reducedPrice.regularPrice, '110.00');
     });
   });
 

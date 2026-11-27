@@ -37,6 +37,8 @@ export const IntegrationsSettings: React.FC = () => {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, Record<string, string>>>({
+    a3erp: { baseUrl: 'http://172.30.4.129:4433', username: 'SA', password: '••••••••••••', defaultSerie: 'BORRADOR', defaultWarehouse: '1' },
+    prestashop: { storeUrl: 'https://tienda-prestashop.miempresa.com', wsKey: '••••••••••••', adminClientId: 'ps9_admin_client', adminClientSecret: '••••••••••••' },
     odoo: { url: 'https://odoo.miempresa.com', db: 'odoo_db', username: 'admin', apiKey: '••••••••••••' },
     sage_one: { apiUrl: 'https://api.accounting.sage.com/v3.1', apiKey: '••••••••••••', clientId: 'dama_sage_one_client', clientSecret: '••••••••••••', businessId: 'SAGE-BIZ-ES-01' },
     sage_50: { endpointUrl: 'http://localhost:5493/sdata/sage50', companyName: 'Empresa Sage 50 S.L.', username: 'admin', password: '••••••••••••', apiKey: '••••••••••••', fiscalYear: '2026' },
@@ -151,6 +153,34 @@ export const IntegrationsSettings: React.FC = () => {
   };
 
   const CONNECTORS = [
+    {
+      id: 'a3erp',
+      name: 'a3ERP (Wolters Kluwer / esofitec)',
+      desc: 'Conector Sit.a3ERP.Api con 26 procs de lectura, 42 acciones de escritura asíncrona y códigos cuadrados (15/8/4).',
+      icon: Boxes,
+      logoUrl: '/assets/logos/integrations/a3erp.svg',
+      color: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60',
+      fields: [
+        { key: 'baseUrl', label: 'Endpoint API REST a3ERP', placeholder: 'http://172.30.4.129:4433' },
+        { key: 'username', label: 'UserId a3ERP', placeholder: 'SA' },
+        { key: 'password', label: 'Contraseña API Login', placeholder: '••••••••••••', isSecret: true },
+        { key: 'defaultSerie', label: 'Serie de Pedidos', placeholder: 'BORRADOR' },
+      ],
+    },
+    {
+      id: 'prestashop',
+      name: 'PrestaShop 8 / 9 Dual API',
+      desc: 'Sincronización dual mediante Webservice clásico XML (69 recursos) y Admin API CQRS de PrestaShop 9 (33 dominios).',
+      icon: ShoppingCart,
+      logoUrl: '/assets/logos/integrations/prestashop.svg',
+      color: 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/60',
+      fields: [
+        { key: 'storeUrl', label: 'URL de la Tienda PrestaShop', placeholder: 'https://tienda.empresa.com' },
+        { key: 'wsKey', label: 'Webservice Key (ws_key)', placeholder: '••••••••••••', isSecret: true },
+        { key: 'adminClientId', label: 'Admin API Client ID (PS 9)', placeholder: 'ps9_admin_client' },
+        { key: 'adminClientSecret', label: 'Admin API Client Secret', placeholder: '••••••••••••', isSecret: true },
+      ],
+    },
     {
       id: 'odoo',
       name: 'Odoo ERP v17 / v18',
