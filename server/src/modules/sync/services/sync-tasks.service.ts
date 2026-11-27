@@ -540,7 +540,14 @@ export class SyncTasksService {
           succeeded = syncRes.success;
           summaryMessage = syncRes.message;
           if (!syncRes.success) errorMessage = syncRes.message;
-          recordsProcessed = syncRes.syncedCount ?? 1;
+          recordsProcessed =
+            syncRes.count ??
+            ((syncRes.syncedProducts || 0) +
+              (syncRes.syncedOrders || 0) +
+              (syncRes.syncedCustomers || 0) +
+              (syncRes.syncedStock || 0) +
+              (syncRes.syncedPrices || 0) ||
+              1);
           recordsSucceeded = syncRes.success ? recordsProcessed : 0;
           recordsFailed = syncRes.success ? 0 : recordsProcessed;
           executionDetails = {
